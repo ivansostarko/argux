@@ -68,6 +68,8 @@ docker compose exec cli php artisan event:cache
 docker compose exec cli php artisan view:cache
 docker compose exec cli php artisan reload
 
+docker compose exec cli  php artisan route:clear
+
 docker compose exec cli php artisan storage:link
 docker compose exec cli php artisan install:api
 docker compose exec cli php artisan install:broadcasting
