@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.1 - 2026-03-20
+
+### Changed
+- Register page: stacked first/last name vertically, added phone number field.
+- Removed footer (StatusBar) from all auth pages (Login, Register, 2FA, Forgot Password).
+
+### Added
+- AppLayout with responsive sidebar and header.
+- Sidebar navigation with 7 sections: Command, Subjects, Intelligence, Analysis, Monitoring, Tools, System.
+- AppHeader with city clock dropdown (Zagreb, Riyadh, Sydney), notification dropdown with mock data, user profile dropdown with My Profile, Settings, and Logout.
+- Dashboard/Index placeholder page rendered inside AppLayout.
+- All sidebar menu routes wired in web.php.
+- Responsive mobile sidebar with hamburger toggle and overlay.
+
 ## 0.1.0 - 2026-03-19
 
 ### Added

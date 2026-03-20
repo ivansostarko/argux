@@ -15,7 +15,7 @@ export default function Register() {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({
-        firstName: '', lastName: '', email: '',
+        firstName: '', lastName: '', email: '', phone: '',
         password: '', confirm: '',
     });
     const [agreed, setAgreed] = useState(false);
@@ -31,6 +31,7 @@ export default function Register() {
             first_name: form.firstName,
             last_name: form.lastName,
             email: form.email,
+            phone: form.phone,
             password: form.password,
             password_confirmation: form.confirm,
             agree_terms: agreed,
@@ -89,19 +90,17 @@ export default function Register() {
 
             {step === 1 && (
                 <>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                        <div style={{ flex: 1 }}>
-                            <Input label={tr('first_name_label')} placeholder={tr('first_name_placeholder')}
-                                value={form.firstName} onChange={set('firstName')} icon={Icons.user()} />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                            <Input label={tr('last_name_label')} placeholder={tr('last_name_placeholder')}
-                                value={form.lastName} onChange={set('lastName')} icon={Icons.user()} />
-                        </div>
-                    </div>
+                    <Input label={tr('first_name_label')} placeholder={tr('first_name_placeholder')}
+                        value={form.firstName} onChange={set('firstName')} icon={Icons.user()} />
+
+                    <Input label={tr('last_name_label')} placeholder={tr('last_name_placeholder')}
+                        value={form.lastName} onChange={set('lastName')} icon={Icons.user()} />
 
                     <Input label={tr('email_label')} type="email" placeholder={tr('email_placeholder')}
                         value={form.email} onChange={set('email')} icon={Icons.mail()} />
+
+                    <Input label={tr('phone_label')} type="tel" placeholder={tr('phone_placeholder')}
+                        value={form.phone} onChange={set('phone')} icon={Icons.phone()} />
 
                     <Button onClick={() => setStep(2)}
                         disabled={!form.firstName || !form.lastName || !form.email}>

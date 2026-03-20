@@ -8,6 +8,7 @@
     "auth.code_verified": "Code verified successfully.",
     "auth.password_reset_complete": "Password reset complete. You may now sign in.",
     "auth.fields.email": "email",
+    "auth.fields.phone": "phone number",
     "auth.fields.password": "password",
     "auth.fields.first_name": "first name",
     "auth.fields.last_name": "last name",

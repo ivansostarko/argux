@@ -8,6 +8,7 @@
     "auth.code_verified": "Kod uspješno potvrđen.",
     "auth.password_reset_complete": "Resetiranje lozinke završeno. Sada se možete prijaviti.",
     "auth.fields.email": "email",
+    "auth.fields.phone": "telefonski broj",
     "auth.fields.password": "lozinka",
     "auth.fields.first_name": "ime",
     "auth.fields.last_name": "prezime",

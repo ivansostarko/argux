@@ -1,18 +1,13 @@
 import { ReactNode } from 'react';
-import { usePage } from '@inertiajs/react';
 import ParticleBackground from '../components/auth/ParticleBackground';
-import StatusBar from '../components/auth/StatusBar';
 import { theme } from '../lib/theme';
-import type { SharedProps } from '../types/shared';
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
-    const { app } = usePage<SharedProps>().props;
-
     return (
         <div style={{
             minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center',
             justifyContent: 'center', fontFamily: "'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-            color: theme.text, padding: '30px 16px 50px', position: 'relative',
+            color: theme.text, padding: '30px 16px', position: 'relative',
             WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale',
             background: theme.bg,
         }}>
@@ -32,7 +27,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             `}</style>
 
             <ParticleBackground />
-            <StatusBar version={app?.version} />
 
             <div style={{
                 animation: 'argux-fadeIn 0.4s ease-out',

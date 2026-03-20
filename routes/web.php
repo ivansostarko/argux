@@ -28,6 +28,39 @@ Route::post('/2fa/resend', [AuthController::class, 'resendTwoFactor'])->name('2f
 
 /*
 |--------------------------------------------------------------------------
+| App Routes (mock — all render Dashboard placeholder)
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/map', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('map');
+Route::get('/vision', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('vision');
+Route::get('/operations', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('operations');
+Route::get('/persons', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('persons.index');
+Route::get('/organizations', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('organizations.index');
+Route::get('/vehicles', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('vehicles.index');
+Route::get('/devices', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('devices.index');
+Route::get('/plate-recognition', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('plate-recognition');
+Route::get('/face-recognition', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('face-recognition');
+Route::get('/scraper', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('scraper');
+Route::get('/web-scraper', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('web-scraper');
+Route::get('/apps', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('apps');
+Route::get('/connections', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('connections');
+Route::get('/workflows', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('workflows');
+Route::get('/data-sources', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('data-sources');
+Route::get('/alerts', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('alerts');
+Route::get('/activity', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('activity');
+Route::get('/notifications', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('notifications');
+Route::get('/risks', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('risks');
+Route::get('/chat', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('chat');
+Route::get('/records', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('records');
+Route::get('/storage', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('storage');
+Route::get('/reports', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('reports');
+Route::get('/jobs', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('jobs');
+Route::get('/profile', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('profile');
+Route::get('/settings', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('settings');
+
+/*
+|--------------------------------------------------------------------------
 | Locale Switch
 |--------------------------------------------------------------------------
 */
@@ -46,4 +79,4 @@ Route::post('/locale/{locale}', function (string $locale) {
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', [AuthController::class, 'login']);
+Route::get('/', fn () => redirect()->route('map'));
