@@ -99,7 +99,6 @@ services:
       - vendor:/app/vendor
       - storage:/app/storage
       - bootstrap_cache:/app/bootstrap/cache
-
     networks:
       - app_network
     restart: no
@@ -107,7 +106,22 @@ services:
     stdin_open: true
     logging: *default-logging
 
-
+  # Redis
+  redis:
+    image: redis:8.2-alpine
+    container_name: redis
+    hostname: redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    restart: always
+    tty: true
+    stdin_open: true
+    logging: *default-logging
 
 # Network and Volume definitions
 networks:
@@ -119,4 +133,4 @@ volumes:
   storage:
   bootstrap_cache:
   node_modules:
-
+  redis_data:

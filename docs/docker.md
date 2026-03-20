@@ -43,6 +43,8 @@ docker compose exec app php  artisan octane:status
 ```bash
 docker compose logs --tail=100 -f app
 docker compose logs --tail=100 -f cli
+docker compose logs --tail=100 -f nginx
+docker compose logs --tail=100 -f redis
 ```
 
 ### Docker Compose 
@@ -54,4 +56,19 @@ docker compose up -d app
 ### Remove all Docker files 
 ```bash
 docker stop $(docker ps -qa); docker rm $(docker ps -qa); docker rmi -f $(docker images -qa); docker volume rm $(docker volume ls -q); docker network rm $(docker network ls -q)
+```
+
+### Docker Compose 
+```bash
+docker compose exec cli php artisan optimize
+docker compose exec cli php artisan optimize:clear
+docker compose exec cli php artisan config:cache
+docker compose exec cli php artisan route:cache
+docker compose exec cli php artisan event:cache
+docker compose exec cli php artisan view:cache
+docker compose exec cli php artisan reload
+
+docker compose exec cli php artisan storage:link
+docker compose exec cli php artisan install:api
+docker compose exec cli php artisan install:broadcasting
 ```
