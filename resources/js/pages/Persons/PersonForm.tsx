@@ -42,7 +42,7 @@ export default function PersonForm({ person, mode }: { person?: Person; mode: 'c
     const [gender, setGender] = useState(person?.gender || '');
     const [nationality, setNationality] = useState(person?.nationality || '');
     const [risk, setRisk] = useState(person?.risk || '');
-    const [status, setStatus] = useState(person?.status || 'Active');
+    const [status, setStatus] = useState<string>(person?.status || 'Active');
     const [taxNumber, setTaxNumber] = useState(person?.taxNumber || '');
     const [religion, setReligion] = useState(person?.religion || '');
     const [personLanguages, setPersonLanguages] = useState<PersonLanguage[]>(person?.languages || []);
