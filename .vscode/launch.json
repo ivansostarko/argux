@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run build.sh",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["${workspaceFolder}/scripts/build.sh"],
+      "console": "integratedTerminal",
+      "preLaunchTask": "run-build-script"
+    }
+  ]
+}

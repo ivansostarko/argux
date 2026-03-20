@@ -72,7 +72,7 @@ docker compose exec cli php artisan storage:link
 docker compose exec cli php artisan install:api
 docker compose exec cli php artisan install:broadcasting
 
-docker compose exec cli php artisan serve & npm run build
+docker compose exec cli php artisan serve & npm run build 
 
 
 

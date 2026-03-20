@@ -5,18 +5,16 @@ import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
 
 type Tab = 'personal' | 'password' | 'security' | 'settings' | 'audit';
-
-/* ═══ MOCK DATA ═══ */
 interface AuditEntry { id: number; time: string; action: string; details: string; ip: string; }
 interface Session { id: string; device: string; browser: string; ip: string; location: string; lastActive: string; current: boolean; trusted: boolean; }
 
+/* ═══ MOCK DATA ═══ */
 const mockSessions: Session[] = [
     { id: 's1', device: 'MacBook Pro 16"', browser: 'Chrome 122.0', ip: '185.23.45.67', location: 'Zagreb, HR', lastActive: 'Now', current: true, trusted: true },
     { id: 's2', device: 'iPhone 15 Pro', browser: 'Safari 17.3', ip: '185.23.45.68', location: 'Zagreb, HR', lastActive: '12m ago', current: false, trusted: true },
     { id: 's3', device: 'Windows Desktop', browser: 'Firefox 124.0', ip: '91.207.12.34', location: 'Split, HR', lastActive: '2h ago', current: false, trusted: false },
     { id: 's4', device: 'iPad Air', browser: 'Safari 17.2', ip: '185.23.45.69', location: 'Zagreb, HR', lastActive: '1d ago', current: false, trusted: true },
 ];
-
 const mockAuditLog: AuditEntry[] = [
     { id: 1, time: '2026-03-20 15:02:14', action: 'Login', details: 'Successful authentication via 2FA (Authenticator App)', ip: '185.23.45.67' },
     { id: 2, time: '2026-03-20 14:58:02', action: 'Failed Login', details: 'Invalid password — attempt 1 of 5', ip: '91.207.12.34' },
@@ -39,23 +37,15 @@ const mockAuditLog: AuditEntry[] = [
     { id: 19, time: '2026-03-15 15:10:55', action: 'Role Updated', details: 'Promoted to Senior Operator by admin', ip: '10.0.1.1' },
     { id: 20, time: '2026-03-15 10:00:00', action: 'Login', details: 'Successful authentication via 2FA', ip: '185.23.45.67' },
 ];
-
-const mockIpData: Record<string, { ip: string; hostname: string; city: string; region: string; country: string; loc: string; org: string; postal: string; timezone: string; asn: string; isp: string; type: string; }> = {
-    '185.23.45.67': { ip: '185.23.45.67', hostname: 'host-185-23-45-67.example.hr', city: 'Zagreb', region: 'City of Zagreb', country: 'HR', loc: '45.8150,15.9819', org: 'AS34594 HT Croatian Telecom', postal: '10000', timezone: 'Europe/Zagreb', asn: 'AS34594', isp: 'Croatian Telecom d.d.', type: 'ISP' },
-    '185.23.45.68': { ip: '185.23.45.68', hostname: 'mobile-185-23-45-68.example.hr', city: 'Zagreb', region: 'City of Zagreb', country: 'HR', loc: '45.8131,15.9775', org: 'AS34594 HT Croatian Telecom', postal: '10000', timezone: 'Europe/Zagreb', asn: 'AS34594', isp: 'Croatian Telecom d.d.', type: 'Mobile' },
-    '185.23.45.69': { ip: '185.23.45.69', hostname: 'wifi-185-23-45-69.example.hr', city: 'Zagreb', region: 'City of Zagreb', country: 'HR', loc: '45.8142,15.9780', org: 'AS34594 HT Croatian Telecom', postal: '10000', timezone: 'Europe/Zagreb', asn: 'AS34594', isp: 'Croatian Telecom d.d.', type: 'ISP' },
-    '91.207.12.34': { ip: '91.207.12.34', hostname: 'host-91-207-12-34.example.hr', city: 'Split', region: 'Split-Dalmatia', country: 'HR', loc: '43.5081,16.4402', org: 'AS13046 A1 Hrvatska', postal: '21000', timezone: 'Europe/Zagreb', asn: 'AS13046', isp: 'A1 Hrvatska d.o.o.', type: 'ISP' },
+const mockIpData: Record<string, { ip: string; hostname: string; city: string; region: string; country: string; loc: string; org: string; postal: string; timezone: string; asn: string; isp: string; type: string }> = {
+    '185.23.45.67': { ip: '185.23.45.67', hostname: 'host-185-23-45-67.ht.hr', city: 'Zagreb', region: 'City of Zagreb', country: 'HR', loc: '45.8150,15.9819', org: 'AS34594 HT Croatian Telecom', postal: '10000', timezone: 'Europe/Zagreb', asn: 'AS34594', isp: 'Croatian Telecom d.d.', type: 'ISP' },
+    '185.23.45.68': { ip: '185.23.45.68', hostname: 'mobile-185-23-45-68.ht.hr', city: 'Zagreb', region: 'City of Zagreb', country: 'HR', loc: '45.8131,15.9775', org: 'AS34594 HT Croatian Telecom', postal: '10000', timezone: 'Europe/Zagreb', asn: 'AS34594', isp: 'Croatian Telecom d.d.', type: 'Mobile' },
+    '185.23.45.69': { ip: '185.23.45.69', hostname: 'wifi-185-23-45-69.ht.hr', city: 'Zagreb', region: 'City of Zagreb', country: 'HR', loc: '45.8142,15.9780', org: 'AS34594 HT Croatian Telecom', postal: '10000', timezone: 'Europe/Zagreb', asn: 'AS34594', isp: 'Croatian Telecom d.d.', type: 'ISP' },
+    '91.207.12.34': { ip: '91.207.12.34', hostname: 'host-91-207-12-34.a1.hr', city: 'Split', region: 'Split-Dalmatia', country: 'HR', loc: '43.5081,16.4402', org: 'AS13046 A1 Hrvatska', postal: '21000', timezone: 'Europe/Zagreb', asn: 'AS13046', isp: 'A1 Hrvatska d.o.o.', type: 'ISP' },
     '10.0.1.1': { ip: '10.0.1.1', hostname: 'gateway.argux.internal', city: 'Internal', region: 'Private Network', country: '-', loc: '-', org: 'ARGUX Internal', postal: '-', timezone: '-', asn: 'Private', isp: 'ARGUX Infrastructure', type: 'Private' },
 };
-
 const backupCodes = ['A4K2-M9X1','B7J3-P2W8','C1L5-N6Y4','D8R7-Q3V9','E5T2-S1Z6','F3U8-R4X2','G9W1-T7K5','H6Y4-V2M3'];
-const languages = [
-    { id: 'en', label: 'English', flag: '🇬🇧', dir: 'ltr' as const },
-    { id: 'hr', label: 'Croatian', flag: '🇭🇷', dir: 'ltr' as const },
-    { id: 'ru', label: 'Russian', flag: '🇷🇺', dir: 'ltr' as const },
-    { id: 'zh', label: 'Chinese', flag: '🇨🇳', dir: 'ltr' as const },
-    { id: 'ar', label: 'Arabic', flag: '🇸🇦', dir: 'rtl' as const },
-];
+const languages = [{ id: 'en', label: 'English', flag: '🇬🇧', dir: 'ltr' as const },{ id: 'hr', label: 'Croatian', flag: '🇭🇷', dir: 'ltr' as const },{ id: 'ru', label: 'Russian', flag: '🇷🇺', dir: 'ltr' as const },{ id: 'zh', label: 'Chinese', flag: '🇨🇳', dir: 'ltr' as const },{ id: 'ar', label: 'Arabic', flag: '🇸🇦', dir: 'rtl' as const }];
 const dateFormats = ['YYYY-MM-DD','DD/MM/YYYY','MM/DD/YYYY','DD.MM.YYYY','DD-MM-YYYY','YYYY/MM/DD','MMM DD, YYYY','DD MMM YYYY','MMMM DD, YYYY','DD MMMM YYYY'];
 const timezones = ['UTC','Europe/Zagreb','Europe/London','Europe/Berlin','Europe/Paris','Europe/Rome','Europe/Moscow','Asia/Dubai','Asia/Riyadh','Asia/Kolkata','Asia/Shanghai','Asia/Tokyo','Asia/Seoul','Asia/Singapore','Australia/Sydney','Pacific/Auckland','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Sao_Paulo','Africa/Cairo','Africa/Johannesburg'];
 
@@ -64,47 +54,59 @@ const SectionTitle = ({ children }: { children: string }) => <div style={{ fontS
 const FieldGroup = ({ label, children }: { label: string; children: React.ReactNode }) => <div style={{ marginBottom: 18 }}><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: theme.textSecondary, marginBottom: 6, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{label}</label>{children}</div>;
 const Select = ({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) => <select value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', padding: '10px 14px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
 const StatCard = ({ label, value, color }: { label: string; value: string; color?: string }) => <div style={{ background: theme.bgInput, borderRadius: 10, padding: '14px 16px', border: `1px solid ${theme.border}`, flex: 1, minWidth: 120 }}><div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>{label}</div><div style={{ fontSize: 20, fontWeight: 700, color: color || theme.text, fontFamily: "'JetBrains Mono', monospace" }}>{value}</div></div>;
+function formatDatePreview(fmt: string): string { const map: Record<string, string> = { 'YYYY': '2026', 'MM': '03', 'DD': '20', 'MMM': 'Mar', 'MMMM': 'March' }; let r = fmt; Object.entries(map).sort((a,b) => b[0].length - a[0].length).forEach(([k,v]) => { r = r.replace(k, v); }); return r; }
 
-function formatDatePreview(fmt: string): string {
-    const map: Record<string, string> = { 'YYYY': '2026', 'MM': '03', 'DD': '20', 'MMM': 'Mar', 'MMMM': 'March' };
-    let r = fmt; Object.entries(map).sort((a,b) => b[0].length - a[0].length).forEach(([k,v]) => { r = r.replace(k, v); }); return r;
+/* ═══ DATE RANGE FILTER ═══ */
+function DateRangeFilter({ from, to, onChange }: { from: string; to: string; onChange: (f: string, t: string) => void }) {
+    const inputStyle: React.CSSProperties = { padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${(from || to) ? theme.accent + '60' : theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", outline: 'none', cursor: 'pointer', flex: 1, minWidth: 110, colorScheme: 'dark' as any };
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 2, minWidth: 240 }}>
+            <input type="date" value={from} onChange={e => onChange(e.target.value, to)} style={inputStyle} />
+            <span style={{ fontSize: 11, color: theme.textDim, flexShrink: 0 }}>→</span>
+            <input type="date" value={to} onChange={e => onChange(from, e.target.value)} style={inputStyle} />
+        </div>
+    );
 }
 
-/* ═══ SEARCHABLE FILTER ═══ */
-function SearchableFilter({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder: string }) {
+/* ═══ MULTI-SELECT FILTER ═══ */
+function MultiSelectFilter({ selected, onChange, options, placeholder }: { selected: string[]; onChange: (v: string[]) => void; options: string[]; placeholder: string }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => { const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
     const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+    const toggle = (o: string) => onChange(selected.includes(o) ? selected.filter(x => x !== o) : [...selected, o]);
+    const hasSelection = selected.length > 0;
+    const label = hasSelection ? (selected.length === 1 ? selected[0] : `${selected.length} selected`) : placeholder;
 
     return (
         <div ref={ref} style={{ position: 'relative', flex: 1, minWidth: 120 }}>
-            <button onClick={() => { setOpen(!open); setSearch(''); }} style={{
-                width: '100%', padding: '8px 10px', background: theme.bgInput, color: value ? theme.text : theme.textDim,
-                border: `1px solid ${value ? theme.accent+'60' : theme.border}`, borderRadius: 6, fontSize: 12,
-                fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{value || placeholder}</span>
+            <button onClick={() => { setOpen(!open); setSearch(''); }} style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, color: hasSelection ? theme.text : theme.textDim, border: `1px solid ${hasSelection ? theme.accent + '60' : theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{label}</span>
+                {hasSelection && (
+                    <span style={{ background: theme.accentDim, color: theme.accent, fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, flexShrink: 0 }}>{selected.length}</span>
+                )}
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ flexShrink: 0 }}><polyline points="2,4 5,7 8,4"/></svg>
             </button>
             {open && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#0d1220', border: `1px solid ${theme.border}`, borderRadius: 8, zIndex: 50, maxHeight: 220, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-                    <div style={{ padding: '6px 8px', borderBottom: `1px solid ${theme.border}` }}>
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." autoFocus
-                            style={{ width: '100%', padding: '6px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 4, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#0d1220', border: `1px solid ${theme.border}`, borderRadius: 8, zIndex: 50, maxHeight: 260, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                    <div style={{ padding: '6px 8px', borderBottom: `1px solid ${theme.border}`, display: 'flex', gap: 6 }}>
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." autoFocus style={{ flex: 1, padding: '6px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 4, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
+                        {hasSelection && <button onClick={() => onChange([])} style={{ background: 'none', border: 'none', color: theme.danger, fontSize: 10, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, whiteSpace: 'nowrap' as const, padding: '0 4px' }}>Clear</button>}
                     </div>
-                    <div style={{ overflowY: 'auto', flex: 1 }}>
-                        <div onClick={() => { onChange(''); setOpen(false); }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 12, color: !value ? theme.accent : theme.textSecondary, fontWeight: !value ? 600 : 400 }}
-                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(128,128,128,0.08)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                            {placeholder}
-                        </div>
-                        {filtered.map(o => (
-                            <div key={o} onClick={() => { onChange(o); setOpen(false); }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 12, color: value === o ? theme.accent : theme.text, fontWeight: value === o ? 600 : 400, fontFamily: o.match(/^\d/) ? "'JetBrains Mono', monospace" : 'inherit' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(128,128,128,0.08)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                                {o}
-                            </div>
-                        ))}
+                    <div style={{ overflowY: 'auto', flex: 1, padding: '4px 0' }}>
+                        {filtered.map(o => {
+                            const checked = selected.includes(o);
+                            return (
+                                <div key={o} onClick={() => toggle(o)} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 12, color: checked ? theme.accent : theme.text, display: 'flex', alignItems: 'center', gap: 8 }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(128,128,128,0.08)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                    <div style={{ width: 14, height: 14, borderRadius: 3, border: `1.5px solid ${checked ? theme.accent : theme.border}`, background: checked ? theme.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+                                        {checked && <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}
+                                    </div>
+                                    <span style={{ fontFamily: o.match(/^\d/) ? "'JetBrains Mono', monospace" : 'inherit' }}>{o}</span>
+                                </div>
+                            );
+                        })}
                         {filtered.length === 0 && <div style={{ padding: '12px 10px', fontSize: 12, color: theme.textDim, textAlign: 'center' }}>No results</div>}
                     </div>
                 </div>
@@ -118,48 +120,17 @@ function IpInfoModal({ ip, onClose }: { ip: string; onClose: () => void }) {
     const data = mockIpData[ip];
     const [loading, setLoading] = useState(true);
     useEffect(() => { const t = setTimeout(() => setLoading(false), 600); return () => clearTimeout(t); }, []);
-
-    const Row = ({ label, value }: { label: string; value: string }) => (
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${theme.border}30`, fontSize: 12 }}>
-            <span style={{ color: theme.textSecondary, fontWeight: 500 }}>{label}</span>
-            <span style={{ color: theme.text, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, textAlign: 'right' as const, maxWidth: '60%', wordBreak: 'break-all' as const }}>{value}</span>
-        </div>
-    );
-
+    const Row = ({ label, value }: { label: string; value: string }) => <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${theme.border}30`, fontSize: 12 }}><span style={{ color: theme.textSecondary, fontWeight: 500 }}>{label}</span><span style={{ color: theme.text, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, textAlign: 'right' as const, maxWidth: '60%', wordBreak: 'break-all' as const }}>{value}</span></div>;
     return (
         <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
             <div onClick={e => e.stopPropagation()} style={{ background: '#0d1220', border: `1px solid ${theme.border}`, borderRadius: 14, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', animation: 'argux-fadeIn 0.2s ease-out' }}>
                 <div style={{ padding: '18px 22px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>IP Address Details</div>
-                        <div style={{ fontSize: 12, color: theme.accent, fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>{ip}</div>
-                    </div>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 4, display: 'flex' }}>
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>
-                    </button>
+                    <div><div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>IP Address Details</div><div style={{ fontSize: 12, color: theme.accent, fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>{ip}</div></div>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 4, display: 'flex' }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
                 </div>
                 <div style={{ padding: '14px 22px 22px' }}>
-                    {loading ? (
-                        <div>{[1,2,3,4,5,6].map(i => <Skeleton key={i} height={14} style={{ marginBottom: 14 }} />)}</div>
-                    ) : !data ? (
-                        <div style={{ textAlign: 'center', padding: '20px 0', color: theme.textSecondary, fontSize: 13 }}>No data available for this IP address.</div>
-                    ) : (
-                        <>
-                            <Row label="Hostname" value={data.hostname} />
-                            <Row label="City" value={data.city} />
-                            <Row label="Region" value={data.region} />
-                            <Row label="Country" value={data.country} />
-                            <Row label="Location" value={data.loc} />
-                            <Row label="ISP" value={data.isp} />
-                            <Row label="Organization" value={data.org} />
-                            <Row label="ASN" value={data.asn} />
-                            <Row label="Postal" value={data.postal} />
-                            <Row label="Timezone" value={data.timezone} />
-                            <Row label="Type" value={data.type} />
-                            <div style={{ marginTop: 14, fontSize: 10, color: theme.textDim, textAlign: 'center' }}>
-                                Data source: ipinfo.io (mock) · Queried at {new Date().toLocaleTimeString()}
-                            </div>
-                        </>
+                    {loading ? <div>{[1,2,3,4,5,6].map(i => <Skeleton key={i} height={14} style={{ marginBottom: 14 }} />)}</div> : !data ? <div style={{ textAlign: 'center', padding: '20px 0', color: theme.textSecondary, fontSize: 13 }}>No data available.</div> : (
+                        <>{['Hostname','City','Region','Country','Location','ISP','Organization','ASN','Postal','Timezone','Type'].map((label, i) => <Row key={i} label={label} value={[data.hostname,data.city,data.region,data.country,data.loc,data.isp,data.org,data.asn,data.postal,data.timezone,data.type][i]} />)}<div style={{ marginTop: 14, fontSize: 10, color: theme.textDim, textAlign: 'center' }}>Data source: ipinfo.io (mock)</div></>
                     )}
                 </div>
             </div>
@@ -168,108 +139,16 @@ function IpInfoModal({ ip, onClose }: { ip: string; onClose: () => void }) {
 }
 
 /* ═══ SKELETON ═══ */
-function ProfileSkeleton() {
-    return (<div><div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 32 }}><Skeleton width={80} height={80} radius={40} /><div><Skeleton width={180} height={18} style={{ marginBottom: 8 }} /><Skeleton width={220} height={12} /></div></div><div style={{ display: 'flex', gap: 4, marginBottom: 28 }}>{[1,2,3,4,5].map(i => <Skeleton key={i} width={90} height={36} radius={8} />)}</div>{[1,2,3,4].map(i => <Skeleton key={i} height={44} radius={8} style={{ marginBottom: 14 }} />)}<Skeleton width={140} height={40} radius={8} style={{ marginTop: 8 }} /></div>);
-}
+function ProfileSkeleton() { return (<div><div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 32 }}><Skeleton width={80} height={80} radius={40} /><div><Skeleton width={180} height={18} style={{ marginBottom: 8 }} /><Skeleton width={220} height={12} /></div></div><div style={{ display: 'flex', gap: 4, marginBottom: 28 }}>{[1,2,3,4,5].map(i => <Skeleton key={i} width={90} height={36} radius={8} />)}</div>{[1,2,3,4].map(i => <Skeleton key={i} height={44} radius={8} style={{ marginBottom: 14 }} />)}<Skeleton width={140} height={40} radius={8} style={{ marginTop: 8 }} /></div>); }
 
 /* ═══ TAB: PERSONAL DATA ═══ */
-function PersonalDataTab() {
-    const toast = useToast();
-    const [loading, setLoading] = useState(false);
-    const [form, setForm] = useState({ firstName: 'James', lastName: 'Mitchell', email: 'j.mitchell@argux.mil', phone: '+385 91 234 5847' });
-    const [avatar, setAvatar] = useState<string | null>(null);
-    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => setAvatar(r.result as string); r.readAsDataURL(f); } };
-    const handleSave = () => { setLoading(true); setTimeout(() => { setLoading(false); toast.success('Profile saved', 'Your personal data has been updated.'); }, 1200); };
-
-    return (
-        <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 28 }}>
-                <div style={{ position: 'relative' }}>
-                    <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: avatar ? 'transparent' : `linear-gradient(135deg, ${theme.accent}, #1858b8)`, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `3px solid ${theme.border}` }}>
-                        {avatar ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>JM</span>}
-                    </div>
-                    <label style={{ position: 'absolute', bottom: -2, right: -2, width: 28, height: 28, borderRadius: '50%', background: theme.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: `2px solid ${theme.bg}` }}>
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M12 2l2 2-8 8H4v-2z"/></svg>
-                        <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
-                    </label>
-                </div>
-                <div><div style={{ fontSize: 16, fontWeight: 700, color: theme.text }}>James Mitchell</div><div style={{ fontSize: 12, color: theme.textSecondary }}>Senior Operator — Intelligence Analysis</div></div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 0, columnGap: 16 }}>
-                <Input label="First Name" value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} icon={Icons.user()} />
-                <Input label="Last Name" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} icon={Icons.user()} />
-            </div>
-            <Input label="Email Address" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} icon={Icons.mail()} />
-            <Input label="Phone Number" type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} icon={Icons.phone()} />
-            <Button onClick={handleSave} loading={loading} style={{ width: 'auto', padding: '11px 32px' }}>Save Changes</Button>
-        </>
-    );
-}
+function PersonalDataTab() { const toast = useToast(); const [loading, setLoading] = useState(false); const [form, setForm] = useState({ firstName: 'James', lastName: 'Mitchell', email: 'j.mitchell@argux.mil', phone: '+385 91 234 5847' }); const [avatar, setAvatar] = useState<string | null>(null); const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => setAvatar(r.result as string); r.readAsDataURL(f); } }; const handleSave = () => { setLoading(true); setTimeout(() => { setLoading(false); toast.success('Profile saved', 'Your personal data has been updated.'); }, 1200); }; return (<><div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 28 }}><div style={{ position: 'relative' }}><div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: avatar ? 'transparent' : `linear-gradient(135deg, ${theme.accent}, #1858b8)`, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `3px solid ${theme.border}` }}>{avatar ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>JM</span>}</div><label style={{ position: 'absolute', bottom: -2, right: -2, width: 28, height: 28, borderRadius: '50%', background: theme.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: `2px solid ${theme.bg}` }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M12 2l2 2-8 8H4v-2z"/></svg><input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} /></label></div><div><div style={{ fontSize: 16, fontWeight: 700, color: theme.text }}>James Mitchell</div><div style={{ fontSize: 12, color: theme.textSecondary }}>Senior Operator — Intelligence Analysis</div></div></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 0, columnGap: 16 }}><Input label="First Name" value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} icon={Icons.user()} /><Input label="Last Name" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} icon={Icons.user()} /></div><Input label="Email Address" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} icon={Icons.mail()} /><Input label="Phone Number" type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} icon={Icons.phone()} /><Button onClick={handleSave} loading={loading} style={{ width: 'auto', padding: '11px 32px' }}>Save Changes</Button></>); }
 
 /* ═══ TAB: CHANGE PASSWORD ═══ */
-function ChangePasswordTab() {
-    const toast = useToast();
-    const [loading, setLoading] = useState(false);
-    const [form, setForm] = useState({ current: '', newPw: '', confirm: '' });
-    const pw = form.newPw;
-    const valid = form.current && pw.length >= 12 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw) && pw === form.confirm;
-    const handleSave = () => { setLoading(true); setTimeout(() => { setLoading(false); setForm({ current: '', newPw: '', confirm: '' }); toast.success('Password changed', 'All other sessions revoked.'); }, 1500); };
+function ChangePasswordTab() { const toast = useToast(); const [loading, setLoading] = useState(false); const [form, setForm] = useState({ current: '', newPw: '', confirm: '' }); const pw = form.newPw; const valid = form.current && pw.length >= 12 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw) && pw === form.confirm; const handleSave = () => { setLoading(true); setTimeout(() => { setLoading(false); setForm({ current: '', newPw: '', confirm: '' }); toast.success('Password changed', 'All other sessions revoked.'); }, 1500); }; return (<><Input label="Current Password" type="password" placeholder="Enter current password" value={form.current} onChange={e => setForm({...form, current: e.target.value})} icon={Icons.lock()} /><Input label="New Password" type="password" placeholder="Minimum 12 characters" value={form.newPw} onChange={e => setForm({...form, newPw: e.target.value})} icon={Icons.lock()} />{pw && <div style={{ marginTop: -8, marginBottom: 16 }}>{[[pw.length>=12,'At least 12 characters'],[/[A-Z]/.test(pw),'One uppercase'],[/[a-z]/.test(pw),'One lowercase'],[/[0-9]/.test(pw),'One number'],[/[^A-Za-z0-9]/.test(pw),'One special char']].map(([ok,text],i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:ok?theme.success:theme.textDim,marginBottom:4}}><span style={{fontSize:10,fontWeight:700}}>{ok?'✓':'○'}</span>{text as string}</div>)}</div>}<Input label="Confirm New Password" type="password" placeholder="Re-enter new password" value={form.confirm} onChange={e => setForm({...form, confirm: e.target.value})} icon={Icons.lock()} error={form.confirm && pw !== form.confirm ? 'Passwords do not match' : ''} /><Button onClick={handleSave} loading={loading} disabled={!valid} style={{ width: 'auto', padding: '11px 32px' }}>Update Password</Button></>); }
 
-    return (
-        <>
-            <Input label="Current Password" type="password" placeholder="Enter current password" value={form.current} onChange={e => setForm({...form, current: e.target.value})} icon={Icons.lock()} />
-            <Input label="New Password" type="password" placeholder="Minimum 12 characters" value={form.newPw} onChange={e => setForm({...form, newPw: e.target.value})} icon={Icons.lock()} />
-            {pw && <div style={{ marginTop: -8, marginBottom: 16 }}>{[[pw.length>=12,'At least 12 characters'],[/[A-Z]/.test(pw),'One uppercase letter'],[/[a-z]/.test(pw),'One lowercase letter'],[/[0-9]/.test(pw),'One number'],[/[^A-Za-z0-9]/.test(pw),'One special character']].map(([ok,text],i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:ok?theme.success:theme.textDim,marginBottom:4}}><span style={{fontSize:10,fontWeight:700}}>{ok?'✓':'○'}</span>{text as string}</div>)}</div>}
-            <Input label="Confirm New Password" type="password" placeholder="Re-enter new password" value={form.confirm} onChange={e => setForm({...form, confirm: e.target.value})} icon={Icons.lock()} error={form.confirm && pw !== form.confirm ? 'Passwords do not match' : ''} />
-            <Button onClick={handleSave} loading={loading} disabled={!valid} style={{ width: 'auto', padding: '11px 32px' }}>Update Password</Button>
-        </>
-    );
-}
-
-/* ═══ TAB: SECURITY (abbreviated — same as before) ═══ */
-function SecurityTab() {
-    const toast = useToast();
-    const [twoFaMethod, setTwoFaMethod] = useState('app');
-    const [twoFaPhone, setTwoFaPhone] = useState('+385 91 234 5847');
-    const [recoveryPhone, setRecoveryPhone] = useState('+385 98 765 4321');
-    const [showCodes, setShowCodes] = useState(false);
-    const [sessionTimeout, setSessionTimeout] = useState('30');
-    const [sessions, setSessions] = useState(mockSessions);
-    const toggles = { authLogging: useState(true), deviceFp: useState(true), newDevice: useState(true), failedLogin: useState(true), locTracking: useState(false), suspicious: useState(true), sessionRestore: useState(false), trustMgmt: useState(false) };
-
-    return (
-        <>
-            <SectionTitle>Two-Factor Authentication</SectionTitle>
-            <FieldGroup label="2FA Method"><Select value={twoFaMethod} onChange={setTwoFaMethod} options={[{value:'app',label:'Authenticator App'},{value:'sms',label:'SMS'},{value:'email',label:'Email'}]} /></FieldGroup>
-            {twoFaMethod === 'app' && (
-                <div style={{ background: theme.bgInput, borderRadius: 12, padding: 20, border: `1px solid ${theme.border}`, marginBottom: 18, display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ width: 140, height: 140, background: '#fff', borderRadius: 8, padding: 8, flexShrink: 0 }}>
-                        <svg viewBox="0 0 100 100" width="124" height="124">{[0,1,2,3,4,5,6].map(r=>[0,1,2,3,4,5,6].map(c=>{const b=r===0||r===6||c===0||c===6;const n=r>=2&&r<=4&&c>=2&&c<=4;return(b||n)?<rect key={`a${r}${c}`} x={r*4+4} y={c*4+4} width="3.5" height="3.5" fill="#000"/>:null;}))}{[0,1,2,3,4,5,6].map(r=>[0,1,2,3,4,5,6].map(c=>{const b=r===0||r===6||c===0||c===6;const n=r>=2&&r<=4&&c>=2&&c<=4;return(b||n)?<rect key={`b${r}${c}`} x={r*4+68} y={c*4+4} width="3.5" height="3.5" fill="#000"/>:null;}))}{[0,1,2,3,4,5,6].map(r=>[0,1,2,3,4,5,6].map(c=>{const b=r===0||r===6||c===0||c===6;const n=r>=2&&r<=4&&c>=2&&c<=4;return(b||n)?<rect key={`c${r}${c}`} x={r*4+4} y={c*4+68} width="3.5" height="3.5" fill="#000"/>:null;}))}{Array.from({length:80},(_,i)=>{const x=36+(i%8)*4;const y=36+Math.floor(i/8)*4;return(i*7+3)%11>4?<rect key={`d${i}`} x={x} y={y} width="3.5" height="3.5" fill="#000"/>:null;})}</svg>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 200 }}><div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 6 }}>Scan with your authenticator app</div><p style={{ fontSize: 12, color: theme.textSecondary, lineHeight: 1.6, margin: '0 0 10px' }}>Use Google Authenticator, Authy, or any TOTP-compatible app.</p><div style={{ background: theme.bg, borderRadius: 6, padding: '8px 12px', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: theme.textDim, wordBreak: 'break-all' as const, border: `1px solid ${theme.border}` }}>otpauth://totp/ARGUX:j.mitchell?secret=JBSWY3DPEHPK3PXP&issuer=ARGUX</div></div>
-                </div>
-            )}
-            <Input label="2FA Phone Number" type="tel" value={twoFaPhone} onChange={e => setTwoFaPhone(e.target.value)} icon={Icons.phone()} />
-            <Input label="Recovery Phone" type="tel" value={recoveryPhone} onChange={e => setRecoveryPhone(e.target.value)} icon={Icons.phone()} />
-            <div style={{ marginBottom: 18 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}><label style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Backup Codes</label><Button variant="secondary" onClick={() => { setShowCodes(true); toast.info('Backup codes generated'); }} style={{ width: 'auto', padding: '6px 14px', fontSize: 11 }}>{showCodes ? 'Regenerate' : 'Generate'}</Button></div>{showCodes && <div style={{ background: theme.bgInput, borderRadius: 10, padding: 16, border: `1px solid ${theme.border}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8 }}>{backupCodes.map(c => <div key={c} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 600, color: theme.text, padding: '6px 10px', background: theme.bg, borderRadius: 6, textAlign: 'center' as const, border: `1px solid ${theme.border}` }}>{c}</div>)}<div style={{ gridColumn: '1 / -1', fontSize: 11, color: theme.warning, marginTop: 4 }}>⚠ Store securely. Each code is single-use.</div></div>}</div>
-            <div style={{ background: theme.bgInput, borderRadius: 10, padding: 16, border: `1px solid ${theme.border}`, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}><div><div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Physical Security Keys</div><div style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>No hardware keys registered.</div></div><Button variant="secondary" onClick={() => toast.info('Feature demo', 'WebAuthn dialog would open.')} style={{ width: 'auto', padding: '6px 14px', fontSize: 11, flexShrink: 0 }}>Register Key</Button></div>
-
-            <SectionTitle>Session Management</SectionTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 18 }}><FieldGroup label="Session Timeout"><Select value={sessionTimeout} onChange={setSessionTimeout} options={[{value:'15',label:'15 min'},{value:'30',label:'30 min'},{value:'60',label:'1 hour'},{value:'120',label:'2 hours'},{value:'480',label:'8 hours'},{value:'1440',label:'24 hours'}]} /></FieldGroup><div style={{ paddingTop: 4 }}><Toggle checked={toggles.sessionRestore[0]} onChange={toggles.sessionRestore[1]} label="Session Restoration Prevention" description="Prevent token reuse after logout" /></div></div>
-            <div style={{ marginBottom: 8 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}><span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Active Sessions ({sessions.length})</span><Button variant="danger" onClick={() => { setSessions(p => p.filter(s => s.current)); toast.warning('All other sessions revoked'); }} style={{ width: 'auto', padding: '6px 14px', fontSize: 11 }}>Revoke All Others</Button></div><div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{sessions.map(s => <div key={s.id} style={{ background: theme.bgInput, borderRadius: 10, padding: '14px 16px', border: `1px solid ${s.current ? theme.accent+'40' : theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 180 }}><div style={{ width: 36, height: 36, borderRadius: 10, background: `${theme.accent}12`, border: `1px solid ${theme.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent, flexShrink: 0 }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="12" height="8" rx="1"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="11" x2="8" y2="14"/></svg></div><div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: theme.text, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{s.device}{s.current && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: theme.successDim, color: theme.success }}>CURRENT</span>}{s.trusted && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: theme.accentDim, color: theme.accent }}>TRUSTED</span>}</div><div style={{ fontSize: 11, color: theme.textSecondary }}>{s.browser} · {s.ip} · {s.location} · {s.lastActive}</div></div></div><div style={{ display: 'flex', gap: 6 }}><button onClick={() => setSessions(p => p.map(x => x.id === s.id ? {...x, trusted: !x.trusted} : x))} style={{ background: 'none', border: `1px solid ${theme.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 10, color: theme.textSecondary, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>{s.trusted ? 'Untrust' : 'Trust'}</button>{!s.current && <button onClick={() => { setSessions(p => p.filter(x => x.id !== s.id)); toast.warning('Session revoked'); }} style={{ background: theme.dangerDim, border: `1px solid rgba(239,68,68,0.25)`, borderRadius: 6, padding: '5px 10px', fontSize: 10, color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Revoke</button>}</div></div>)}</div></div>
-
-            <SectionTitle>Authentication & Monitoring</SectionTitle>
-            <div style={{ background: theme.bgInput, borderRadius: 12, padding: '4px 16px', border: `1px solid ${theme.border}`, marginBottom: 18 }}>
-                {([['authLogging','Authentication Logging','Tracks login/logout with IP, agent, location'],['deviceFp','Device Fingerprinting','SHA-256 hashing with browser normalization'],['newDevice','New Device Detection','Notifies of new device logins'],['failedLogin','Failed Login Tracking','Logs and notifies of failed attempts'],['locTracking','Location Tracking','GeoIP integration for location data'],['suspicious','Suspicious Activity Detection','Detects failed logins, location changes, unusual times'],['trustMgmt','Device Trust Management','Require trusted devices for sensitive actions']] as const).map(([key, label, desc], i, arr) => (
-                    <div key={key}><Toggle checked={(toggles as any)[key][0]} onChange={(toggles as any)[key][1]} label={label} description={desc} />{i < arr.length -1 && <div style={{ height: 1, background: theme.border + '50' }} />}</div>
-                ))}
-            </div>
-
-            <SectionTitle>Statistics & Insights</SectionTitle>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}><StatCard label="Total Logins" value="142" color={theme.accent} /><StatCard label="Failed Attempts" value="7" color={theme.danger} /><StatCard label="Unique Devices" value="4" color={theme.cyan} /><StatCard label="Active Sessions" value={String(sessions.length)} color={theme.success} /></div>
-        </>
-    );
-}
+/* ═══ TAB: SECURITY ═══ */
+function SecurityTab() { const toast = useToast(); const [twoFaMethod, setTwoFaMethod] = useState('app'); const [twoFaPhone, setTwoFaPhone] = useState('+385 91 234 5847'); const [recoveryPhone, setRecoveryPhone] = useState('+385 98 765 4321'); const [showCodes, setShowCodes] = useState(false); const [sessionTimeout, setSessionTimeout] = useState('30'); const [sessions, setSessions] = useState(mockSessions); const toggles = { authLogging: useState(true), deviceFp: useState(true), newDevice: useState(true), failedLogin: useState(true), locTracking: useState(false), suspicious: useState(true), sessionRestore: useState(false), trustMgmt: useState(false) }; return (<><SectionTitle>Two-Factor Authentication</SectionTitle><FieldGroup label="2FA Method"><Select value={twoFaMethod} onChange={setTwoFaMethod} options={[{value:'app',label:'Authenticator App'},{value:'sms',label:'SMS'},{value:'email',label:'Email'}]} /></FieldGroup>{twoFaMethod==='app'&&<div style={{background:theme.bgInput,borderRadius:12,padding:20,border:`1px solid ${theme.border}`,marginBottom:18,display:'flex',gap:20,alignItems:'center',flexWrap:'wrap'}}><div style={{width:140,height:140,background:'#fff',borderRadius:8,padding:8,flexShrink:0}}><svg viewBox="0 0 100 100" width="124" height="124">{[0,1,2,3,4,5,6].map(r=>[0,1,2,3,4,5,6].map(c=>{const b=r===0||r===6||c===0||c===6;const n=r>=2&&r<=4&&c>=2&&c<=4;return(b||n)?<rect key={`a${r}${c}`} x={r*4+4} y={c*4+4} width="3.5" height="3.5" fill="#000"/>:null;}))}{[0,1,2,3,4,5,6].map(r=>[0,1,2,3,4,5,6].map(c=>{const b=r===0||r===6||c===0||c===6;const n=r>=2&&r<=4&&c>=2&&c<=4;return(b||n)?<rect key={`b${r}${c}`} x={r*4+68} y={c*4+4} width="3.5" height="3.5" fill="#000"/>:null;}))}{[0,1,2,3,4,5,6].map(r=>[0,1,2,3,4,5,6].map(c=>{const b=r===0||r===6||c===0||c===6;const n=r>=2&&r<=4&&c>=2&&c<=4;return(b||n)?<rect key={`c${r}${c}`} x={r*4+4} y={c*4+68} width="3.5" height="3.5" fill="#000"/>:null;}))}{Array.from({length:80},(_,i)=>{const x=36+(i%8)*4;const y=36+Math.floor(i/8)*4;return(i*7+3)%11>4?<rect key={`d${i}`} x={x} y={y} width="3.5" height="3.5" fill="#000"/>:null;})}</svg></div><div style={{flex:1,minWidth:200}}><div style={{fontSize:13,fontWeight:600,color:theme.text,marginBottom:6}}>Scan with your authenticator app</div><p style={{fontSize:12,color:theme.textSecondary,lineHeight:1.6,margin:'0 0 10px'}}>Use Google Authenticator, Authy, or any TOTP app.</p><div style={{background:theme.bg,borderRadius:6,padding:'8px 12px',fontFamily:"'JetBrains Mono', monospace",fontSize:11,color:theme.textDim,wordBreak:'break-all' as const,border:`1px solid ${theme.border}`}}>otpauth://totp/ARGUX:j.mitchell?secret=JBSWY3DPEHPK3PXP&issuer=ARGUX</div></div></div>}<Input label="2FA Phone Number" type="tel" value={twoFaPhone} onChange={e=>setTwoFaPhone(e.target.value)} icon={Icons.phone()} /><Input label="Recovery Phone" type="tel" value={recoveryPhone} onChange={e=>setRecoveryPhone(e.target.value)} icon={Icons.phone()} /><div style={{marginBottom:18}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><label style={{fontSize:11,fontWeight:600,color:theme.textSecondary,letterSpacing:'0.08em',textTransform:'uppercase' as const}}>Backup Codes</label><Button variant="secondary" onClick={()=>{setShowCodes(true);toast.info('Backup codes generated');}} style={{width:'auto',padding:'6px 14px',fontSize:11}}>{showCodes?'Regenerate':'Generate'}</Button></div>{showCodes&&<div style={{background:theme.bgInput,borderRadius:10,padding:16,border:`1px solid ${theme.border}`,display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(110px, 1fr))',gap:8}}>{backupCodes.map(c=><div key={c} style={{fontFamily:"'JetBrains Mono', monospace",fontSize:13,fontWeight:600,color:theme.text,padding:'6px 10px',background:theme.bg,borderRadius:6,textAlign:'center' as const,border:`1px solid ${theme.border}`}}>{c}</div>)}<div style={{gridColumn:'1 / -1',fontSize:11,color:theme.warning,marginTop:4}}>⚠ Store securely. Each code is single-use.</div></div>}</div><div style={{background:theme.bgInput,borderRadius:10,padding:16,border:`1px solid ${theme.border}`,marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}><div><div style={{fontSize:13,fontWeight:600,color:theme.text}}>Physical Security Keys</div><div style={{fontSize:11,color:theme.textSecondary,marginTop:2}}>No hardware keys registered.</div></div><Button variant="secondary" onClick={()=>toast.info('Feature demo','WebAuthn dialog would open.')} style={{width:'auto',padding:'6px 14px',fontSize:11,flexShrink:0}}>Register Key</Button></div><SectionTitle>Session Management</SectionTitle><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,marginBottom:18}}><FieldGroup label="Session Timeout"><Select value={sessionTimeout} onChange={setSessionTimeout} options={[{value:'15',label:'15 min'},{value:'30',label:'30 min'},{value:'60',label:'1 hour'},{value:'120',label:'2 hours'},{value:'480',label:'8 hours'},{value:'1440',label:'24 hours'}]} /></FieldGroup><div style={{paddingTop:4}}><Toggle checked={toggles.sessionRestore[0]} onChange={toggles.sessionRestore[1]} label="Session Restoration Prevention" description="Prevent token reuse after logout" /></div></div><div style={{marginBottom:8}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><span style={{fontSize:13,fontWeight:600,color:theme.text}}>Active Sessions ({sessions.length})</span><Button variant="danger" onClick={()=>{setSessions(p=>p.filter(s=>s.current));toast.warning('All other sessions revoked');}} style={{width:'auto',padding:'6px 14px',fontSize:11}}>Revoke All Others</Button></div><div style={{display:'flex',flexDirection:'column',gap:8}}>{sessions.map(s=><div key={s.id} style={{background:theme.bgInput,borderRadius:10,padding:'14px 16px',border:`1px solid ${s.current?theme.accent+'40':theme.border}`,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><div style={{display:'flex',alignItems:'center',gap:12,flex:1,minWidth:180}}><div style={{width:36,height:36,borderRadius:10,background:`${theme.accent}12`,border:`1px solid ${theme.accent}20`,display:'flex',alignItems:'center',justifyContent:'center',color:theme.accent,flexShrink:0}}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="12" height="8" rx="1"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="11" x2="8" y2="14"/></svg></div><div style={{minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:theme.text,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>{s.device}{s.current&&<span style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:4,background:theme.successDim,color:theme.success}}>CURRENT</span>}{s.trusted&&<span style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:4,background:theme.accentDim,color:theme.accent}}>TRUSTED</span>}</div><div style={{fontSize:11,color:theme.textSecondary}}>{s.browser} · {s.ip} · {s.location} · {s.lastActive}</div></div></div><div style={{display:'flex',gap:6}}><button onClick={()=>setSessions(p=>p.map(x=>x.id===s.id?{...x,trusted:!x.trusted}:x))} style={{background:'none',border:`1px solid ${theme.border}`,borderRadius:6,padding:'5px 10px',fontSize:10,color:theme.textSecondary,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>{s.trusted?'Untrust':'Trust'}</button>{!s.current&&<button onClick={()=>{setSessions(p=>p.filter(x=>x.id!==s.id));toast.warning('Session revoked');}} style={{background:theme.dangerDim,border:'1px solid rgba(239,68,68,0.25)',borderRadius:6,padding:'5px 10px',fontSize:10,color:theme.danger,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>Revoke</button>}</div></div>)}</div></div><SectionTitle>Authentication & Monitoring</SectionTitle><div style={{background:theme.bgInput,borderRadius:12,padding:'4px 16px',border:`1px solid ${theme.border}`,marginBottom:18}}>{([['authLogging','Authentication Logging','Tracks login/logout with IP, agent, location'],['deviceFp','Device Fingerprinting','SHA-256 hashing with browser normalization'],['newDevice','New Device Detection','Notifies of new device logins'],['failedLogin','Failed Login Tracking','Logs and notifies of failed attempts'],['locTracking','Location Tracking','GeoIP integration for location data'],['suspicious','Suspicious Activity Detection','Detects failed logins, location changes, unusual times'],['trustMgmt','Device Trust Management','Require trusted devices for sensitive actions']] as const).map(([key,label,desc],i,arr)=><div key={key}><Toggle checked={(toggles as any)[key][0]} onChange={(toggles as any)[key][1]} label={label} description={desc} />{i<arr.length-1&&<div style={{height:1,background:theme.border+'50'}} />}</div>)}</div><SectionTitle>Statistics & Insights</SectionTitle><div style={{display:'flex',gap:12,flexWrap:'wrap'}}><StatCard label="Total Logins" value="142" color={theme.accent} /><StatCard label="Failed Attempts" value="7" color={theme.danger} /><StatCard label="Unique Devices" value="4" color={theme.cyan} /><StatCard label="Active Sessions" value={String(sessions.length)} color={theme.success} /></div></>); }
 
 /* ═══ TAB: SETTINGS ═══ */
 function SettingsTab() {
@@ -280,7 +159,6 @@ function SettingsTab() {
     const [dateFmt, setDateFmt] = useState('YYYY-MM-DD');
     const [loading, setLoading] = useState(false);
     const selectedLang = languages.find(l => l.id === lang);
-
     const handleLangChange = (id: string) => { setLang(id); const l = languages.find(x => x.id === id); if (l) setDir(l.dir); toast.info('Language changed', `Set to ${l?.label}.${l?.dir === 'rtl' ? ' RTL layout applied.' : ''}`); };
     const handleThemeChange = (id: string) => { setThemeId(id); const t = themes.find(x => x.id === id); toast.success('Theme applied', `Switched to ${t?.name}.`); };
     const handleFontChange = (id: string) => { setFontId(id); const f = fonts.find(x => x.id === id); toast.success('Font changed', `Using ${f?.name}.`); };
@@ -289,47 +167,39 @@ function SettingsTab() {
     return (
         <>
             <SectionTitle>Language & Region</SectionTitle>
-            <FieldGroup label="Language">
-                <div style={{ position: 'relative' }}>
-                    <select value={lang} onChange={e => handleLangChange(e.target.value)} style={{ width: '100%', padding: '10px 14px 10px 40px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
-                        {languages.map(l => <option key={l.id} value={l.id}>{l.flag}  {l.label}</option>)}
-                    </select>
-                    <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 16, pointerEvents: 'none' as const }}>{selectedLang?.flag}</span>
-                </div>
-                {lang === 'ar' && <div style={{ marginTop: 8, fontSize: 11, color: theme.warning }}>⚠ Layout direction changed to RTL</div>}
-            </FieldGroup>
+            <FieldGroup label="Language"><div style={{ position: 'relative' }}><select value={lang} onChange={e => handleLangChange(e.target.value)} style={{ width: '100%', padding: '10px 14px 10px 40px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>{languages.map(l => <option key={l.id} value={l.id}>{l.flag}  {l.label}</option>)}</select><span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 16, pointerEvents: 'none' as const }}>{selectedLang?.flag}</span></div>{lang === 'ar' && <div style={{ marginTop: 8, fontSize: 11, color: theme.warning }}>⚠ Layout direction changed to RTL</div>}</FieldGroup>
             <FieldGroup label="Timezone"><Select value={tz} onChange={setTz} options={timezones.map(t => ({ value: t, label: t.replace(/_/g, ' ') }))} /></FieldGroup>
             <FieldGroup label="Date Format"><Select value={dateFmt} onChange={setDateFmt} options={dateFormats.map(f => ({ value: f, label: `${f}  →  ${formatDatePreview(f)}` }))} /></FieldGroup>
 
             <SectionTitle>Appearance</SectionTitle>
             <FieldGroup label="App Theme">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
-                    {themes.map(t => (
-                        <button key={t.id} onClick={() => handleThemeChange(t.id)} style={{ padding: 14, borderRadius: 10, cursor: 'pointer', textAlign: 'left' as const, background: currentTheme.id === t.id ? t.accentDim : theme.bgInput, border: `1.5px solid ${currentTheme.id === t.id ? t.accent : theme.border}`, transition: 'all 0.2s', fontFamily: 'inherit' }}>
-                            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                                <div style={{ width: 20, height: 20, borderRadius: 4, background: t.sidebarBg, border: `1px solid ${t.border}` }} title="Sidebar" />
-                                <div style={{ width: 20, height: 20, borderRadius: 4, background: t.headerBg, border: `1px solid ${t.border}` }} title="Header" />
-                                <div style={{ width: 20, height: 20, borderRadius: 4, background: t.accent }} title="Accent" />
-                                <div style={{ width: 20, height: 20, borderRadius: 4, background: t.bg, border: `1px solid ${t.border}` }} title="Background" />
-                            </div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: currentTheme.id === t.id ? t.accent : theme.text }}>{t.name}</div>
-                            {currentTheme.id === t.id && <div style={{ fontSize: 10, color: t.accent, marginTop: 2 }}>Active</div>}
-                        </button>
-                    ))}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: 10 }}>
+                    {themes.map(t => {
+                        const active = currentTheme.id === t.id;
+                        const isDark = t.bg.startsWith('#0') || t.bg.startsWith('#1');
+                        return (
+                            <button key={t.id} onClick={() => handleThemeChange(t.id)} style={{ padding: 12, borderRadius: 10, cursor: 'pointer', textAlign: 'left' as const, background: active ? t.accentDim : theme.bgInput, border: `1.5px solid ${active ? t.accent : theme.border}`, transition: 'all 0.2s', fontFamily: 'inherit' }}>
+                                <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                                    <div style={{ width: 18, height: 18, borderRadius: 4, background: t.sidebarBg, border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }} />
+                                    <div style={{ width: 18, height: 18, borderRadius: 4, background: t.headerBg, border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }} />
+                                    <div style={{ width: 18, height: 18, borderRadius: 4, background: t.accent }} />
+                                    <div style={{ width: 18, height: 18, borderRadius: 4, background: t.bg, border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }} />
+                                    <div style={{ width: 18, height: 18, borderRadius: 4, background: t.text, opacity: 0.3 }} />
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: active ? t.accent : theme.text, lineHeight: 1.3 }}>{t.name}</div>
+                                <div style={{ fontSize: 10, color: active ? t.accent : theme.textDim, marginTop: 2 }}>{isDark ? 'Dark' : 'Light'}{active ? ' · Active' : ''}</div>
+                            </button>
+                        );
+                    })}
                 </div>
             </FieldGroup>
 
             <FieldGroup label="Font">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
                     {fonts.map(f => (
-                        <button key={f.id} onClick={() => handleFontChange(f.id)} style={{
-                            padding: '12px 14px', borderRadius: 8, cursor: 'pointer', textAlign: 'left' as const,
-                            background: currentFont.id === f.id ? theme.accentDim : theme.bgInput,
-                            border: `1.5px solid ${currentFont.id === f.id ? theme.accent : theme.border}`,
-                            transition: 'all 0.2s', fontFamily: f.family,
-                        }}>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: currentFont.id === f.id ? theme.accent : theme.text, marginBottom: 2, fontFamily: f.family }}>{f.name}</div>
-                            <div style={{ fontSize: 11, color: theme.textSecondary, fontFamily: f.family }}>Aa Bb Cc 123</div>
+                        <button key={f.id} onClick={() => handleFontChange(f.id)} style={{ padding: '12px 14px', borderRadius: 8, cursor: 'pointer', textAlign: 'left' as const, background: currentFont.id === f.id ? theme.accentDim : theme.bgInput, border: `1.5px solid ${currentFont.id === f.id ? theme.accent : theme.border}`, transition: 'all 0.2s', fontFamily: f.family }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: currentFont.id === f.id ? theme.accent : theme.text, marginBottom: 2 }}>{f.name}</div>
+                            <div style={{ fontSize: 11, color: theme.textSecondary }}>Aa Bb Cc 123</div>
                         </button>
                     ))}
                 </div>
@@ -343,26 +213,31 @@ function SettingsTab() {
 /* ═══ TAB: AUDIT LOGS ═══ */
 function AuditLogsTab() {
     const [search, setSearch] = useState('');
-    const [filterTime, setFilterTime] = useState('');
-    const [filterAction, setFilterAction] = useState('');
-    const [filterIp, setFilterIp] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [filterActions, setFilterActions] = useState<string[]>([]);
+    const [filterIps, setFilterIps] = useState<string[]>([]);
     const [page, setPage] = useState(1);
     const [ipModal, setIpModal] = useState<string | null>(null);
     const perPage = 8;
 
     const uniqueActions = [...new Set(mockAuditLog.map(e => e.action))].sort();
     const uniqueIps = [...new Set(mockAuditLog.map(e => e.ip))].sort();
-    const uniqueDates = [...new Set(mockAuditLog.map(e => e.time.split(' ')[0]))].sort().reverse();
 
     const filtered = mockAuditLog.filter(e => {
         const ms = !search || e.action.toLowerCase().includes(search.toLowerCase()) || e.details.toLowerCase().includes(search.toLowerCase()) || e.ip.includes(search);
-        return ms && (!filterTime || e.time.startsWith(filterTime)) && (!filterAction || e.action === filterAction) && (!filterIp || e.ip === filterIp);
+        const entryDate = e.time.split(' ')[0];
+        const matchFrom = !dateFrom || entryDate >= dateFrom;
+        const matchTo = !dateTo || entryDate <= dateTo;
+        const matchAction = filterActions.length === 0 || filterActions.includes(e.action);
+        const matchIp = filterIps.length === 0 || filterIps.includes(e.ip);
+        return ms && matchFrom && matchTo && matchAction && matchIp;
     });
     const totalPages = Math.ceil(filtered.length / perPage);
     const paginated = filtered.slice((page - 1) * perPage, page * perPage);
     const actionColors: Record<string, string> = { 'Login': theme.success, 'Failed Login': theme.danger, 'Logout': theme.textSecondary, 'Profile Updated': theme.accent, 'Password Changed': theme.warning, 'New Device Login': theme.cyan, '2FA Method Changed': theme.accent, 'Session Revoked': theme.danger, 'Backup Codes Generated': theme.warning, 'API Key Created': theme.accent, 'Device Trusted': theme.success, 'Suspicious Activity': theme.danger, 'Role Updated': theme.warning };
-    const hasFilters = search || filterTime || filterAction || filterIp;
-    const resetFilters = () => { setSearch(''); setFilterTime(''); setFilterAction(''); setFilterIp(''); setPage(1); };
+    const hasFilters = search || dateFrom || dateTo || filterActions.length > 0 || filterIps.length > 0;
+    const resetFilters = () => { setSearch(''); setDateFrom(''); setDateTo(''); setFilterActions([]); setFilterIps([]); setPage(1); };
 
     return (
         <>
@@ -372,25 +247,22 @@ function AuditLogsTab() {
                 <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search audit logs..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '11px 0', color: theme.text, fontSize: 13, fontFamily: 'inherit' }} />
                 {search && <button onClick={() => { setSearch(''); setPage(1); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 4, display: 'flex' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
             </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-                <SearchableFilter value={filterTime} onChange={v => { setFilterTime(v); setPage(1); }} options={uniqueDates} placeholder="All dates" />
-                <SearchableFilter value={filterAction} onChange={v => { setFilterAction(v); setPage(1); }} options={uniqueActions} placeholder="All actions" />
-                <SearchableFilter value={filterIp} onChange={v => { setFilterIp(v); setPage(1); }} options={uniqueIps} placeholder="All IPs" />
-                {hasFilters && <button onClick={resetFilters} style={{ background: theme.dangerDim, border: `1px solid rgba(239,68,68,0.25)`, borderRadius: 6, padding: '8px 12px', fontSize: 11, color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, whiteSpace: 'nowrap' as const }}>Clear</button>}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'stretch' }}>
+                <DateRangeFilter from={dateFrom} to={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); setPage(1); }} />
+                <MultiSelectFilter selected={filterActions} onChange={v => { setFilterActions(v); setPage(1); }} options={uniqueActions} placeholder="All actions" />
+                <MultiSelectFilter selected={filterIps} onChange={v => { setFilterIps(v); setPage(1); }} options={uniqueIps} placeholder="All IPs" />
+                {hasFilters && <button onClick={resetFilters} style={{ background: theme.dangerDim, border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, padding: '8px 12px', fontSize: 11, color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, whiteSpace: 'nowrap' as const, alignSelf: 'flex-start' }}>Clear all</button>}
             </div>
-            <div style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 10 }}>Showing {paginated.length} of {filtered.length}</div>
+            <div style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 10 }}>Showing {paginated.length} of {filtered.length} entries{hasFilters ? ' (filtered)' : ''}</div>
             <div style={{ background: 'rgba(10,14,22,0.5)', border: `1px solid ${theme.border}`, borderRadius: 12, overflow: 'hidden' }}>
                 <style>{`.audit-row{display:grid;grid-template-columns:155px 130px 1fr 115px;padding:12px 16px;align-items:center;gap:8}@media(max-width:768px){.audit-row{grid-template-columns:1fr;gap:6;padding:12px 14px}.audit-head{display:none!important}.audit-cell-label{display:inline!important}}`}</style>
                 <div className="audit-row audit-head" style={{ background: 'rgba(255,255,255,0.02)', borderBottom: `1px solid ${theme.border}`, fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}><span>Time</span><span>Action</span><span>Details</span><span>IP</span></div>
-                {paginated.length === 0 ? <div style={{ padding: '40px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: 13 }}>No audit entries found.</div> : paginated.map((entry, idx) => (
+                {paginated.length === 0 ? <div style={{ padding: '40px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: 13 }}>No audit entries match your filters.</div> : paginated.map((entry, idx) => (
                     <div key={entry.id} className="audit-row" style={{ borderBottom: idx < paginated.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', fontSize: 12, transition: 'background 0.1s' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: theme.textSecondary }}><span className="audit-cell-label" style={{ display: 'none', fontSize: 10, fontWeight: 600, color: theme.textDim, marginRight: 6 }}>TIME:</span>{entry.time}</span>
                         <span><span className="audit-cell-label" style={{ display: 'none', fontSize: 10, fontWeight: 600, color: theme.textDim, marginRight: 6 }}>ACTION:</span><span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: `${actionColors[entry.action]||theme.textDim}15`, color: actionColors[entry.action]||theme.textSecondary, border: `1px solid ${actionColors[entry.action]||theme.textDim}25`, whiteSpace: 'nowrap' as const }}>{entry.action}</span></span>
                         <span style={{ color: theme.textSecondary, lineHeight: 1.4 }}><span className="audit-cell-label" style={{ display: 'none', fontSize: 10, fontWeight: 600, color: theme.textDim, marginRight: 6 }}>DETAILS:</span>{entry.details}</span>
-                        <span>
-                            <span className="audit-cell-label" style={{ display: 'none', fontSize: 10, fontWeight: 600, color: theme.textDim, marginRight: 6 }}>IP:</span>
-                            <button onClick={() => setIpModal(entry.ip)} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: theme.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', textDecorationStyle: 'dotted' as const }}>{entry.ip}</button>
-                        </span>
+                        <span><span className="audit-cell-label" style={{ display: 'none', fontSize: 10, fontWeight: 600, color: theme.textDim, marginRight: 6 }}>IP:</span><button onClick={() => setIpModal(entry.ip)} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: theme.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', textDecorationStyle: 'dotted' as const }}>{entry.ip}</button></span>
                     </div>
                 ))}
             </div>
@@ -409,12 +281,10 @@ const tabDefs: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function ProfilePage() {
-    // Read ?tab= from URL
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const initialTab = (params?.get('tab') as Tab) || 'personal';
     const [activeTab, setActiveTab] = useState<Tab>(tabDefs.some(t => t.id === initialTab) ? initialTab : 'personal');
     const [loading, setLoading] = useState(true);
-
     useEffect(() => { const t = setTimeout(() => setLoading(false), 800); return () => clearTimeout(t); }, []);
 
     return (
