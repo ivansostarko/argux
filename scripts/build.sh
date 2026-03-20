@@ -18,7 +18,7 @@ echo "🗄️ Running migrations and seeds..."
 docker compose exec cli php artisan migrate:fresh --seed
 
 echo "🏗️ Building frontend..."
-docker compose exec app php artisan serve && npm run build 
+docker compose exec app php artisan octane:reload & npm run build 
 
 echo "=============================="
 echo "✅ BUILD COMPLETE"
