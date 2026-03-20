@@ -35,7 +35,10 @@ Route::post('/2fa/resend', [AuthController::class, 'resendTwoFactor'])->name('2f
 Route::get('/map', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('map');
 Route::get('/vision', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('vision');
 Route::get('/operations', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('operations');
-Route::get('/persons', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('persons.index');
+Route::get('/persons', fn () => \Inertia\Inertia::render('Persons/Index'))->name('persons.index');
+Route::get('/persons/create', fn () => \Inertia\Inertia::render('Persons/Create'))->name('persons.create');
+Route::get('/persons/{id}', fn (string $id) => \Inertia\Inertia::render('Persons/Show', ['id' => (int)$id]))->name('persons.show');
+Route::get('/persons/{id}/edit', fn (string $id) => \Inertia\Inertia::render('Persons/Edit', ['id' => (int)$id]))->name('persons.edit');
 Route::get('/organizations', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('organizations.index');
 Route::get('/vehicles', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('vehicles.index');
 Route::get('/devices', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('devices.index');
