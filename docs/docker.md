@@ -1,16 +1,18 @@
 # Docker
 
-1) Copy env:
+## Setup
+
+*Copy env*
 ```bash
 cp .env.example .env
 ```
 
-2) Build + start:
+*Build + start*
 ```bash
 docker compose up -d --build
 ```
 
-3) Install dependencies (inside app container):
+*Install dependencies (inside app container)*
 ```bash
 docker compose exec cli composer install
 docker compose exec cli php artisan key:generate
@@ -26,7 +28,7 @@ docker compose exec app php artisan db:seed
 docker compose exec app php artisan migrate:fresh
 ```
 
-
+*PHP Octane*
 docker compose exec app php artisan octane:reload
 
 
@@ -34,6 +36,7 @@ docker compose exec app php artisan octane:reload
 - App: http://localhost:8000
 
 
+*Logs*
 docker compose logs --tail=100 -f app
 
 

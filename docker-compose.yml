@@ -55,22 +55,20 @@ services:
     container_name: argux_app
     hostname: argux_app
     working_dir: /app
-    environment:
-      OCTANE_SERVER: frankenphp
-      SERVER_NAME: 127.0.0.1
+
     env_file:
       - .env
     command: >
       bash -lc "php artisan octane:start
       --server=frankenphp
       --host=127.0.0.1
-      --port=8500
+      --port=8000
       --admin-port=2019
       --workers=${OCTANE_WORKERS:-auto}
       --max-requests=${OCTANE_MAX_REQUESTS:-500}
       --watch"
     expose:
-      - "8500"
+      - "8000"
       - "2019"
     volumes:
       - ./:/app:delegated
