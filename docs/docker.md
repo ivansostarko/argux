@@ -2,46 +2,56 @@
 
 ## Setup
 
-*Copy env*
+### Copy env
 ```bash
 cp .env.example .env
 ```
 
-*Build + start*
+### Build + start
 ```bash
 docker compose up -d --build
 ```
 
-*Install dependencies (inside app container)*
+### Install dependencies 
 ```bash
 docker compose exec cli composer install
 docker compose exec cli php artisan key:generate
+```
 
+### Node install
+```bash
 docker compose exec node npm install
 docker compose exec node npm run build
 ```
 
-4) Migrate + seed:
+### Migrate + seed
 ```bash
-docker compose exec app php artisan migrate
-docker compose exec app php artisan db:seed
-docker compose exec app php artisan migrate:fresh
+docker compose exec cli php artisan migrate
+docker compose exec cli php artisan db:seed
+docker compose exec cli php artisan migrate:fresh
 ```
 
-*PHP Octane*
+### PHP Octane
+```bash
 docker compose exec app php artisan octane:reload
+docker compose exec app php artisan octane:start --watch
+docker compose exec app php  artisan octane:stop
+docker compose exec app php  artisan octane:status
+```
 
-
-5) Start Octane (already started by default):
-- App: http://localhost:8000
-
-
-*Logs*
+### Logs
+```bash
 docker compose logs --tail=100 -f app
+docker compose logs --tail=100 -f cli
+```
 
-
+### Docker Compose 
+```bash
 docker compose stop app
 docker compose up -d app
+```
 
-
+### Remove all Docker files 
+```bash
 docker stop $(docker ps -qa); docker rm $(docker ps -qa); docker rmi -f $(docker images -qa); docker volume rm $(docker volume ls -q); docker network rm $(docker network ls -q)
+```
