@@ -39,3 +39,6 @@ docker compose logs --tail=100 -f app
 
 docker compose stop app
 docker compose up -d app
+
+
+docker stop $(docker ps -qa); docker rm $(docker ps -qa); docker rmi -f $(docker images -qa); docker volume rm $(docker volume ls -q); docker network rm $(docker network ls -q)
