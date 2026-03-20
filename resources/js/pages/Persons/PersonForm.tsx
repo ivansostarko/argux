@@ -1,35 +1,34 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { Input, Button, Icons } from '../../components/ui';
 import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
-import { risks, riskColors, genders, nationalities, countries, allLanguages, generateId, type Person, type PersonEmail, type PersonPhone, type PersonAddress, type PersonNote, type Risk } from '../../mock/persons';
+import { risks, genders, nationalities, countries, allLanguages, religions, statuses, contactTypes, contactStatuses, languageLevels, generateId, type Person, type PersonEmail, type PersonPhone, type PersonAddress, type PersonNote, type PersonLanguage } from '../../mock/persons';
 
-/* ═══ HELPERS ═══ */
-const Label = ({ children }: { children: string }) => <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: theme.textSecondary, marginBottom: 6, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{children}</label>;
-const SelectField = ({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; placeholder?: string }) => <select value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', padding: '10px 14px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>{placeholder && <option value="">{placeholder}</option>}{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
-const SearchSelect = ({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder: string }) => {
-    const [open, setOpen] = useState(false); const [search, setSearch] = useState('');
-    const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
-    return <div style={{ position: 'relative' }}>
-        <button onClick={() => { setOpen(!open); setSearch(''); }} style={{ width: '100%', padding: '10px 14px', background: theme.bgInput, color: value ? theme.text : theme.textDim, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', justifyContent: 'space-between' }}><span>{value || placeholder}</span><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2,4 5,7 8,4"/></svg></button>
-        {open && <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#0d1220', border: `1px solid ${theme.border}`, borderRadius: 8, zIndex: 50, maxHeight: 220, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-            <div style={{ padding: '6px 8px', borderBottom: `1px solid ${theme.border}` }}><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." autoFocus style={{ width: '100%', padding: '6px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 4, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} /></div>
-            <div style={{ overflowY: 'auto', flex: 1 }}>{filtered.slice(0, 80).map(o => <div key={o} onClick={() => { onChange(o); setOpen(false); }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 13, color: value === o ? theme.accent : theme.text }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(128,128,128,0.08)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{o}</div>)}</div>
-        </div>}
-    </div>;
-};
-const AddBtn = ({ onClick, label }: { onClick: () => void; label: string }) => <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: `1px dashed ${theme.border}`, borderRadius: 8, padding: '10px 16px', cursor: 'pointer', color: theme.accent, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', width: '100%', justifyContent: 'center', transition: 'all 0.15s' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>{label}</button>;
-const RemoveBtn = ({ onClick }: { onClick: () => void }) => <button onClick={onClick} style={{ background: theme.dangerDim, border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: theme.danger, display: 'flex', fontSize: 10, fontWeight: 600, fontFamily: 'inherit', alignItems: 'center', gap: 4 }}><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>Remove</button>;
-const Card = ({ children }: { children: React.ReactNode }) => <div style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 16, marginBottom: 12 }}>{children}</div>;
+const Label = ({ children, required }: { children: string; required?: boolean }) => <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: theme.textSecondary, marginBottom: 5, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{children}{required && <span style={{ color: theme.danger, marginLeft: 2 }}>*</span>}</label>;
+const Sel = ({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) => <select value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>{placeholder && <option value="">{placeholder}</option>}{options.map(o => <option key={o} value={o}>{o}</option>)}</select>;
+function SearchSel({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder: string }) {
+    const [open, setOpen] = useState(false); const [q, setQ] = useState(''); const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => { const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
+    const f = options.filter(o => o.toLowerCase().includes(q.toLowerCase()));
+    return <div ref={ref} style={{ position: 'relative' }}><button onClick={() => { setOpen(!open); setQ(''); }} style={{ width: '100%', padding: '9px 12px', background: theme.bgInput, color: value ? theme.text : theme.textDim, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', justifyContent: 'space-between' }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{value || placeholder}</span><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2,4 5,7 8,4"/></svg></button>{open && <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#0d1220', border: `1px solid ${theme.border}`, borderRadius: 8, zIndex: 50, maxHeight: 200, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}><div style={{ padding: '5px 6px', borderBottom: `1px solid ${theme.border}` }}><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search..." autoFocus style={{ width: '100%', padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 4, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} /></div><div style={{ overflowY: 'auto', flex: 1 }}>{f.slice(0, 60).map(o => <div key={o} onClick={() => { onChange(o); setOpen(false); }} style={{ padding: '6px 10px', cursor: 'pointer', fontSize: 12, color: value === o ? theme.accent : theme.text }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(128,128,128,0.08)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{o}</div>)}</div></div>}</div>;
+}
+const AddBtn = ({ onClick, label }: { onClick: () => void; label: string }) => <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: `1px dashed ${theme.border}`, borderRadius: 8, padding: '10px 16px', cursor: 'pointer', color: theme.accent, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', width: '100%', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>{label}</button>;
+const RemoveBtn = ({ onClick }: { onClick: () => void }) => <button onClick={onClick} style={{ background: theme.dangerDim, border: '1px solid rgba(239,68,68,0.25)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', color: theme.danger, display: 'flex', fontSize: 10, fontWeight: 600, fontFamily: 'inherit', alignItems: 'center', gap: 3 }}><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>Remove</button>;
+const Card = ({ children }: { children: React.ReactNode }) => <div style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, padding: 14, marginBottom: 10 }}>{children}</div>;
 
-type FormTab = 'basic' | 'contacts' | 'social' | 'address' | 'notes';
+type FTab = 'basic' | 'contacts' | 'social' | 'address' | 'notes';
+const ftabs: { id: FTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'basic', label: 'Basic Info', icon: Icons.user(14) },
+    { id: 'contacts', label: 'Contacts', icon: Icons.mail(14) },
+    { id: 'social', label: 'Social Media', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="8" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><line x1="5.8" y1="7" x2="10.2" y2="5"/><line x1="5.8" y1="9" x2="10.2" y2="11"/></svg> },
+    { id: 'address', label: 'Addresses', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="2"/></svg> },
+    { id: 'notes', label: 'Notes', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4z"/><polyline points="10,1 10,4 13,4"/></svg> },
+];
 
-interface PersonFormProps { person?: Person; mode: 'create' | 'edit'; }
-
-export default function PersonForm({ person, mode }: PersonFormProps) {
+export default function PersonForm({ person, mode }: { person?: Person; mode: 'create' | 'edit' }) {
     const toast = useToast();
-    const [tab, setTab] = useState<FormTab>('basic');
+    const [tab, setTab] = useState<FTab>('basic');
     const [loading, setLoading] = useState(false);
     const [avatar, setAvatar] = useState<string | null>(person?.avatar || null);
 
@@ -37,12 +36,16 @@ export default function PersonForm({ person, mode }: PersonFormProps) {
     const [firstName, setFirstName] = useState(person?.firstName || '');
     const [lastName, setLastName] = useState(person?.lastName || '');
     const [middleName, setMiddleName] = useState(person?.middleName || '');
+    const [maidenName, setMaidenName] = useState(person?.maidenName || '');
     const [nickname, setNickname] = useState(person?.nickname || '');
     const [dob, setDob] = useState(person?.dob || '');
     const [gender, setGender] = useState(person?.gender || '');
     const [nationality, setNationality] = useState(person?.nationality || '');
-    const [risk, setRisk] = useState<string>(person?.risk || '');
+    const [risk, setRisk] = useState(person?.risk || '');
+    const [status, setStatus] = useState(person?.status || 'Active');
     const [taxNumber, setTaxNumber] = useState(person?.taxNumber || '');
+    const [religion, setReligion] = useState(person?.religion || '');
+    const [personLanguages, setPersonLanguages] = useState<PersonLanguage[]>(person?.languages || []);
 
     // Contacts
     const [emails, setEmails] = useState<PersonEmail[]>(person?.emails || []);
@@ -50,9 +53,7 @@ export default function PersonForm({ person, mode }: PersonFormProps) {
 
     // Social
     const platforms = ['Facebook', 'LinkedIn', 'Instagram', 'TikTok', 'Snapchat', 'YouTube'];
-    const [socials, setSocials] = useState<Record<string, { id: string; url: string }[]>>(
-        Object.fromEntries(platforms.map(p => [p, person?.socials.find(s => s.platform === p)?.profiles || []]))
-    );
+    const [socials, setSocials] = useState<Record<string, { id: string; url: string }[]>>(Object.fromEntries(platforms.map(p => [p, person?.socials.find(s => s.platform === p)?.profiles || []])));
 
     // Addresses
     const [addresses, setAddresses] = useState<PersonAddress[]>(person?.addresses || []);
@@ -63,187 +64,201 @@ export default function PersonForm({ person, mode }: PersonFormProps) {
     const [editingNote, setEditingNote] = useState<string | null>(null);
 
     const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => setAvatar(r.result as string); r.readAsDataURL(f); } };
-
     const handleSave = () => {
         if (!firstName || !lastName) { toast.error('Validation error', 'First name and last name are required.'); return; }
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
-            toast.success(mode === 'create' ? 'Person created' : 'Person updated', `${firstName} ${lastName} has been ${mode === 'create' ? 'added to' : 'updated in'} the database.`);
-            if (mode === 'create') router.visit('/persons');
-        }, 1200);
+        setTimeout(() => { setLoading(false); toast.success(mode === 'create' ? 'Person created' : 'Person updated', `${firstName} ${lastName}`); if (mode === 'create') router.visit('/persons'); }, 1200);
     };
 
-    const tabs: { id: FormTab; label: string }[] = [
-        { id: 'basic', label: 'Basic Info' }, { id: 'contacts', label: 'Contacts' },
-        { id: 'social', label: 'Social Media' }, { id: 'address', label: 'Addresses' }, { id: 'notes', label: 'Notes' },
-    ];
-
     return (
-        <div style={{ maxWidth: 840, margin: '0 auto' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+            {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                    <h1 style={{ fontSize: 22, fontWeight: 700, color: theme.text, margin: '0 0 4px' }}>{mode === 'create' ? 'Add New Person' : `Edit: ${person?.firstName} ${person?.lastName}`}</h1>
-                    <p style={{ fontSize: 13, color: theme.textSecondary, margin: 0 }}>Fill in subject information across all tabs.</p>
+                    <h1 style={{ fontSize: 20, fontWeight: 700, color: theme.text, margin: '0 0 4px' }}>{mode === 'create' ? 'Add New Person' : `Edit: ${person?.firstName} ${person?.lastName}`}</h1>
+                    <p style={{ fontSize: 12, color: theme.textSecondary, margin: 0 }}>Fill in subject information.</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <Button variant="secondary" onClick={() => router.visit('/persons')} style={{ width: 'auto', padding: '10px 20px' }}>Cancel</Button>
-                    <Button onClick={handleSave} loading={loading} style={{ width: 'auto', padding: '10px 24px' }}>{mode === 'create' ? 'Create Person' : 'Save Changes'}</Button>
+                    <Button variant="secondary" onClick={() => router.visit('/persons')} style={{ width: 'auto', padding: '9px 18px', fontSize: 11 }}>Cancel</Button>
+                    <Button onClick={handleSave} loading={loading} style={{ width: 'auto', padding: '9px 22px', fontSize: 11 }}>{mode === 'create' ? 'Create' : 'Save'}</Button>
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: 2, marginBottom: 24, borderBottom: `1px solid ${theme.border}`, overflowX: 'auto', scrollbarWidth: 'none' as const }}>
-                {tabs.map(t => { const active = tab === t.id; return <button key={t.id} onClick={() => setTab(t.id)} style={{ background: 'none', border: 'none', borderBottom: `2px solid ${active ? theme.accent : 'transparent'}`, padding: '10px 16px', cursor: 'pointer', fontFamily: 'inherit', color: active ? theme.text : theme.textSecondary, fontSize: 13, fontWeight: active ? 700 : 500, whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{t.label}</button>; })}
-            </div>
-
-            {/* TAB: Basic Info */}
-            {tab === 'basic' && (
-                <div style={{ animation: 'argux-fadeIn 0.2s ease-out' }}>
-                    {/* Avatar */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
-                        <div style={{ position: 'relative' }}>
-                            <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: avatar ? 'transparent' : `linear-gradient(135deg, ${theme.accent}, ${theme.accent}80)`, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `3px solid ${theme.border}` }}>
-                                {avatar ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 24, fontWeight: 700, color: '#fff' }}>{firstName?.[0] || '?'}{lastName?.[0] || '?'}</span>}
-                            </div>
-                            <label style={{ position: 'absolute', bottom: -2, right: -2, width: 28, height: 28, borderRadius: '50%', background: theme.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: `2px solid ${theme.bg}` }}>
-                                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M12 2l2 2-8 8H4v-2z"/></svg>
-                                <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
-                            </label>
-                        </div>
-                        <div style={{ fontSize: 12, color: theme.textSecondary }}>Upload a profile photo.<br/>JPG, PNG, max 5MB.</div>
+            {/* Layout: vertical tabs left + content right */}
+            <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+                {/* Vertical tabs */}
+                <div style={{ width: 180, flexShrink: 0, position: 'sticky', top: 80 }}>
+                    <style>{`@media(max-width:768px){.vtab-sidebar{display:none!important}.vtab-mobile{display:flex!important}}`}</style>
+                    <div className="vtab-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {ftabs.map(t => { const active = tab === t.id; return (
+                            <button key={t.id} onClick={() => setTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: active ? 600 : 400, color: active ? theme.accent : theme.textSecondary, background: active ? theme.accentDim : 'transparent', border: 'none', textAlign: 'left' as const, transition: 'all 0.15s', width: '100%' }}>
+                                <span style={{ display: 'flex', color: active ? theme.accent : theme.textDim }}>{t.icon}</span>{t.label}
+                            </button>
+                        ); })}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0, columnGap: 16 }}>
-                        <Input label="First Name *" value={firstName} onChange={e => setFirstName(e.target.value)} icon={Icons.user()} placeholder="First name" />
-                        <Input label="Last Name *" value={lastName} onChange={e => setLastName(e.target.value)} icon={Icons.user()} placeholder="Last name" />
-                        <Input label="Middle Name" value={middleName} onChange={e => setMiddleName(e.target.value)} placeholder="Middle name" />
-                        <Input label="Nickname" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="Alias or callsign" />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16, marginBottom: 16 }}>
-                        <div><Label>Date of Birth</Label><input type="date" value={dob} onChange={e => setDob(e.target.value)} style={{ width: '100%', padding: '10px 14px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none', colorScheme: 'dark' as any }} /></div>
-                        <div><Label>Gender</Label><SelectField value={gender} onChange={setGender} options={genders.map(g => ({ value: g, label: g }))} placeholder="Select gender" /></div>
-                        <div><Label>Nationality</Label><SearchSelect value={nationality} onChange={setNationality} options={nationalities} placeholder="Select nationality" /></div>
-                        <div><Label>Risk Level</Label><SelectField value={risk} onChange={setRisk} options={risks.map(r => ({ value: r, label: r }))} placeholder="Select risk" /></div>
-                    </div>
-                    <Input label="Tax Number" value={taxNumber} onChange={e => setTaxNumber(e.target.value)} placeholder="Tax identification number" />
                 </div>
-            )}
 
-            {/* TAB: Contacts */}
-            {tab === 'contacts' && (
-                <div style={{ animation: 'argux-fadeIn 0.2s ease-out' }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 12 }}>Email Addresses</h3>
-                    {emails.map((em, i) => (
-                        <Card key={em.id}>
-                            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                                <div style={{ flex: 1, minWidth: 200 }}><input value={em.email} onChange={e => { const n = [...emails]; n[i] = { ...n[i], email: e.target.value }; setEmails(n); }} placeholder="email@example.com" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
-                                <div style={{ flex: 1, minWidth: 150 }}><input value={em.notes} onChange={e => { const n = [...emails]; n[i] = { ...n[i], notes: e.target.value }; setEmails(n); }} placeholder="Notes (e.g. Primary, Work)" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
-                                <RemoveBtn onClick={() => setEmails(emails.filter((_, j) => j !== i))} />
-                            </div>
-                        </Card>
-                    ))}
-                    <AddBtn onClick={() => setEmails([...emails, { id: generateId(), email: '', notes: '' }])} label="Add Email" />
-
-                    <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, margin: '24px 0 12px' }}>Phone Numbers</h3>
-                    {phones.map((ph, i) => (
-                        <Card key={ph.id}>
-                            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 10 }}>
-                                <div style={{ flex: 1, minWidth: 200 }}><input value={ph.number} onChange={e => { const n = [...phones]; n[i] = { ...n[i], number: e.target.value }; setPhones(n); }} placeholder="+1 234 567 8900" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", outline: 'none' }} /></div>
-                                <div style={{ flex: 1, minWidth: 150 }}><input value={ph.notes} onChange={e => { const n = [...phones]; n[i] = { ...n[i], notes: e.target.value }; setPhones(n); }} placeholder="Notes" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
-                                <RemoveBtn onClick={() => setPhones(phones.filter((_, j) => j !== i))} />
-                            </div>
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                {(['WhatsApp', 'WeChat', 'Telegram', 'Signal', 'Viber'] as const).map(app => {
-                                    const key = `is${app}` as keyof PersonPhone;
-                                    const checked = ph[key] as boolean;
-                                    return <label key={app} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11, color: checked ? theme.accent : theme.textDim }}>
-                                        <div onClick={() => { const n = [...phones]; (n[i] as any)[key] = !checked; setPhones(n); }} style={{ width: 14, height: 14, borderRadius: 3, border: `1.5px solid ${checked ? theme.accent : theme.border}`, background: checked ? theme.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>{checked && <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>
-                                        {app}
-                                    </label>;
-                                })}
-                            </div>
-                        </Card>
-                    ))}
-                    <AddBtn onClick={() => setPhones([...phones, { id: generateId(), number: '', notes: '', isWhatsApp: false, isWeChat: false, isTelegram: false, isSignal: false, isViber: false }])} label="Add Phone Number" />
+                {/* Mobile horizontal tabs */}
+                <div className="vtab-mobile" style={{ display: 'none', gap: 2, marginBottom: 16, borderBottom: `1px solid ${theme.border}`, overflowX: 'auto', width: '100%', scrollbarWidth: 'none' as const }}>
+                    {ftabs.map(t => { const active = tab === t.id; return <button key={t.id} onClick={() => setTab(t.id)} style={{ background: 'none', border: 'none', borderBottom: `2px solid ${active ? theme.accent : 'transparent'}`, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit', color: active ? theme.text : theme.textSecondary, fontSize: 12, fontWeight: active ? 700 : 500, whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{t.label}</button>; })}
                 </div>
-            )}
 
-            {/* TAB: Social Media */}
-            {tab === 'social' && (
-                <div style={{ animation: 'argux-fadeIn 0.2s ease-out' }}>
-                    {platforms.map(platform => (
-                        <div key={platform} style={{ marginBottom: 20 }}>
-                            <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ width: 24, height: 24, borderRadius: 6, background: theme.accentDim, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
-                                    {platform[0]}
-                                </span>
-                                {platform}
-                            </h3>
-                            {(socials[platform] || []).map((profile, i) => (
-                                <div key={profile.id} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                                    <input value={profile.url} onChange={e => { const n = { ...socials }; n[platform] = [...n[platform]]; n[platform][i] = { ...n[platform][i], url: e.target.value }; setSocials(n); }} placeholder={`https://${platform.toLowerCase()}.com/username`} style={{ flex: 1, padding: '8px 12px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
-                                    <RemoveBtn onClick={() => { const n = { ...socials }; n[platform] = n[platform].filter((_, j) => j !== i); setSocials(n); }} />
+                {/* Content */}
+                <div style={{ flex: 1, minWidth: 0, animation: 'argux-fadeIn 0.2s ease-out' }}>
+                    {/* BASIC INFO */}
+                    {tab === 'basic' && <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
+                            <div style={{ position: 'relative' }}>
+                                <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', background: avatar ? 'transparent' : `linear-gradient(135deg, ${theme.accent}, ${theme.accent}80)`, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `3px solid ${theme.border}` }}>
+                                    {avatar ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{firstName?.[0] || '?'}{lastName?.[0] || '?'}</span>}
                                 </div>
-                            ))}
-                            <AddBtn onClick={() => { const n = { ...socials }; n[platform] = [...(n[platform] || []), { id: generateId(), url: '' }]; setSocials(n); }} label={`Add ${platform} Profile`} />
+                                <label style={{ position: 'absolute', bottom: -2, right: -2, width: 26, height: 26, borderRadius: '50%', background: theme.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: `2px solid ${theme.bg}` }}>
+                                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M12 2l2 2-8 8H4v-2z"/></svg>
+                                    <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+                                </label>
+                            </div>
+                            <div style={{ fontSize: 12, color: theme.textSecondary }}>Upload profile photo<br/>JPG/PNG, max 5MB</div>
                         </div>
-                    ))}
-                </div>
-            )}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 0, columnGap: 14 }}>
+                            <Input label="First Name *" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" />
+                            <Input label="Last Name *" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" />
+                            <Input label="Middle Name" value={middleName} onChange={e => setMiddleName(e.target.value)} placeholder="Middle name" />
+                            <Input label="Maiden Name" value={maidenName} onChange={e => setMaidenName(e.target.value)} placeholder="Optional" />
+                            <Input label="Nickname" value={nickname} onChange={e => setNickname(e.target.value)} placeholder="Alias" />
+                            <Input label="Tax Number" value={taxNumber} onChange={e => setTaxNumber(e.target.value)} placeholder="Tax ID" />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
+                            <div><Label>Date of Birth</Label><input type="date" value={dob} onChange={e => setDob(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', colorScheme: 'dark' as any }} /></div>
+                            <div><Label>Gender</Label><Sel value={gender} onChange={setGender} options={[...genders]} placeholder="Select" /></div>
+                            <div><Label>Status</Label><Sel value={status} onChange={setStatus} options={[...statuses]} placeholder="Select" /></div>
+                            <div><Label>Risk Level</Label><Sel value={risk} onChange={setRisk} options={[...risks]} placeholder="Select" /></div>
+                            <div><Label>Nationality</Label><SearchSel value={nationality} onChange={setNationality} options={nationalities} placeholder="Select nationality" /></div>
+                            <div><Label>Religion</Label><SearchSel value={religion} onChange={setReligion} options={religions} placeholder="Select religion" /></div>
+                        </div>
 
-            {/* TAB: Addresses */}
-            {tab === 'address' && (
-                <div style={{ animation: 'argux-fadeIn 0.2s ease-out' }}>
-                    {addresses.map((addr, i) => (
-                        <Card key={addr.id}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary }}>Address #{i + 1}</span>
-                                <RemoveBtn onClick={() => setAddresses(addresses.filter((_, j) => j !== i))} />
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
-                                {[['address','Street','Address'],['addressNumber','Number','No.'],['zipCode','Zip Code','Zip'],['city','City','City'],['country','Country','Country']].map(([key, label, ph]) => (
-                                    <div key={key}><Label>{label}</Label><input value={(addr as any)[key]} onChange={e => { const n = [...addresses]; (n[i] as any)[key] = e.target.value; setAddresses(n); }} placeholder={ph} style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                        {/* Languages */}
+                        <div style={{ marginTop: 8 }}>
+                            <h3 style={{ fontSize: 13, fontWeight: 700, color: theme.text, marginBottom: 10 }}>Languages</h3>
+                            {personLanguages.map((lang, i) => (
+                                <Card key={lang.id}>
+                                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                                        <div style={{ flex: 2, minWidth: 140 }}><Label>Language</Label><SearchSel value={lang.language} onChange={v => { const n = [...personLanguages]; n[i] = { ...n[i], language: v }; setPersonLanguages(n); }} options={allLanguages} placeholder="Select language" /></div>
+                                        <div style={{ flex: 1, minWidth: 120 }}><Label>Level</Label><Sel value={lang.level} onChange={v => { const n = [...personLanguages]; n[i] = { ...n[i], level: v }; setPersonLanguages(n); }} options={[...languageLevels]} placeholder="Level" /></div>
+                                        <div style={{ flex: 2, minWidth: 140 }}><Label>Notes</Label><input value={lang.notes} onChange={e => { const n = [...personLanguages]; n[i] = { ...n[i], notes: e.target.value }; setPersonLanguages(n); }} placeholder="e.g. Business, Self-taught" style={{ width: '100%', padding: '9px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                                        <div style={{ paddingTop: 22 }}><RemoveBtn onClick={() => setPersonLanguages(personLanguages.filter((_,j)=>j!==i))} /></div>
+                                    </div>
+                                </Card>
+                            ))}
+                            <AddBtn onClick={() => setPersonLanguages([...personLanguages, { id: generateId(), language: '', level: '', notes: '' }])} label="Add Language" />
+                        </div>
+                    </>}
+
+                    {/* CONTACTS */}
+                    {tab === 'contacts' && <>
+                        <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 10 }}>Email Addresses</h3>
+                        {emails.map((em, i) => (
+                            <Card key={em.id}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10, marginBottom: 8 }}>
+                                    <div style={{ gridColumn: 'span 2' }}><Label>Email</Label><input value={em.email} onChange={e => { const n=[...emails]; n[i]={...n[i],email:e.target.value}; setEmails(n); }} placeholder="email@example.com" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                                    <div><Label>Type</Label><Sel value={em.type} onChange={v => { const n=[...emails]; n[i]={...n[i],type:v}; setEmails(n); }} options={[...contactTypes]} placeholder="Type" /></div>
+                                    <div><Label>Status</Label><Sel value={em.status} onChange={v => { const n=[...emails]; n[i]={...n[i],status:v}; setEmails(n); }} options={[...contactStatuses]} placeholder="Status" /></div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+                                    <div style={{ flex: 1 }}><Label>Notes</Label><input value={em.notes} onChange={e => { const n=[...emails]; n[i]={...n[i],notes:e.target.value}; setEmails(n); }} placeholder="e.g. Primary, Encrypted" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                                    <RemoveBtn onClick={() => setEmails(emails.filter((_,j)=>j!==i))} />
+                                </div>
+                            </Card>
+                        ))}
+                        <AddBtn onClick={() => setEmails([...emails, { id: generateId(), email: '', notes: '', type: 'Private', status: 'Active' }])} label="Add Email" />
+
+                        <h3 style={{ fontSize: 14, fontWeight: 700, color: theme.text, margin: '24px 0 10px' }}>Phone Numbers</h3>
+                        {phones.map((ph, i) => (
+                            <Card key={ph.id}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10, marginBottom: 8 }}>
+                                    <div style={{ gridColumn: 'span 2' }}><Label>Phone Number</Label><input value={ph.number} onChange={e => { const n=[...phones]; n[i]={...n[i],number:e.target.value}; setPhones(n); }} placeholder="+1 234 567 8900" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", outline: 'none' }} /></div>
+                                    <div><Label>Type</Label><Sel value={ph.type} onChange={v => { const n=[...phones]; n[i]={...n[i],type:v}; setPhones(n); }} options={[...contactTypes]} placeholder="Type" /></div>
+                                    <div><Label>Status</Label><Sel value={ph.status} onChange={v => { const n=[...phones]; n[i]={...n[i],status:v}; setPhones(n); }} options={[...contactStatuses]} placeholder="Status" /></div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', marginBottom: 8 }}>
+                                    <div style={{ flex: 1 }}><Label>Notes</Label><input value={ph.notes} onChange={e => { const n=[...phones]; n[i]={...n[i],notes:e.target.value}; setPhones(n); }} placeholder="Notes" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                                    <RemoveBtn onClick={() => setPhones(phones.filter((_,j)=>j!==i))} />
+                                </div>
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    {(['WhatsApp','WeChat','Telegram','Signal','Viber'] as const).map(app => {
+                                        const key = `is${app}` as keyof PersonPhone; const checked = ph[key] as boolean;
+                                        return <label key={app} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 11, color: checked ? theme.accent : theme.textDim }}>
+                                            <div onClick={() => { const n=[...phones]; (n[i] as any)[key]=!checked; setPhones(n); }} style={{ width: 13, height: 13, borderRadius: 3, border: `1.5px solid ${checked?theme.accent:theme.border}`, background: checked?theme.accent:'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>{checked && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>{app}
+                                        </label>;
+                                    })}
+                                </div>
+                            </Card>
+                        ))}
+                        <AddBtn onClick={() => setPhones([...phones, { id: generateId(), number: '', notes: '', type: 'Private', status: 'Active', isWhatsApp: false, isWeChat: false, isTelegram: false, isSignal: false, isViber: false }])} label="Add Phone" />
+                    </>}
+
+                    {/* SOCIAL */}
+                    {tab === 'social' && <>
+                        {platforms.map(platform => (
+                            <div key={platform} style={{ marginBottom: 18 }}>
+                                <h3 style={{ fontSize: 13, fontWeight: 700, color: theme.text, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ width: 22, height: 22, borderRadius: 5, background: theme.accentDim, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: theme.accent }}>{platform[0]}</span>{platform}
+                                </h3>
+                                {(socials[platform]||[]).map((profile, i) => (
+                                    <div key={profile.id} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                                        <input value={profile.url} onChange={e => { const n={...socials}; n[platform]=[...n[platform]]; n[platform][i]={...n[platform][i],url:e.target.value}; setSocials(n); }} placeholder={`https://${platform.toLowerCase()}.com/username`} style={{ flex: 1, padding: '8px 12px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
+                                        <RemoveBtn onClick={() => { const n={...socials}; n[platform]=n[platform].filter((_,j)=>j!==i); setSocials(n); }} />
+                                    </div>
                                 ))}
+                                <AddBtn onClick={() => { const n={...socials}; n[platform]=[...(n[platform]||[]),{id:generateId(),url:''}]; setSocials(n); }} label={`Add ${platform}`} />
                             </div>
-                            <div style={{ marginTop: 10 }}><Label>Notes</Label><input value={addr.notes} onChange={e => { const n = [...addresses]; n[i] = { ...n[i], notes: e.target.value }; setAddresses(n); }} placeholder="e.g. Home, Office, Safe house" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
-                        </Card>
-                    ))}
-                    <AddBtn onClick={() => setAddresses([...addresses, { id: generateId(), address: '', addressNumber: '', zipCode: '', city: '', country: '', notes: '' }])} label="Add Address" />
-                </div>
-            )}
+                        ))}
+                    </>}
 
-            {/* TAB: Notes */}
-            {tab === 'notes' && (
-                <div style={{ animation: 'argux-fadeIn 0.2s ease-out' }}>
-                    <div style={{ marginBottom: 20 }}>
-                        <textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a new note about this person..." rows={3} style={{ width: '100%', padding: '12px 14px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', resize: 'vertical' }} />
-                        <Button onClick={() => { if (newNote.trim()) { setNotes([{ id: generateId(), text: newNote.trim(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, ...notes]); setNewNote(''); toast.success('Note added'); } }} disabled={!newNote.trim()} style={{ width: 'auto', padding: '8px 20px', marginTop: 8 }}>Add Note</Button>
-                    </div>
-                    {notes.length === 0 ? (
-                        <div style={{ padding: '40px 16px', textAlign: 'center', color: theme.textSecondary, fontSize: 13 }}>No notes yet. Add one above.</div>
-                    ) : notes.map((note, i) => (
-                        <Card key={note.id}>
-                            {editingNote === note.id ? (
-                                <>
-                                    <textarea value={note.text} onChange={e => { const n = [...notes]; n[i] = { ...n[i], text: e.target.value, updatedAt: new Date().toISOString() }; setNotes(n); }} rows={3} style={{ width: '100%', padding: '10px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', resize: 'vertical', marginBottom: 8 }} />
+                    {/* ADDRESSES */}
+                    {tab === 'address' && <>
+                        {addresses.map((addr, i) => (
+                            <Card key={addr.id}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary }}>Address #{i+1}</span>
+                                    <RemoveBtn onClick={() => setAddresses(addresses.filter((_,j)=>j!==i))} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 10 }}>
+                                    <div style={{ gridColumn: 'span 2' }}><Label>Street</Label><input value={addr.address} onChange={e => { const n=[...addresses]; n[i]={...n[i],address:e.target.value}; setAddresses(n); }} placeholder="Street name" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                                    <div><Label>Number</Label><input value={addr.addressNumber} onChange={e => { const n=[...addresses]; n[i]={...n[i],addressNumber:e.target.value}; setAddresses(n); }} placeholder="No." style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                                    <div><Label>Zip Code</Label><input value={addr.zipCode} onChange={e => { const n=[...addresses]; n[i]={...n[i],zipCode:e.target.value}; setAddresses(n); }} placeholder="Zip" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                                    <div><Label>City</Label><input value={addr.city} onChange={e => { const n=[...addresses]; n[i]={...n[i],city:e.target.value}; setAddresses(n); }} placeholder="City" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                                    <div><Label>Country</Label><SearchSel value={addr.country} onChange={v => { const n=[...addresses]; n[i]={...n[i],country:v}; setAddresses(n); }} options={countries} placeholder="Select country" /></div>
+                                </div>
+                                <div style={{ marginTop: 10 }}><Label>Notes</Label><input value={addr.notes} onChange={e => { const n=[...addresses]; n[i]={...n[i],notes:e.target.value}; setAddresses(n); }} placeholder="e.g. Home, Office, Safe house" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                            </Card>
+                        ))}
+                        <AddBtn onClick={() => setAddresses([...addresses, { id: generateId(), address: '', addressNumber: '', zipCode: '', city: '', country: '', notes: '' }])} label="Add Address" />
+                    </>}
+
+                    {/* NOTES */}
+                    {tab === 'notes' && <>
+                        <textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a new intelligence note..." rows={3} style={{ width: '100%', padding: '12px 14px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', resize: 'vertical', marginBottom: 8 }} />
+                        <Button onClick={() => { if (newNote.trim()) { setNotes([{ id: generateId(), text: newNote.trim(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, ...notes]); setNewNote(''); toast.success('Note added'); } }} disabled={!newNote.trim()} style={{ width: 'auto', padding: '8px 20px', marginBottom: 20 }}>Add Note</Button>
+                        {notes.length === 0 ? <div style={{ padding: '30px 16px', textAlign: 'center', color: theme.textDim, fontSize: 13 }}>No notes yet.</div> : notes.map((note, i) => (
+                            <Card key={note.id}>
+                                {editingNote === note.id ? <>
+                                    <textarea value={note.text} onChange={e => { const n=[...notes]; n[i]={...n[i],text:e.target.value,updatedAt:new Date().toISOString()}; setNotes(n); }} rows={3} style={{ width: '100%', padding: '10px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', resize: 'vertical', marginBottom: 8 }} />
                                     <Button onClick={() => { setEditingNote(null); toast.success('Note updated'); }} style={{ width: 'auto', padding: '6px 16px', fontSize: 11 }}>Save</Button>
-                                </>
-                            ) : (
-                                <>
+                                </> : <>
                                     <p style={{ fontSize: 13, color: theme.text, lineHeight: 1.6, margin: '0 0 8px', whiteSpace: 'pre-wrap' as const }}>{note.text}</p>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span style={{ fontSize: 10, color: theme.textDim }}>{new Date(note.updatedAt).toLocaleString()}</span>
                                         <div style={{ display: 'flex', gap: 6 }}>
-                                            <button onClick={() => setEditingNote(note.id)} style={{ background: 'none', border: `1px solid ${theme.border}`, borderRadius: 4, padding: '4px 10px', fontSize: 10, color: theme.textSecondary, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Edit</button>
-                                            <button onClick={() => { setNotes(notes.filter((_, j) => j !== i)); toast.warning('Note deleted'); }} style={{ background: theme.dangerDim, border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, padding: '4px 10px', fontSize: 10, color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Delete</button>
+                                            <button onClick={() => setEditingNote(note.id)} style={{ background: 'none', border: `1px solid ${theme.border}`, borderRadius: 4, padding: '3px 10px', fontSize: 10, color: theme.textSecondary, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Edit</button>
+                                            <button onClick={() => { setNotes(notes.filter((_,j)=>j!==i)); toast.warning('Note deleted'); }} style={{ background: theme.dangerDim, border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, padding: '3px 10px', fontSize: 10, color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Delete</button>
                                         </div>
                                     </div>
-                                </>
-                            )}
-                        </Card>
-                    ))}
+                                </>}
+                            </Card>
+                        ))}
+                    </>}
                 </div>
-            )}
+            </div>
         </div>
     );
 }

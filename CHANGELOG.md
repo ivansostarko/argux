@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.1 - 2026-03-20
+
+### Added
+- Skeleton loader for persons table (8 shimmer rows with avatar, name, and column placeholders).
+- Delete confirmation modal with warning icon, person name in message, Cancel/Delete buttons.
+- Tooltip component for action buttons (Edit person, View details, Delete person).
+- Persons table columns expanded: UUID (truncated), Avatar, Name+gender+DOB, Nickname, Nationality, Country, Email, Phone, Tax Number, Status (Active/Inactive/Deleted/Suspended/Under Review), Risk, Actions.
+- Advanced filter fields expanded: Name, Nickname, Email, Phone, Tax Number, Gender, DOB from/to, Nationality (multi-select), Country (multi-select), Language (multi-select), Risk (multi-select), Status (multi-select), Religion (multi-select, 28 religions).
+- Vertical left sidebar tabs for Create, Edit, and Show person pages (collapses to horizontal tabs on mobile).
+- Person form — Basic Info tab: added Status dropdown, Maiden Name field, Languages section (multiple languages with searchable language dropdown, level dropdown: Native/Fluent/Advanced/Intermediate/Basic/Beginner, notes per language), Religion searchable dropdown (28 options).
+- Person form — Contacts tab: added Type dropdown for emails and phones (Private/Business/Secret/Undercover/Government/Temporary), Status dropdown (Active/Inactive/Deleted).
+- Person form — Addresses tab: Country field replaced with searchable select dropdown (120+ countries).
+- Mock data expanded: Person interface includes uuid, status, maidenName, religion, languages[], contact types/statuses. All 15 persons updated with new fields.
+
+### Changed
+- Persons table is now horizontally scrollable on small screens with `minWidth: 900px` inner container.
+- Persons table rows are sortable by UUID, Name, Nationality, Country, Status, Risk.
+- Show person page now uses vertical left tabs matching the form layout, with status badge alongside risk badge in header.
+
 ## 0.2.0 - 2026-03-20
 
 ### Added
