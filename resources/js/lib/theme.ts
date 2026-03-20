@@ -1,0 +1,26 @@
+export const theme = {
+    bg:            '#080a0f',
+    bgAlt:         '#060810',
+    bgCard:        'rgba(10,14,22,0.88)',
+    bgInput:       '#111827',
+    bgInputFocus:  '#151d2e',
+    border:        '#1e2736',
+    borderFocus:   '#1d6fef',
+    accent:        '#1d6fef',
+    accentHover:   '#3b8bff',
+    accentDim:     'rgba(29,111,239,0.14)',
+    accentGlow:    'rgba(29,111,239,0.35)',
+    danger:        '#ef4444',
+    dangerDim:     'rgba(239,68,68,0.12)',
+    success:       '#22c55e',
+    successDim:    'rgba(34,197,94,0.12)',
+    warning:       '#eab308',
+    warningDim:    'rgba(234,179,8,0.10)',
+    text:          '#e2e8f0',
+    textSecondary: '#94a3b8',
+    textDim:       '#475569',
+    cyan:          '#22d3ee',
+    cyanDim:       'rgba(34,211,238,0.10)',
+} as const;
+
+export type ThemeKey = keyof typeof theme;

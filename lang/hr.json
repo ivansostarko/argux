@@ -1,0 +1,18 @@
+{
+    "auth.credentials_verified": "Vjerodajnice potvrđene. Nastavite s provjerom identiteta.",
+    "auth.registration_submitted": "Registracija podnesena. Čeka se odobrenje administratora.",
+    "auth.invalid_2fa_code": "Nevažeći verifikacijski kod. Pokušajte ponovo.",
+    "auth.authenticated": "Autentifikacija uspješna.",
+    "auth.code_resent": "Verifikacijski kod je ponovno poslan.",
+    "auth.reset_code_sent": "Kod za resetiranje lozinke poslan na vaš email.",
+    "auth.code_verified": "Kod uspješno potvrđen.",
+    "auth.password_reset_complete": "Resetiranje lozinke završeno. Sada se možete prijaviti.",
+    "auth.fields.email": "email",
+    "auth.fields.password": "lozinka",
+    "auth.fields.first_name": "ime",
+    "auth.fields.last_name": "prezime",
+    "auth.fields.password_confirmation": "potvrda lozinke",
+    "auth.fields.agree_terms": "suglasnost s uvjetima",
+    "auth.validation.code_digits_only": "Verifikacijski kod smije sadržavati samo brojke.",
+    "auth.validation.code_six_digits": "Verifikacijski kod mora imati točno 6 znamenki."
+}
