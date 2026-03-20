@@ -1,0 +1,124 @@
+name: argux-stack
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+
+services:
+
+  # Nginx web server to serve static assets and reverse proxy to the app
+  nginx:
+    image: nginx:latest
+    container_name: argux_nginx
+    hostname: argux_nginx
+    links:
+      - app
+    ports:
+      - "${NGINX_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+    networks:
+      - app_network
+    restart: always
+    tty: true
+    stdin_open: true
+    logging: *default-logging
+
+  # NodeJS for building assets with Vite
+  node:
+    image: node:25-alpine
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+    environment:
+      NODE_ENV: production
+    #command: sh -lc "npm update"
+    tty: true
+    stdin_open: true
+    container_name: argux_node
+    hostname: argux_node
+    env_file:
+      - .env
+    networks:
+      - app_network
+    logging: *default-logging
+
+  # PHP Application server running Laravel Octane with the FrankenPHP server
+  app:
+    build:
+      context: .
+      dockerfile: docker/frankenphp/Dockerfile
+    container_name: argux_app
+    hostname: argux_app
+    working_dir: /app
+    environment:
+      OCTANE_SERVER: frankenphp
+      SERVER_NAME: 127.0.0.1
+    env_file:
+      - .env
+    command: >
+      bash -lc "php artisan octane:start
+      --server=frankenphp
+      --host=127.0.0.1
+      --port=8500
+      --admin-port=2019
+      --workers=${OCTANE_WORKERS:-auto}
+      --max-requests=${OCTANE_MAX_REQUESTS:-500}
+      --watch"
+    expose:
+      - "8500"
+      - "2019"
+    volumes:
+      - ./:/app:delegated
+      - vendor:/app/vendor
+      - storage:/app/storage
+      - bootstrap_cache:/app/bootstrap/cache
+    networks:
+      - app_network
+    restart: always
+    tty: true
+    stdin_open: true
+    logging: *default-logging
+
+
+  # PHP CLI container for running artisan commands, tinker, etc. Useful for development and debugging.
+  cli:
+    build:
+      context: .
+      dockerfile: docker/frankenphp/Dockerfile
+    container_name: argux_cli
+    hostname: argux_cli
+    working_dir: /app
+    env_file:
+      - .env
+    command: ["bash", "-lc", "sleep infinity"]
+    volumes:
+      - ./:/app:delegated
+      - vendor:/app/vendor
+      - storage:/app/storage
+      - bootstrap_cache:/app/bootstrap/cache
+
+    networks:
+      - app_network
+    restart: no
+    tty: true
+    stdin_open: true
+    logging: *default-logging
+
+
+
+# Network and Volume definitions
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  vendor:
+  storage:
+  bootstrap_cache:
+  node_modules:
+
