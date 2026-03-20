@@ -56,7 +56,7 @@ Route::get('/records', fn () => \Inertia\Inertia::render('Dashboard/Index'))->na
 Route::get('/storage', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('storage');
 Route::get('/reports', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('reports');
 Route::get('/jobs', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('jobs');
-Route::get('/profile', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('profile');
+Route::get('/profile', fn () => \Inertia\Inertia::render('Profile/Index'))->name('profile');
 Route::get('/settings', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('settings');
 
 /*

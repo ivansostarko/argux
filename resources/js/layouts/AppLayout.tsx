@@ -23,6 +23,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
                 @keyframes argux-spin { to { transform: rotate(360deg); } }
+                @keyframes argux-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+                @keyframes argux-fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
                 * { box-sizing: border-box; }
                 body { margin: 0; background: ${theme.bg}; overflow: hidden; }
                 ::selection { background: ${theme.accentDim}; color: ${theme.text}; }

@@ -16,6 +16,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                 @keyframes argux-spin { to { transform: rotate(360deg); } }
                 @keyframes argux-fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
                 @keyframes argux-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+                @keyframes argux-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
                 * { box-sizing: border-box; }
                 body { margin: 0; background: ${theme.bg}; overflow-x: hidden; }
                 ::selection { background: ${theme.accentDim}; color: ${theme.text}; }

@@ -85,6 +85,7 @@ interface ButtonProps {
 }
 
 export function Button({ children, onClick, variant = 'primary', disabled, loading, style: sx, type = 'button' }: ButtonProps) {
+    const [pressed, setPressed] = useState(false);
     const base: Record<string, React.CSSProperties> = {
         primary: { background: disabled ? theme.textDim : `linear-gradient(135deg, ${theme.accent}, #1858b8)`, color: '#fff', border: 'none', boxShadow: disabled ? 'none' : `0 4px 20px ${theme.accentGlow}` },
         secondary: { background: 'rgba(255,255,255,0.03)', color: theme.textSecondary, border: `1px solid ${theme.border}` },
@@ -93,12 +94,19 @@ export function Button({ children, onClick, variant = 'primary', disabled, loadi
     };
 
     return (
-        <button type={type} onClick={onClick} disabled={disabled || loading} style={{
+        <button type={type} onClick={onClick} disabled={disabled || loading}
+            onMouseDown={() => setPressed(true)}
+            onMouseUp={() => setPressed(false)}
+            onMouseLeave={() => setPressed(false)}
+            style={{
             ...base[variant], padding: '11px 20px', borderRadius: 8, fontSize: 12, fontWeight: 700,
             cursor: disabled || loading ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
             transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center',
             gap: 8, width: '100%', letterSpacing: '0.08em', fontFamily: 'inherit',
-            textTransform: 'uppercase' as const, ...sx,
+            textTransform: 'uppercase' as const,
+            transform: pressed && !disabled && !loading ? 'scale(0.97)' : loading ? 'scale(1)' : 'scale(1)',
+            filter: loading ? 'brightness(0.85)' : 'none',
+            ...sx,
         }}>
             {loading && Icons.spinner(15)}
             {children}
@@ -293,3 +301,62 @@ export function ProgressSteps({ current, total, color }: { current: number; tota
         </div>
     );
 }
+
+/* ─── Skeleton ─── */
+export function Skeleton({ width, height = 14, radius = 6, style: sx }: { width?: number | string; height?: number; radius?: number; style?: React.CSSProperties }) {
+    return (
+        <div style={{
+            width: width || '100%', height, borderRadius: radius,
+            background: `linear-gradient(90deg, ${theme.border}40 25%, ${theme.border}80 50%, ${theme.border}40 75%)`,
+            backgroundSize: '200% 100%', animation: 'argux-shimmer 1.5s ease infinite', ...sx,
+        }} />
+    );
+}
+
+export function SkeletonRow({ cols = 4 }: { cols?: number }) {
+    return (
+        <div style={{ display: 'flex', gap: 16, padding: '14px 0', borderBottom: `1px solid ${theme.border}30` }}>
+            {Array.from({ length: cols }).map((_, i) => (
+                <Skeleton key={i} width={i === 0 ? 120 : undefined} height={12} />
+            ))}
+        </div>
+    );
+}
+
+export function SkeletonCard() {
+    return (
+        <div style={{ background: theme.bgInput, borderRadius: 12, padding: 20, border: `1px solid ${theme.border}` }}>
+            <Skeleton width={140} height={12} style={{ marginBottom: 14 }} />
+            <Skeleton height={38} radius={8} style={{ marginBottom: 12 }} />
+            <Skeleton height={38} radius={8} style={{ marginBottom: 12 }} />
+            <Skeleton width={100} height={36} radius={8} />
+        </div>
+    );
+}
+
+/* ─── Toggle ─── */
+export function Toggle({ checked, onChange, label, description }: { checked: boolean; onChange: (v: boolean) => void; label?: string; description?: string }) {
+    return (
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '10px 0' }}>
+            {(label || description) && (
+                <div style={{ flex: 1 }}>
+                    {label && <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: description ? 2 : 0 }}>{label}</div>}
+                    {description && <div style={{ fontSize: 11, color: theme.textSecondary, lineHeight: 1.5 }}>{description}</div>}
+                </div>
+            )}
+            <button onClick={() => onChange(!checked)} style={{
+                width: 40, height: 22, borderRadius: 11, padding: 2, border: 'none', cursor: 'pointer',
+                background: checked ? theme.accent : theme.border, transition: 'background 0.2s ease',
+                display: 'flex', alignItems: 'center', flexShrink: 0,
+            }}>
+                <div style={{
+                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                    transition: 'transform 0.2s ease',
+                    transform: checked ? 'translateX(18px)' : 'translateX(0)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }} />
+            </button>
+        </div>
+    );
+}
+

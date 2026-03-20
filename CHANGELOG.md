@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.3 - 2026-03-20
+
+### Added
+- Skeleton loader components: `Skeleton`, `SkeletonRow`, `SkeletonCard` with shimmer animation.
+- `Toggle` switch component for boolean settings.
+- Button press animation (scale 0.97 on mousedown, brightness dim during loading).
+- Profile page (/profile) with 4 tabs:
+  - **Personal Data**: Avatar upload with edit overlay, first/last name, email, phone, timezone dropdown (23 timezones), save with success toast.
+  - **Change Password**: Current/new/confirm password with inline strength checklist, validation, session revocation notice on success.
+  - **Security**: 2FA method selector (Auth App/SMS/Email) with QR code display for TOTP, 2FA phone, recovery phone, backup code generator (8 codes), physical key registration, session timeout dropdown, session restoration prevention toggle, active sessions list with trust/revoke actions, 7 security feature toggles (auth logging, device fingerprinting, new device detection, failed login tracking, location tracking, suspicious activity detection, device trust management), statistics cards (total logins, failed attempts, unique devices, active sessions).
+  - **Audit Logs**: Searchable data table with 20 mock entries, color-coded action badges, pagination (8 per page), columns: Time, Action, Details, IP. Search filters across action, details, and IP fields.
+- `ProfileSkeleton` loading state shown for 800ms on initial tab render.
+
 ## 0.1.2 - 2026-03-20
 
 ### Changed
