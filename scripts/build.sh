@@ -17,8 +17,12 @@ docker compose exec cli php artisan optimize
 echo "🗄️ Running migrations and seeds..."
 docker compose exec cli php artisan migrate:fresh --seed
 
+
+echo "⚙️ Reload PHP Octane..."
+docker compose exec app php artisan octane:reload
+
 echo "🏗️ Building frontend..."
-docker compose exec app php artisan octane:reload & npm run build 
+npm run build 
 
 echo "=============================="
 echo "✅ BUILD COMPLETE"

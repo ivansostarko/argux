@@ -3,7 +3,7 @@ import { router } from '@inertiajs/react';
 import { Input, Button, Icons } from '../../components/ui';
 import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
-import { risks, genders, nationalities, countries, allLanguages, religions, statuses, contactTypes, contactStatuses, languageLevels, generateId, type Person, type PersonEmail, type PersonPhone, type PersonAddress, type PersonNote, type PersonLanguage } from '../../mock/persons';
+import { risks, genders, nationalities, countries, allLanguages, religions, statuses, contactTypes, contactStatuses, languageLevels, degrees, generateId, type Person, type PersonEmail, type PersonPhone, type PersonAddress, type PersonNote, type PersonLanguage, type PersonEducation } from '../../mock/persons';
 
 const Label = ({ children, required }: { children: string; required?: boolean }) => <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: theme.textSecondary, marginBottom: 5, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{children}{required && <span style={{ color: theme.danger, marginLeft: 2 }}>*</span>}</label>;
 const Sel = ({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) => <select value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>{placeholder && <option value="">{placeholder}</option>}{options.map(o => <option key={o} value={o}>{o}</option>)}</select>;
@@ -57,6 +57,7 @@ export default function PersonForm({ person, mode }: { person?: Person; mode: 'c
     const platforms = ['Facebook', 'LinkedIn', 'Instagram', 'TikTok', 'Snapchat', 'YouTube'];
     const [socials, setSocials] = useState<Record<string, { id: string; url: string }[]>>(Object.fromEntries(platforms.map(p => [p, person?.socials.find(s => s.platform === p)?.profiles || []])));
     const [addresses, setAddresses] = useState<PersonAddress[]>(person?.addresses || []);
+    const [education, setEducation] = useState<PersonEducation[]>(person?.education || []);
     const [notes, setNotes] = useState<PersonNote[]>(person?.notes || []);
     const [newNote, setNewNote] = useState('');
     const [editingNote, setEditingNote] = useState<string | null>(null);
@@ -112,6 +113,28 @@ export default function PersonForm({ person, mode }: { person?: Person; mode: 'c
                         <div style={{ marginTop: 8 }}><h3 style={{ fontSize: 13, fontWeight: 700, color: theme.text, marginBottom: 10 }}>Languages</h3>
                             {personLanguages.map((lang, i) => <Card key={lang.id}><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10, alignItems: 'flex-end' }}><div><Label>Language</Label><SearchSel value={lang.language} onChange={v => { const n=[...personLanguages]; n[i]={...n[i],language:v}; setPersonLanguages(n); }} options={allLanguages} placeholder="Select" /></div><div><Label>Level</Label><Sel value={lang.level} onChange={v => { const n=[...personLanguages]; n[i]={...n[i],level:v}; setPersonLanguages(n); }} options={[...languageLevels]} placeholder="Level" /></div><div><Label>Notes</Label><input value={lang.notes} onChange={e => { const n=[...personLanguages]; n[i]={...n[i],notes:e.target.value}; setPersonLanguages(n); }} placeholder="e.g. Business" style={{ width: '100%', padding: '9px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div><div><RemoveBtn onClick={() => setPersonLanguages(personLanguages.filter((_,j)=>j!==i))} /></div></div></Card>)}
                             <AddBtn onClick={() => setPersonLanguages([...personLanguages, { id: generateId(), language: '', level: '', notes: '' }])} label="Add Language" />
+                        </div>
+
+                        {/* Education */}
+                        <div style={{ marginTop: 24 }}>
+                            <h3 style={{ fontSize: 13, fontWeight: 700, color: theme.text, marginBottom: 10 }}>Education</h3>
+                            {education.map((edu, i) => (
+                                <Card key={edu.id}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary }}>Education #{i + 1}</span>
+                                        <RemoveBtn onClick={() => setEducation(education.filter((_, j) => j !== i))} />
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+                                        <div style={{ gridColumn: 'span 2' }}><Label>School / College</Label><input value={edu.school} onChange={e => { const n = [...education]; n[i] = { ...n[i], school: e.target.value }; setEducation(n); }} placeholder="Institution name" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                                        <div><Label>Website</Label><input value={edu.website} onChange={e => { const n = [...education]; n[i] = { ...n[i], website: e.target.value }; setEducation(n); }} placeholder="https://..." style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} /></div>
+                                        <div><Label>Country</Label><SearchSel value={edu.country} onChange={v => { const n = [...education]; n[i] = { ...n[i], country: v }; setEducation(n); }} options={countries} placeholder="Select country" /></div>
+                                        <div><Label>Degree</Label><SearchSel value={edu.degree} onChange={v => { const n = [...education]; n[i] = { ...n[i], degree: v }; setEducation(n); }} options={degrees} placeholder="Select degree" /></div>
+                                        <div><Label>Start Year</Label><input type="number" min="1950" max="2030" value={edu.startYear} onChange={e => { const n = [...education]; n[i] = { ...n[i], startYear: e.target.value }; setEducation(n); }} placeholder="YYYY" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", outline: 'none' }} /></div>
+                                        <div><Label>End Year</Label><input type="number" min="1950" max="2030" value={edu.endYear} onChange={e => { const n = [...education]; n[i] = { ...n[i], endYear: e.target.value }; setEducation(n); }} placeholder="YYYY" style={{ width: '100%', padding: '8px 12px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", outline: 'none' }} /></div>
+                                    </div>
+                                </Card>
+                            ))}
+                            <AddBtn onClick={() => setEducation([...education, { id: generateId(), school: '', website: '', country: '', degree: '', startYear: '', endYear: '' }])} label="Add Education" />
                         </div>
                     </>}
 

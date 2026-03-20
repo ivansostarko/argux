@@ -39,6 +39,7 @@ Route::get('/persons', fn () => \Inertia\Inertia::render('Persons/Index'))->name
 Route::get('/persons/create', fn () => \Inertia\Inertia::render('Persons/Create'))->name('persons.create');
 Route::get('/persons/{id}', fn (string $id) => \Inertia\Inertia::render('Persons/Show', ['id' => (int)$id]))->name('persons.show');
 Route::get('/persons/{id}/edit', fn (string $id) => \Inertia\Inertia::render('Persons/Edit', ['id' => (int)$id]))->name('persons.edit');
+Route::get('/persons/{id}/print', fn (string $id) => \Inertia\Inertia::render('Persons/Print', ['id' => (int)$id]))->name('persons.print');
 Route::get('/organizations', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('organizations.index');
 Route::get('/vehicles', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('vehicles.index');
 Route::get('/devices', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('devices.index');

@@ -89,17 +89,18 @@ export default function PersonsIndex() {
     useEffect(() => { const t = setTimeout(() => setLoading(false), 900); return () => clearTimeout(t); }, []);
 
     const [fName, setFName] = useState(''); const [fNick, setFNick] = useState(''); const [fEmail, setFEmail] = useState(''); const [fPhone, setFPhone] = useState('');
-    const [fGender, setFGender] = useState(''); const [fDobFrom, setFDobFrom] = useState(''); const [fDobTo, setFDobTo] = useState(''); const [fTax, setFTax] = useState('');
+    const [fUuid, setFUuid] = useState(''); const [fGender, setFGender] = useState<string[]>([]); const [fDobFrom, setFDobFrom] = useState(''); const [fDobTo, setFDobTo] = useState(''); const [fTax, setFTax] = useState('');
     const [fNat, setFNat] = useState<string[]>([]); const [fCountry, setFCountry] = useState<string[]>([]); const [fLang, setFLang] = useState<string[]>([]);
     const [fRisk, setFRisk] = useState<string[]>([]); const [fStatus, setFStatus] = useState<string[]>([]); const [fReligion, setFReligion] = useState<string[]>([]);
 
-    const hasAdv = fName || fNick || fEmail || fPhone || fGender || fDobFrom || fDobTo || fTax || fNat.length || fCountry.length || fLang.length || fRisk.length || fStatus.length || fReligion.length;
-    const clearAll = () => { setFName(''); setFNick(''); setFEmail(''); setFPhone(''); setFGender(''); setFDobFrom(''); setFDobTo(''); setFTax(''); setFNat([]); setFCountry([]); setFLang([]); setFRisk([]); setFStatus([]); setFReligion([]); setSearch(''); setPage(1); };
+    const filterCount = [fName, fNick, fEmail, fPhone, fUuid, fTax, fDobFrom, fDobTo].filter(Boolean).length + [fGender, fNat, fCountry, fLang, fRisk, fStatus, fReligion].filter(a => a.length > 0).length;
+    const hasAdv = filterCount > 0;
+    const clearAll = () => { setFName(''); setFNick(''); setFEmail(''); setFPhone(''); setFUuid(''); setFGender([]); setFDobFrom(''); setFDobTo(''); setFTax(''); setFNat([]); setFCountry([]); setFLang([]); setFRisk([]); setFStatus([]); setFReligion([]); setSearch(''); setPage(1); };
 
     const filtered = persons.filter(p => {
         const q = search.toLowerCase();
         const ms = !q || `${p.firstName} ${p.lastName} ${p.nickname} ${p.email} ${p.phone} ${p.uuid}`.toLowerCase().includes(q);
-        return ms && (!fName || `${p.firstName} ${p.lastName}`.toLowerCase().includes(fName.toLowerCase())) && (!fNick || p.nickname.toLowerCase().includes(fNick.toLowerCase())) && (!fEmail || p.email.toLowerCase().includes(fEmail.toLowerCase())) && (!fPhone || p.phone.includes(fPhone)) && (!fGender || p.gender === fGender) && (!fDobFrom || p.dob >= fDobFrom) && (!fDobTo || p.dob <= fDobTo) && (!fTax || p.taxNumber.toLowerCase().includes(fTax.toLowerCase())) && (fNat.length === 0 || fNat.includes(p.nationality)) && (fCountry.length === 0 || fCountry.includes(p.country)) && (fLang.length === 0 || fLang.includes(p.language)) && (fRisk.length === 0 || fRisk.includes(p.risk)) && (fStatus.length === 0 || fStatus.includes(p.status)) && (fReligion.length === 0 || fReligion.includes(p.religion));
+        return ms && (!fName || `${p.firstName} ${p.lastName}`.toLowerCase().includes(fName.toLowerCase())) && (!fNick || p.nickname.toLowerCase().includes(fNick.toLowerCase())) && (!fEmail || p.email.toLowerCase().includes(fEmail.toLowerCase())) && (!fPhone || p.phone.includes(fPhone)) && (!fUuid || p.uuid.toLowerCase().includes(fUuid.toLowerCase())) && (fGender.length === 0 || fGender.includes(p.gender)) && (!fDobFrom || p.dob >= fDobFrom) && (!fDobTo || p.dob <= fDobTo) && (!fTax || p.taxNumber.toLowerCase().includes(fTax.toLowerCase())) && (fNat.length === 0 || fNat.includes(p.nationality)) && (fCountry.length === 0 || fCountry.includes(p.country)) && (fLang.length === 0 || fLang.includes(p.language)) && (fRisk.length === 0 || fRisk.includes(p.risk)) && (fStatus.length === 0 || fStatus.includes(p.status)) && (fReligion.length === 0 || fReligion.includes(p.religion));
     }).sort((a, b) => { const av = (a as any)[sortCol] || ''; const bv = (b as any)[sortCol] || ''; const c = typeof av === 'string' ? av.localeCompare(bv) : av - bv; return sortDir === 'asc' ? c : -c; });
 
     const totalPages = Math.ceil(filtered.length / perPage);
@@ -131,20 +132,20 @@ export default function PersonsIndex() {
                     <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search name, email, phone, UUID..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '10px 0', color: theme.text, fontSize: 13, fontFamily: 'inherit', minWidth: 0 }} />
                 </div>
                 <button onClick={() => setShowFilters(!showFilters)} style={{ background: showFilters ? theme.accentDim : 'rgba(255,255,255,0.03)', border: `1px solid ${showFilters ? theme.accent : theme.border}`, borderRadius: 8, padding: '0 14px', cursor: 'pointer', color: showFilters ? theme.accent : theme.textSecondary, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' as const }}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="12" y2="8"/><line x1="6" y1="12" x2="10" y2="12"/></svg>Filters{hasAdv && <span style={{ background: theme.accent, color: '#fff', fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 8 }}>!</span>}
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="12" y2="8"/><line x1="6" y1="12" x2="10" y2="12"/></svg>Filters{filterCount > 0 && <span style={{ background: theme.accent, color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 8, minWidth: 16, textAlign: 'center' as const }}>{filterCount}</span>}
                 </button>
             </div>
 
             {showFilters && (<div style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 16, marginBottom: 16, animation: 'argux-fadeIn 0.2s ease-out' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10, marginBottom: 10 }}>
-                    {[['Name',fName,setFName,'First or last name'],['Nickname',fNick,setFNick,'Alias'],['Email',fEmail,setFEmail,'Email'],['Phone',fPhone,setFPhone,'Phone'],['Tax Number',fTax,setFTax,'Tax ID']].map(([label,val,setter,ph]) => (
+                    {[['Name',fName,setFName,'First or last name'],['Nickname',fNick,setFNick,'Alias'],['Email',fEmail,setFEmail,'Email'],['Phone',fPhone,setFPhone,'Phone'],['Tax Number',fTax,setFTax,'Tax ID'],['UUID',fUuid,setFUuid,'UUID']].map(([label,val,setter,ph]) => (
                         <div key={label as string}><label style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 3, display: 'block' }}>{label as string}</label><input value={val as string} onChange={e => { (setter as any)(e.target.value); setPage(1); }} placeholder={ph as string} style={inp} /></div>
                     ))}
-                    <div><label style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 3, display: 'block' }}>Gender</label><select value={fGender} onChange={e => { setFGender(e.target.value); setPage(1); }} style={{ ...inp, cursor: 'pointer' }}><option value="">All</option>{genders.map(g => <option key={g} value={g}>{g}</option>)}</select></div>
                     <div><label style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 3, display: 'block' }}>DOB From</label><input type="date" value={fDobFrom} onChange={e => { setFDobFrom(e.target.value); setPage(1); }} style={{ ...inp, colorScheme: 'dark' as any }} /></div>
                     <div><label style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 3, display: 'block' }}>DOB To</label><input type="date" value={fDobTo} onChange={e => { setFDobTo(e.target.value); setPage(1); }} style={{ ...inp, colorScheme: 'dark' as any }} /></div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <MS selected={fGender} onChange={v => { setFGender(v); setPage(1); }} options={[...genders]} placeholder="Gender" />
                     <MS selected={fNat} onChange={v => { setFNat(v); setPage(1); }} options={nationalities} placeholder="Nationality" />
                     <MS selected={fCountry} onChange={v => { setFCountry(v); setPage(1); }} options={countries} placeholder="Country" />
                     <MS selected={fLang} onChange={v => { setFLang(v); setPage(1); }} options={allLanguages} placeholder="Language" />
