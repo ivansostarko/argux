@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.4 - 2026-03-20
+
+### Added
+- Toast notification system (`ToastProvider` + `useToast` hook) with 4 types: success, error, warning, info. Slide-in animation with auto-dismiss, colored left border, click-to-dismiss.
+- Profile Settings tab with:
+  - Language selector with flags (English 🇬🇧, Croatian 🇭🇷, Russian 🇷🇺, Chinese 🇨🇳, Arabic 🇸🇦). Arabic switches layout to RTL.
+  - App Theme selector with 5 visual theme cards (Tactical Dark, Midnight Ops, Arctic White, Desert Storm, Crimson Ops) that apply instantly via context.
+  - Timezone dropdown (moved from Personal Data tab).
+  - Date format dropdown with 10 formats and live preview.
+- Theme context system (`AppSettingsContext`) in AppLayout for global theme and RTL direction state.
+
+### Changed
+- All success/error messages across profile tabs now use Toast notifications instead of inline banners.
+- Fixed mobile scrolling on /profile and all app pages: added `WebkitOverflowScrolling: touch`, `minHeight: 0`, `paddingBottom: 80px` to main content area. Fixed `body { overflow: hidden }` specificity.
+- Audit Logs tab: added individual filter dropdowns for Time (date), Action, and IP alongside the search bar. Added "Clear" button to reset all filters. Table is now fully responsive on mobile with stacked card layout and labeled fields.
+- Profile tabs now horizontally scrollable on mobile with hidden scrollbar.
+- Removed timezone field from Personal Data tab (moved to Settings).
+
 ## 0.1.3 - 2026-03-20
 
 ### Added
