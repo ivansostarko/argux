@@ -77,17 +77,19 @@ function CityClocks() {
 
 /* ─── Notification Dropdown ─── */
 const mockNotifications = [
-    { id: 1, type: 'alert', title: 'Geofence breach detected', body: 'Subject Alpha entered restricted zone R-4', time: '2m ago', read: false },
-    { id: 2, type: 'face', title: 'Face match confirmed', body: '94.7% confidence — Camera #12, Sector B', time: '8m ago', read: false },
-    { id: 3, type: 'system', title: 'Data source sync complete', body: 'National Vehicle Registry — 12,847 records', time: '23m ago', read: true },
-    { id: 4, type: 'lpr', title: 'LPR hit on watchlist plate', body: 'ZG-4491-AB spotted at checkpoint Delta', time: '1h ago', read: true },
-    { id: 5, type: 'alert', title: 'Signal lost — Device #0147', body: 'GPS tracker offline for 15+ minutes', time: '2h ago', read: true },
+    { id: 1, type: 'system', title: 'System update available', body: 'ARGUX v2.1.1 patch ready — security fixes and performance improvements', time: '3m ago', read: false, severity: 'info' },
+    { id: 2, type: 'storage', title: 'Storage threshold exceeded', body: 'MinIO cluster node-03 at 91% capacity — media partition critical', time: '12m ago', read: false, severity: 'warning' },
+    { id: 3, type: 'user', title: 'New user registration', body: 'Pending approval: Ana Kovač (ana.kovac@agency.gov) — GEOINT division', time: '28m ago', read: false, severity: 'info' },
+    { id: 4, type: 'security', title: 'Failed login attempts detected', body: '7 consecutive failures from IP 185.23.xx.xx — account temporarily locked', time: '45m ago', read: false, severity: 'critical' },
+    { id: 5, type: 'device', title: 'Device offline — GPS Tracker #0291', body: 'Last signal received 18 minutes ago from sector Delta-7', time: '1h ago', read: true, severity: 'warning' },
+    { id: 6, type: 'backup', title: 'Scheduled backup completed', body: 'Full system backup — 847 GB, verified, encrypted, stored to vault-02', time: '2h ago', read: true, severity: 'info' },
 ];
 
 function NotificationDropdown() {
     const [open, setOpen] = useState(false);
+    const [notifications, setNotifications] = useState(mockNotifications);
     const ref = useRef<HTMLDivElement>(null);
-    const unread = mockNotifications.filter(n => !n.read).length;
+    const unread = notifications.filter(n => !n.read).length;
 
     useEffect(() => {
         const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
@@ -96,7 +98,21 @@ function NotificationDropdown() {
     }, []);
 
     const typeColors: Record<string, string> = {
-        alert: theme.danger, face: theme.success, system: theme.accent, lpr: theme.warning,
+        system: theme.accent, storage: theme.warning, user: theme.cyan,
+        security: theme.danger, device: theme.warning, backup: theme.success,
+    };
+
+    const typeIcons: Record<string, React.ReactNode> = {
+        system: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M13 8a5 5 0 00-.3-1.7l1.5-1.2-1-1.7-1.8.6A5 5 0 009.7 3L9 1.5H7L6.3 3a5 5 0 00-1.7 1l-1.8-.6-1 1.7 1.5 1.2A5 5 0 003 8a5 5 0 00.3 1.7l-1.5 1.2 1 1.7 1.8-.6c.5.4 1.1.8 1.7 1l.7 1.5h2l.7-1.5c.6-.2 1.2-.6 1.7-1l1.8.6 1-1.7-1.5-1.2A5 5 0 0013 8z"/></svg>,
+        storage: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="4" rx="1"/><rect x="2" y="10" width="12" height="4" rx="1"/><circle cx="4.5" cy="4" r="0.5" fill="currentColor"/><circle cx="4.5" cy="12" r="0.5" fill="currentColor"/></svg>,
+        user: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="5" r="3"/><path d="M2.5 14.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>,
+        security: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1.5l5.5 2v4c0 3.5-2.5 6-5.5 7.5-3-1.5-5.5-4-5.5-7.5v-4z"/></svg>,
+        device: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="8" height="8" rx="1"/><rect x="6" y="6" width="4" height="4" rx="0.5"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="6" y1="12" x2="6" y2="14"/><line x1="10" y1="12" x2="10" y2="14"/></svg>,
+        backup: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4v9a1 1 0 001 1h10a1 1 0 001-1V6a1 1 0 00-1-1H8L6.5 3H3a1 1 0 00-1 1z"/><polyline points="6,9 8,11 10,9"/><line x1="8" y1="7" x2="8" y2="11"/></svg>,
+    };
+
+    const handleReadAll = () => {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     };
 
     return (
@@ -123,38 +139,59 @@ function NotificationDropdown() {
                 <div style={{
                     position: 'absolute', top: '100%', right: 0, marginTop: 6,
                     background: '#0d1220', border: `1px solid ${theme.border}`, borderRadius: 10,
-                    width: 340, maxHeight: 420, overflowY: 'auto', zIndex: 100,
+                    width: 360, maxHeight: 460, display: 'flex', flexDirection: 'column', zIndex: 100,
                     boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
                 }}>
                     <div style={{
                         padding: '12px 16px', borderBottom: `1px solid ${theme.border}`,
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
                     }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>Notifications</span>
-                        {unread > 0 && <span style={{ fontSize: 11, color: theme.accent, fontWeight: 600 }}>{unread} new</span>}
-                    </div>
-                    {mockNotifications.map(n => (
-                        <div key={n.id} style={{
-                            padding: '12px 16px', borderBottom: `1px solid rgba(255,255,255,0.03)`,
-                            cursor: 'pointer', display: 'flex', gap: 10,
-                            background: n.read ? 'transparent' : 'rgba(29,111,239,0.04)',
-                        }}
-                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
-                            onMouseLeave={e => (e.currentTarget.style.background = n.read ? 'transparent' : 'rgba(29,111,239,0.04)')}
-                        >
-                            <div style={{
-                                width: 8, height: 8, borderRadius: '50%', marginTop: 5, flexShrink: 0,
-                                background: typeColors[n.type] || theme.textDim,
-                                boxShadow: !n.read ? `0 0 6px ${typeColors[n.type] || theme.textDim}` : 'none',
-                            }} />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, marginBottom: 2 }}>{n.title}</div>
-                                <div style={{ fontSize: 11, color: theme.textSecondary, lineHeight: 1.4 }}>{n.body}</div>
-                                <div style={{ fontSize: 10, color: theme.textDim, marginTop: 4 }}>{n.time}</div>
-                            </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            {unread > 0 && <span style={{ fontSize: 11, color: theme.accent, fontWeight: 600 }}>{unread} new</span>}
+                            {unread > 0 && (
+                                <button onClick={handleReadAll} style={{
+                                    background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11,
+                                    cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500,
+                                    padding: '2px 6px', borderRadius: 4, transition: 'all 0.15s',
+                                }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = theme.accent; (e.currentTarget as HTMLElement).style.background = theme.accentDim; }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = theme.textSecondary; (e.currentTarget as HTMLElement).style.background = 'none'; }}
+                                >Read all</button>
+                            )}
                         </div>
-                    ))}
-                    <div style={{ padding: '10px 16px', textAlign: 'center' }}>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto' }}>
+                        {notifications.map(n => (
+                            <div key={n.id} style={{
+                                padding: '12px 16px', borderBottom: `1px solid rgba(255,255,255,0.03)`,
+                                cursor: 'pointer', display: 'flex', gap: 10,
+                                background: n.read ? 'transparent' : 'rgba(29,111,239,0.04)',
+                            }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = n.read ? 'transparent' : 'rgba(29,111,239,0.04)')}
+                            >
+                                <div style={{
+                                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                                    background: `${typeColors[n.type] || theme.textDim}15`,
+                                    border: `1px solid ${typeColors[n.type] || theme.textDim}25`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: typeColors[n.type] || theme.textDim,
+                                }}>
+                                    {typeIcons[n.type]}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{n.title}</span>
+                                        {!n.read && <span style={{ width: 6, height: 6, borderRadius: '50%', background: theme.accent, flexShrink: 0 }} />}
+                                    </div>
+                                    <div style={{ fontSize: 11, color: theme.textSecondary, lineHeight: 1.4 }}>{n.body}</div>
+                                    <div style={{ fontSize: 10, color: theme.textDim, marginTop: 4 }}>{n.time}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ padding: '10px 16px', textAlign: 'center', borderTop: `1px solid ${theme.border}`, flexShrink: 0 }}>
                         <button onClick={() => { setOpen(false); router.visit('/notifications'); }} style={{
                             background: 'none', border: 'none', color: theme.accent, fontSize: 12,
                             fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',

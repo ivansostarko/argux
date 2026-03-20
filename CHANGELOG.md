@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.2 - 2026-03-20
+
+### Changed
+- Header notification dropdown: updated mock data to System update, Storage, New User, Security, Device, Backup categories with typed icons. Added "Read all" button in dropdown header.
+- Notifications route now renders dedicated Notifications page instead of Dashboard placeholder.
+
+### Added
+- Notifications page (/notifications) with filter tabs: All, Unread, Critical, Warning, Info. Includes 20 realistic mock notifications with severity badges, type badges, source labels, timestamps, and unread dot indicators. Click to toggle read/unread. "Mark all as read" bulk action. Empty state. Footer stats.
+
 ## 0.1.1 - 2026-03-20
 
 ### Changed

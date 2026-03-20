@@ -193,7 +193,7 @@ export default function Sidebar({ collapsed, onToggle, currentPath, mobileOpen, 
                     fontSize: 10, color: theme.textDim, letterSpacing: '0.1em',
                     fontFamily: "'JetBrains Mono', monospace",
                 }}>
-                    ARGUX v0.1.1
+                    ARGUX v0.1.2
                 </div>
             )}
         </div>
