@@ -71,7 +71,7 @@ export default function PersonPrint() {
             {/* Employment */}
             {p.employment.length > 0 && <div className="print-section">
                 <div className="print-section-title">Employment History ({p.employment.length})</div>
-                <table className="print-table"><thead><tr><th>Title</th><th>Company</th><th>Location</th><th>Period</th><th>Notes</th></tr></thead><tbody>{p.employment.map(em => <tr key={em.id}><td className="cell-bold">{em.title}</td><td>{em.company}</td><td>{em.location || '—'}</td><td className="cell-mono">{em.startDate} — {em.endDate || 'Present'}</td><td className="cell-dim">{em.notes || '—'}</td></tr>)}</tbody></table>
+                <table className="print-table"><thead><tr><th>Title</th><th>Company</th><th>City</th><th>Country</th><th>Period</th><th>Notes</th></tr></thead><tbody>{p.employment.map(em => <tr key={em.id}><td className="cell-bold">{em.title}</td><td>{em.company}</td><td>{em.city || '—'}</td><td>{em.country || '—'}</td><td className="cell-mono">{em.startDate} — {em.endDate || 'Present'}</td><td className="cell-dim">{em.notes || '—'}</td></tr>)}</tbody></table>
             </div>}
 
             {/* Emails */}

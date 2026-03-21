@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.2 - 2026-03-21
+
+### Added
+- **Generate Summary button** on Person Show page: Blue accent button in the AI Summary header bar. Clicking triggers a 2-second loading animation (shimmer skeleton lines), then regenerates the summary text with an appended re-analysis timestamp and randomized confidence percentage (85–99%). Shows toast on completion. Button shows spinner icon and "Generating..." text while loading, disabled during generation.
+- **Generate Summary button** on Organization Show page: Same behavior — loading skeleton, regenerated text with confidence score, toast notification, disabled state during generation.
+
+### Changed
+- **Employment tab layout** in Person Create/Edit: Start Date and End Date fields moved to a separate row below Title and Company (was previously all in one grid). New row also includes Country (searchable dropdown with 120+ countries) and City (text input) as separate fields, replacing the single "Location" text input.
+- **PersonEmployment interface** updated: `location: string` field replaced with `city: string` and `country: string` fields.
+- **Mock employment data** updated: All 8 employment records across 4 persons now use separate `city` and `country` fields instead of combined `location` string.
+- **Person Show employment display**: Location line now renders `city, country` from separate fields (joined with comma, filtered for empty values).
+- **Person Print employment table**: Updated columns from "Location" to separate "City" and "Country" columns.
+
 ## 0.3.1 - 2026-03-21
 
 ### Added
