@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.7.0 - 2026-03-21
+
+### Added — Surveillance Devices Module
+- **Devices Index** (`/devices`): Responsive table with 20 mock surveillance devices. Columns: Name (with UUID), Type (color badge), Status (dot + label), Signal (5-bar indicator), Battery (shell graphic + percentage, "AC" for wired), Location, Assigned To (clickable person/org links), Last Seen, Edit button. Search across name/manufacturer/model/serial/assignee. Filter by device type and status dropdowns. Result count. Click row → show detail. KPI summary: total, online, offline, maintenance counts.
+- **Devices Create** (`/devices/create`): Full form with 5 sections:
+  - **Device Information**: Name (required), Type (required, 5 types), Status, Manufacturer (15 options), Model, Serial Number, Firmware Version
+  - **Network & Protocol**: Protocol (12 options), IP Address, MAC Address, Storage Capacity, Encryption toggle
+  - **Capabilities** (conditional — cameras/audio only): Resolution, Night Vision checkbox, Motion Detection checkbox
+  - **Location**: Location Name, Latitude/Longitude coordinates, Install Date
+  - **Assignment** (optional): Person (searchable dropdown, 15 persons), Organization (searchable dropdown, 10 orgs)
+  - **Notes**: free-text textarea
+- **Devices Edit** (`/devices/:id/edit`): Same form pre-populated from mock device data. Save simulates 1s delay with success toast.
+- **Devices Show** (`/devices/:id`): Full device detail page:
+  - **Header**: Type emoji icon (📡/🕵️/📹/🔒/🎙️) with color-coded background, device name, type badge, status badge with dot, UUID
+  - **Status cards** (4): Signal (5-bar + percentage), Battery (shell graphic + %), Last Seen (timestamp), Installed (date)
+  - **Detail grid** (2 columns, responsive): Hardware specs (manufacturer, model, serial, firmware, storage), Network (protocol, IP, MAC, encryption), Capabilities (resolution, night vision, motion detection — conditional), Location (name, coordinates)
+  - **Assignment section**: Clickable person/org cards with avatars that navigate to their detail pages
+  - **Notes section**: Full-width pre-wrapped text
+
+- **Device types** (5): GPS Tracker (blue 📡), Hidden Camera (red 🕵️), Public Camera (green 📹), Private Camera (amber 🔒), Audio Recorder (purple 🎙️)
+- **Device statuses** (5): Online (green), Offline (red), Maintenance (amber), Decommissioned (gray), Standby (cyan)
+- **20 mock devices** with realistic data: 5 GPS trackers (vehicles of Horvat, Kovačević, Babić, Hassan, Petrova), 3 hidden cameras (Split hotel, Cairo office, Moscow meeting room), 4 public cameras (Zagreb HQ, street, airport cargo, A1 highway), 4 private cameras (Dubai port, Rashid Holdings parking, ASG server room, Shanghai port), 4 audio recorders (Mendoza car, Al-Rashid residence, Mendoza office, Wei personal). Each with manufacturer/model, serial, firmware, protocol, IP/MAC, coordinates, storage, encryption status, install date, and detailed intel notes.
+- **DeviceForm component** (`DeviceForm.tsx`): Shared between Create and Edit. Searchable dropdowns for person/org assignment with "— None —" option. Conditional capabilities section based on device type. Form validation on name + type.
+- **Devices CSS** (`devices.css`): Signal bars, battery shell graphic, type badges, status dots, spec cards, detail grid responsive layout, form sections.
+
+### Routes Added
+- `GET /devices` → `Devices/Index`
+- `GET /devices/create` → `Devices/Create`
+- `GET /devices/:id/edit` → `Devices/Edit`
+- `GET /devices/:id` → `Devices/Show`
+
 ## 0.6.3 - 2026-03-21
 
 ### Added — EntityChat: Full Attachment Suite, Export PDF, Print View

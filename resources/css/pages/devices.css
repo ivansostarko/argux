@@ -1,0 +1,30 @@
+/* ═══════════════════════════════════════════
+   ARGUX — Devices Module
+   ═══════════════════════════════════════════ */
+
+/* Signal/Battery bars */
+.dev-signal { display: flex; gap: 2px; align-items: flex-end; height: 12px; }
+.dev-signal-bar { width: 3px; border-radius: 1px; transition: background 0.15s; }
+
+.dev-battery { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; }
+.dev-battery-shell { width: 22px; height: 10px; border: 1.5px solid var(--ax-text-dim); border-radius: 2px; position: relative; overflow: hidden; }
+.dev-battery-shell::after { content: ''; position: absolute; right: -4px; top: 2px; width: 2px; height: 4px; background: var(--ax-text-dim); border-radius: 0 1px 1px 0; }
+.dev-battery-fill { height: 100%; border-radius: 1px; transition: width 0.3s; }
+
+/* Device type badge */
+.dev-type-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+
+/* Detail grid */
+.dev-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .dev-detail-grid { grid-template-columns: 1fr; } }
+
+/* Spec card */
+.dev-spec-card { background: var(--ax-bg-input); border: 1px solid var(--ax-border); border-radius: 10px; padding: 14px 16px; }
+.dev-spec-title { font-size: 10px; font-weight: 700; color: var(--ax-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+
+/* Table status dot */
+.dev-status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+/* Form section */
+.dev-form-section { border: 1px solid var(--ax-border); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; background: var(--ax-bg-input); }
+.dev-form-section-title { font-size: 11px; font-weight: 700; color: var(--ax-text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
