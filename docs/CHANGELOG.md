@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.3 - 2026-03-21
+
+### Added
+- **Comprehensive README.md**: Full project overview with tech stack table, implemented features summary, complete route map (21 implemented + 18 planned), project structure tree, documentation index, theming table, mock data summary. Version badges.
+- **13 documentation files** in `docs/`:
+  - `INSTALLATION.md` — Prerequisites, step-by-step setup, troubleshooting table
+  - `ARCHITECTURE.md` — Design principles, data flow diagram, folder structure, state management table, CSS architecture
+  - `AUTH.md` — All 4 auth flows documented, mock credentials, session info, Keycloak notes
+  - `API.md` — Response format contracts (list/action/error), current endpoints, planned mock API routes
+  - `BUILD.md` — Vite config, CSS pipeline (6 import layers), TypeScript setup, asset locations
+  - `DATABASE.md` — Mock data strategy, all interfaces listed, reference arrays with counts, color maps, cross-reference documentation
+  - `ENVIRONMENT.md` — All env variables with defaults, explicitly lists variables NOT needed
+  - `DEPLOYMENT.md` — Production build steps, Nginx config, air-gap deployment notes, classification requirements
+  - `DOCKER.md` — docker-compose.yml, Dockerfile, multi-stage production build, Kubernetes notes
+  - `GIT.md` — Branch strategy, Conventional Commits with type table, tagging process, PR template
+  - `QUEUE.md` — Mock job pattern with code example, simulated operations table, production Kafka target
+  - `RELEASE.md` — Semver rules, release checklist, version file locations table
+  - `CHANGELOG.md` — Symlink to root CHANGELOG.md
+
+### Changed
+- **Vehicle Show page** (`/vehicles/:id`): Replaced hero photo layout with gallery grid using the shared `VehiclePhotos` component. Photos now display as a grid of clickable cards with hover overlay (view/expand), consistent with the Create/Edit photo gallery style. Lightbox with prev/next navigation handled by the component internally. Section header shows photo count. Empty state for vehicles without photos.
+
 ## 0.4.2 - 2026-03-21
 
 ### Added
