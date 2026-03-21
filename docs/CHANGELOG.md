@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.8.0 - 2026-03-21
+
+### Added — Tactical Map Module
+- **Tactical Map page** (`/map`): Full-screen map interface built on MapLibre GL JS with CARTO Dark basemap tiles. Centered on Zagreb, Croatia (45.8150°N, 15.9819°E) at zoom 13. The map is the application's default landing page (`/` redirects to `/map`).
+
+  **MapLibre GL JS integration:**
+  - Loaded dynamically via CDN (`unpkg.com/maplibre-gl@4.7.1`) — no npm dependency required
+  - CSS and JS injected in `useEffect` on mount, map initialized after script load
+  - CARTO Dark Matter raster tiles (`basemaps.cartocdn.com/dark_all`) for tactical dark aesthetic
+  - Built-in controls: NavigationControl (zoom + compass, top-right), ScaleControl (metric, bottom-right), AttributionControl (compact, bottom-right)
+  - Cleanup on unmount: `map.remove()` to prevent memory leaks
+
+  **Left sidebar (300px, collapsible on mobile):**
+  - **Header**: Tactical Map brand with crosshair icon, recenter button (crosshair icon → flies back to Zagreb)
+  - **10 collapsible sections** with icons, chevron toggle, section badges:
+    1. **Period** (calendar icon, open by default): Date From / Date To inputs with dark color scheme. Quick presets: 24h, 7d, 30d buttons + Clear. Auto-populates both date fields.
+    2. **Subjects** (people icon, open by default): Persons multiselect dropdown (searchable, checkboxes, 15 persons from mock data with nationality sub-text). Selected persons shown as tag chips below dropdown with individual remove buttons. Badge count in section header.
+    3. **Sources** (waveform icon): Empty — "No source filters configured."
+    4. **Layers** (stack icon): Empty — "No custom layers configured."
+    5. **Tiles** (grid icon): Empty — "Tile source selection coming soon."
+    6. **Tools** (pencil icon): Empty — "Drawing and measurement tools coming soon."
+    7. **Intelligence** (clock icon): Empty — "Intelligence analysis panels coming soon."
+    8. **Custom Objects** (pin icon): Empty — "No custom objects placed."
+    9. **Saved Places** (marker icon): Empty — "No saved places."
+    10. **Settings** (gear icon): Empty — "Map settings coming soon."
+  - **SidebarMS component**: Multiselect dropdown optimized for sidebar width — trigger button, searchable panel with checkboxes, Clear button, selected tags below with remove.
+  - **Section component**: Collapsible with smooth chevron rotation, optional badge count, hover highlight on header.
+
+  **Map overlays:**
+  - **Coordinates bar** (bottom center): LAT, LNG, Z (zoom level) — updates on mouse move and zoom. Mono font, blurred dark background, subtle border.
+  - **Loading overlay**: Spinner + "Loading Tactical Map..." / "Initializing MapLibre GL JS" text while map loads.
+
+  **Responsive design:**
+  - Desktop: 300px fixed sidebar + flexible map area
+  - Mobile (≤768px): Sidebar becomes fixed overlay, slides in from left with box-shadow. Toggle button (hamburger) positioned top-left over map. Backdrop overlay when sidebar open.
+  - Full-screen layout: Uses negative margins to negate `ax-app-content` padding (same pattern as `/chat`).
+
+- **Map CSS** (`resources/css/pages/map.css`): Full-height flex layout, sidebar with sections, coordinates overlay, mobile responsive transitions, multiselect panel styles, tag chips, collapsible section animations.
+
+### Routes Changed
+- `GET /map` → now renders `Map/Index` (was Dashboard placeholder)
+
 ## 0.7.2 - 2026-03-21
 
 ### Added — Devices Tab on Person & Organization Show
