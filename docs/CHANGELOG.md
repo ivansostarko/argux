@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.2 - 2026-03-21
+
+### Added
+- **Profile photo lightbox on Person Show**: Clicking the avatar in the header opens a full-screen lightbox overlay (uses shared `veh-lightbox` CSS classes). Close button in top-right. Only appears when person has an avatar. Avatar has hover scale effect (1.05x) and pointer cursor when photo exists.
+- **Logo lightbox on Organization Show**: Same lightbox behavior for organization logos. Clicking logo opens full-screen view. Hover scale effect and pointer cursor.
+- **Connections tab on Person Show**: New tab (network icon) between Vehicles and Notes. Renders `ConnectionsBubble` component scoped to `p-{id}`. Shows force-directed mini graph (340px height) of the person's direct connections with interactive canvas, plus a scrollable list of all connections below with type badge, relationship badge, strength dots, date range, notes, and click-to-navigate to connected entity.
+- **Connections tab on Organization Show**: Same tab and `ConnectionsBubble` component scoped to `o-{id}`. Shows organization's direct connections graph and list.
+- **Relationship field** added to `ConnectionEdge` interface: `relationship: Relationship` where `Relationship = 'Good' | 'Bad' | 'Neutral' | 'Unknown'`.
+- **Relationship colors**: Good = green `#22c55e`, Bad = red `#ef4444`, Neutral = amber `#f59e0b`, Unknown = gray `#6b7280`.
+- **Relationship display** across all connection views:
+  - **ConnectionsBubble** (person/org show pages): Colored relationship dot at edge midpoints. Hover shows both connection type and relationship labels. Edge list cards show relationship badge next to type badge.
+  - **Connections Index** (`/connections`): Colored relationship dot at edge midpoints on canvas. Hover shows type + relationship labels. Info panel edge items show dual badges (type + relationship) side by side.
+- **ConnectionsBubble component** (`components/connections/ConnectionsBubble.tsx`): Reusable mini force-directed graph scoped to a single entity. 340px canvas with physics simulation, hover effects, click-to-navigate to connected entities, relationship dots on edges. Below canvas: full edge list with avatars, type/relationship badges, strength, dates, notes. All cards clickable.
+- **35 edges updated** with realistic relationship values: Business partners → Good, Employees → Neutral, Lovers → Good, Criminal connections → mixed (Co-conspirators → Good, Financiers → Bad, Associates → Bad), Family → Good, Classmates/Friends → Good/Neutral, Operational → Unknown, Legal → Neutral.
+
 ## 0.5.1 - 2026-03-21
 
 ### Fixed

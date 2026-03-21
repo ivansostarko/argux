@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
-import { nodes as allNodes, edges as allEdges, connectionCategories, getConnectionColor, getConnectionCategory, type ConnectionNode } from '../../mock/connections';
+import { nodes as allNodes, edges as allEdges, connectionCategories, getConnectionColor, getConnectionCategory, relationshipColors, type ConnectionNode } from '../../mock/connections';
 import { riskColors } from '../../mock/persons';
 
 interface SimNode extends ConnectionNode { x: number; y: number; vx: number; vy: number; r: number; }
@@ -264,15 +264,24 @@ export default function ConnectionsIndex() {
                 const s = sNodes.find(n => n.id === e.source), t = sNodes.find(n => n.id === e.target);
                 if (!s || !t) continue;
                 const color = getConnectionColor(e.type);
+                const relColor = (relationshipColors as any)[e.relationship] || '#6b7280';
                 const hl = hId && (s.id === hId || t.id === hId);
                 const faded = hId && !hl;
                 ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y);
                 ctx.strokeStyle = faded ? `${color}15` : hl ? `${color}cc` : `${color}50`;
                 ctx.lineWidth = hl ? 2 + e.strength * 0.5 : 0.5 + e.strength * 0.3;
                 ctx.stroke();
+                // Relationship dot at midpoint
+                const mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2;
+                if (!faded) {
+                    ctx.beginPath(); ctx.arc(mx, my, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = `${relColor}${hl ? 'dd' : '70'}`; ctx.fill();
+                }
                 if (hl && zoomRef_.v > 0.6) {
                     ctx.font = '600 8px system-ui'; ctx.fillStyle = `${color}dd`;
-                    ctx.textAlign = 'center'; ctx.fillText(e.type, (s.x + t.x) / 2, (s.y + t.y) / 2 - 4);
+                    ctx.textAlign = 'center'; ctx.fillText(e.type, mx, my - 8);
+                    ctx.font = '500 7px system-ui'; ctx.fillStyle = `${relColor}cc`;
+                    ctx.fillText(e.relationship, mx, my + 10);
                 }
             }
 
@@ -410,11 +419,15 @@ export default function ConnectionsIndex() {
                                 const otherNode = allNodes.find(n => n.id === otherId);
                                 if (!otherNode) return null;
                                 const color = getConnectionColor(e.type);
+                                const relColor = (relationshipColors as any)[e.relationship] || '#6b7280';
                                 return (
                                     <div key={e.id} className="conn-info-edge">
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3, flexWrap: 'wrap', gap: 4 }}>
                                             <span style={{ fontSize: 12, fontWeight: 600, color: theme.text, cursor: 'pointer' }} onClick={() => { setFocusedId(otherId); setSelectedNode(allNodes.find(n => n.id === otherId) as any); setTimeout(rebuildNodes, 10); }}>{otherNode.label}</span>
-                                            <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${color}18`, color, border: `1px solid ${color}30` }}>{e.type}</span>
+                                            <div style={{ display: 'flex', gap: 3 }}>
+                                                <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${color}18`, color, border: `1px solid ${color}30` }}>{e.type}</span>
+                                                <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${relColor}18`, color: relColor, border: `1px solid ${relColor}30` }}>{e.relationship}</span>
+                                            </div>
                                         </div>
                                         <div style={{ fontSize: 10, color: theme.textDim }}>Strength: {'●'.repeat(e.strength)}{'○'.repeat(5 - e.strength)} · {e.firstSeen.slice(0, 7)} → {e.lastSeen.slice(0, 7)}</div>
                                         {e.notes && <div style={{ fontSize: 10, color: theme.textSecondary, marginTop: 3 }}>{e.notes}</div>}

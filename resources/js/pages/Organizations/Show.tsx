@@ -6,8 +6,9 @@ import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
 import { getOrgById, riskColors, type Risk, type Organization } from '../../mock/organizations';
 import { mockVehicles, riskColors as vRiskColors, statusColors as vStatusColors } from '../../mock/vehicles';
+import ConnectionsBubble from '../../components/connections/ConnectionsBubble';
 
-type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'vehicles' | 'notes';
+type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'vehicles' | 'connections' | 'notes';
 const RB = ({risk}:{risk:Risk}) => { const c=riskColors[risk]; return <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:4,background:`${c}18`,color:c,border:`1px solid ${c}30`,textTransform:'uppercase' as const}}>{risk}</span>; };
 const Field = ({label,value,mono}:{label:string;value?:string;mono?:boolean}) => value ? <div style={{marginBottom:14}}><div style={{fontSize:10,fontWeight:600,color:theme.textDim,letterSpacing:'0.08em',textTransform:'uppercase' as const,marginBottom:3}}>{label}</div><div style={{fontSize:13,color:theme.text,fontFamily:mono?"'JetBrains Mono',monospace":'inherit',wordBreak:'break-all' as const}}>{value}</div></div> : null;
 const Section = ({title,children}:{title:string;children:React.ReactNode}) => <div style={{marginBottom:24}}><div style={{fontSize:11,fontWeight:700,color:theme.textDim,letterSpacing:'0.12em',textTransform:'uppercase' as const,marginBottom:12,paddingBottom:8,borderBottom:`1px solid ${theme.border}`}}>{title}</div>{children}</div>;
@@ -26,6 +27,7 @@ const showTabs: {id:ShowTab;label:string;icon:React.ReactNode}[] = [
     {id:'social',label:'Social',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="8" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><line x1="5.8" y1="7" x2="10.2" y2="5"/><line x1="5.8" y1="9" x2="10.2" y2="11"/></svg>},
     {id:'addresses',label:'Addresses',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="2"/></svg>},
     {id:'vehicles',label:'Vehicles',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="6" width="14" height="6" rx="2"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l1.5-3h7L13 6"/></svg>},
+    {id:'connections',label:'Connections',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="8" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><line x1="5.8" y1="7" x2="10.2" y2="5"/><line x1="5.8" y1="9" x2="10.2" y2="11"/></svg>},
     {id:'notes',label:'Notes',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4z"/><polyline points="10,1 10,4 13,4"/></svg>},
 ];
 
@@ -35,6 +37,7 @@ export default function OrgShow() {
     const o = getOrgById(Number(id));
     const [tab, setTab] = useState<ShowTab>('overview');
     const [exporting, setExporting] = useState(false);
+    const [logoLightbox, setLogoLightbox] = useState(false);
     const [summaryText, setSummaryText] = useState('');
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [summaryDate, setSummaryDate] = useState(new Date().toLocaleDateString());
@@ -58,11 +61,19 @@ export default function OrgShow() {
     return (<div style={{maxWidth:1000,margin:'0 auto'}}>
         <style>{`@media(max-width:768px){.os-vtabs{display:none!important}.os-htabs{display:flex!important}.os-layout{flex-direction:column!important}.os-header-row{flex-direction:column!important}.os-header-btns{width:100%}.os-header-btns button{flex:1}}`}</style>
 
+        {/* Logo Lightbox */}
+        {logoLightbox && o.logo && (
+            <div className="veh-lightbox" onClick={() => setLogoLightbox(false)}>
+                <button className="veh-lightbox-close" onClick={() => setLogoLightbox(false)}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                <img src={o.logo} alt={o.name} onClick={e => e.stopPropagation()} style={{ borderRadius: 12 }} />
+            </div>
+        )}
+
         {/* Header */}
         <div style={{background:theme.bgInput,border:`1px solid ${theme.border}`,borderRadius:14,padding:'20px 24px',marginBottom:24}}>
             <div className="os-header-row" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16}}>
                 <div style={{display:'flex',alignItems:'center',gap:18,flex:1,minWidth:0}}>
-                    <div style={{width:68,height:68,borderRadius:12,overflow:'hidden',background:`linear-gradient(135deg, ${theme.accent}, ${theme.accent}80)`,display:'flex',alignItems:'center',justifyContent:'center',border:`3px solid ${theme.border}`,flexShrink:0}}>{o.logo ? <img src={o.logo} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <span style={{fontSize:20,fontWeight:700,color:'#fff'}}>{o.name.slice(0,2)}</span>}</div>
+                    <div onClick={() => o.logo && setLogoLightbox(true)} style={{width:68,height:68,borderRadius:12,overflow:'hidden',background:`linear-gradient(135deg, ${theme.accent}, ${theme.accent}80)`,display:'flex',alignItems:'center',justifyContent:'center',border:`3px solid ${theme.border}`,flexShrink:0,cursor:o.logo?'pointer':'default',transition:'transform 0.15s'}} onMouseEnter={e => o.logo && (e.currentTarget.style.transform='scale(1.05)')} onMouseLeave={e => (e.currentTarget.style.transform='scale(1)')}>{o.logo ? <img src={o.logo} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <span style={{fontSize:20,fontWeight:700,color:'#fff'}}>{o.name.slice(0,2)}</span>}</div>
                     <div style={{minWidth:0}}>
                         <h1 style={{fontSize:20,fontWeight:700,color:theme.text,margin:'0 0 4px'}}>{o.name}</h1>
                         <div style={{fontSize:12,color:theme.textSecondary,marginBottom:6}}>{o.industry} · {o.country}{o.ceo ? ` · CEO: ${o.ceo}` : ''}</div>
@@ -156,6 +167,8 @@ export default function OrgShow() {
                         ))}
                     </Section>;
                 })()}
+
+                {tab==='connections' && <Section title="Connections"><ConnectionsBubble entityId={`o-${o.id}`} /></Section>}
 
                 {tab==='notes' && <Section title={`Notes (${o.notes.length})`}>{o.notes.length===0 ? <p style={{fontSize:13,color:theme.textDim}}>No notes.</p> : o.notes.map(n=><div key={n.id} style={{background:theme.bgInput,border:`1px solid ${theme.border}`,borderRadius:10,padding:14,marginBottom:10}}><p style={{fontSize:13,color:theme.text,lineHeight:1.6,margin:'0 0 8px',whiteSpace:'pre-wrap' as const}}>{n.text}</p><div style={{fontSize:10,color:theme.textDim}}>Created: {new Date(n.createdAt).toLocaleString()} · Updated: {new Date(n.updatedAt).toLocaleString()}</div></div>)}</Section>}
             </div>

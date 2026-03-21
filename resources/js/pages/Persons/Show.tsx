@@ -6,8 +6,9 @@ import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
 import { getPersonById, riskColors, statusColors, type Risk, type Status, type Person } from '../../mock/persons';
 import { mockVehicles } from '../../mock/vehicles';
+import ConnectionsBubble from '../../components/connections/ConnectionsBubble';
 
-type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'employment' | 'vehicles' | 'notes';
+type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'employment' | 'vehicles' | 'connections' | 'notes';
 const RB = ({ risk }: { risk: Risk }) => { const c = riskColors[risk]; return <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: `${c}18`, color: c, border: `1px solid ${c}30`, textTransform: 'uppercase' as const }}>{risk}</span>; };
 const SB = ({ status }: { status: Status }) => { const c = statusColors[status]; return <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: `${c}18`, color: c, border: `1px solid ${c}30` }}>{status}</span>; };
 const Field = ({ label, value, mono }: { label: string; value?: string; mono?: boolean }) => value ? <div style={{ marginBottom: 14 }}><div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 3 }}>{label}</div><div style={{ fontSize: 13, color: theme.text, fontFamily: mono ? "'JetBrains Mono', monospace" : 'inherit', wordBreak: 'break-all' as const }}>{value}</div></div> : null;
@@ -33,6 +34,7 @@ const showTabs: { id: ShowTab; label: string; icon: React.ReactNode }[] = [
     { id: 'addresses', label: 'Addresses', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="2"/></svg> },
     { id: 'employment', label: 'Employment', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="12" height="9" rx="1"/><path d="M5 5V3a1 1 0 011-1h4a1 1 0 011 1v2"/></svg> },
     { id: 'vehicles', label: 'Vehicles', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="6" width="14" height="6" rx="2"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l1.5-3h7L13 6"/></svg> },
+    { id: 'connections', label: 'Connections', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="8" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><line x1="5.8" y1="7" x2="10.2" y2="5"/><line x1="5.8" y1="9" x2="10.2" y2="11"/></svg> },
     { id: 'notes', label: 'Notes', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4z"/><polyline points="10,1 10,4 13,4"/></svg> },
 ];
 
@@ -42,6 +44,7 @@ export default function PersonShow() {
     const p = getPersonById(Number(id));
     const [tab, setTab] = useState<ShowTab>('overview');
     const [exporting, setExporting] = useState(false);
+    const [avatarLightbox, setAvatarLightbox] = useState(false);
     const [summaryText, setSummaryText] = useState(p ? generateSummary(p) : '');
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [summaryDate, setSummaryDate] = useState(new Date().toLocaleDateString());
@@ -66,10 +69,18 @@ export default function PersonShow() {
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
             <style>{`@media(max-width:768px){.show-vtabs{display:none!important}.show-htabs{display:flex!important}.show-layout{flex-direction:column!important}.show-header-row{flex-direction:column!important}.show-header-btns{width:100%}.show-header-btns button{flex:1}}`}</style>
 
+            {/* Avatar Lightbox */}
+            {avatarLightbox && p.avatar && (
+                <div className="veh-lightbox" onClick={() => setAvatarLightbox(false)}>
+                    <button className="veh-lightbox-close" onClick={() => setAvatarLightbox(false)}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                    <img src={p.avatar} alt={`${p.firstName} ${p.lastName}`} onClick={e => e.stopPropagation()} style={{ borderRadius: 12 }} />
+                </div>
+            )}
+
             <div style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 14, padding: '20px 24px', marginBottom: 24 }}>
                 <div className="show-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 18, flex: 1, minWidth: 0 }}>
-                        <div style={{ width: 68, height: 68, borderRadius: '50%', overflow: 'hidden', background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}80)`, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `3px solid ${theme.border}`, flexShrink: 0 }}>{p.avatar ? <img src={p.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{p.firstName[0]}{p.lastName[0]}</span>}</div>
+                        <div onClick={() => p.avatar && setAvatarLightbox(true)} style={{ width: 68, height: 68, borderRadius: '50%', overflow: 'hidden', background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}80)`, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `3px solid ${theme.border}`, flexShrink: 0, cursor: p.avatar ? 'pointer' : 'default', transition: 'transform 0.15s' }} onMouseEnter={e => p.avatar && (e.currentTarget.style.transform = 'scale(1.05)')} onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>{p.avatar ? <img src={p.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{p.firstName[0]}{p.lastName[0]}</span>}</div>
                         <div style={{ minWidth: 0 }}>
                             <h1 style={{ fontSize: 20, fontWeight: 700, color: theme.text, margin: '0 0 4px' }}>{p.firstName} {p.middleName ? p.middleName + ' ' : ''}{p.lastName}</h1>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>{p.nickname && <span style={{ fontSize: 12, color: theme.accent, fontWeight: 600 }}>"{p.nickname}"</span>}<span style={{ fontSize: 12, color: theme.textSecondary }}>{p.nationality} · {p.gender} · {p.dob}</span></div>
@@ -205,6 +216,8 @@ export default function PersonShow() {
                             ))}
                         </Section>;
                     })()}
+
+                    {tab === 'connections' && <Section title="Connections"><ConnectionsBubble entityId={`p-${p.id}`} /></Section>}
 
                     {tab === 'notes' && <Section title={`Notes (${p.notes.length})`}>{p.notes.length === 0 ? <p style={{ fontSize: 13, color: theme.textDim }}>No notes.</p> : p.notes.map(n => <div key={n.id} style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 14, marginBottom: 10 }}><p style={{ fontSize: 13, color: theme.text, lineHeight: 1.6, margin: '0 0 8px', whiteSpace: 'pre-wrap' as const }}>{n.text}</p><div style={{ fontSize: 10, color: theme.textDim }}>Created: {new Date(n.createdAt).toLocaleString()} · Updated: {new Date(n.updatedAt).toLocaleString()}</div></div>)}</Section>}
                 </div>
