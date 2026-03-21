@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.7.1 - 2026-03-21
+
+### Fixed
+- **"+ New Device" button**: Replaced large `Button` component with compact styled button — smaller padding (7px 14px), font-size 11px, `flexShrink: 0`, aligned right in header flex row.
+
+### Changed — Devices Index Filters & Table
+- **Filter bar redesigned**: Moved into a bordered card with 2 rows of filters + summary row:
+  - **Row 1**: Name search (text input), Type (multiselect), Status (multiselect), Signal (multiselect — Excellent/Good/Fair/Weak/None levels)
+  - **Row 2**: Location (multiselect — all unique locations), Person (multiselect — all assigned persons), Organization (multiselect — all assigned orgs), Last Seen (date from → date to range pickers)
+  - **Summary row**: "X of Y devices · Z filters active" count + "Clear All Filters" button when active
+- **All multiselect dropdowns** (MSF component): Searchable, checkboxes with accent color, Clear button (red styled pill), click-outside-close, `min-width: 180px`, `z-index: 80`, shows "(N)" count when active, border highlights accent when selections exist. Empty state "No results" when search yields nothing.
+- **Date range filter**: Two date inputs with `colorScheme: dark`, arrow separator, accent border when value set. Filters `lastSeen` inclusive of from/to dates.
+- **Table responsive**: `min-width: 900px` on table with horizontal scroll wrapper (`overflowX: auto`, `-webkit-overflow-scrolling: touch`). Sticky header row with `position: sticky; top: 0`.
+- **Right-click context menu**: `onContextMenu` on each table row opens a floating menu at cursor position with 3 items:
+  - **Show Device** (eye icon) → navigates to `/devices/:id`
+  - **Edit Device** (pencil icon) → navigates to `/devices/:id/edit`
+  - **Delete Device** (trash icon, red) → opens delete confirmation modal
+  - Click-outside-close. Divider before delete. Hover highlights with appropriate colors.
+- **Actions column** added as last column (centered header): 3 icon buttons per row with tooltips:
+  - **Show Details** (eye icon) — tooltip "Show Details"
+  - **Edit Device** (pencil icon) — tooltip "Edit Device"
+  - **Delete Device** (trash icon, red) — tooltip "Delete Device"
+  - TBtn component: 26×26px, border, hover highlight, danger variant for delete. Tooltip appears above on hover with arrow-less floating label (dark bg, border, 10px font).
+- **Delete confirmation modal**: Enhanced with warning icon (red circle + trash), device name in bold, "This action cannot be undone" sub-text, Cancel + Delete Device buttons. Toast "Device deleted" on confirm.
+- **Empty state**: Enhanced with "No devices match your filters" message + "Clear Filters" button when filters are active.
+- **Row click removed** from entire row (was navigating on any click) — now only Name text is clickable to show details, preventing accidental navigation when using action buttons.
+
 ## 0.7.0 - 2026-03-21
 
 ### Added — Surveillance Devices Module
