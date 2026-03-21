@@ -6,23 +6,21 @@ import { getAIResponse, generateConvId, generateMsgId, type Conversation, type C
 
 function Md({ text }: { text: string }) { const html = text.replace(/^### (.+)$/gm, '<h3>$1</h3>').replace(/^## (.+)$/gm, '<h2>$1</h2>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/`(.+?)`/g, '<code>$1</code>').replace(/^\- (.+)$/gm, '<li>$1</li>').replace(/^\d+\. (.+)$/gm, '<li>$1</li>').replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>').replace(/\|(.+)\|/g, (m) => { const c = m.split('|').filter(Boolean).map(x => x.trim()); return `<tr>${c.map(x => x.match(/^-+$/) ? '' : `<td>${x}</td>`).join('')}</tr>`; }).replace(/\n/g, '<br/>'); return <div dangerouslySetInnerHTML={{ __html: html }} />; }
 
-function AttachIcon({ type }: { type: string }) {
-    if (type === 'image' || type === 'photo') return <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="5.5" cy="5.5" r="1.5"/><path d="M14 10l-3-3-7 7"/></svg>;
-    if (type === 'video') return <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="3" width="10" height="10" rx="1"/><path d="M11 6l4-2v8l-4-2"/></svg>;
-    if (type === 'audio') return <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 1v14M4 4v8M12 4v8M1 6v4M15 6v4"/></svg>;
-    return <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M10 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4z"/><polyline points="10,1 10,4 13,4"/></svg>;
+function AttachIcon({ type, size = 10 }: { type: string; size?: number }) {
+    if (type === 'image') return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="5.5" cy="5.5" r="1.5"/><path d="M14 10l-3-3-7 7"/></svg>;
+    if (type === 'photo') return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 10.5v3a1 1 0 01-1 1h-11a1 1 0 01-1-1v-3"/><path d="M12 5l-4-4-4 4"/><line x1="8" y1="1" x2="8" y2="11"/></svg>;
+    if (type === 'video') return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="3" width="10" height="10" rx="1"/><path d="M11 6l4-2v8l-4-2"/></svg>;
+    if (type === 'audio') return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 1v14M4 4v8M12 4v8M1 6v4M15 6v4"/></svg>;
+    return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M10 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4z"/><polyline points="10,1 10,4 13,4"/></svg>;
 }
 
-interface Props {
-    entityName: string;
-    entityType: 'person' | 'organization';
-}
+interface Props { entityName: string; entityType: 'person' | 'organization'; }
 
 export default function EntityChat({ entityName, entityType }: Props) {
     const toast = useToast();
     const [conversations, setConversations] = useState<Conversation[]>([
         { id: generateConvId(), title: `${entityName} — General Analysis`, personIds: [], orgIds: [], messages: [
-            { id: generateMsgId(), role: 'system', content: `AI Assistant context loaded for ${entityType}: **${entityName}**. All queries will be analyzed in context of this entity.`, attachments: [], timestamp: new Date(Date.now() - 86400000).toISOString() },
+            { id: generateMsgId(), role: 'system', content: `AI Assistant context loaded for ${entityType}: **${entityName}**.`, attachments: [], timestamp: new Date(Date.now() - 86400000).toISOString() },
         ], createdAt: new Date(Date.now() - 86400000).toISOString(), updatedAt: new Date(Date.now() - 86400000).toISOString() },
     ]);
     const [activeId, setActiveId] = useState(conversations[0].id);
@@ -33,6 +31,8 @@ export default function EntityChat({ entityName, entityType }: Props) {
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [recording, setRecording] = useState(false);
     const [showSidebar, setShowSidebar] = useState(true);
+    const [exporting, setExporting] = useState(false);
+    const [printView, setPrintView] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
     const recognitionRef = useRef<any>(null);
@@ -57,9 +57,11 @@ export default function EntityChat({ entityName, entityType }: Props) {
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files; if (!files) return;
-        Array.from(files).forEach(f => { const ext = f.name.split('.').pop()?.toLowerCase() || ''; let type: ChatAttachment['type'] = 'file'; if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) type = 'image'; if (['mp4','avi','mov','mkv','webm'].includes(ext)) type = 'video'; if (['mp3','wav','ogg','m4a','flac'].includes(ext)) type = 'audio'; const size = f.size > 1048576 ? `${(f.size / 1048576).toFixed(1)} MB` : `${Math.round(f.size / 1024)} KB`; setPendingFiles(prev => [...prev, { id: `file-${Date.now()}-${Math.random().toString(36).slice(2,5)}`, name: f.name, type, size }]); });
+        Array.from(files).forEach(f => { const ext = f.name.split('.').pop()?.toLowerCase() || ''; let type: ChatAttachment['type'] = 'file'; if (['jpg','jpeg','png','gif','webp','svg','bmp','tiff'].includes(ext)) type = 'image'; if (['heic','raw','cr2','nef','arw','dng'].includes(ext)) type = 'photo'; if (['mp4','avi','mov','mkv','webm','flv','wmv'].includes(ext)) type = 'video'; if (['mp3','wav','ogg','m4a','flac','aac','wma'].includes(ext)) type = 'audio'; const size = f.size > 1048576 ? `${(f.size / 1048576).toFixed(1)} MB` : `${Math.round(f.size / 1024)} KB`; setPendingFiles(prev => [...prev, { id: `f-${Date.now()}-${Math.random().toString(36).slice(2,5)}`, name: f.name, type, size }]); });
         if (fileRef.current) fileRef.current.value = '';
     };
+    const uploadWithAccept = (accept: string) => { if (!fileRef.current) return; fileRef.current.setAttribute('accept', accept); fileRef.current.click(); setTimeout(() => fileRef.current?.removeAttribute('accept'), 200); };
+
     const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
     useEffect(scrollBottom, [activeId]);
 
@@ -73,8 +75,57 @@ export default function EntityChat({ entityName, entityType }: Props) {
         r.start(); recognitionRef.current = r; setRecording(true); toast.info('Listening...', 'Speak now.');
     };
 
-    const icoStyle: React.CSSProperties = { width: 28, height: 28, borderRadius: 5, border: 'none', background: 'transparent', color: theme.textDim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.12s' };
+    const handleExportPDF = () => { setExporting(true); setTimeout(() => { setExporting(false); toast.success('PDF exported', `${activeConv?.title?.slice(0, 30) || 'conversation'}_transcript.pdf`); }, 1500); };
 
+    const icoStyle: React.CSSProperties = { width: 26, height: 26, borderRadius: 5, border: 'none', background: 'transparent', color: theme.textDim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.12s' };
+    const hdrBtn: React.CSSProperties = { width: 28, height: 28, borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.12s' };
+
+    // ═══ PRINT VIEW ═══
+    if (printView && activeConv) {
+        const msgs = activeConv.messages.filter(m => m.role !== 'system');
+        return (
+            <div className="chat-print-page" style={{ maxWidth: 800, margin: '0 auto' }}>
+                <div className="chat-print-header">
+                    <div>
+                        <div className="chat-print-brand">ARGUX TACTICAL INTELLIGENCE PLATFORM</div>
+                        <div className="chat-print-title">{activeConv.title}</div>
+                        <div className="chat-print-meta">AI Assistant · {entityType === 'person' ? 'Person' : 'Organization'}: {entityName} · {msgs.length} messages</div>
+                        <div className="chat-print-meta">Created: {new Date(activeConv.createdAt).toLocaleString()}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <div className="chat-print-meta">CONVERSATION TRANSCRIPT</div>
+                        <div className="chat-print-meta">Generated: {new Date().toLocaleString()}</div>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 8, justifyContent: 'flex-end' }} className="print-no-print">
+                            <button onClick={() => setPrintView(false)} style={{ padding: '6px 14px', borderRadius: 6, background: '#e5e7eb', color: '#333', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Back to Chat</button>
+                            <button onClick={() => window.print()} style={{ padding: '6px 14px', borderRadius: 6, background: '#1e3a5f', color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Print This Page</button>
+                        </div>
+                    </div>
+                </div>
+
+                {msgs.map(msg => (
+                    <div key={msg.id} className="chat-print-msg">
+                        <div className="chat-print-msg-header">
+                            <span className={`chat-print-msg-role ${msg.role}`}>{msg.role === 'user' ? 'Operator' : 'ARGUX AI'}</span>
+                            <span className="chat-print-msg-time">{new Date(msg.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div className="chat-print-msg-content">
+                            {msg.role === 'assistant' ? <Md text={msg.content} /> : <p style={{ margin: 0 }}>{msg.content}</p>}
+                        </div>
+                        {msg.attachments.length > 0 && <div className="chat-print-attach">
+                            {msg.attachments.map(a => <span key={a.id} className="chat-print-attach-chip">{a.type === 'image' ? '🖼️' : a.type === 'photo' ? '📷' : a.type === 'video' ? '🎬' : a.type === 'audio' ? '🎵' : '📎'} {a.name} ({a.size})</span>)}
+                        </div>}
+                    </div>
+                ))}
+
+                <div className="chat-print-footer">
+                    <span>ARGUX Surveillance Platform — CLASSIFIED // NOFORN</span>
+                    <span>Entity: {entityName} ({entityType}) · {new Date().toLocaleString()}</span>
+                </div>
+            </div>
+        );
+    }
+
+    // ═══ MAIN VIEW ═══
     return (
         <div style={{ display: 'flex', border: `1px solid ${theme.border}`, borderRadius: 10, overflow: 'hidden', height: 560, background: theme.bg }}>
             {/* Delete modal */}
@@ -88,7 +139,7 @@ export default function EntityChat({ entityName, entityType }: Props) {
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '2px 6px', scrollbarWidth: 'thin' as const }}>
                     {filteredConvs.map(c => (
-                        <div key={c.id} onClick={() => setActiveId(c.id)} style={{ padding: '8px 10px', borderRadius: 6, cursor: 'pointer', marginBottom: 2, transition: 'background 0.1s', background: activeId === c.id ? theme.accentDim : 'transparent', border: `1px solid ${activeId === c.id ? theme.accent + '30' : 'transparent'}`, position: 'relative' }} onMouseEnter={e => activeId !== c.id && (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')} onMouseLeave={e => activeId !== c.id && (e.currentTarget.style.background = 'transparent')}>
+                        <div key={c.id} onClick={() => setActiveId(c.id)} style={{ padding: '8px 10px', borderRadius: 6, cursor: 'pointer', marginBottom: 2, background: activeId === c.id ? theme.accentDim : 'transparent', border: `1px solid ${activeId === c.id ? theme.accent + '30' : 'transparent'}`, position: 'relative', transition: 'background 0.1s' }} onMouseEnter={e => activeId !== c.id && (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')} onMouseLeave={e => activeId !== c.id && (e.currentTarget.style.background = 'transparent')}>
                             <div style={{ fontSize: 11, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, paddingRight: 20 }}>{c.title}</div>
                             <div style={{ fontSize: 9, color: theme.textDim, marginTop: 2 }}>{c.messages.filter(m => m.role !== 'system').length} msgs · {new Date(c.updatedAt).toLocaleDateString()}</div>
                             <button onClick={e => { e.stopPropagation(); setDeleteId(c.id); }} style={{ position: 'absolute', top: 6, right: 6, width: 18, height: 18, borderRadius: 3, background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.4 }} onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = theme.danger; }} onMouseLeave={e => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = theme.textDim; }}><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="3,5 13,5"/><path d="M5 5V3a1 1 0 011-1h4a1 1 0 011 1v2M12 5v8a1 1 0 01-1 1H5a1 1 0 01-1-1V5"/></svg></button>
@@ -101,15 +152,17 @@ export default function EntityChat({ entityName, entityType }: Props) {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                 {/* Header */}
                 <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: theme.bgInput, flexShrink: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                        <button onClick={() => setShowSidebar(!showSidebar)} style={icoStyle} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="10" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                        <button onClick={() => setShowSidebar(!showSidebar)} style={hdrBtn} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="10" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
                         <div style={{ minWidth: 0 }}>
                             <div style={{ fontSize: 12, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{activeConv?.title || 'Select a conversation'}</div>
                             <div style={{ fontSize: 9, color: theme.textDim }}>Context: {entityName} ({entityType})</div>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                         <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 6px', borderRadius: 3, background: theme.accentDim, color: theme.accent, border: `1px solid ${theme.accent}30` }}>{entityType === 'person' ? 'PERSON' : 'ORG'}</span>
+                        <button onClick={() => activeConv && setPrintView(true)} style={hdrBtn} title="Print" onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5V1h8v4"/><rect x="2" y="5" width="12" height="6" rx="1"/><path d="M4 11v4h8v-4"/></svg></button>
+                        <button onClick={handleExportPDF} style={{ ...hdrBtn, opacity: exporting ? 0.5 : 1 }} title="Export PDF" onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{exporting ? <svg width="11" height="11" viewBox="0 0 16 16" style={{ animation: 'argux-spin 0.8s linear infinite' }}><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg> : <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 14h10"/><path d="M8 2v9"/><path d="M5 8l3 3 3-3"/></svg>}</button>
                     </div>
                 </div>
 
@@ -119,7 +172,7 @@ export default function EntityChat({ entityName, entityType }: Props) {
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
                             <div style={{ width: 48, height: 48, borderRadius: 12, background: theme.accentDim, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
                             <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>AI Assistant — {entityName}</div>
-                            <div style={{ fontSize: 12, color: theme.textSecondary, textAlign: 'center', maxWidth: 360 }}>Ask about risk assessment, connections, activity, vehicles, or upload files for analysis in context of this {entityType}.</div>
+                            <div style={{ fontSize: 12, color: theme.textSecondary, textAlign: 'center', maxWidth: 360 }}>Ask about risk assessment, connections, activity, vehicles, or upload files for analysis.</div>
                         </div>
                     )}
                     {activeConv?.messages.filter(m => m.role !== 'system').map(msg => (
@@ -139,13 +192,16 @@ export default function EntityChat({ entityName, entityType }: Props) {
                 {/* Input */}
                 <div style={{ padding: '10px 14px', borderTop: `1px solid ${theme.border}`, background: theme.bgInput, flexShrink: 0 }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
-                        <div style={{ flex: 1, background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, transition: 'border-color 0.15s' }}>
-                            {pendingFiles.length > 0 && <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{pendingFiles.map(f => <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 4, background: theme.accentDim, border: `1px solid ${theme.accent}30`, fontSize: 9, color: theme.accent }}><AttachIcon type={f.type} />{f.name.length > 15 ? f.name.slice(0, 13) + '…' : f.name}<button onClick={() => setPendingFiles(prev => prev.filter(x => x.id !== f.id))} style={{ background: 'none', border: 'none', color: theme.danger, cursor: 'pointer', display: 'flex', padding: 0 }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button></div>)}</div>}
+                        <div style={{ flex: 1, background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                            {pendingFiles.length > 0 && <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{pendingFiles.map(f => <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 4, background: theme.accentDim, border: `1px solid ${theme.accent}30`, fontSize: 9, color: theme.accent }}><AttachIcon type={f.type} size={8} /><span>{f.name.length > 15 ? f.name.slice(0, 13) + '…' : f.name}</span><button onClick={() => setPendingFiles(prev => prev.filter(x => x.id !== f.id))} style={{ background: 'none', border: 'none', color: theme.danger, cursor: 'pointer', display: 'flex', padding: 0 }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button></div>)}</div>}
                             <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder={recording ? 'Listening…' : `Ask about ${entityName}...`} rows={1} style={{ background: 'transparent', border: 'none', outline: 'none', color: theme.text, fontSize: 12, fontFamily: 'inherit', resize: 'none', minHeight: 20, maxHeight: 100, lineHeight: 1.5, width: '100%' }} />
                             <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                                 <input ref={fileRef} type="file" multiple onChange={handleFileUpload} style={{ display: 'none' }} />
-                                <button style={icoStyle} onClick={() => fileRef.current?.click()} title="Attach" onMouseEnter={e => (e.currentTarget.style.color = theme.textSecondary)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M14 8.5l-5.5 5.5a3.5 3.5 0 01-5-5l6-6a2 2 0 013 3l-6 6a.5.5 0 01-1-1l5.5-5.5"/></svg></button>
-                                <button style={icoStyle} onClick={() => { fileRef.current?.setAttribute('accept', 'image/*'); fileRef.current?.click(); setTimeout(() => fileRef.current?.removeAttribute('accept'), 100); }} title="Image" onMouseEnter={e => (e.currentTarget.style.color = theme.textSecondary)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="5.5" cy="5.5" r="1.5"/><path d="M14 10l-3-3-7 7"/></svg></button>
+                                <button style={icoStyle} onClick={() => fileRef.current?.click()} title="Attach file" onMouseEnter={e => (e.currentTarget.style.color = theme.textSecondary)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M14 8.5l-5.5 5.5a3.5 3.5 0 01-5-5l6-6a2 2 0 013 3l-6 6a.5.5 0 01-1-1l5.5-5.5"/></svg></button>
+                                <button style={icoStyle} onClick={() => uploadWithAccept('image/*')} title="Upload image" onMouseEnter={e => (e.currentTarget.style.color = theme.textSecondary)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="5.5" cy="5.5" r="1.5"/><path d="M14 10l-3-3-7 7"/></svg></button>
+                                <button style={icoStyle} onClick={() => uploadWithAccept('.heic,.raw,.cr2,.nef,.arw,.dng')} title="Upload photo (RAW)" onMouseEnter={e => (e.currentTarget.style.color = theme.textSecondary)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="12" height="10" rx="1"/><circle cx="8" cy="8" r="2.5"/><circle cx="11.5" cy="4.5" r="0.5" fill="currentColor"/></svg></button>
+                                <button style={icoStyle} onClick={() => uploadWithAccept('audio/*')} title="Upload audio" onMouseEnter={e => (e.currentTarget.style.color = theme.textSecondary)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 1v14M4 4v8M12 4v8M1 6v4M15 6v4"/></svg></button>
+                                <button style={icoStyle} onClick={() => uploadWithAccept('video/*')} title="Upload video" onMouseEnter={e => (e.currentTarget.style.color = theme.textSecondary)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="3" width="10" height="10" rx="1"/><path d="M11 6l4-2v8l-4-2"/></svg></button>
                                 <div style={{ width: 1, height: 14, background: theme.border, margin: '0 1px' }} />
                                 <button style={{ ...icoStyle, ...(recording ? { color: theme.danger, background: 'rgba(239,68,68,0.1)' } : {}) }} onClick={toggleSpeech} title={recording ? 'Stop' : 'Speech to text'} className={recording ? 'chat-input-btn recording' : ''} onMouseEnter={e => !recording && (e.currentTarget.style.color = theme.textSecondary)} onMouseLeave={e => !recording && (e.currentTarget.style.color = theme.textDim)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="1" width="6" height="8" rx="3"/><path d="M3 7a5 5 0 0010 0"/><line x1="8" y1="12" x2="8" y2="15"/><line x1="5" y1="15" x2="11" y2="15"/></svg></button>
                             </div>

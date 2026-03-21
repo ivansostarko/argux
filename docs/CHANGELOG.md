@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.6.3 - 2026-03-21
+
+### Added — EntityChat: Full Attachment Suite, Export PDF, Print View
+- **5 attachment upload buttons** in EntityChat input toolbar (was 2):
+  1. **File** (paperclip) — any file type
+  2. **Image** (landscape icon) — accepts `image/*` (jpg, png, gif, webp, svg, bmp, tiff)
+  3. **Photo** (camera icon) — accepts RAW formats (heic, raw, cr2, nef, arw, dng)
+  4. **Audio** (waveform icon) — accepts `audio/*` (mp3, wav, ogg, m4a, flac, aac, wma)
+  5. **Video** (camera/film icon) — accepts `video/*` (mp4, avi, mov, mkv, webm, flv, wmv)
+  - Each button uses `uploadWithAccept()` helper to set `accept` attribute on hidden file input
+  - File type auto-detected from extension with expanded format lists
+  - `AttachIcon` component updated with distinct icons for all 5 types including new photo (camera) icon
+  - `AttachIcon` now accepts `size` prop for flexible sizing (default 10, pending chips use 8)
+- **Export PDF button** in EntityChat header: download icon triggers simulated 1.5s export with spinner animation. Toast "PDF exported" with truncated conversation title filename.
+- **Print button** in EntityChat header: printer icon switches to inline print view within the same component (no route navigation needed).
+- **Inline print view** renders when `printView` is true:
+  - White A4 layout (`chat-print-page` CSS class) with max-width 800px centered
+  - Header: ARGUX brand, conversation title, entity name/type, message count, creation date
+  - Messages rendered chronologically: role badges (OPERATOR blue / ARGUX AI gray), timestamps, markdown rendering, attachment chips with type-specific emoji (🖼️ image, 📷 photo, 🎬 video, 🎵 audio, 📎 file)
+  - Footer: CLASSIFIED // NOFORN + entity context
+  - "Back to Chat" button (gray) returns to chat view
+  - "Print This Page" button triggers `window.print()` (both hidden via `print-no-print` class)
+
+### Changed
+- **EntityChat header** restructured: sidebar toggle + title (flex:1) on left, entity badge + print button + PDF export button on right. All action buttons use consistent `hdrBtn` style with border.
+- **Pending file chips**: `AttachIcon` uses `size={8}` for compact display.
+- **File type detection**: expanded extension lists — images: +bmp,tiff; photo: +arw,dng; video: +flv,wmv; audio: +aac,wma.
+
 ## 0.6.2 - 2026-03-21
 
 ### Added
