@@ -49,24 +49,37 @@ export default function EntityDevices({ entityId, entityType, entityName }: Prop
     const [search, setSearch] = useState('');
     const [fType, setFType] = useState<string[]>([]);
     const [fStatus, setFStatus] = useState<string[]>([]);
+    const [fSignal, setFSignal] = useState<string[]>([]);
+    const [fLocation, setFLocation] = useState<string[]>([]);
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [ctx, setCtx] = useState<{ x: number; y: number; deviceId: number } | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
+    const signalLevels = ['Excellent', 'Good', 'Fair', 'Weak', 'None'];
+    function getSignalLabel(v: number): string { if (v >= 80) return 'Excellent'; if (v >= 60) return 'Good'; if (v >= 40) return 'Fair'; if (v >= 20) return 'Weak'; return 'None'; }
+
     const filtered = allDevices.filter(d => {
-        if (search && !`${d.name} ${d.uuid} ${d.manufacturer} ${d.model}`.toLowerCase().includes(search.toLowerCase())) return false;
+        if (search && !`${d.name} ${d.uuid} ${d.manufacturer} ${d.model} ${d.serialNumber}`.toLowerCase().includes(search.toLowerCase())) return false;
         if (fType.length && !fType.includes(d.type)) return false;
         if (fStatus.length && !fStatus.includes(d.status)) return false;
+        if (fSignal.length && !fSignal.includes(getSignalLabel(d.signalStrength))) return false;
+        if (fLocation.length && !fLocation.includes(d.locationName)) return false;
+        if (dateFrom) { const df = new Date(dateFrom); if (new Date(d.lastSeen) < df) return false; }
+        if (dateTo) { const dt = new Date(dateTo + 'T23:59:59'); if (new Date(d.lastSeen) > dt) return false; }
         return true;
     });
 
-    const activeFilterCount = [fType, fStatus].filter(a => a.length > 0).length;
-    const clearAll = () => { setFType([]); setFStatus([]); };
+    const activeFilterCount = [fType, fStatus, fSignal, fLocation].filter(a => a.length > 0).length + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+    const clearAll = () => { setFType([]); setFStatus([]); setFSignal([]); setFLocation([]); setDateFrom(''); setDateTo(''); };
     const handleDelete = () => { if (!deleteId) return; const dev = allDevices.find(d => d.id === deleteId); setDeleteId(null); toast.warning('Device removed', dev?.name || ''); };
     const handleCtx = (e: React.MouseEvent, id: number) => { e.preventDefault(); setCtx({ x: e.clientX, y: e.clientY, deviceId: id }); };
 
     const typesAvail = [...new Set(allDevices.map(d => d.type))].sort();
     const statusAvail = [...new Set(allDevices.map(d => d.status))].sort();
+    const locationsAvail = [...new Set(allDevices.map(d => d.locationName))].sort();
+    const signalsAvail = [...new Set(allDevices.map(d => getSignalLabel(d.signalStrength)))];
     const counts = { total: allDevices.length, online: allDevices.filter(d => d.status === 'Online').length };
 
     if (allDevices.length === 0) {
@@ -96,16 +109,32 @@ export default function EntityDevices({ entityId, entityType, entityName }: Prop
 
             {/* Search + Filter toggle */}
             <div style={{ display: 'flex', gap: 6, marginBottom: showFilters ? 0 : 10, alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, padding: '0 8px', flex: 1 }}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="14" y2="14"/></svg><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search devices..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '7px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />{search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', display: 'flex', padding: 1 }}><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}</div>
-                {typesAvail.length > 1 && <button onClick={() => setShowFilters(!showFilters)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', borderRadius: 6, background: showFilters || activeFilterCount > 0 ? theme.accentDim : theme.bgInput, color: showFilters || activeFilterCount > 0 ? theme.accent : theme.textSecondary, border: `1px solid ${showFilters || activeFilterCount > 0 ? theme.accent + '40' : theme.border}`, fontSize: 10, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', flexShrink: 0 }}><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 3h14M3 8h10M5 13h6"/></svg>Filters{activeFilterCount > 0 && <span style={{ background: theme.accent, color: '#fff', fontSize: 8, fontWeight: 700, padding: '0 4px', borderRadius: 6, lineHeight: '14px' }}>{activeFilterCount}</span>}</button>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, padding: '0 8px', flex: 1 }}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="14" y2="14"/></svg><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, UUID, manufacturer..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '7px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />{search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', display: 'flex', padding: 1 }}><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}</div>
+                <button onClick={() => setShowFilters(!showFilters)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', borderRadius: 6, background: showFilters || activeFilterCount > 0 ? theme.accentDim : theme.bgInput, color: showFilters || activeFilterCount > 0 ? theme.accent : theme.textSecondary, border: `1px solid ${showFilters || activeFilterCount > 0 ? theme.accent + '40' : theme.border}`, fontSize: 10, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', flexShrink: 0 }}><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 3h14M3 8h10M5 13h6"/></svg>Filters{activeFilterCount > 0 && <span style={{ background: theme.accent, color: '#fff', fontSize: 8, fontWeight: 700, padding: '0 4px', borderRadius: 6, lineHeight: '14px' }}>{activeFilterCount}</span>}</button>
+                <span style={{ fontSize: 10, color: theme.textDim, flexShrink: 0 }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
             </div>
 
             {/* Collapsible filters */}
             {showFilters && <div style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10, marginTop: 6, animation: 'argux-fadeIn 0.15s ease-out' }}>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Advanced Filters</span>
+                    {activeFilterCount > 0 && <button onClick={clearAll} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', color: theme.danger, fontSize: 9, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: '2px 8px', borderRadius: 3 }}>Clear All ({activeFilterCount})</button>}
+                </div>
+                {/* Row 1: Type + Status + Signal */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
                     <MSF selected={fType} onChange={setFType} options={typesAvail} placeholder="Type" />
                     <MSF selected={fStatus} onChange={setFStatus} options={statusAvail} placeholder="Status" />
-                    {activeFilterCount > 0 && <button onClick={clearAll} style={{ background: 'none', border: 'none', color: theme.danger, fontSize: 9, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>}
+                    <MSF selected={fSignal} onChange={setFSignal} options={signalsAvail.length > 0 ? signalLevels.filter(s => signalsAvail.includes(s)) : signalLevels} placeholder="Signal" />
+                </div>
+                {/* Row 2: Location + Last Seen */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <MSF selected={fLocation} onChange={setFLocation} options={locationsAvail} placeholder="Location" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, flex: 1, minWidth: 160 }}>
+                        <div style={{ fontSize: 9, color: theme.textDim, flexShrink: 0, fontWeight: 600 }}>Last Seen</div>
+                        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" style={{ flex: 1, padding: '6px 6px', background: theme.bg, color: dateFrom ? theme.text : theme.textDim, border: `1px solid ${dateFrom ? theme.accent + '50' : theme.border}`, borderRadius: 5, fontSize: 9, fontFamily: "'JetBrains Mono', monospace", outline: 'none', colorScheme: 'dark' as any, minWidth: 0 }} />
+                        <span style={{ fontSize: 9, color: theme.textDim }}>→</span>
+                        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" style={{ flex: 1, padding: '6px 6px', background: theme.bg, color: dateTo ? theme.text : theme.textDim, border: `1px solid ${dateTo ? theme.accent + '50' : theme.border}`, borderRadius: 5, fontSize: 9, fontFamily: "'JetBrains Mono', monospace", outline: 'none', colorScheme: 'dark' as any, minWidth: 0 }} />
+                    </div>
                 </div>
             </div>}
 
