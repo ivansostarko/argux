@@ -43,6 +43,7 @@ Route::get('/persons/{id}', fn (string $id) => \Inertia\Inertia::render('Persons
 Route::get('/organizations', fn () => \Inertia\Inertia::render('Organizations/Index'))->name('organizations.index');
 Route::get('/organizations/create', fn () => \Inertia\Inertia::render('Organizations/Create'))->name('organizations.create');
 Route::get('/organizations/{id}/edit', fn (string $id) => \Inertia\Inertia::render('Organizations/Edit', ['id' => (int)$id]))->name('organizations.edit')->where('id', '[0-9]+');
+Route::get('/organizations/{id}/print', fn (string $id) => \Inertia\Inertia::render('Organizations/Print', ['id' => (int)$id]))->name('organizations.print')->where('id', '[0-9]+');
 Route::get('/organizations/{id}', fn (string $id) => \Inertia\Inertia::render('Organizations/Show', ['id' => (int)$id]))->name('organizations.show')->where('id', '[0-9]+');
 Route::get('/vehicles', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('vehicles.index');
 Route::get('/devices', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('devices.index');

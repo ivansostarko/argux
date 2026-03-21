@@ -52,6 +52,7 @@ export default function OrgShow() {
                 </div>
                 <div className="os-header-btns" style={{display:'flex',gap:6,flexWrap:'wrap',flexShrink:0}}>
                     <Button variant="secondary" onClick={()=>router.visit('/organizations')} style={{width:'auto',padding:'8px 14px',fontSize:11}}>Back</Button>
+                    <Button variant="secondary" onClick={()=>router.visit(`/organizations/${o.id}/print`)} style={{width:'auto',padding:'8px 14px',fontSize:11}}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5V1h8v4"/><rect x="2" y="5" width="12" height="6" rx="1"/><path d="M4 11v4h8v-4"/></svg>Print</Button>
                     <Button variant="secondary" onClick={()=>{setExporting(true);setTimeout(()=>{setExporting(false);toast.success('PDF exported',`${o.name}_dossier.pdf`);},1500);}} loading={exporting} style={{width:'auto',padding:'8px 14px',fontSize:11}}>Export PDF</Button>
                     <Button onClick={()=>router.visit(`/organizations/${o.id}/edit`)} style={{width:'auto',padding:'8px 14px',fontSize:11}}>Edit</Button>
                 </div>

@@ -6,7 +6,7 @@ import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
 import { getPersonById, riskColors, statusColors, type Risk, type Status, type Person } from '../../mock/persons';
 
-type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'notes';
+type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'employment' | 'notes';
 const RB = ({ risk }: { risk: Risk }) => { const c = riskColors[risk]; return <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: `${c}18`, color: c, border: `1px solid ${c}30`, textTransform: 'uppercase' as const }}>{risk}</span>; };
 const SB = ({ status }: { status: Status }) => { const c = statusColors[status]; return <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: `${c}18`, color: c, border: `1px solid ${c}30` }}>{status}</span>; };
 const Field = ({ label, value, mono }: { label: string; value?: string; mono?: boolean }) => value ? <div style={{ marginBottom: 14 }}><div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 3 }}>{label}</div><div style={{ fontSize: 13, color: theme.text, fontFamily: mono ? "'JetBrains Mono', monospace" : 'inherit', wordBreak: 'break-all' as const }}>{value}</div></div> : null;
@@ -30,6 +30,7 @@ const showTabs: { id: ShowTab; label: string; icon: React.ReactNode }[] = [
     { id: 'contacts', label: 'Contacts', icon: Icons.mail(14) },
     { id: 'social', label: 'Social', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="8" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><line x1="5.8" y1="7" x2="10.2" y2="5"/><line x1="5.8" y1="9" x2="10.2" y2="11"/></svg> },
     { id: 'addresses', label: 'Addresses', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="2"/></svg> },
+    { id: 'employment', label: 'Employment', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="12" height="9" rx="1"/><path d="M5 5V3a1 1 0 011-1h4a1 1 0 011 1v2"/></svg> },
     { id: 'notes', label: 'Notes', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4z"/><polyline points="10,1 10,4 13,4"/></svg> },
 ];
 
@@ -130,6 +131,25 @@ export default function PersonShow() {
                     {tab === 'social' && <Section title="Social Media">{p.socials.length === 0 ? <p style={{ fontSize: 13, color: theme.textDim }}>No profiles.</p> : p.socials.map(s => <div key={s.platform} style={{ marginBottom: 14 }}><h4 style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ width: 22, height: 22, borderRadius: 5, background: theme.accentDim, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: theme.accent }}>{s.platform[0]}</span>{s.platform} ({s.profiles.length})</h4>{s.profiles.map(pr => <div key={pr.id} style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, padding: '8px 14px', marginBottom: 4, fontSize: 12, color: theme.accent, wordBreak: 'break-all' as const }}>{pr.url}</div>)}</div>)}</Section>}
 
                     {tab === 'addresses' && <Section title={`Addresses (${p.addresses.length})`}>{p.addresses.length === 0 ? <p style={{ fontSize: 13, color: theme.textDim }}>No addresses.</p> : p.addresses.map((a, i) => <div key={a.id} style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 14, marginBottom: 10 }}><div style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary, marginBottom: 6 }}>#{i+1}{a.notes ? ` — ${a.notes}` : ''}</div><div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{a.address} {a.addressNumber}</div><div style={{ fontSize: 13, color: theme.textSecondary }}>{a.zipCode} {a.city}, {a.country}</div></div>)}</Section>}
+
+                    {tab === 'employment' && <Section title={`Employment History (${p.employment.length})`}>
+                        {p.employment.length === 0 ? <p style={{ fontSize: 13, color: theme.textDim }}>No employment records.</p> : p.employment.map(emp => (
+                            <div key={emp.id} style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 16, marginBottom: 10 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                                    <div>
+                                        <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{emp.title}</div>
+                                        <div style={{ fontSize: 13, color: theme.accent, fontWeight: 500, marginTop: 2 }}>{emp.company}</div>
+                                        {emp.location && <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="2"/></svg>{emp.location}</div>}
+                                    </div>
+                                    <div style={{ textAlign: 'right' as const }}>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary, fontFamily: "'JetBrains Mono', monospace" }}>{emp.startDate} — {emp.endDate || 'Present'}</span>
+                                        {!emp.endDate && <div style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: theme.successDim, color: theme.success, display: 'inline-block', marginTop: 4 }}>Current</div>}
+                                    </div>
+                                </div>
+                                {emp.notes && <div style={{ fontSize: 12, color: theme.textDim, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${theme.border}` }}>{emp.notes}</div>}
+                            </div>
+                        ))}
+                    </Section>}
 
                     {tab === 'notes' && <Section title={`Notes (${p.notes.length})`}>{p.notes.length === 0 ? <p style={{ fontSize: 13, color: theme.textDim }}>No notes.</p> : p.notes.map(n => <div key={n.id} style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 14, marginBottom: 10 }}><p style={{ fontSize: 13, color: theme.text, lineHeight: 1.6, margin: '0 0 8px', whiteSpace: 'pre-wrap' as const }}>{n.text}</p><div style={{ fontSize: 10, color: theme.textDim }}>Created: {new Date(n.createdAt).toLocaleString()} · Updated: {new Date(n.updatedAt).toLocaleString()}</div></div>)}</Section>}
                 </div>
