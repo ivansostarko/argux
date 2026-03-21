@@ -7,8 +7,9 @@ import { theme } from '../../lib/theme';
 import { getPersonById, riskColors, statusColors, type Risk, type Status, type Person } from '../../mock/persons';
 import { mockVehicles } from '../../mock/vehicles';
 import ConnectionsBubble from '../../components/connections/ConnectionsBubble';
+import EntityChat from '../../components/chat/EntityChat';
 
-type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'employment' | 'vehicles' | 'connections' | 'notes';
+type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'employment' | 'vehicles' | 'connections' | 'ai' | 'notes';
 const RB = ({ risk }: { risk: Risk }) => { const c = riskColors[risk]; return <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: `${c}18`, color: c, border: `1px solid ${c}30`, textTransform: 'uppercase' as const }}>{risk}</span>; };
 const SB = ({ status }: { status: Status }) => { const c = statusColors[status]; return <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: `${c}18`, color: c, border: `1px solid ${c}30` }}>{status}</span>; };
 const Field = ({ label, value, mono }: { label: string; value?: string; mono?: boolean }) => value ? <div style={{ marginBottom: 14 }}><div style={{ fontSize: 10, fontWeight: 600, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 3 }}>{label}</div><div style={{ fontSize: 13, color: theme.text, fontFamily: mono ? "'JetBrains Mono', monospace" : 'inherit', wordBreak: 'break-all' as const }}>{value}</div></div> : null;
@@ -35,6 +36,7 @@ const showTabs: { id: ShowTab; label: string; icon: React.ReactNode }[] = [
     { id: 'employment', label: 'Employment', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="12" height="9" rx="1"/><path d="M5 5V3a1 1 0 011-1h4a1 1 0 011 1v2"/></svg> },
     { id: 'vehicles', label: 'Vehicles', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="6" width="14" height="6" rx="2"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l1.5-3h7L13 6"/></svg> },
     { id: 'connections', label: 'Connections', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="8" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><line x1="5.8" y1="7" x2="10.2" y2="5"/><line x1="5.8" y1="9" x2="10.2" y2="11"/></svg> },
+    { id: 'ai', label: 'AI Assistant', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" transform="scale(0.625)"/><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg> },
     { id: 'notes', label: 'Notes', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4z"/><polyline points="10,1 10,4 13,4"/></svg> },
 ];
 
@@ -218,6 +220,8 @@ export default function PersonShow() {
                     })()}
 
                     {tab === 'connections' && <Section title="Connections"><ConnectionsBubble entityId={`p-${p.id}`} /></Section>}
+
+                    {tab === 'ai' && <EntityChat entityName={`${p.firstName} ${p.lastName}`} entityType="person" />}
 
                     {tab === 'notes' && <Section title={`Notes (${p.notes.length})`}>{p.notes.length === 0 ? <p style={{ fontSize: 13, color: theme.textDim }}>No notes.</p> : p.notes.map(n => <div key={n.id} style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 14, marginBottom: 10 }}><p style={{ fontSize: 13, color: theme.text, lineHeight: 1.6, margin: '0 0 8px', whiteSpace: 'pre-wrap' as const }}>{n.text}</p><div style={{ fontSize: 10, color: theme.textDim }}>Created: {new Date(n.createdAt).toLocaleString()} · Updated: {new Date(n.updatedAt).toLocaleString()}</div></div>)}</Section>}
                 </div>

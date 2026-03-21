@@ -2,7 +2,7 @@
    ARGUX — AI Assistant Chat
    ═══════════════════════════════════════════ */
 
-.chat-page { display: flex; height: calc(100vh - 60px); margin: -20px -24px; overflow: hidden; background: var(--ax-bg); }
+.chat-page { display: flex; height: calc(100vh - 56px); margin: -24px -24px -80px; overflow: hidden; background: var(--ax-bg); }
 
 /* Sidebar */
 .chat-sidebar { width: 280px; border-right: 1px solid var(--ax-border); display: flex; flex-direction: column; background: var(--ax-sidebar-bg); flex-shrink: 0; z-index: 10; }

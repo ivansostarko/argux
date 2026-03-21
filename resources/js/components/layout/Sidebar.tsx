@@ -84,7 +84,7 @@ export default function Sidebar({ collapsed, onToggle, currentPath, mobileOpen, 
                     </div>
                 ))}
             </div>
-            {!collapsed && <div style={{ padding: '10px 16px', borderTop: `1px solid ${th.border}`, fontSize: 10, color: th.textDim, letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace" }}>ARGUX v0.6.1</div>}
+            {!collapsed && <div style={{ padding: '10px 16px', borderTop: `1px solid ${th.border}`, fontSize: 10, color: th.textDim, letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace" }}>ARGUX v0.6.2</div>}
         </div>
     );
 

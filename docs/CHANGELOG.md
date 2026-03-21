@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.2 - 2026-03-21
+
+### Added
+- **AI Assistant tab on Person Show**: New "AI Assistant" tab (9th tab) between Connections and Notes. Contains a full embedded chat interface scoped to the specific person. Conversation sidebar (collapsible, 220px), message area with markdown rendering, file attachments (image/audio/video/file), speech-to-text, typing animation. Pre-initialized with a system message: "AI Assistant context loaded for person: **{Name}**". New conversations auto-title with "{Name} — {first message}". Placeholder shows "Ask about {Name}...".
+- **AI Assistant tab on Organization Show**: Same "AI Assistant" tab (8th tab) between Connections and Notes. Full embedded chat scoped to the organization. Context shows "Context: {OrgName} (organization)" in header. Entity type badge shows "ORG".
+- **EntityChat component** (`components/chat/EntityChat.tsx`): Reusable chat component accepting `entityName` and `entityType` props. Contains full chat logic extracted from `/chat` page:
+  - **Conversation sidebar** (220px, collapsible via toggle button): New conversation button, search filter, conversation list with title/message count/date, delete button (hover-reveal) with confirmation modal.
+  - **Message area**: User messages right-aligned (accent blue), assistant messages left-aligned (dark with border). Markdown rendering for AI responses (headings, bold, code, lists, tables). System messages filtered from display. Auto-scroll on new messages. Empty state with entity-specific prompt.
+  - **Input area**: Multi-line textarea (Enter to send, Shift+Enter newline), file attachments (paperclip for any file, image icon for images), speech-to-text microphone button with recording state animation, pending file chips with remove button, send button with disabled state.
+  - **Speech-to-text**: Web Speech API with continuous recognition, interim results, recording pulse animation. Placeholder changes to "Listening…" when active.
+  - **File upload**: Supports image/photo/audio/video/file types with auto-detection from extension. Shows as pending chips above textarea, then as attachment chips on sent messages.
+  - **AI responses**: Random responses from mock pool with 1.5–3s delay and typing animation.
+  - Fixed height (560px) to fit within the tab content area without affecting page scroll.
+
 ## 0.6.1 - 2026-03-21
 
 ### Fixed
