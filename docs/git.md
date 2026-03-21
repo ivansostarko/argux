@@ -1,5 +1,12 @@
 # Git
 
+### Git Config
+```bash
+ git config --global user.name "Your Name"
+ git config --global user.email you@example.com
+ git commit --amend --reset-author
+```
+
 ### Git Commit
 ```bash
 git add --all
