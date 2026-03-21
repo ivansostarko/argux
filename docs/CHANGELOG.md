@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.1 - 2026-03-21
+
+### Fixed
+- **Background broken when writing prompt**: Root cause — `chat-page`, `chat-main`, `chat-messages`, and `chat-input-area` used semi-transparent `rgba()` backgrounds that exposed broken/missing parent background. Fixed by using CSS variable `var(--ax-bg)` for chat-page, chat-main, chat-messages, and `var(--ax-header-bg)` for header and input area. All sections now have solid opaque backgrounds.
+- **Persons/Organizations dropdown menu layout broken**: Dropdowns inside the chat header were clipped by the header's `overflow` and low `z-index`. Fixed by: removing implicit overflow, adding `z-index: 20` to `.chat-header`, wrapping selects in `.chat-header-selects` with `z-index: 30`, dropdown panels use `z-index: 100` with absolute positioning and `min-width: 200px` to prevent cramped layout. Header restructured to use `.chat-header-left` (flex, min-width 0) and `.chat-header-actions` (flex-shrink 0) for proper flex behavior.
+
+### Added
+- **Speech-to-text**: Microphone button in input toolbar (separated from file buttons by a divider). Uses Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`). Click to start listening — button pulses red with `chatPulse` animation. Continuous recognition with interim results that update the input textarea in real-time. Click again to stop. Toast notification "Listening... Speak into your microphone" on start. Placeholder changes to "Listening… speak now" while recording. Graceful fallback with error toast if browser doesn't support Speech API.
+- **Print conversation** (`/chat/:convId/print`): Print icon button in chat header navigates to dedicated print page. Custom white A4 layout with: ARGUX brand header, conversation title, message count, created date, entity tags (person/org). Messages rendered chronologically with role badges (OPERATOR = blue, ARGUX AI = gray), timestamps, markdown rendering in assistant messages, attachment chips. CLASSIFIED // NOFORN footer. "Print This Page" button triggers `window.print()`.
+- **Export to PDF**: Download icon button in chat header. Simulated 1.5s export with spinner animation, toast "PDF exported" with filename.
+- **Chat CSS print layout classes**: `.chat-print-page`, `.chat-print-header`, `.chat-print-msg`, `.chat-print-msg-role` (user/assistant variants), `.chat-print-msg-content` with markdown table/heading styles, `.chat-print-attach-chip`, `.chat-print-footer`. `@page` rule with A4 margins.
+
+### Changed
+- **Header layout restructured**: Split into `.chat-header-left` (title + mobile toggle) and `.chat-header-actions` (entity selects + action buttons). Proper flex behavior prevents overflow. Mobile at 768px stacks vertically.
+- **Input toolbar**: Added vertical divider between file upload buttons and microphone. Recording state class `.chat-input-btn.recording` with red color and pulsing box-shadow animation.
+
+### Routes Added
+- `GET /chat/:convId/print` → Chat/Print
+
 ## 0.6.0 - 2026-03-21
 
 ### Added — AI Assistant Chat Module
