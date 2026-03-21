@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.5.0 - 2026-03-21
+
+### Added — Connections Graph Module
+- **Connections Graph page** (`/connections`): Full-screen interactive force-directed graph showing relationships between persons and organizations.
+  - **Canvas-based rendering** at 60fps with device pixel ratio support for crisp rendering on retina displays.
+  - **Force simulation**: Repulsion between nodes, attraction along edges (strength-weighted), center gravity. Continuous physics with velocity damping.
+  - **Node types**: Person bubbles (24px radius, dark blue fill) and Organization bubbles (30px radius, slightly lighter). Initials rendered inside. Risk-colored borders (Critical=red, High=orange, etc.). Labels + type badge below each node.
+  - **Edge rendering**: Color-coded by connection category. Line thickness based on strength (1–5). Hover highlights connected edges and shows type labels at midpoint. Non-connected edges fade to near-invisible.
+  - **Click-to-isolate**: Clicking a node filters the graph to show only that entity and its direct connections. "Show All Connections" reset button appears. Clicking again deselects.
+  - **Hover effects**: Node glow ring, edge highlighting, non-connected nodes fade to 20% opacity. Cursor changes to pointer over nodes.
+  - **Pan and zoom**: Mouse drag to pan the canvas. Scroll wheel to zoom (0.3x–3x). Zoom centers on mouse position.
+  - **Drag nodes**: Click and drag individual nodes to reposition them within the force simulation.
+  - **Search**: Text search filters graph to matching entities and their connections. Live filtering as you type.
+  - **Category filters**: Toggle visibility by connection category (Family, Personal, Professional, Criminal, Operational, Legal, Unknown). Each with colored dot indicator. Toolbar buttons with active state.
+  - **Info panel**: Right-side panel appears on node click showing: entity name, type, nationality/industry, risk badge, "View Profile" link (navigates to `/persons/:id` or `/organizations/:id`), all connections listed with type badge, strength dots (●○), date range, and notes. Click connection names to navigate to that entity.
+  - **Legend**: Bottom-left overlay showing active category colors with type counts, plus Person/Organization node indicators.
+  - **Stats bar**: Bottom-right showing Nodes count, Edges count, Zoom percentage.
+
+- **Mock connections data** (`resources/js/mock/connections.ts`):
+  - **55 connection types** across 7 categories:
+    - **Family** (23): Mother, Father, Son, Daughter, Brother, Sister, Uncle, Aunt, Cousin, Nephew, Niece, Grandfather, Grandmother, Godfather, Godmother, Step-Father, Step-Mother, Step-Brother, Step-Sister, In-Law, Guardian, Spouse, Ex-Spouse
+    - **Personal** (9): Friend, Best Friend, Acquaintance, Lover, Ex-Lover, Neighbor, Roommate, Classmate, Military Comrade
+    - **Professional** (11): Employee, Employer, Business Partner, Business Associate, Investor, Client, Supplier, Contractor, Consultant, Mentor, Protégé
+    - **Criminal** (10): Co-Conspirator, Handler, Asset, Informant, Accomplice, Suspect, Associate, Cell Member, Recruiter, Financier
+    - **Operational** (7): Co-location, Communication, Financial Transaction, Travel Companion, Shared Vehicle, Shared Property, Shared Device
+    - **Legal** (4): Legal Representative, Witness, Defendant, Plaintiff
+    - **Unknown** (1): Unknown
+  - **35 connection edges** with realistic intelligence data: strength (1–5), notes, first/last seen dates. Covers Alpha Security Group network, Rashid Holdings network, Mendoza network, Petrova/Dragon Tech connections, family relations, co-locations, financial transactions, military comrade links, legal representation.
+  - **25 nodes** derived from existing persons (15) and organizations (10) mock data.
+  - Category-to-color mapping: Family=amber, Personal=green, Professional=blue, Criminal=red, Operational=purple, Legal=cyan, Unknown=gray.
+
+- **Connections CSS** (`resources/css/pages/connections.css`): Full-height layout, toolbar with filter buttons, canvas wrapper, info panel with glassmorphism, legend overlay, stats bar, reset button. Responsive at 768px and 480px.
+
+### Routes Changed
+- `GET /connections` → now renders `Connections/Index` (was Dashboard placeholder)
+
 ## 0.4.3 - 2026-03-21
 
 ### Added
