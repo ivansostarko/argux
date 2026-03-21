@@ -9,6 +9,6 @@ git commit -m ""
 ### Git Commit
 ```bash
 git push origin HEAD
-git tag -a v0.2.4 -m "v0.2.4"
-git push origin v0.2.4
+git tag -a v0.3.0 -m "v0.3.0"
+git push origin v0.3.0
 ```

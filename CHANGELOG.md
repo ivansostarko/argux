@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.0 - 2026-03-21
+
+### Added — Organizations Module
+- **Organizations List** (`/organizations`): Sortable datatable with columns: UUID (click-to-copy), Company Logo, Company Name, Country, CEO, Industry, VAT (truncated), Website (first URL), Risk badge, Actions (Edit/View/Delete with tooltips). Skeleton loader on initial load. Right-click context menu. Responsive mobile card layout at 860px breakpoint. Pagination (10/page).
+- **Advanced Search Filters**: UUID, Company Name, CEO (text inputs); Country (multi-select, 120+ countries), Industry (multi-select, 41 industries), Risk (multi-select, 5 levels), Website (multi-select, dynamic from data). Filter counter badge shows active count.
+- **Create Organization** (`/organizations/create`): 5-tab form with vertical left tabs (horizontal on mobile):
+  - **Basic Info**: Company logo upload, Company Name, VAT, Tax Number, Industry (searchable, 41 options), Risk level, CEO (searchable dropdown from persons list), Owner (searchable from persons list), multiple Websites (add/remove).
+  - **Contacts**: Multiple emails (email, type, status, notes), Multiple phones (number, type, status, notes).
+  - **Social Media**: Facebook, LinkedIn, Instagram, TikTok, Snapchat, YouTube — each supports multiple profile URLs.
+  - **Addresses**: Multiple addresses (street, number, zip, city, country searchable, notes).
+  - **Notes**: Add/edit/delete notes with confirmation modal for deletion.
+- **Edit Organization** (`/organizations/:id/edit`): Same form pre-populated from mock data.
+- **Show Organization** (`/organizations/:id`): Header card with logo, name, industry, country, CEO, risk badge. Vertical tabs: Overview (AI summary, company info fields, websites list, linked persons with click-to-navigate to person detail), Contacts (emails/phones with type/status badges), Social Media, Addresses, Notes. Export PDF button (simulated).
+- **Mock data** (`resources/js/mock/organizations.ts`): 10 organizations across 8 countries/10 industries. Each with realistic data: Alpha Security Group (Croatia, Cybersecurity, Critical), Rashid Holdings (Saudi Arabia, Private Equity, Critical), Meridian Logistics (Germany, Low), Dragon Tech (China, IT, Medium), Falcon Trading (Egypt, High), Mendoza Import-Export (Colombia, Critical), Mitchell & Partners (UK, Legal, No Risk), Petrova Consulting (Russia, Medium), Gulf Maritime (UAE, High), Sharma Pharma (India, Low). Industries array: 41 options. Linked persons reference existing person mock data by ID.
+
+### Routes Added
+- `GET /organizations` → Organizations/Index
+- `GET /organizations/create` → Organizations/Create
+- `GET /organizations/:id/edit` → Organizations/Edit
+- `GET /organizations/:id` → Organizations/Show
+
 ## 0.2.5 - 2026-03-21
 
 ### Added
