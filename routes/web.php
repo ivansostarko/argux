@@ -47,8 +47,8 @@ Route::get('/organizations/{id}/print', fn (string $id) => \Inertia\Inertia::ren
 Route::get('/organizations/{id}', fn (string $id) => \Inertia\Inertia::render('Organizations/Show', ['id' => (int)$id]))->name('organizations.show')->where('id', '[0-9]+');
 Route::get('/vehicles', fn () => \Inertia\Inertia::render('Vehicles/Index'))->name('vehicles.index');
 Route::get('/vehicles/create', fn () => \Inertia\Inertia::render('Vehicles/Create'))->name('vehicles.create');
-Route::get('/vehicles/{id}/edit', fn (string $id) => \Inertia\Inertia::render('Vehicles/Create', ['id' => (int)$id]))->name('vehicles.edit')->where('id', '[0-9]+');
-Route::get('/vehicles/{id}', fn (string $id) => \Inertia\Inertia::render('Vehicles/Create', ['id' => (int)$id]))->name('vehicles.show')->where('id', '[0-9]+');
+Route::get('/vehicles/{id}/edit', fn (string $id) => \Inertia\Inertia::render('Vehicles/Edit', ['id' => (int)$id]))->name('vehicles.edit')->where('id', '[0-9]+');
+Route::get('/vehicles/{id}', fn (string $id) => \Inertia\Inertia::render('Vehicles/Show', ['id' => (int)$id]))->name('vehicles.show')->where('id', '[0-9]+');
 Route::get('/devices', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('devices.index');
 Route::get('/plate-recognition', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('plate-recognition');
 Route::get('/face-recognition', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('face-recognition');

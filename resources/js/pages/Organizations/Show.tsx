@@ -5,8 +5,9 @@ import { Button, Icons } from '../../components/ui';
 import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
 import { getOrgById, riskColors, type Risk, type Organization } from '../../mock/organizations';
+import { mockVehicles, riskColors as vRiskColors, statusColors as vStatusColors } from '../../mock/vehicles';
 
-type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'notes';
+type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'vehicles' | 'notes';
 const RB = ({risk}:{risk:Risk}) => { const c=riskColors[risk]; return <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:4,background:`${c}18`,color:c,border:`1px solid ${c}30`,textTransform:'uppercase' as const}}>{risk}</span>; };
 const Field = ({label,value,mono}:{label:string;value?:string;mono?:boolean}) => value ? <div style={{marginBottom:14}}><div style={{fontSize:10,fontWeight:600,color:theme.textDim,letterSpacing:'0.08em',textTransform:'uppercase' as const,marginBottom:3}}>{label}</div><div style={{fontSize:13,color:theme.text,fontFamily:mono?"'JetBrains Mono',monospace":'inherit',wordBreak:'break-all' as const}}>{value}</div></div> : null;
 const Section = ({title,children}:{title:string;children:React.ReactNode}) => <div style={{marginBottom:24}}><div style={{fontSize:11,fontWeight:700,color:theme.textDim,letterSpacing:'0.12em',textTransform:'uppercase' as const,marginBottom:12,paddingBottom:8,borderBottom:`1px solid ${theme.border}`}}>{title}</div>{children}</div>;
@@ -24,6 +25,7 @@ const showTabs: {id:ShowTab;label:string;icon:React.ReactNode}[] = [
     {id:'overview',label:'Overview',icon:Icons.user(14)},{id:'contacts',label:'Contacts',icon:Icons.mail(14)},
     {id:'social',label:'Social',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="8" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><line x1="5.8" y1="7" x2="10.2" y2="5"/><line x1="5.8" y1="9" x2="10.2" y2="11"/></svg>},
     {id:'addresses',label:'Addresses',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="2"/></svg>},
+    {id:'vehicles',label:'Vehicles',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="6" width="14" height="6" rx="2"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l1.5-3h7L13 6"/></svg>},
     {id:'notes',label:'Notes',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4z"/><polyline points="10,1 10,4 13,4"/></svg>},
 ];
 
@@ -124,6 +126,36 @@ export default function OrgShow() {
                 {tab==='social' && <Section title="Social Media">{o.socials.length===0 ? <p style={{fontSize:13,color:theme.textDim}}>No profiles.</p> : o.socials.map(s=><div key={s.platform} style={{marginBottom:14}}><h4 style={{fontSize:13,fontWeight:600,color:theme.text,marginBottom:6,display:'flex',alignItems:'center',gap:8}}><span style={{width:22,height:22,borderRadius:5,background:theme.accentDim,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,color:theme.accent}}>{s.platform[0]}</span>{s.platform} ({s.profiles.length})</h4>{s.profiles.map(pr=><div key={pr.id} style={{background:theme.bgInput,border:`1px solid ${theme.border}`,borderRadius:6,padding:'8px 14px',marginBottom:4,fontSize:12,color:theme.accent,wordBreak:'break-all' as const}}>{pr.url}</div>)}</div>)}</Section>}
 
                 {tab==='addresses' && <Section title={`Addresses (${o.addresses.length})`}>{o.addresses.length===0 ? <p style={{fontSize:13,color:theme.textDim}}>No addresses.</p> : o.addresses.map((a,i)=><div key={a.id} style={{background:theme.bgInput,border:`1px solid ${theme.border}`,borderRadius:10,padding:14,marginBottom:10}}><div style={{fontSize:11,fontWeight:600,color:theme.textSecondary,marginBottom:6}}>#{i+1}{a.notes?` — ${a.notes}`:''}</div><div style={{fontSize:14,fontWeight:600,color:theme.text}}>{a.address} {a.addressNumber}</div><div style={{fontSize:13,color:theme.textSecondary}}>{a.zipCode} {a.city}, {a.country}</div></div>)}</Section>}
+
+                {tab==='vehicles' && (() => {
+                    const orgVehicles = mockVehicles.filter(v => v.orgId === o.id);
+                    const colorMap: Record<string,string> = {'Black':'#111','White':'#f5f5f5','Silver':'#c0c0c0','Gray':'#808080','Red':'#dc2626','Blue':'#3b82f6','Dark Blue':'#1e40af','Green':'#22c55e','Dark Green':'#166534','Brown':'#92400e','Beige':'#d2b48c','Yellow':'#eab308','Orange':'#f97316','Gold':'#d4a017','Burgundy':'#800020','Olive':'#808000','Matte Black':'#1a1a1a','Pearl White':'#f0ece2','Champagne':'#f7e7ce','Gunmetal':'#2a3439','British Racing Green':'#004225'};
+                    return <Section title={`Vehicles (${orgVehicles.length})`}>
+                        {orgVehicles.length === 0 ? <p style={{fontSize:13,color:theme.textDim}}>No vehicles registered.</p> : orgVehicles.map(v => (
+                            <div key={v.id} onClick={() => router.visit(`/vehicles/${v.id}`)} style={{background:theme.bgInput,border:`1px solid ${theme.border}`,borderRadius:10,padding:16,marginBottom:10,cursor:'pointer',transition:'background 0.15s'}} onMouseEnter={e=>(e.currentTarget.style.background='rgba(255,255,255,0.02)')} onMouseLeave={e=>(e.currentTarget.style.background=theme.bgInput)}>
+                                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:8}}>
+                                    <div style={{display:'flex',alignItems:'center',gap:14}}>
+                                        <div style={{background:theme.bg,border:`2px solid ${theme.accent}30`,borderRadius:8,padding:'8px 14px',textAlign:'center' as const}}><div style={{fontFamily:"'JetBrains Mono', monospace",fontSize:14,fontWeight:800,color:theme.text,letterSpacing:'0.04em'}}>{v.plate}</div></div>
+                                        <div>
+                                            <div style={{fontSize:14,fontWeight:600,color:theme.text}}>{v.make} {v.model}</div>
+                                            <div style={{fontSize:12,color:theme.textSecondary,display:'flex',alignItems:'center',gap:6,marginTop:2}}>
+                                                <span>{v.type}</span><span>·</span><span>{v.year}</span><span>·</span>
+                                                <span style={{display:'inline-flex',alignItems:'center',gap:3}}><span style={{width:8,height:8,borderRadius:'50%',background:colorMap[v.color]||'#666',border:'1px solid rgba(255,255,255,0.15)',display:'inline-block'}} />{v.color}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                                        <span style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:3,background:`${vStatusColors[v.status]}18`,color:vStatusColors[v.status],border:`1px solid ${vStatusColors[v.status]}30`}}>{v.status}</span>
+                                        <span style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:3,background:`${vRiskColors[v.risk]}18`,color:vRiskColors[v.risk],border:`1px solid ${vRiskColors[v.risk]}30`,textTransform:'uppercase' as const}}>{v.risk}</span>
+                                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M6 3l5 5-5 5"/></svg>
+                                    </div>
+                                </div>
+                                {v.personName && <div style={{fontSize:11,color:theme.textSecondary,marginTop:6}}>Person: {v.personName}</div>}
+                                {v.notes && <div style={{fontSize:11,color:theme.textDim,marginTop:4,paddingTop:4,borderTop:`1px solid ${theme.border}`}}>{v.notes}</div>}
+                            </div>
+                        ))}
+                    </Section>;
+                })()}
 
                 {tab==='notes' && <Section title={`Notes (${o.notes.length})`}>{o.notes.length===0 ? <p style={{fontSize:13,color:theme.textDim}}>No notes.</p> : o.notes.map(n=><div key={n.id} style={{background:theme.bgInput,border:`1px solid ${theme.border}`,borderRadius:10,padding:14,marginBottom:10}}><p style={{fontSize:13,color:theme.text,lineHeight:1.6,margin:'0 0 8px',whiteSpace:'pre-wrap' as const}}>{n.text}</p><div style={{fontSize:10,color:theme.textDim}}>Created: {new Date(n.createdAt).toLocaleString()} · Updated: {new Date(n.updatedAt).toLocaleString()}</div></div>)}</Section>}
             </div>
