@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.6.0 - 2026-03-21
+
+### Added — AI Assistant Chat Module
+- **AI Assistant page** (`/chat`): Full-screen ChatGPT-style interface with conversation sidebar, message area, and input bar.
+  
+  **Conversation Sidebar:**
+  - Conversation list with title, message count, date, and entity tag previews (person/org chips)
+  - "New Conversation" button creates empty conversation
+  - Search filter across conversation titles
+  - Delete button (hover-reveal) with confirmation modal
+  - Active conversation highlighted with accent border
+  - Mobile: slides in from left with overlay backdrop
+
+  **Message Area:**
+  - User messages right-aligned with accent background, assistant messages left-aligned with border
+  - Avatar icons: user (person silhouette), assistant (clock/analysis icon with gradient)
+  - Markdown rendering in assistant messages: `##`/`###` headings, `**bold**`, `` `code` ``, bullet/numbered lists, tables with borders
+  - Typing indicator: 3 animated bouncing dots while AI "processes"
+  - Auto-scroll to bottom on new messages
+  - Empty state: ARGUX AI logo with description prompt
+  - Image attachments render as clickable thumbnails (120×80px) with lightbox
+  - File/audio/video attachments render as chips with type icon, name, and size
+
+  **Input Area:**
+  - Multi-line textarea with Enter to send, Shift+Enter for newline
+  - Attachment toolbar: paperclip (any file), image icon (images only), audio waveform (audio only), video camera (video only)
+  - Pending files display as removable chips above textarea with type-specific icons
+  - Send button disabled during typing animation or when empty
+  - Input area border highlights on focus
+
+  **Entity Assignment:**
+  - Persons multi-select dropdown (searchable) in chat header — assigns persons to conversation
+  - Organizations multi-select dropdown (searchable) in chat header — assigns organizations to conversation
+  - Entity tags visible in sidebar conversation items
+  - Both populated from connection nodes (15 persons, 10 organizations)
+
+  **Mock AI Responses:**
+  - 4 varied response templates: risk assessment, connection analysis, file processing summary, surveillance imagery analysis
+  - Simulated 1.5–3s response delay with typing animation
+  - Responses include markdown formatting (headings, bold, lists, tables, code)
+
+  **Mock Conversations (5):**
+  - "Alpha Security Group — Risk Assessment" — 4 messages, linked to Marko Horvat, Ivan Babić, Alpha Security Group
+  - "Mendoza Network — Movement Analysis" — 2 messages with CSV attachment, linked to Carlos Mendoza, Omar Hassan, Mendoza IE, Falcon Trading
+  - "Vehicle Registration — LPR Analysis" — 2 messages with image attachment (car_1.jpg), linked to Marko Horvat
+  - "Petrova Consulting — Background Check" — 2 messages, linked to Elena Petrova, Petrova Consulting
+  - "Gulf Maritime — Vessel Tracking" — 2 messages with Excel + video attachments, linked to Gulf Maritime, Falcon Trading
+
+- **Chat CSS** (`resources/css/pages/chat.css`): Full-height flex layout, sidebar (280px fixed), message bubbles with user/assistant styling, markdown table/heading/code styles, typing animation keyframes, attachment chips/thumbnails, input area with toolbar, entity tags, mobile responsive (sidebar slides in at 768px).
+
+### Routes Changed
+- `GET /chat` → now renders `Chat/Index` (was Dashboard placeholder)
+
 ## 0.5.3 - 2026-03-21
 
 ### Added — Connection CRUD, Graph Interactions, Print Updates
