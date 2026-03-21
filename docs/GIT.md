@@ -16,8 +16,8 @@ git commit -m ""
 ### Git Commit
 ```bash
 git push origin HEAD
-git tag -a v0.5.1 -m "v0.5.1"
-git push origin v0.5.1
+git tag -a v0.5.3 -m "v0.5.3"
+git push origin v0.5.3
 ```
 # Git Workflow
 
