@@ -1,0 +1,207 @@
+/* ═══════════════════════════════════════════
+   ARGUX — Profile Page Styles
+   ═══════════════════════════════════════════ */
+
+.profile-page { max-width: 840px; margin: 0 auto; }
+
+/* ─── Audit Logs ─── */
+.audit-table {
+    background: rgba(10,14,22,0.5);
+    border: 1px solid var(--ax-border);
+    border-radius: var(--ax-radius-xl);
+    overflow: hidden;
+}
+
+.audit-row {
+    display: grid;
+    grid-template-columns: 155px 130px 1fr 115px;
+    padding: 12px 16px;
+    align-items: center;
+    gap: 8px;
+}
+
+.audit-header {
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid var(--ax-border);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ax-text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.audit-body-row {
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-size: 12px;
+    transition: background 0.1s;
+}
+.audit-body-row:last-child { border-bottom: none; }
+.audit-body-row:hover { background: rgba(255,255,255,0.02); }
+
+.audit-time {
+    font-family: var(--ax-font-mono);
+    font-size: 11px;
+    color: var(--ax-text-sec);
+}
+
+.audit-ip-link {
+    font-family: var(--ax-font-mono);
+    font-size: 11px;
+    color: var(--ax-accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+
+@media (max-width: 768px) {
+    .audit-row { grid-template-columns: 1fr; gap: 6px; padding: 12px 14px; }
+    .audit-header { display: none !important; }
+    .audit-cell-label { display: inline !important; }
+}
+
+/* ─── Settings Theme Grid ─── */
+.settings-theme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+    gap: 10px;
+}
+
+.settings-theme-card {
+    padding: 12px;
+    border-radius: var(--ax-radius-lg);
+    cursor: pointer;
+    text-align: left;
+    font-family: var(--ax-font);
+    transition: all 0.2s;
+    border: 1.5px solid var(--ax-border);
+    background: var(--ax-bg-input);
+}
+.settings-theme-card.active { border-color: var(--ax-accent); background: var(--ax-accent-dim); }
+
+.settings-theme-swatches {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+.settings-theme-swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+}
+
+.settings-font-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.settings-font-card {
+    padding: 12px 14px;
+    border-radius: var(--ax-radius-md);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+    border: 1.5px solid var(--ax-border);
+    background: var(--ax-bg-input);
+}
+.settings-font-card.active { border-color: var(--ax-accent); background: var(--ax-accent-dim); }
+
+/* ─── Security Toggles ─── */
+.security-toggle-list {
+    background: var(--ax-bg-input);
+    border-radius: var(--ax-radius-xl);
+    padding: 4px 16px;
+    border: 1px solid var(--ax-border);
+}
+
+.security-toggle-divider {
+    height: 1px;
+    background: color-mix(in srgb, var(--ax-border) 50%, transparent);
+}
+
+/* ─── Session Card ─── */
+.session-card {
+    background: var(--ax-bg-input);
+    border-radius: var(--ax-radius-lg);
+    padding: 14px 16px;
+    border: 1px solid var(--ax-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.session-card.current { border-color: color-mix(in srgb, var(--ax-accent) 40%, transparent); }
+
+.session-card-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--ax-radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* ─── Stat Card ─── */
+.stat-card {
+    background: var(--ax-bg-input);
+    border-radius: var(--ax-radius-lg);
+    padding: 14px 16px;
+    border: 1px solid var(--ax-border);
+    flex: 1;
+    min-width: 120px;
+}
+.stat-card-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ax-text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.stat-card-value {
+    font-size: 20px;
+    font-weight: 700;
+    font-family: var(--ax-font-mono);
+}
+
+/* ─── Date Range Filter ─── */
+.date-range-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 2;
+    min-width: 240px;
+}
+.date-range-filter input {
+    flex: 1;
+    min-width: 110px;
+    color-scheme: dark;
+}
+.date-range-filter .separator {
+    font-size: 11px;
+    color: var(--ax-text-dim);
+    flex-shrink: 0;
+}
+
+/* ─── Multi Select Filter ─── */
+.multiselect-trigger {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--ax-bg-input);
+    border: 1px solid var(--ax-border);
+    border-radius: var(--ax-radius);
+    font-size: 12px;
+    font-family: var(--ax-font);
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
+.multiselect-trigger.active { border-color: color-mix(in srgb, var(--ax-accent) 60%, transparent); }

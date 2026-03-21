@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.2.4 - 2026-03-21
+
+### Changed — CSS Architecture Refactor
+Extracted all CSS into a modular file structure. Replaced monolithic inline `<style>` blocks and inline styles with reusable CSS classes backed by CSS custom properties.
+
+**New CSS file structure:**
+```
+resources/css/
+├── app.css              ← Import hub (loads all modules)
+├── variables.css        ← CSS custom properties / theme tokens
+├── base.css             ← Reset, animations, utility classes
+├── components.css       ← Buttons, inputs, badges, modals, dropdowns, toggles, cards, tooltips, context menus, search bars, toasts, section headers
+├── layout.css           ← App shell, sidebar, header, vertical tabs, horizontal tabs, responsive breakpoints
+└── pages/
+    ├── auth.css         ← Login, register, 2FA, forgot password
+    ├── persons.css      ← Table, mobile cards, filters, avatar, header card, AI summary, education, field display
+    ├── profile.css      ← Audit logs, settings themes/fonts, security toggles, sessions, stat cards, date range, multiselect
+    ├── notifications.css← Notification items, tabs, footer
+    └── print.css        ← A4 print layout, tables, badges, notes, header/footer, @page rules
+```
+
+**Key CSS classes introduced:**
+- Layout: `.ax-app-shell`, `.ax-app-main`, `.ax-app-content`, `.ax-sidebar`, `.ax-header`, `.ax-vtabs`, `.ax-htabs`
+- Components: `.ax-btn`, `.ax-btn-primary`, `.ax-btn-secondary`, `.ax-btn-danger`, `.ax-btn-sm`, `.ax-btn-icon`, `.ax-input`, `.ax-input-bare`, `.ax-select`, `.ax-textarea`, `.ax-card`, `.ax-badge`, `.ax-skeleton`, `.ax-overlay`, `.ax-modal`, `.ax-dropdown`, `.ax-checkbox`, `.ax-tooltip`, `.ax-context-menu`, `.ax-search-bar`, `.ax-toast`, `.ax-add-btn`, `.ax-remove-btn`, `.ax-empty`, `.ax-section-title`
+- Utilities: `.ax-flex`, `.ax-grid-auto`, `.ax-truncate`, `.ax-mono`, `.ax-fade-in`, `.ax-hide-mobile`, `.ax-hide-desktop`, `.ax-gap-*`, `.ax-mb-*`, `.ax-text-*`, `.ax-color-*`
+- Persons: `.persons-table`, `.persons-table-cols`, `.persons-table-row`, `.persons-mobile-cards`, `.persons-filters`, `.person-header-card`, `.person-ai-summary`, `.person-edu-card`, `.person-field`
+- Profile: `.audit-table`, `.audit-row`, `.settings-theme-grid`, `.session-card`, `.stat-card`, `.multiselect-trigger`
+- Print: `.print-page`, `.print-header`, `.print-section`, `.print-table`, `.print-note`, `.print-footer`, `.print-badge`, `.print-summary`
+
+**AppLayout changes:**
+- Removed inline `<style>` block with reset/animations/scrollbar (now in `base.css`)
+- Kept only dynamic `:root` CSS variable injection for active theme
+- Shell uses `.ax-app-shell`, `.ax-app-main`, `.ax-app-content` classes
+
+**Print page rebuilt** to use `.print-*` CSS classes instead of all-inline styles.
+
 ## 0.2.3 - 2026-03-21
 
 ### Added

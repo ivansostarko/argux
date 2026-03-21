@@ -1,0 +1,163 @@
+/* ═══════════════════════════════════════════
+   ARGUX — Auth Page Styles
+   ═══════════════════════════════════════════ */
+
+.auth-layout {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 440px;
+    position: relative;
+    z-index: 1;
+}
+
+.auth-card-inner {
+    background: rgba(10,14,22,0.85);
+    border: 1px solid rgba(30,39,54,0.6);
+    border-radius: 16px;
+    padding: 36px 32px;
+    backdrop-filter: blur(20px);
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.auth-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 6px;
+}
+
+.auth-subtitle {
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.5;
+}
+
+.auth-link {
+    color: #1d6fef;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    font-size: 13px;
+}
+.auth-link:hover { text-decoration: underline; }
+
+.auth-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 13px;
+    color: #94a3b8;
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 24px 0;
+    font-size: 11px;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #1e2736;
+}
+
+/* ─── 2FA Code Input ─── */
+.auth-2fa-grid {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.auth-2fa-input {
+    width: 48px;
+    height: 56px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--ax-font-mono);
+    background: #111827;
+    border: 1.5px solid #1e2736;
+    border-radius: 10px;
+    color: #e2e8f0;
+    outline: none;
+    transition: all 0.2s;
+}
+.auth-2fa-input:focus {
+    border-color: #1d6fef;
+    box-shadow: 0 0 0 3px rgba(29,111,239,0.14);
+}
+.auth-2fa-input.filled { border-color: rgba(34,197,94,0.5); }
+
+/* ─── Password Strength ─── */
+.auth-pw-strength {
+    margin-top: -8px;
+    margin-bottom: 16px;
+}
+
+.auth-pw-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+.auth-pw-check.passed { color: #22c55e; }
+.auth-pw-check.pending { color: #475569; }
+
+/* ─── Step Indicator ─── */
+.auth-steps {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.auth-step {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.auth-step.active { color: #1d6fef; }
+.auth-step.completed { color: #22c55e; }
+.auth-step.pending { color: #475569; }
+
+.auth-step-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+}
+.auth-step.active .auth-step-dot { background: rgba(29,111,239,0.14); color: #1d6fef; }
+.auth-step.completed .auth-step-dot { background: rgba(34,197,94,0.12); color: #22c55e; }
+.auth-step.pending .auth-step-dot { background: rgba(255,255,255,0.03); color: #475569; }
+
+/* ─── Particle Background ─── */
+.auth-particle-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+}

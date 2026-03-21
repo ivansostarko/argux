@@ -1,42 +1,23 @@
-*, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+/* ═══════════════════════════════════════════
+   ARGUX — Main Stylesheet
+   Tactical Intelligence & Surveillance Platform
+   ═══════════════════════════════════════════ */
 
-html {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
+/* 1. CSS Custom Properties / Theme Tokens */
+@import './variables.css';
 
-body {
-    font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #080a0f;
-    color: #e2e8f0;
-    overflow-x: hidden;
-}
+/* 2. Base Reset, Animations, Utilities */
+@import './base.css';
 
-::selection {
-    background: rgba(29,111,239,0.14);
-    color: #e2e8f0;
-}
+/* 3. Shared Component Styles */
+@import './components.css';
 
-::-webkit-scrollbar {
-    width: 6px;
-}
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-::-webkit-scrollbar-thumb {
-    background: #1e2736;
-    border-radius: 3px;
-}
+/* 4. Layout (Sidebar, Header, Shell) */
+@import './layout.css';
 
-input::placeholder {
-    color: #475569 !important;
-}
-
-select option {
-    background: #111827;
-    color: #e2e8f0;
-}
+/* 5. Page-Specific Styles */
+@import './pages/auth.css';
+@import './pages/persons.css';
+@import './pages/profile.css';
+@import './pages/notifications.css';
+@import './pages/print.css';

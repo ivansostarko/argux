@@ -1,0 +1,71 @@
+/* ═══════════════════════════════════════════
+   ARGUX — CSS Custom Properties / Theme Tokens
+   These are default values; AppLayout.tsx
+   overrides :root vars dynamically per theme.
+   ═══════════════════════════════════════════ */
+
+:root {
+    /* Backgrounds */
+    --ax-bg: #060810;
+    --ax-bg-card: rgba(8,12,20,0.92);
+    --ax-bg-input: #0f1520;
+    --ax-bg-input-focus: #151d2e;
+    --ax-bg-hover: rgba(255,255,255,0.02);
+    --ax-bg-overlay: rgba(0,0,0,0.6);
+    --ax-bg-dropdown: #0d1220;
+
+    /* Borders */
+    --ax-border: #1a2235;
+    --ax-border-focus: var(--ax-accent);
+
+    /* Accent */
+    --ax-accent: #3b82f6;
+    --ax-accent-dim: rgba(59,130,246,0.12);
+    --ax-accent-glow: rgba(59,130,246,0.3);
+    --ax-accent-hover: #60a5fa;
+
+    /* Text */
+    --ax-text: #e8ecf4;
+    --ax-text-sec: #8896ab;
+    --ax-text-dim: #4a5568;
+
+    /* Semantic colors */
+    --ax-danger: #f43f5e;
+    --ax-danger-dim: rgba(244,63,94,0.12);
+    --ax-success: #10b981;
+    --ax-success-dim: rgba(16,185,129,0.12);
+    --ax-warning: #f59e0b;
+    --ax-warning-dim: rgba(245,158,11,0.10);
+    --ax-cyan: #06b6d4;
+    --ax-cyan-dim: rgba(6,182,212,0.10);
+
+    /* Layout */
+    --ax-sidebar-bg: #070a12;
+    --ax-header-bg: #070a12;
+    --ax-sidebar-w: 240px;
+    --ax-sidebar-w-collapsed: 56px;
+    --ax-header-h: 48px;
+
+    /* Typography */
+    --ax-font: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --ax-font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+    /* Radii */
+    --ax-radius-sm: 4px;
+    --ax-radius: 6px;
+    --ax-radius-md: 8px;
+    --ax-radius-lg: 10px;
+    --ax-radius-xl: 12px;
+    --ax-radius-2xl: 14px;
+    --ax-radius-full: 9999px;
+
+    /* Shadows */
+    --ax-shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
+    --ax-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    --ax-shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+    --ax-shadow-xl: 0 20px 60px rgba(0,0,0,0.6);
+
+    /* Transitions */
+    --ax-transition: 0.15s ease;
+    --ax-transition-slow: 0.3s ease;
+}

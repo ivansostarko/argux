@@ -85,14 +85,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return (
         <AppSettingsContext.Provider value={{ currentTheme: t, setThemeId, currentFont: f, setFontId, dir, setDir }}>
         <ToastProvider>
-        <div dir={dir} style={{
-            display: 'flex', height: '100vh', overflow: 'hidden',
-            fontFamily: f.family, background: t.bg, color: t.text,
-            WebkitFontSmoothing: 'antialiased', direction: dir,
-        }}>
+        <div dir={dir} className="ax-app-shell" style={{ fontFamily: f.family, background: t.bg, color: t.text }}>
             <style>{`
                 :root {
                     --ax-bg: ${t.bg}; --ax-bg-card: ${t.bgCard}; --ax-bg-input: ${t.bgInput};
+                    --ax-bg-input-focus: ${t.bgInput === '#0f1520' ? '#151d2e' : t.bgInput};
                     --ax-border: ${t.border}; --ax-accent: ${t.accent}; --ax-accent-dim: ${t.accentDim};
                     --ax-accent-glow: ${t.accentGlow}; --ax-text: ${t.text}; --ax-text-sec: ${t.textSecondary};
                     --ax-text-dim: ${t.textDim}; --ax-sidebar-bg: ${t.sidebarBg}; --ax-header-bg: ${t.headerBg};
@@ -101,24 +98,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     --ax-warning: ${t.warning}; --ax-warning-dim: ${t.warningDim}; --ax-cyan: ${t.cyan};
                     --ax-font: ${f.family};
                 }
-                @keyframes argux-spin { to { transform: rotate(360deg); } }
-                @keyframes argux-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-                @keyframes argux-fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-                * { box-sizing: border-box; }
-                html, body { margin: 0; padding: 0; height: 100%; background: var(--ax-bg); }
-                body { overflow: hidden; }
-                ::selection { background: var(--ax-accent-dim); color: var(--ax-text); }
-                ::-webkit-scrollbar { width: 6px; }
-                ::-webkit-scrollbar-track { background: transparent; }
-                ::-webkit-scrollbar-thumb { background: var(--ax-border); border-radius: 3px; }
-                input::placeholder { color: var(--ax-text-dim) !important; }
+                body { background: var(--ax-bg); }
+                select option { background: var(--ax-bg-input); color: var(--ax-text); }
             `}</style>
 
             <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} currentPath={currentPath} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
 
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+            <div className="ax-app-main">
                 <AppHeader onMenuToggle={() => setMobileOpen(!mobileOpen)} />
-                <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 24, background: t.bg, WebkitOverflowScrolling: 'touch' as const, paddingBottom: 80, minHeight: 0 }}>
+                <main className="ax-app-content" style={{ background: t.bg }}>
                     {children}
                 </main>
             </div>
