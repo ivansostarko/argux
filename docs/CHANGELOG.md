@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.1 - 2026-03-21
+
+### Fixed
+- **Blank screen on node click** in Connections Graph: Root cause was the `useEffect` depending on `[focusedId, search, activeCategories]`, causing full canvas teardown/rebuild on every click. Rewrote to use refs (`focusedRef`, `filterPersonsRef`, `filterOrgsRef`, `activeCatsRef`, `hoveredRef`) for all filter state, with the draw loop reading from refs. The `useEffect` now runs once with empty dependency array `[]`. Node rebuilds triggered via `setTimeout(rebuildNodes, 10)` after state changes. No more flicker or blank screen.
+
+### Changed
+- **Replaced search input** with two multi-select dropdowns: Persons (searchable, multi-select from 15 persons) and Organizations (searchable, multi-select from 10 organizations). Selecting entities filters the graph to show only those entities and their direct connections. Both can be used simultaneously.
+- **Left-click on node** now properly isolates that entity's connections without blank screen. Click again or click "Show All Connections" to reset.
+
+### Added
+- **Right-click context menu** on person/organization nodes: Shows entity name header + "View Profile" button. Navigates to `/persons/:id` or `/organizations/:id`. Menu auto-positions to stay within viewport bounds.
+- **Mock profile photos** updated for 5 persons (Marko Horvat, Ana Kovačević, Ahmed Al-Rashid, Elena Petrova, Omar Hassan) with provided photo URL. Info panel shows avatar in header when available.
+- **Mock company logos** updated for 4 organizations (Alpha Security Group, Rashid Holdings International, Dragon Tech Solutions, Falcon Trading LLC) with provided logo URL.
+
 ## 0.5.0 - 2026-03-21
 
 ### Added — Connections Graph Module
