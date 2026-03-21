@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.7.2 - 2026-03-21
+
+### Added — Devices Tab on Person & Organization Show
+- **Devices tab on Person Show**: New "Devices" tab (monitor icon) between Vehicles and Connections (tab 7 of 10). Renders `EntityDevices` component filtered to `personId === p.id`. Shows all surveillance devices assigned to that person with full table, search, filters, context menu, actions, delete modal.
+- **Devices tab on Organization Show**: Same "Devices" tab (monitor icon) between Vehicles and Connections (tab 7 of 9). Renders `EntityDevices` filtered to `orgId === o.id`.
+- **EntityDevices component** (`components/devices/EntityDevices.tsx`): Reusable embedded devices table scoped to a specific person or organization. Full feature parity with `/devices` page:
+  - **Empty state**: When no devices assigned — icon, message "No Devices Assigned", entity name, "Assign Device" button → navigates to `/devices/create`.
+  - **Header**: Device count + online count, "Assign" button (compact).
+  - **Search bar** + collapsible **Filters toggle** button (accent when active, count badge). Filters only show Type and Status multiselect dropdowns (options derived from entity's actual devices — only shows types/statuses that exist). "Clear" link when filters active.
+  - **Responsive table** (min-width 650px with horizontal scroll): Columns — Name (clickable → show page), Type (color badge), Status (dot + label), Signal (5-bar indicator + %), Battery (shell graphic or "AC"), Location (truncated), Last Seen (mono timestamp), Actions (3 tooltip buttons: Show/Edit/Delete).
+  - **Right-click context menu**: Show Device, Edit Device, Delete Device (red with divider). Click-outside-close.
+  - **Delete confirmation modal**: Warning icon, device name bold, Cancel/Delete buttons, toast on confirm.
+  - All navigations go to main `/devices/:id` and `/devices/:id/edit` routes.
+
+### Person Show tabs (10 total)
+Overview → Contacts → Social → Addresses → Employment → Vehicles → **Devices** → Connections → AI Assistant → Notes
+
+### Organization Show tabs (9 total)
+Overview → Contacts → Social → Addresses → Vehicles → **Devices** → Connections → AI Assistant → Notes
+
 ## 0.7.1 - 2026-03-21
 
 ### Fixed

@@ -8,8 +8,9 @@ import { getOrgById, riskColors, type Risk, type Organization } from '../../mock
 import { mockVehicles, riskColors as vRiskColors, statusColors as vStatusColors } from '../../mock/vehicles';
 import ConnectionsBubble from '../../components/connections/ConnectionsBubble';
 import EntityChat from '../../components/chat/EntityChat';
+import EntityDevices from '../../components/devices/EntityDevices';
 
-type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'vehicles' | 'connections' | 'ai' | 'notes';
+type ShowTab = 'overview' | 'contacts' | 'social' | 'addresses' | 'vehicles' | 'devices' | 'connections' | 'ai' | 'notes';
 const RB = ({risk}:{risk:Risk}) => { const c=riskColors[risk]; return <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:4,background:`${c}18`,color:c,border:`1px solid ${c}30`,textTransform:'uppercase' as const}}>{risk}</span>; };
 const Field = ({label,value,mono}:{label:string;value?:string;mono?:boolean}) => value ? <div style={{marginBottom:14}}><div style={{fontSize:10,fontWeight:600,color:theme.textDim,letterSpacing:'0.08em',textTransform:'uppercase' as const,marginBottom:3}}>{label}</div><div style={{fontSize:13,color:theme.text,fontFamily:mono?"'JetBrains Mono',monospace":'inherit',wordBreak:'break-all' as const}}>{value}</div></div> : null;
 const Section = ({title,children}:{title:string;children:React.ReactNode}) => <div style={{marginBottom:24}}><div style={{fontSize:11,fontWeight:700,color:theme.textDim,letterSpacing:'0.12em',textTransform:'uppercase' as const,marginBottom:12,paddingBottom:8,borderBottom:`1px solid ${theme.border}`}}>{title}</div>{children}</div>;
@@ -28,6 +29,7 @@ const showTabs: {id:ShowTab;label:string;icon:React.ReactNode}[] = [
     {id:'social',label:'Social',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="8" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><line x1="5.8" y1="7" x2="10.2" y2="5"/><line x1="5.8" y1="9" x2="10.2" y2="11"/></svg>},
     {id:'addresses',label:'Addresses',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="2"/></svg>},
     {id:'vehicles',label:'Vehicles',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="6" width="14" height="6" rx="2"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l1.5-3h7L13 6"/></svg>},
+    {id:'devices',label:'Devices',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="8" rx="1"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="10" x2="8" y2="14"/></svg>},
     {id:'connections',label:'Connections',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="8" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><line x1="5.8" y1="7" x2="10.2" y2="5"/><line x1="5.8" y1="9" x2="10.2" y2="11"/></svg>},
     {id:'ai',label:'AI Assistant',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" transform="scale(0.625)"/><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>},
     {id:'notes',label:'Notes',icon:<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4z"/><polyline points="10,1 10,4 13,4"/></svg>},
@@ -169,6 +171,8 @@ export default function OrgShow() {
                         ))}
                     </Section>;
                 })()}
+
+                {tab==='devices' && <Section title="Surveillance Devices"><EntityDevices entityId={o.id} entityType="organization" entityName={o.name} /></Section>}
 
                 {tab==='connections' && <Section title="Connections"><ConnectionsBubble entityId={`o-${o.id}`} /></Section>}
 
