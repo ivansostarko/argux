@@ -53,9 +53,10 @@ export default function VehiclesIndex() {
     const [fMake, setFMake] = useState<string[]>([]);
     const [fYear, setFYear] = useState<string[]>([]);
     const [fRisk, setFRisk] = useState<string[]>([]);
+    const [fStatus, setFStatus] = useState<string[]>([]);
 
-    const filterCount = [fPlate].filter(Boolean).length + [fPerson, fOrg, fColor, fType, fMake, fYear, fRisk].filter(a => a.length > 0).length;
-    const clearAll = () => { setFPlate(''); setFPerson([]); setFOrg([]); setFColor([]); setFType([]); setFMake([]); setFYear([]); setFRisk([]); setSearch(''); setPage(1); };
+    const filterCount = [fPlate].filter(Boolean).length + [fPerson, fOrg, fColor, fType, fMake, fYear, fRisk, fStatus].filter(a => a.length > 0).length;
+    const clearAll = () => { setFPlate(''); setFPerson([]); setFOrg([]); setFColor([]); setFType([]); setFMake([]); setFYear([]); setFRisk([]); setFStatus([]); setSearch(''); setPage(1); };
 
     const filtered = vehicles.filter(v => {
         const q = search.toLowerCase();
@@ -67,7 +68,8 @@ export default function VehiclesIndex() {
             && (fType.length === 0 || fType.includes(v.type))
             && (fMake.length === 0 || fMake.includes(v.make))
             && (fYear.length === 0 || fYear.includes(v.year))
-            && (fRisk.length === 0 || fRisk.includes(v.risk));
+            && (fRisk.length === 0 || fRisk.includes(v.risk))
+            && (fStatus.length === 0 || fStatus.includes(v.status));
     }).sort((a, b) => { const av = (a as any)[sortCol] || ''; const bv = (b as any)[sortCol] || ''; const c = typeof av === 'string' ? av.localeCompare(bv) : av - bv; return sortDir === 'asc' ? c : -c; });
 
     const totalPages = Math.ceil(filtered.length / perPage); const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -75,7 +77,7 @@ export default function VehiclesIndex() {
     const SI = ({ col }: { col: string }) => sortCol === col ? <span style={{ fontSize: 9, marginLeft: 3 }}>{sortDir === 'asc' ? '▲' : '▼'}</span> : null;
     const inp: React.CSSProperties = { padding: '7px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', width: '100%' };
     const handleDelete = () => { if (!deleteTarget) return; const v = vehicles.find(x => x.id === deleteTarget); setVehicles(prev => prev.filter(x => x.id !== deleteTarget)); setDeleteTarget(null); toast.success('Vehicle deleted', `${v?.plate} removed.`); };
-    const gridCols = '110px minmax(100px,1fr) 90px 80px 100px 50px 55px 55px 86px';
+    const gridCols = '36px 110px minmax(100px,1fr) 90px 80px 100px 50px 55px 55px 86px';
 
     return (<div>
         <ConfirmModal open={deleteTarget !== null} title="Delete Vehicle" message={`Permanently delete ${vehicles.find(v => v.id === deleteTarget)?.plate}? This cannot be undone.`} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
@@ -103,6 +105,7 @@ export default function VehiclesIndex() {
                 <MS selected={fColor} onChange={v => { setFColor(v); setPage(1); }} options={vehicleColors} placeholder="Color" />
                 <MS selected={fYear} onChange={v => { setFYear(v); setPage(1); }} options={vehicleYears} placeholder="Year" />
                 <MS selected={fRisk} onChange={v => { setFRisk(v); setPage(1); }} options={[...risks]} placeholder="Risk" />
+                <MS selected={fStatus} onChange={v => { setFStatus(v); setPage(1); }} options={[...statuses]} placeholder="Status" />
             </div>
             {filterCount > 0 && <div style={{ marginTop: 10 }}><button onClick={clearAll} style={{ background: theme.dangerDim, border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, padding: '5px 12px', fontSize: 11, color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Clear all</button></div>}
         </div>}
@@ -112,6 +115,7 @@ export default function VehiclesIndex() {
             <div className="persons-table-wrap">
                 <div style={{ background: 'rgba(10,14,22,0.5)', border: `1px solid ${theme.border}`, borderRadius: 12, overflow: 'hidden', minWidth: 850 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: gridCols, padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderBottom: `1px solid ${theme.border}`, fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, alignItems: 'center', gap: 6 }}>
+                        <span></span>
                         <span style={{ cursor: 'pointer' }} onClick={() => toggleSort('plate')}>Plate<SI col="plate" /></span>
                         <span>Owner</span>
                         <span style={{ cursor: 'pointer' }} onClick={() => toggleSort('type')}>Type<SI col="type" /></span>
@@ -125,6 +129,7 @@ export default function VehiclesIndex() {
                     {paged.length === 0 ? <div style={{ padding: '48px 16px', textAlign: 'center' }}><div style={{ fontSize: 14, fontWeight: 600, color: theme.text, marginBottom: 4 }}>No vehicles found</div><div style={{ fontSize: 12, color: theme.textSecondary }}>Adjust search or filters.</div></div>
                     : paged.map((v, idx) => (
                         <div key={v.id} onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, id: v.id }); }} style={{ display: 'grid', gridTemplateColumns: gridCols, padding: '8px 12px', alignItems: 'center', gap: 6, borderBottom: idx < paged.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', fontSize: 11, transition: 'background 0.1s', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')} onClick={() => router.visit(`/vehicles/${v.id}`)}>
+                            <div style={{ width: 32, height: 24, borderRadius: 4, overflow: 'hidden', background: theme.bg, border: `1px solid ${theme.border}`, flexShrink: 0 }}>{v.photos[0] ? <img src={v.photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1"><rect x="1" y="6" width="14" height="6" rx="2"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l1.5-3h7L13 6"/></svg></div>}</div>
                             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{v.plate}</span>
                             <div style={{ minWidth: 0 }}>
                                 {v.personName && <div style={{ fontSize: 11, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{v.personName}</div>}

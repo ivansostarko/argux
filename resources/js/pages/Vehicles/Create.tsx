@@ -4,7 +4,8 @@ import AppLayout from '../../layouts/AppLayout';
 import { Input, Button, Icons } from '../../components/ui';
 import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
-import { risks, vehicleTypes, vehicleMakes, vehicleColors, vehicleYears, personOptions, orgOptions } from '../../mock/vehicles';
+import { risks, vehicleTypes, vehicleMakes, vehicleColors, vehicleYears, personOptions, orgOptions, statuses } from '../../mock/vehicles';
+import VehiclePhotos from '../../components/vehicles/VehiclePhotos';
 
 const Label = ({ children, required }: { children: string; required?: boolean }) => <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: theme.textSecondary, marginBottom: 5, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{children}{required && <span style={{ color: theme.danger, marginLeft: 2 }}>*</span>}</label>;
 const Sel = ({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) => <select value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>{placeholder && <option value="">{placeholder}</option>}{options.map(o => <option key={o} value={o}>{o}</option>)}</select>;
@@ -23,6 +24,8 @@ export default function VehicleCreate() {
     const [color, setColor] = useState('');
     const [vin, setVin] = useState('');
     const [risk, setRisk] = useState('');
+    const [status, setStatus] = useState('Active');
+    const [photos, setPhotos] = useState<string[]>([]);
     const [notes, setNotes] = useState('');
 
     const handleSave = () => {
@@ -44,6 +47,7 @@ export default function VehicleCreate() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
                     <div><Label required>Registration Plate</Label><input value={plate} onChange={e => setPlate(e.target.value.toUpperCase())} placeholder="ZG-1234-AB" style={{ width: '100%', padding: '10px 14px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 16, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, outline: 'none', letterSpacing: '0.05em' }} /></div>
                     <div><Label>VIN Number</Label><input value={vin} onChange={e => setVin(e.target.value.toUpperCase())} placeholder="WBAJE5C50JWD12345" maxLength={17} style={{ width: '100%', padding: '10px 14px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", outline: 'none' }} /></div>
+                    <div><Label>Status</Label><Sel value={status} onChange={setStatus} options={[...statuses]} placeholder="Select" /></div>
                 </div>
             </div>
 
@@ -67,6 +71,12 @@ export default function VehicleCreate() {
                     <div><Label>Color</Label><SearchSel value={color} onChange={setColor} options={vehicleColors} placeholder="Select color" /></div>
                     <div><Label>Risk Level</Label><Sel value={risk} onChange={setRisk} options={[...risks]} placeholder="Select" /></div>
                 </div>
+            </div>
+
+            {/* Photos */}
+            <div style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 20, marginBottom: 20 }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: theme.text, marginBottom: 14 }}>Vehicle Photos</h3>
+                <VehiclePhotos photos={photos} onPhotosChange={setPhotos} editable />
             </div>
 
             {/* Notes */}

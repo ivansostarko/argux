@@ -5,6 +5,7 @@ import { Button } from '../../components/ui';
 import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
 import { getVehicleById, risks, vehicleTypes, vehicleMakes, vehicleColors, vehicleYears, personOptions, orgOptions, statuses } from '../../mock/vehicles';
+import VehiclePhotos from '../../components/vehicles/VehiclePhotos';
 
 const Label = ({ children, required }: { children: string; required?: boolean }) => <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: theme.textSecondary, marginBottom: 5, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{children}{required && <span style={{ color: theme.danger, marginLeft: 2 }}>*</span>}</label>;
 const Sel = ({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) => <select value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>{placeholder && <option value="">{placeholder}</option>}{options.map(o => <option key={o} value={o}>{o}</option>)}</select>;
@@ -28,6 +29,7 @@ export default function VehicleEdit() {
     const [risk, setRisk] = useState(v?.risk || '');
     const [status, setStatus] = useState<string>(v?.status || 'Active');
     const [notes, setNotes] = useState(v?.notes || '');
+    const [photos, setPhotos] = useState<string[]>(v?.photos || []);
 
     if (!v) return <div style={{ textAlign: 'center', padding: '60px 20px' }}><h2 style={{ fontSize: 18, fontWeight: 700, color: theme.text }}>Vehicle Not Found</h2><p style={{ fontSize: 13, color: theme.textSecondary }}>ID {String(id)} not found.</p><Button variant="secondary" onClick={() => router.visit('/vehicles')} style={{ width: 'auto', padding: '10px 20px', marginTop: 16 }}>Back</Button></div>;
 
@@ -64,6 +66,10 @@ export default function VehicleEdit() {
                     <div><Label>Color</Label><SearchSel value={color} onChange={setColor} options={vehicleColors} placeholder="Select" /></div>
                     <div><Label>Risk</Label><Sel value={risk} onChange={setRisk} options={[...risks]} placeholder="Select" /></div>
                 </div>
+            </div>
+            <div style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 20, marginBottom: 20 }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: theme.text, marginBottom: 14 }}>Vehicle Photos</h3>
+                <VehiclePhotos photos={photos} onPhotosChange={setPhotos} editable />
             </div>
             <div style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 20 }}>
                 <h3 style={{ fontSize: 13, fontWeight: 700, color: theme.text, marginBottom: 14 }}>Notes</h3>

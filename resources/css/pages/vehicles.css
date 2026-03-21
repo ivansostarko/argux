@@ -1,0 +1,210 @@
+/* ═══════════════════════════════════════════
+   ARGUX — Vehicle Photos
+   ═══════════════════════════════════════════ */
+
+.veh-photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+}
+
+.veh-photo-card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--ax-border);
+    aspect-ratio: 4/3;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.veh-photo-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.veh-photo-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.veh-photo-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(transparent 50%, rgba(0,0,0,0.6));
+    opacity: 0;
+    transition: opacity 0.15s;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 6px;
+    gap: 4px;
+}
+.veh-photo-card:hover .veh-photo-overlay {
+    opacity: 1;
+}
+
+.veh-photo-action {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.1s;
+}
+.veh-photo-action:hover { transform: scale(1.1); }
+.veh-photo-action.delete {
+    background: rgba(239, 68, 68, 0.85);
+    color: #fff;
+}
+.veh-photo-action.view {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    color: #fff;
+}
+
+/* Upload zone */
+.veh-upload-zone {
+    border: 2px dashed var(--ax-border);
+    border-radius: 10px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.veh-upload-zone:hover {
+    border-color: var(--ax-accent);
+    background: rgba(29, 111, 239, 0.04);
+}
+
+/* Lightbox */
+.veh-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: argux-fadeIn 0.2s ease-out;
+}
+.veh-lightbox img {
+    max-width: 90vw;
+    max-height: 85vh;
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    object-fit: contain;
+}
+.veh-lightbox-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.veh-lightbox-close:hover { background: rgba(255,255,255,0.2); }
+
+.veh-lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.veh-lightbox-nav:hover { background: rgba(255,255,255,0.2); }
+.veh-lightbox-nav.prev { left: 16px; }
+.veh-lightbox-nav.next { right: 16px; }
+.veh-lightbox-counter {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+}
+
+/* Show page photo hero */
+.veh-photo-hero {
+    width: 100%;
+    max-height: 260px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--ax-border);
+    margin-bottom: 10px;
+    cursor: pointer;
+    position: relative;
+}
+.veh-photo-hero img {
+    width: 100%;
+    height: 260px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s;
+}
+.veh-photo-hero:hover img { transform: scale(1.03); }
+.veh-photo-hero-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.05em;
+}
+
+.veh-photo-thumbs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.veh-photo-thumb {
+    width: 56px;
+    height: 42px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 2px solid var(--ax-border);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.15s;
+}
+.veh-photo-thumb.active { border-color: var(--ax-accent); }
+.veh-photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+@media (max-width: 640px) {
+    .veh-photos-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+    .veh-photo-hero img { height: 180px; }
+}

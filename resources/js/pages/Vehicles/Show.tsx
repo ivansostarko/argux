@@ -5,6 +5,7 @@ import { Button } from '../../components/ui';
 import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
 import { getVehicleById, riskColors, statusColors, type Risk, type Status } from '../../mock/vehicles';
+import VehiclePhotos from '../../components/vehicles/VehiclePhotos';
 
 const RB = ({ risk }: { risk: Risk }) => { const c = riskColors[risk]; return <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: `${c}18`, color: c, border: `1px solid ${c}30`, textTransform: 'uppercase' as const }}>{risk}</span>; };
 const SB = ({ status }: { status: Status }) => { const c = statusColors[status]; return <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: `${c}18`, color: c, border: `1px solid ${c}30` }}>{status}</span>; };
@@ -18,6 +19,8 @@ export default function VehicleShow() {
     const { id } = usePage<{ id: number; [key: string]: unknown }>().props;
     const v = getVehicleById(Number(id));
     const [exporting, setExporting] = useState(false);
+    const [heroIdx, setHeroIdx] = useState(0);
+    const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
     if (!v) return <div style={{ textAlign: 'center', padding: '60px 20px' }}><h2 style={{ fontSize: 18, fontWeight: 700, color: theme.text }}>Vehicle Not Found</h2><Button variant="secondary" onClick={() => router.visit('/vehicles')} style={{ width: 'auto', padding: '10px 20px', marginTop: 16 }}>Back</Button></div>;
 
@@ -50,6 +53,29 @@ export default function VehicleShow() {
                     </div>
                 </div>
             </div>
+
+            {/* Photo Gallery */}
+            {v.photos.length > 0 && (
+                <div style={{ marginBottom: 24 }}>
+                    <div className="veh-photo-hero" onClick={() => setLightboxIdx(heroIdx)}>
+                        <img src={v.photos[heroIdx]} alt="" />
+                        <div className="veh-photo-hero-badge">{v.photos.length} PHOTO{v.photos.length > 1 ? 'S' : ''}</div>
+                    </div>
+                    {v.photos.length > 1 && <div className="veh-photo-thumbs">{v.photos.map((p, i) => (
+                        <div key={i} className={`veh-photo-thumb ${i === heroIdx ? 'active' : ''}`} onClick={() => setHeroIdx(i)}><img src={p} alt="" /></div>
+                    ))}</div>}
+                </div>
+            )}
+
+            {/* Lightbox */}
+            {lightboxIdx !== null && v.photos.length > 0 && (
+                <div className="veh-lightbox" onClick={() => setLightboxIdx(null)}>
+                    <button className="veh-lightbox-close" onClick={() => setLightboxIdx(null)}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                    {v.photos.length > 1 && <><button className="veh-lightbox-nav prev" onClick={e => { e.stopPropagation(); setLightboxIdx((lightboxIdx - 1 + v.photos.length) % v.photos.length); }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 3L5 8l5 5"/></svg></button><button className="veh-lightbox-nav next" onClick={e => { e.stopPropagation(); setLightboxIdx((lightboxIdx + 1) % v.photos.length); }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 3l5 5-5 5"/></svg></button></>}
+                    <img src={v.photos[lightboxIdx]} alt="" onClick={e => e.stopPropagation()} />
+                    <div className="veh-lightbox-counter">{lightboxIdx + 1} / {v.photos.length}</div>
+                </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 20 }}>
                 {/* Left: Vehicle Details */}
