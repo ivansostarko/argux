@@ -56,6 +56,7 @@ export default function DevicesIndex() {
     const [dateTo, setDateTo] = useState('');
     const [ctx, setCtx] = useState<{ x: number; y: number; deviceId: number } | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [showFilters, setShowFilters] = useState(false);
 
     const signalLevels = ['Excellent', 'Good', 'Fair', 'Weak', 'None'];
     const locations = [...new Set(mockDevices.map(d => d.locationName))].sort();
@@ -76,7 +77,7 @@ export default function DevicesIndex() {
     });
 
     const activeFilterCount = [fType, fStatus, fSignal, fLocation, fPerson, fOrg].filter(a => a.length > 0).length + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
-    const clearAll = () => { setSearch(''); setFType([]); setFStatus([]); setFSignal([]); setFLocation([]); setFPerson([]); setFOrg([]); setDateFrom(''); setDateTo(''); };
+    const clearAll = () => { setFType([]); setFStatus([]); setFSignal([]); setFLocation([]); setFPerson([]); setFOrg([]); setDateFrom(''); setDateTo(''); };
 
     const counts = { total: mockDevices.length, online: mockDevices.filter(d => d.status === 'Online').length, offline: mockDevices.filter(d => d.status === 'Offline').length };
 
@@ -103,32 +104,38 @@ export default function DevicesIndex() {
                 <button onClick={() => router.visit('/devices/create')} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 6, background: theme.accent, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 }}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>New Device</button>
             </div>
 
-            {/* Filters */}
-            <div style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
-                {/* Row 1: Search + Type + Status + Signal */}
+            {/* Search bar + Filter toggle */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: showFilters ? 0 : 16, alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '0 12px', flex: 1 }}><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="14" y2="14"/></svg><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, UUID, manufacturer..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '9px 0', color: theme.text, fontSize: 12, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />{search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', display: 'flex', padding: 2 }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}</div>
+                <button onClick={() => setShowFilters(!showFilters)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, background: showFilters || activeFilterCount > 0 ? theme.accentDim : theme.bgInput, color: showFilters || activeFilterCount > 0 ? theme.accent : theme.textSecondary, border: `1px solid ${showFilters || activeFilterCount > 0 ? theme.accent + '40' : theme.border}`, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0, transition: 'all 0.15s' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 3h14M3 8h10M5 13h6"/></svg>Filters{activeFilterCount > 0 && <span style={{ background: theme.accent, color: '#fff', fontSize: 9, fontWeight: 700, padding: '0 5px', borderRadius: 8, lineHeight: '16px', minWidth: 16, textAlign: 'center' }}>{activeFilterCount}</span>}</button>
+                <span style={{ fontSize: 11, color: theme.textDim, flexShrink: 0 }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+            </div>
+
+            {/* Collapsible filters panel */}
+            {showFilters && <div style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '14px 16px', marginBottom: 16, marginTop: 8, animation: 'argux-fadeIn 0.15s ease-out' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Advanced Filters</span>
+                    {activeFilterCount > 0 && <button onClick={clearAll} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', color: theme.danger, fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: '3px 10px', borderRadius: 4 }}>Clear All ({activeFilterCount})</button>}
+                </div>
+                {/* Row 1 */}
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: 6, padding: '0 10px', flex: 2, minWidth: 160 }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="14" y2="14"/></svg><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, UUID, manufacturer..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '8px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit', flex: 1, minWidth: 0 }} /></div>
                     <MSF selected={fType} onChange={setFType} options={[...deviceTypes]} placeholder="Type" />
                     <MSF selected={fStatus} onChange={setFStatus} options={[...deviceStatuses]} placeholder="Status" />
                     <MSF selected={fSignal} onChange={setFSignal} options={signalLevels} placeholder="Signal" />
-                </div>
-                {/* Row 2: Location + Person + Org + Dates */}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <MSF selected={fLocation} onChange={setFLocation} options={locations} placeholder="Location" />
+                </div>
+                {/* Row 2 */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <MSF selected={fPerson} onChange={setFPerson} options={persons} placeholder="Person" />
                     <MSF selected={fOrg} onChange={setFOrg} options={orgs} placeholder="Organization" />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, minWidth: 180 }}>
-                        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Last Seen From" style={{ flex: 1, padding: '7px 8px', background: theme.bg, color: dateFrom ? theme.text : theme.textDim, border: `1px solid ${dateFrom ? theme.accent + '50' : theme.border}`, borderRadius: 6, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', colorScheme: 'dark' as any, minWidth: 0 }} />
+                        <div style={{ fontSize: 10, color: theme.textDim, flexShrink: 0, fontWeight: 600 }}>Last Seen</div>
+                        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" style={{ flex: 1, padding: '7px 8px', background: theme.bg, color: dateFrom ? theme.text : theme.textDim, border: `1px solid ${dateFrom ? theme.accent + '50' : theme.border}`, borderRadius: 6, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', colorScheme: 'dark' as any, minWidth: 0 }} />
                         <span style={{ fontSize: 10, color: theme.textDim }}>→</span>
-                        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Last Seen To" style={{ flex: 1, padding: '7px 8px', background: theme.bg, color: dateTo ? theme.text : theme.textDim, border: `1px solid ${dateTo ? theme.accent + '50' : theme.border}`, borderRadius: 6, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', colorScheme: 'dark' as any, minWidth: 0 }} />
+                        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" style={{ flex: 1, padding: '7px 8px', background: theme.bg, color: dateTo ? theme.text : theme.textDim, border: `1px solid ${dateTo ? theme.accent + '50' : theme.border}`, borderRadius: 6, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', colorScheme: 'dark' as any, minWidth: 0 }} />
                     </div>
                 </div>
-                {/* Filter summary */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                    <span style={{ fontSize: 11, color: theme.textDim }}>{filtered.length} of {mockDevices.length} devices{activeFilterCount > 0 ? ` · ${activeFilterCount} filter${activeFilterCount > 1 ? 's' : ''} active` : ''}</span>
-                    {activeFilterCount > 0 && <button onClick={clearAll} style={{ background: 'none', border: 'none', color: theme.danger, fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: '2px 6px' }}>Clear All Filters</button>}
-                </div>
-            </div>
+            </div>}
 
             {/* Table */}
             <div style={{ border: `1px solid ${theme.border}`, borderRadius: 10, overflow: 'hidden' }}>
