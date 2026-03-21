@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { getOrgById, riskColors, type Organization } from '../../mock/organizations';
+import { edges as allEdges, nodes as allNodes, getConnectionColor, getConnectionCategory, relationshipColors } from '../../mock/connections';
 
 const statusColors: Record<string,string> = { Active:'#22c55e', Inactive:'#6b7280', Deleted:'#ef4444', Suspended:'#f59e0b', 'Under Review':'#0ea5e9' };
 
@@ -89,6 +90,23 @@ export default function OrgPrint() {
                 {o.addresses.length === 0 ? <div className="cell-muted">None recorded.</div> :
                 <table className="print-table"><thead><tr><th>#</th><th>Street</th><th>No.</th><th>Zip</th><th>City</th><th>Country</th><th>Notes</th></tr></thead><tbody>{o.addresses.map((a, i) => <tr key={a.id}><td>{i + 1}</td><td className="cell-bold">{a.address}</td><td>{a.addressNumber}</td><td>{a.zipCode}</td><td>{a.city}</td><td>{a.country}</td><td className="cell-dim">{a.notes || '—'}</td></tr>)}</tbody></table>}
             </div>
+
+            {/* Connections */}
+            {(() => {
+                const entityId = `o-${o.id}`;
+                const orgEdges = allEdges.filter(e => e.source === entityId || e.target === entityId);
+                return orgEdges.length > 0 ? (
+                    <div className="print-section">
+                        <div className="print-section-title">Connections ({orgEdges.length})</div>
+                        <table className="print-table"><thead><tr><th>Connected Entity</th><th>Type</th><th>Category</th><th>Relationship</th><th>Strength</th><th>Period</th><th>Notes</th></tr></thead><tbody>{orgEdges.map(e => {
+                            const otherId = e.source === entityId ? e.target : e.source;
+                            const other = allNodes.find(n => n.id === otherId);
+                            if (!other) return null;
+                            return <tr key={e.id}><td className="cell-bold">{other.label}<div style={{ fontSize: 8, color: '#9ca3af' }}>{other.type === 'organization' ? 'Organization' : 'Person'}</div></td><td>{e.type}</td><td>{getConnectionCategory(e.type)}</td><td>{e.relationship}</td><td>{'●'.repeat(e.strength)}{'○'.repeat(5 - e.strength)}</td><td className="cell-mono">{e.firstSeen.slice(0, 7)} → {e.lastSeen.slice(0, 7)}</td><td className="cell-dim" style={{ fontSize: 8, maxWidth: 150 }}>{e.notes || '—'}</td></tr>;
+                        })}</tbody></table>
+                    </div>
+                ) : null;
+            })()}
 
             {/* Notes */}
             <div className="print-section">

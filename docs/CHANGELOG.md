@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.3 - 2026-03-21
+
+### Added — Connection CRUD, Graph Interactions, Print Updates
+- **Add Connection**: "Add" button in the connections tab toolbar opens a modal form with: Connected Entity (searchable dropdown of all persons + organizations), Connection Type (searchable from 55 types), Relationship (Good/Bad/Neutral/Unknown toggle buttons with color indicators), Strength (1–5 clickable buttons), First Seen / Last Seen (date pickers), Notes (textarea). Saves to local state, rebuilds graph.
+- **Edit Connection**: Edit (pencil) button on each connection card opens the same modal pre-populated with existing data. Updates in-place.
+- **Delete Connection**: Delete (trash) button on each connection card triggers confirmation modal. Removes from local state and rebuilds graph.
+- **Category filters on bubble graph**: Row of filter toggle buttons above the canvas (Family, Personal, Professional, Criminal, Operational, Legal, Unknown). Each with color dot. Toggle on/off filters both the graph and the edge list below. Active filters highlighted with category color border/background.
+- **Drag and drop nodes**: Click and drag any node to reposition it within the force simulation. Dragged nodes freeze physics while held. Release resumes simulation. Center entity (larger node) can also be dragged.
+- **Zoom controls**: Three button overlay on bottom-right of canvas: + (zoom in 1.2x), − (zoom out 0.8x), FIT (reset to 1x zoom + center pan). Mouse wheel zoom also supported (0.4x–2.5x range). Pan by dragging empty canvas space.
+- **Help tooltip**: Top-left canvas overlay showing "Drag nodes · Scroll to zoom · Drag empty to pan".
+- **Connection Form Modal** (`ConnectionFormModal`): Full-featured form with searchable selects for entity and connection type, relationship toggle buttons with colored states, strength selector (1–5 numeric buttons), date inputs with dark color scheme, notes textarea. Validates required fields (entity + type).
+- **Connections section in Person Print**: Table with columns: Connected Entity (name + type), Type, Category, Relationship, Strength (dots), Period, Notes. Rendered from `allEdges` filtered to `p-{id}`.
+- **Connections section in Organization Print**: Same table layout filtered to `o-{id}`.
+
+### Changed
+- **ConnectionsBubble component** fully rebuilt: Uses refs for all filter/edge state to prevent blank screen on state changes. Single `useEffect` with `[]` dependency. Graph canvas now supports: drag-and-drop (nodes), panning (empty space), zoom (wheel + buttons), category filtering (toolbar), CRUD (add/edit/delete modals). Edge list cards now include Edit and Delete action buttons alongside type and relationship badges.
+- Canvas height increased from 340px to 360px for better visibility.
+
 ## 0.5.2 - 2026-03-21
 
 ### Added
