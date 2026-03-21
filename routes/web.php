@@ -79,6 +79,22 @@ Route::post('/locale/{locale}', function (string $locale) {
 
 /*
 |--------------------------------------------------------------------------
+| Error Page Previews (development only)
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('errors')->name('errors.')->group(function () {
+    Route::get('/403', fn () => \Inertia\Inertia::render('Errors/403'))->name('403');
+    Route::get('/404', fn () => \Inertia\Inertia::render('Errors/404'))->name('404');
+    Route::get('/408', fn () => \Inertia\Inertia::render('Errors/408'))->name('408');
+    Route::get('/419', fn () => \Inertia\Inertia::render('Errors/419'))->name('419');
+    Route::get('/429', fn () => \Inertia\Inertia::render('Errors/429'))->name('429');
+    Route::get('/500', fn () => \Inertia\Inertia::render('Errors/500'))->name('500');
+    Route::get('/503', fn () => \Inertia\Inertia::render('Errors/503'))->name('503');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Catch-all redirect to login (mockup entry point)
 |--------------------------------------------------------------------------
 */
