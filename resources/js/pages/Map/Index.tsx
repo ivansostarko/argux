@@ -153,6 +153,7 @@ export default function MapIndex() {
     const [placesSearch, setPlacesSearch] = useState('');
     const [placeModal, setPlaceModal] = useState<{ mode: 'add' | 'edit'; place?: SavedPlace } | null>(null);
     const [placeForm, setPlaceForm] = useState({ name: '', lat: '', lng: '', zoom: '13', color: '#3b82f6', note: '' });
+    const [deleteConfirm, setDeleteConfirm] = useState<SavedPlace | null>(null);
     const placeColors = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
     const openAddPlace = () => { setPlaceForm({ name: '', lat: '', lng: '', zoom: '13', color: '#3b82f6', note: '' }); setPlaceModal({ mode: 'add' }); };
@@ -165,7 +166,7 @@ export default function MapIndex() {
         else { setSavedPlaces(prev => [...prev, entry]); }
         setPlaceModal(null);
     };
-    const deletePlace = (id: string) => { setSavedPlaces(prev => prev.filter(p => p.id !== id)); };
+    const confirmDeletePlace = () => { if (deleteConfirm) { setSavedPlaces(prev => prev.filter(p => p.id !== deleteConfirm.id)); setDeleteConfirm(null); } };
     const goToPlace = (p: SavedPlace) => { mapRef.current?.flyTo({ center: [p.lng, p.lat], zoom: p.zoom, duration: 1500, essential: true }); };
     const addCurrentLocation = () => {
         const map = mapRef.current;
@@ -176,6 +177,78 @@ export default function MapIndex() {
         setPlaceModal({ mode: 'add' });
     };
     const filteredPlaces = savedPlaces.filter(p => !placesSearch || p.name.toLowerCase().includes(placesSearch.toLowerCase()) || (p.note || '').toLowerCase().includes(placesSearch.toLowerCase()));
+
+    // Ruler Tool
+    interface RulerPoint { lat: number; lng: number; }
+    const [rulerActive, setRulerActive] = useState(false);
+    const [rulerPoints, setRulerPoints] = useState<RulerPoint[]>([]);
+    const rulerSourceRef = useRef(false);
+
+    const calcDistance = (points: RulerPoint[]): number => {
+        let total = 0;
+        for (let i = 1; i < points.length; i++) {
+            const R = 6371000; // meters
+            const dLat = (points[i].lat - points[i - 1].lat) * Math.PI / 180;
+            const dLng = (points[i].lng - points[i - 1].lng) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(points[i - 1].lat * Math.PI / 180) * Math.cos(points[i].lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+            total += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+        return total;
+    };
+    const formatDist = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
+
+    // Draw ruler line + points on map
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+
+        const updateRulerLayer = () => {
+            const m = mapRef.current;
+            if (!m) return;
+            const geojson: any = { type: 'FeatureCollection', features: [] };
+            if (rulerPoints.length >= 2) {
+                geojson.features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: rulerPoints.map(p => [p.lng, p.lat]) }, properties: {} });
+            }
+            rulerPoints.forEach((p, i) => {
+                geojson.features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { index: i } });
+            });
+
+            try {
+                if (m.getSource('ruler-source')) {
+                    (m.getSource('ruler-source') as any).setData(geojson);
+                } else {
+                    m.addSource('ruler-source', { type: 'geojson', data: geojson });
+                    m.addLayer({ id: 'ruler-line', type: 'line', source: 'ruler-source', filter: ['==', '$type', 'LineString'], paint: { 'line-color': '#f59e0b', 'line-width': 2.5, 'line-dasharray': [3, 2] } });
+                    m.addLayer({ id: 'ruler-points', type: 'circle', source: 'ruler-source', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 5, 'circle-color': '#f59e0b', 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+                    rulerSourceRef.current = true;
+                }
+            } catch {}
+        };
+
+        if (rulerActive || rulerPoints.length > 0) {
+            updateRulerLayer();
+        } else {
+            // Clean up
+            try { if (map.getLayer('ruler-line')) map.removeLayer('ruler-line'); } catch {}
+            try { if (map.getLayer('ruler-points')) map.removeLayer('ruler-points'); } catch {}
+            try { if (map.getSource('ruler-source')) map.removeSource('ruler-source'); } catch {}
+            rulerSourceRef.current = false;
+        }
+    }, [rulerPoints, rulerActive, loaded]);
+
+    // Ruler click handler
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded || !rulerActive) return;
+        const handler = (e: any) => { setRulerPoints(prev => [...prev, { lat: e.lngLat.lat, lng: e.lngLat.lng }]); };
+        map.on('click', handler);
+        map.getCanvas().style.cursor = 'crosshair';
+        return () => { map.off('click', handler); if (mapRef.current) mapRef.current.getCanvas().style.cursor = ''; };
+    }, [rulerActive, loaded]);
+
+    const clearRuler = () => { setRulerPoints([]); };
+    const undoRulerPoint = () => { setRulerPoints(prev => prev.slice(0, -1)); };
+    const stopRuler = () => { setRulerActive(false); };
 
     // Tiles
     type TileId = string;
@@ -593,7 +666,55 @@ export default function MapIndex() {
                             {active3D && <div style={{ marginTop: 8, padding: '5px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', fontSize: 9, color: 'rgba(139,92,246,0.7)' }}>3D mode active: {tiles3D.find(t => t.id === active3D)?.name}. Click again to disable.</div>}
                         </div>
                     </Section>
-                    <Section title="Tools" icon={Ico.tools}><div className="tmap-empty">Drawing and measurement tools coming soon.</div></Section>
+                    <Section title="Tools" icon={Ico.tools} badge={rulerActive ? 1 : 0}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {/* Ruler */}
+                            <div style={{ border: `1px solid ${rulerActive ? '#f59e0b30' : theme.border}`, borderRadius: 6, padding: 8, background: rulerActive ? 'rgba(245,158,11,0.03)' : 'transparent' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={rulerActive ? '#f59e0b' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 14L14 2"/><path d="M5 14L2 14L2 11"/><path d="M11 2L14 2L14 5"/><line x1="4" y1="10" x2="6" y2="12"/><line x1="6" y1="8" x2="8" y2="10"/><line x1="8" y1="6" x2="10" y2="8"/></svg>
+                                        <span style={{ fontSize: 11, fontWeight: 600, color: rulerActive ? '#f59e0b' : theme.text }}>Ruler</span>
+                                    </div>
+                                    <button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); } }} style={{ padding: '3px 10px', borderRadius: 4, border: `1px solid ${rulerActive ? '#f59e0b50' : theme.border}`, background: rulerActive ? 'rgba(245,158,11,0.1)' : 'transparent', color: rulerActive ? '#f59e0b' : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{rulerActive ? 'Stop' : 'Start'}</button>
+                                </div>
+                                <div style={{ fontSize: 9, color: theme.textDim, marginBottom: rulerPoints.length > 0 ? 8 : 0 }}>
+                                    {rulerActive ? 'Click on the map to add measurement points.' : 'Measure distance between multiple points on the map.'}
+                                </div>
+
+                                {rulerPoints.length > 0 && <>
+                                    {/* Points list */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto', marginBottom: 6 }}>
+                                        {rulerPoints.map((pt, i) => {
+                                            const segDist = i > 0 ? calcDistance([rulerPoints[i - 1], pt]) : 0;
+                                            return <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.1)' }}>
+                                                <div style={{ width: 14, height: 14, borderRadius: '50%', background: 'rgba(245,158,11,0.15)', border: '1.5px solid #f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 800, color: '#f59e0b', flexShrink: 0 }}>{i + 1}</div>
+                                                <span style={{ fontSize: 9, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flex: 1 }}>{pt.lat.toFixed(5)}, {pt.lng.toFixed(5)}</span>
+                                                {i > 0 && <span style={{ fontSize: 8, fontWeight: 700, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>+{formatDist(segDist)}</span>}
+                                            </div>;
+                                        })}
+                                    </div>
+
+                                    {/* Total distance */}
+                                    {rulerPoints.length >= 2 && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 5, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 6 }}>
+                                        <span style={{ fontSize: 9, fontWeight: 600, color: theme.textSecondary }}>Total Distance</span>
+                                        <span style={{ fontSize: 12, fontWeight: 800, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace" }}>{formatDist(calcDistance(rulerPoints))}</span>
+                                    </div>}
+
+                                    {/* Segment count */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 9, color: theme.textDim, marginBottom: 6 }}>
+                                        <span>{rulerPoints.length} point{rulerPoints.length !== 1 ? 's' : ''}</span>
+                                        {rulerPoints.length >= 2 && <span>· {rulerPoints.length - 1} segment{rulerPoints.length - 1 !== 1 ? 's' : ''}</span>}
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div style={{ display: 'flex', gap: 4 }}>
+                                        <button onClick={undoRulerPoint} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + '50'; e.currentTarget.style.color = theme.accent; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}>Undo</button>
+                                        <button onClick={clearRuler} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)', color: theme.danger, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Clear All</button>
+                                    </div>
+                                </>}
+                            </div>
+                        </div>
+                    </Section>
                     <Section title="Intelligence" icon={Ico.intel}><div className="tmap-empty">Intelligence analysis panels coming soon.</div></Section>
                     <Section title="Custom Objects" icon={Ico.objects}><div className="tmap-empty">No custom objects placed.</div></Section>
                     <Section title="Saved Places" icon={Ico.places} defaultOpen={true} badge={savedPlaces.length}>
@@ -621,7 +742,7 @@ export default function MapIndex() {
                                         </div>
                                         <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{p.lat.toFixed(1)}, {p.lng.toFixed(1)}</span>
                                         <button onClick={e => { e.stopPropagation(); openEditPlace(p); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)} title="Edit"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg></button>
-                                        <button onClick={e => { e.stopPropagation(); deletePlace(p.id); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)} title="Delete"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                                        <button onClick={e => { e.stopPropagation(); setDeleteConfirm(p); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)} title="Delete"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
                                     </div>
                                 ))}
                             </div>
@@ -643,6 +764,20 @@ export default function MapIndex() {
                                 <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
                                     <button onClick={savePlace} disabled={!placeForm.name.trim() || !placeForm.lat || !placeForm.lng} style={{ flex: 1, padding: '6px 0', borderRadius: 5, border: 'none', background: (!placeForm.name.trim() || !placeForm.lat || !placeForm.lng) ? theme.border : theme.accent, color: '#fff', fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: (!placeForm.name.trim() || !placeForm.lat || !placeForm.lng) ? 'not-allowed' : 'pointer', opacity: (!placeForm.name.trim() || !placeForm.lat || !placeForm.lng) ? 0.4 : 1 }}>{placeModal.mode === 'add' ? 'Save Place' : 'Update Place'}</button>
                                     <button onClick={() => setPlaceModal(null)} style={{ padding: '6px 14px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 10, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Cancel</button>
+                                </div>
+                            </div>}
+
+                            {/* Delete Confirmation */}
+                            {deleteConfirm && <div style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: 12, marginTop: 4 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={theme.danger} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><line x1="8" y1="5" x2="8" y2="9"/><circle cx="8" cy="11.5" r="0.5" fill={theme.danger}/></svg>
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: theme.danger, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Delete Place</span>
+                                </div>
+                                <div style={{ fontSize: 11, color: theme.text, marginBottom: 4 }}>Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?</div>
+                                <div style={{ fontSize: 9, color: theme.textDim, marginBottom: 10 }}>This action cannot be undone.</div>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                    <button onClick={confirmDeletePlace} style={{ flex: 1, padding: '6px 0', borderRadius: 5, border: 'none', background: theme.danger, color: '#fff', fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>Delete</button>
+                                    <button onClick={() => setDeleteConfirm(null)} style={{ padding: '6px 14px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 10, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Cancel</button>
                                 </div>
                             </div>}
                         </div>
