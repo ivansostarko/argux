@@ -138,6 +138,31 @@ export default function MapIndex() {
     const [showSearch, setShowSearch] = useState(true);
     const [showFps, setShowFps] = useState(false);
 
+    // Tiles
+    type TileId = string;
+    interface TileDef { id: TileId; name: string; category: '2D' | '3D'; preview: string; url?: string; style?: any; }
+    const tiles2D: TileDef[] = [
+        { id: 'dark', name: 'Dark', category: '2D', preview: '🌑', url: 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png' },
+        { id: 'street', name: 'Street', category: '2D', preview: '🗺️', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' },
+        { id: 'satellite', name: 'Satellite', category: '2D', preview: '🛰️', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
+        { id: 'voyager', name: 'Voyager', category: '2D', preview: '🧭', url: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png' },
+        { id: 'light', name: 'Light', category: '2D', preview: '☀️', url: 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png' },
+        { id: 'topo', name: 'Topo', category: '2D', preview: '⛰️', url: 'https://tile.opentopomap.org/{z}/{x}/{y}.png' },
+        { id: 'natgeo', name: 'NatGeo', category: '2D', preview: '🌍', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}' },
+        { id: 'terrain', name: 'Terrain', category: '2D', preview: '🏔️', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}' },
+        { id: 'dark-nolabel', name: 'Dark Clean', category: '2D', preview: '⚫', url: 'https://basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png' },
+        { id: 'watercolor', name: 'Watercolor', category: '2D', preview: '🎨', url: 'https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg' },
+        { id: 'positron', name: 'Positron', category: '2D', preview: '⬜', url: 'https://basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png' },
+        { id: 'humanitarian', name: 'Humanitarian', category: '2D', preview: '🏥', url: 'https://tile-a.openstreetmap.fr/hot/{z}/{x}/{y}.png' },
+    ];
+    const tiles3D: TileDef[] = [
+        { id: '3d-buildings', name: '3D Buildings', category: '3D', preview: '🏢' },
+        { id: '3d-globe', name: '3D Globe', category: '3D', preview: '🌐' },
+        { id: '3d-terrain', name: '3D Terrain', category: '3D', preview: '🗻' },
+    ];
+    const [activeTile, setActiveTile] = useState<TileId>('dark');
+    const [active3D, setActive3D] = useState<TileId | null>(null);
+
     // Place search
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<{ name: string; lat: number; lng: number; sub: string }[]>([]);
@@ -211,16 +236,61 @@ export default function MapIndex() {
         return () => cancelAnimationFrame(raf);
     }, [showFps]);
 
-    // Localization: English always shown. When checked, add local language names too.
+    // Tile switching
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !loaded) return;
-        const tileUrl = showLocalization
-            ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'          // English + local names (high-res)
-            : 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'; // English names only
-        const src = map.getSource('carto-dark');
-        if (src && src.setTiles) src.setTiles([tileUrl]);
-    }, [showLocalization, loaded]);
+        const tile = tiles2D.find(t => t.id === activeTile);
+        if (!tile?.url) return;
+        const src = map.getSource('base-tiles');
+        if (src && src.setTiles) src.setTiles([tile.url]);
+    }, [activeTile, loaded]);
+
+    // Localization: swap labeled/unlabeled variant for CARTO tiles
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        if (!['dark', 'light', 'voyager'].includes(activeTile)) return;
+        const variants: Record<string, [string, string]> = {
+            dark: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png', 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'],
+            light: ['https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png', 'https://basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png'],
+            voyager: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png', 'https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png'],
+        };
+        const v = variants[activeTile];
+        if (!v) return;
+        const src = map.getSource('base-tiles');
+        if (src && src.setTiles) src.setTiles([showLocalization ? v[0] : v[1]]);
+    }, [showLocalization, loaded, activeTile]);
+
+    // 3D Modes
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        try { if (map.getLayer('3d-buildings-layer')) map.removeLayer('3d-buildings-layer'); } catch {}
+        try { if (map.getSource('3d-buildings-src')) map.removeSource('3d-buildings-src'); } catch {}
+        try { if (map.getTerrain()) map.setTerrain(null); } catch {}
+        try { if (map.getSource('terrain-dem')) map.removeSource('terrain-dem'); } catch {}
+        try { map.setProjection({ type: 'mercator' }); } catch {}
+
+        if (active3D === '3d-buildings') {
+            if (!map.getSource('3d-buildings-src')) {
+                map.addSource('3d-buildings-src', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
+            }
+            map.addLayer({ id: '3d-buildings-layer', source: '3d-buildings-src', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 14, paint: { 'fill-extrusion-color': '#1a2744', 'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10], 'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0], 'fill-extrusion-opacity': 0.7 } });
+            map.easeTo({ pitch: 55, duration: 800 });
+        } else if (active3D === '3d-globe') {
+            try { map.setProjection({ type: 'globe' }); } catch {}
+            map.easeTo({ pitch: 20, zoom: Math.min(map.getZoom(), 6), duration: 800 });
+        } else if (active3D === '3d-terrain') {
+            if (!map.getSource('terrain-dem')) {
+                map.addSource('terrain-dem', { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize: 256, encoding: 'terrarium', maxzoom: 15 });
+            }
+            map.setTerrain({ source: 'terrain-dem', exaggeration: 1.5 });
+            map.easeTo({ pitch: 60, duration: 800 });
+        } else {
+            map.easeTo({ pitch: 0, duration: 500 });
+        }
+    }, [active3D, loaded]);
 
     // Load MapLibre
     useEffect(() => {
@@ -233,7 +303,7 @@ export default function MapIndex() {
             const ml = (window as any).maplibregl;
             const map = new ml.Map({
                 container: mapContainer.current,
-                style: { version: 8, sources: { 'carto-dark': { type: 'raster', tiles: ['https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'], tileSize: 256 } }, layers: [{ id: 'carto-dark-layer', type: 'raster', source: 'carto-dark', minzoom: 0, maxzoom: 20 }] },
+                style: { version: 8, sources: { 'base-tiles': { type: 'raster', tiles: ['https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'], tileSize: 256 } }, layers: [{ id: 'base-layer', type: 'raster', source: 'base-tiles', minzoom: 0, maxzoom: 20 }] },
                 center: [15.9819, 45.8150], zoom: 13, attributionControl: false,
             });
             map.on('mousemove', (e: any) => setCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
@@ -294,7 +364,29 @@ export default function MapIndex() {
 
                     <Section title="Sources" icon={Ico.sources}><div className="tmap-empty">No source filters configured.</div></Section>
                     <Section title="Layers" icon={Ico.layers}><div className="tmap-empty">No custom layers configured.</div></Section>
-                    <Section title="Tiles" icon={Ico.tiles}><div className="tmap-empty">Tile source selection coming soon.</div></Section>
+                    <Section title="Tiles" icon={Ico.tiles} defaultOpen={true} badge={active3D ? 1 : 0}>
+                        <div>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>2D Base Maps</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 12 }}>
+                                {tiles2D.map(t => { const isActive = activeTile === t.id; return (
+                                    <button key={t.id} onClick={() => setActiveTile(t.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 2px', borderRadius: 6, border: `1.5px solid ${isActive ? theme.accent : theme.border}`, background: isActive ? theme.accentDim : 'transparent', cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'inherit' }} onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')} onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}>
+                                        <span style={{ fontSize: 16 }}>{t.preview}</span>
+                                        <span style={{ fontSize: 8, fontWeight: 600, color: isActive ? theme.accent : theme.textDim, lineHeight: 1.1, textAlign: 'center' }}>{t.name}</span>
+                                    </button>
+                                ); })}
+                            </div>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>3D Modes</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                                {tiles3D.map(t => { const isActive = active3D === t.id; return (
+                                    <button key={t.id} onClick={() => setActive3D(isActive ? null : t.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 2px', borderRadius: 6, border: `1.5px solid ${isActive ? '#8b5cf6' : theme.border}`, background: isActive ? 'rgba(139,92,246,0.08)' : 'transparent', cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'inherit' }} onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')} onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}>
+                                        <span style={{ fontSize: 18 }}>{t.preview}</span>
+                                        <span style={{ fontSize: 8, fontWeight: 600, color: isActive ? '#8b5cf6' : theme.textDim, lineHeight: 1.1, textAlign: 'center' }}>{t.name}</span>
+                                    </button>
+                                ); })}
+                            </div>
+                            {active3D && <div style={{ marginTop: 8, padding: '5px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', fontSize: 9, color: 'rgba(139,92,246,0.7)' }}>3D mode active: {tiles3D.find(t => t.id === active3D)?.name}. Click again to disable.</div>}
+                        </div>
+                    </Section>
                     <Section title="Tools" icon={Ico.tools}><div className="tmap-empty">Drawing and measurement tools coming soon.</div></Section>
                     <Section title="Intelligence" icon={Ico.intel}><div className="tmap-empty">Intelligence analysis panels coming soon.</div></Section>
                     <Section title="Custom Objects" icon={Ico.objects}><div className="tmap-empty">No custom objects placed.</div></Section>
