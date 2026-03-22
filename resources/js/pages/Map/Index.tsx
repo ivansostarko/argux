@@ -116,6 +116,9 @@ export default function MapIndex() {
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const fpsRef = useRef<{ frames: number; lastTime: number; fps: number }>({ frames: 0, lastTime: performance.now(), fps: 0 });
+    const prevCameraRef = useRef<{ center: [number, number]; zoom: number; bearing: number; pitch: number }>({ center: [15.9819, 45.8150], zoom: 13, bearing: 0, pitch: 0 });
+    const mapVersionRef = useRef(0);
+    const tileInitRef = useRef(true); // skip first run of tile/loc effects
     const [loaded, setLoaded] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [coords, setCoords] = useState({ lat: 45.8150, lng: 15.9819 });
@@ -136,6 +139,7 @@ export default function MapIndex() {
     const [showLocalization, setShowLocalization] = useState(false);
     const [showCoords, setShowCoords] = useState(true);
     const [showSearch, setShowSearch] = useState(true);
+    const [showLabels, setShowLabels] = useState(true);
     const [showFps, setShowFps] = useState(false);
 
     // Tiles
@@ -236,66 +240,219 @@ export default function MapIndex() {
         return () => cancelAnimationFrame(raf);
     }, [showFps]);
 
-    // Tile switching
+    // Tile switching — only when user changes tile, not on initial load
     useEffect(() => {
+        if (tileInitRef.current) return; // skip initial render
         const map = mapRef.current;
-        if (!map || !loaded) return;
-        const tile = tiles2D.find(t => t.id === activeTile);
-        if (!tile?.url) return;
-        const src = map.getSource('base-tiles');
-        if (src && src.setTiles) src.setTiles([tile.url]);
-    }, [activeTile, loaded]);
-
-    // Localization: swap labeled/unlabeled variant for CARTO tiles
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map || !loaded) return;
-        if (!['dark', 'light', 'voyager'].includes(activeTile)) return;
-        const variants: Record<string, [string, string]> = {
-            dark: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png', 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'],
-            light: ['https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png', 'https://basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png'],
-            voyager: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png', 'https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png'],
+        if (!map || !loaded || map._isGlobe) return;
+        const ver = mapVersionRef.current;
+        // Wait for map idle to avoid AbortError on in-flight tile requests
+        const apply = () => {
+            if (mapVersionRef.current !== ver || !mapRef.current || mapRef.current._isGlobe) return;
+            const tile = tiles2D.find(t => t.id === activeTile);
+            if (!tile?.url) return;
+            try { const src = mapRef.current.getSource('base-tiles'); if (src?.setTiles) src.setTiles([tile.url]); } catch {}
         };
-        const v = variants[activeTile];
-        if (!v) return;
-        const src = map.getSource('base-tiles');
-        if (src && src.setTiles) src.setTiles([showLocalization ? v[0] : v[1]]);
-    }, [showLocalization, loaded, activeTile]);
+        if (map.loaded()) apply(); else map.once('idle', apply);
+    }, [activeTile]);
 
-    // 3D Modes
+    // Show Labels: toggle labels overlay visibility on all tile types
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !loaded) return;
-        try { if (map.getLayer('3d-buildings-layer')) map.removeLayer('3d-buildings-layer'); } catch {}
-        try { if (map.getSource('3d-buildings-src')) map.removeSource('3d-buildings-src'); } catch {}
-        try { if (map.getTerrain()) map.setTerrain(null); } catch {}
-        try { if (map.getSource('terrain-dem')) map.removeSource('terrain-dem'); } catch {}
-        try { map.setProjection({ type: 'mercator' }); } catch {}
+        try {
+            if (map.getLayer('labels-layer')) {
+                map.setLayoutProperty('labels-layer', 'visibility', showLabels ? 'visible' : 'none');
+            }
+        } catch {}
+    }, [showLabels, loaded]);
+
+    // Localization: swap label overlay tiles (English-only vs English+local)
+    useEffect(() => {
+        if (tileInitRef.current) return;
+        const map = mapRef.current;
+        if (!map || !loaded || map._isGlobe) return;
+        const ver = mapVersionRef.current;
+        const labelUrl = showLocalization
+            ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'           // English + local (full tile as overlay, has labels with local names)
+            : 'https://basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png';  // English labels only
+        const apply = () => {
+            if (mapVersionRef.current !== ver || !mapRef.current || mapRef.current._isGlobe) return;
+            try { const src = mapRef.current.getSource('labels-overlay'); if (src?.setTiles) src.setTiles([labelUrl]); } catch {}
+        };
+        if (map.loaded()) apply(); else map.once('idle', apply);
+    }, [showLocalization, loaded]);
+
+    // 3D Modes — Globe requires map rebuild, others modify in place
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        const ver = mapVersionRef.current;
+
+        // Skip cleanup if already in globe mode — rebuild handles it
+        if (!map._isGlobe) {
+            try { if (map.getLayer('3d-buildings-layer')) map.removeLayer('3d-buildings-layer'); } catch {}
+            try { if (map.getSource('3d-buildings-src')) map.removeSource('3d-buildings-src'); } catch {}
+            try { map.setTerrain(null); } catch {}
+            try { if (map.getSource('terrain-dem')) map.removeSource('terrain-dem'); } catch {}
+        }
 
         if (active3D === '3d-buildings') {
-            if (!map.getSource('3d-buildings-src')) {
-                map.addSource('3d-buildings-src', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
-            }
-            map.addLayer({ id: '3d-buildings-layer', source: '3d-buildings-src', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 14, paint: { 'fill-extrusion-color': '#1a2744', 'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10], 'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0], 'fill-extrusion-opacity': 0.7 } });
-            map.easeTo({ pitch: 55, duration: 800 });
+            if (map._isGlobe) { rebuildMapForFlat(); return; }
+            try {
+                if (!map.getSource('3d-buildings-src')) {
+                    map.addSource('3d-buildings-src', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
+                }
+                map.addLayer({ id: '3d-buildings-layer', source: '3d-buildings-src', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 14, paint: { 'fill-extrusion-color': '#1a2744', 'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10], 'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0], 'fill-extrusion-opacity': 0.7 } });
+                map.easeTo({ pitch: 55, duration: 800 });
+            } catch (e) { console.warn('3D Buildings failed:', e); }
+
         } else if (active3D === '3d-globe') {
-            try { map.setProjection({ type: 'globe' }); } catch {}
-            map.easeTo({ pitch: 20, zoom: Math.min(map.getZoom(), 6), duration: 800 });
+            if (!map._isGlobe) rebuildMapForGlobe();
+
         } else if (active3D === '3d-terrain') {
-            if (!map.getSource('terrain-dem')) {
-                map.addSource('terrain-dem', { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize: 256, encoding: 'terrarium', maxzoom: 15 });
-            }
-            map.setTerrain({ source: 'terrain-dem', exaggeration: 1.5 });
-            map.easeTo({ pitch: 60, duration: 800 });
+            if (map._isGlobe) { rebuildMapForFlat(); return; }
+            try {
+                if (!map.getSource('terrain-dem')) {
+                    map.addSource('terrain-dem', { type: 'raster-dem', tiles: ['https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png'], tileSize: 256 });
+                }
+                const applyTerrain = () => {
+                    if (mapVersionRef.current !== ver) return; // map was replaced
+                    try {
+                        mapRef.current?.setTerrain({ source: 'terrain-dem', exaggeration: 1.5 });
+                        mapRef.current?.easeTo({ pitch: 60, zoom: Math.max(mapRef.current.getZoom(), 10), duration: 800 });
+                    } catch (e) { console.warn('Terrain apply failed:', e); }
+                };
+                if (map.isSourceLoaded('terrain-dem')) applyTerrain();
+                else { map.once('sourcedata', (e: any) => { if (e.sourceId === 'terrain-dem' && e.isSourceLoaded) applyTerrain(); }); setTimeout(applyTerrain, 500); }
+            } catch (e) { console.warn('3D Terrain failed:', e); }
+
         } else {
-            map.easeTo({ pitch: 0, duration: 500 });
+            if (map._isGlobe) { rebuildMapForFlat(); }
+            else { try { map.easeTo({ pitch: 0, duration: 500 }); } catch {} }
         }
     }, [active3D, loaded]);
 
-    // Load MapLibre
+    // Load MapLibre + map create/rebuild helpers
+    const attachMapEvents = useCallback((map: any) => {
+        map.on('mousemove', (e: any) => setCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
+        map.on('zoomend', () => setZoom(Math.round(map.getZoom() * 10) / 10));
+        map.on('rotate', () => setBearing(map.getBearing()));
+        map.on('moveend', () => { const c = map.getCenter(); prevCameraRef.current = { center: [c.lng, c.lat], zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() }; });
+    }, []);
+
+    const rebuildMapForGlobe = useCallback(() => {
+        if (!mapContainer.current || !(window as any).maplibregl) return;
+        const ml = (window as any).maplibregl;
+        if (mapRef.current) {
+            if ((mapRef.current as any)._spinFrame) cancelAnimationFrame((mapRef.current as any)._spinFrame);
+            try { const c = mapRef.current.getCenter(); prevCameraRef.current = { center: [c.lng, c.lat], zoom: mapRef.current.getZoom(), bearing: mapRef.current.getBearing(), pitch: mapRef.current.getPitch() }; } catch {}
+            mapRef.current._removed = true;
+            mapRef.current.remove();
+            mapRef.current = null;
+        }
+        mapVersionRef.current++;
+        setLoaded(false);
+        // Official MapLibre v5 globe pattern — projection inside style object
+        const map = new ml.Map({
+            container: mapContainer.current,
+            zoom: 1.5,
+            center: [prevCameraRef.current.center[0], prevCameraRef.current.center[1]],
+            attributionControl: false,
+            maxPitch: 85,
+            style: {
+                version: 8,
+                projection: { type: 'globe' },
+                sky: {
+                    'sky-color': '#000008',
+                    'sky-horizon-blend': 1,
+                    'horizon-color': '#000015',
+                    'horizon-fog-blend': 1,
+                    'fog-color': '#000008',
+                    'fog-ground-blend': 0.5,
+                    'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0],
+                },
+                sources: {
+                    satellite: {
+                        type: 'raster',
+                        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                        tileSize: 256,
+                        maxzoom: 19,
+                    },
+                    'labels-overlay': { type: 'raster', tiles: ['https://basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png'], tileSize: 256 },
+                },
+                layers: [
+                    { id: 'satellite-layer', type: 'raster', source: 'satellite' },
+                    { id: 'labels-layer', type: 'raster', source: 'labels-overlay' },
+                ],
+            },
+        });
+        (map as any)._isGlobe = true;
+        attachMapEvents(map);
+        map.on('load', () => {
+            setLoaded(true);
+            setZoom(Math.round(map.getZoom() * 10) / 10);
+            // Auto-rotate like Google Earth idle
+            let spinning = true;
+            const spinGlobe = () => {
+                if (!spinning || !mapRef.current || !mapRef.current._isGlobe) return;
+                const c = mapRef.current.getCenter();
+                c.lng -= 0.15;
+                mapRef.current.setCenter(c);
+                (mapRef.current as any)._spinFrame = requestAnimationFrame(spinGlobe);
+            };
+            setTimeout(() => { if (mapRef.current?._isGlobe) spinGlobe(); }, 1200);
+            const stopSpin = () => { spinning = false; if ((mapRef.current as any)?._spinFrame) cancelAnimationFrame((mapRef.current as any)._spinFrame); };
+            map.on('mousedown', stopSpin);
+            map.on('touchstart', stopSpin);
+            map.on('wheel', stopSpin);
+        });
+        mapRef.current = map;
+    }, [attachMapEvents]);
+
+    const rebuildMapForFlat = useCallback(() => {
+        if (!mapContainer.current || !(window as any).maplibregl) return;
+        const ml = (window as any).maplibregl;
+        if (mapRef.current) {
+            // Cancel globe spin if running
+            if ((mapRef.current as any)._spinFrame) cancelAnimationFrame((mapRef.current as any)._spinFrame);
+            try { const c = mapRef.current.getCenter(); prevCameraRef.current = { center: [c.lng, c.lat], zoom: mapRef.current.getZoom(), bearing: mapRef.current.getBearing(), pitch: 0 }; } catch {}
+            mapRef.current._removed = true;
+            mapRef.current.remove();
+            mapRef.current = null;
+        }
+        mapVersionRef.current++;
+        setLoaded(false);
+        const tile = tiles2D.find(t => t.id === activeTile);
+        const tileUrl = tile?.url || 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png';
+        const map = new ml.Map({
+            container: mapContainer.current,
+            style: {
+                version: 8,
+                sources: {
+                    'base-tiles': { type: 'raster', tiles: [tileUrl], tileSize: 256 },
+                    'labels-overlay': { type: 'raster', tiles: ['https://basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png'], tileSize: 256 },
+                },
+                layers: [
+                    { id: 'base-layer', type: 'raster', source: 'base-tiles', minzoom: 0, maxzoom: 20 },
+                    { id: 'labels-layer', type: 'raster', source: 'labels-overlay', minzoom: 0, maxzoom: 20 },
+                ],
+            },
+            center: prevCameraRef.current.center,
+            zoom: Math.max(prevCameraRef.current.zoom, 8),
+            bearing: prevCameraRef.current.bearing,
+            pitch: 0,
+            attributionControl: false,
+        });
+        (map as any)._isGlobe = false;
+        attachMapEvents(map);
+        map.on('load', () => { setLoaded(true); setZoom(Math.round(map.getZoom() * 10) / 10); });
+        mapRef.current = map;
+    }, [attachMapEvents, activeTile]);
+
     useEffect(() => {
-        const maplibreCSS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
-        const maplibreJS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
+        const maplibreCSS = 'https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.css';
+        const maplibreJS = 'https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.js';
         if (!document.querySelector(`link[href="${maplibreCSS}"]`)) { const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = maplibreCSS; document.head.appendChild(link); }
 
         const initMap = () => {
@@ -303,17 +460,31 @@ export default function MapIndex() {
             const ml = (window as any).maplibregl;
             const map = new ml.Map({
                 container: mapContainer.current,
-                style: { version: 8, sources: { 'base-tiles': { type: 'raster', tiles: ['https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'], tileSize: 256 } }, layers: [{ id: 'base-layer', type: 'raster', source: 'base-tiles', minzoom: 0, maxzoom: 20 }] },
+                style: {
+                    version: 8,
+                    sources: {
+                        'base-tiles': { type: 'raster', tiles: ['https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'], tileSize: 256 },
+                        'labels-overlay': { type: 'raster', tiles: ['https://basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png'], tileSize: 256 },
+                    },
+                    layers: [
+                        { id: 'base-layer', type: 'raster', source: 'base-tiles', minzoom: 0, maxzoom: 20 },
+                        { id: 'labels-layer', type: 'raster', source: 'labels-overlay', minzoom: 0, maxzoom: 20 },
+                    ],
+                },
                 center: [15.9819, 45.8150], zoom: 13, attributionControl: false,
             });
-            map.on('mousemove', (e: any) => setCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
-            map.on('zoomend', () => setZoom(Math.round(map.getZoom() * 10) / 10));
-            map.on('rotate', () => setBearing(map.getBearing()));
-            map.on('load', () => { setLoaded(true); setZoom(Math.round(map.getZoom() * 10) / 10); });
+            (map as any)._isGlobe = false;
+            attachMapEvents(map);
+            map.on('load', () => {
+                setLoaded(true);
+                setZoom(Math.round(map.getZoom() * 10) / 10);
+                // Allow tile/localization effects to run on future changes
+                setTimeout(() => { tileInitRef.current = false; }, 100);
+            });
             mapRef.current = map;
         };
         if ((window as any).maplibregl) initMap(); else { const s = document.createElement('script'); s.src = maplibreJS; s.onload = () => setTimeout(initMap, 50); document.head.appendChild(s); }
-        return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
+        return () => { if (mapRef.current) { if ((mapRef.current as any)._spinFrame) cancelAnimationFrame((mapRef.current as any)._spinFrame); mapRef.current.remove(); mapRef.current = null; } };
     }, []);
 
     const handleRecenter = useCallback(() => { mapRef.current?.flyTo({ center: [15.9819, 45.8150], zoom: 13, bearing: 0, duration: 1000 }); }, []);
@@ -398,6 +569,7 @@ export default function MapIndex() {
                             <Toggle label="World Minimap" description="Satellite overview map in top-right" enabled={showMinimap} onChange={setShowMinimap} />
                             <Toggle label="Compass" description="Bearing indicator in bottom-left" enabled={showCompass} onChange={setShowCompass} />
                             <Toggle label="Map Controls" description="Zoom, fullscreen, rotation buttons" enabled={showControls} onChange={setShowControls} />
+                            <Toggle label="Show Labels" description="Place and road names on map" enabled={showLabels} onChange={setShowLabels} />
                             <Toggle label="Localization" description="Add local language names alongside English" enabled={showLocalization} onChange={setShowLocalization} />
                             <Toggle label="Coordinates" description="Lat/lng, zoom and bearing bar" enabled={showCoords} onChange={setShowCoords} />
                             <Toggle label="Place Search" description="Search bar for locations on map" enabled={showSearch} onChange={setShowSearch} />
