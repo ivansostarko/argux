@@ -2,15 +2,31 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { mockPersons } from '../../mock/persons';
+import { mockOrganizations } from '../../mock/organizations';
+
+// All subjects placed in Croatia for mockup — spread across Croatian cities
+const cityCoords: Record<string, [number, number]> = {
+    'Zagreb': [15.9819, 45.8150], 'Split': [16.4402, 43.5081], 'Dubrovnik': [18.0944, 42.6507],
+    'Rijeka': [14.4422, 45.3271], 'Osijek': [18.6939, 45.5550], 'Zadar': [15.2314, 44.1194],
+    'Pula': [13.8496, 44.8666], 'Varaždin': [16.3366, 46.3057], 'Šibenik': [15.8952, 43.7350],
+    'Karlovac': [15.5553, 45.4929],
+    // Map foreign cities to Croatian locations for mockup
+    'Belgrade': [15.9670, 45.8050], 'Riyadh': [16.0100, 45.7900], 'Moscow': [15.9500, 45.8250],
+    'Dublin': [15.9300, 45.8000], 'Tokyo': [16.0300, 45.8100], 'Cairo': [15.9900, 45.8200],
+    'Berlin': [15.9600, 45.8300], 'Bogotá': [16.0000, 45.7800], 'Shanghai': [16.0200, 45.8050],
+    'Dubai': [15.9400, 45.7950], 'Mumbai': [16.0400, 45.8150], 'Budva': [15.9750, 45.8080],
+    'London': [15.9550, 45.8120], 'Jebel Ali Free Zone': [15.9350, 45.8180],
+};
 
 /* ═══ SIDEBAR MULTISELECT ═══ */
-function SidebarMS({ selected, onChange, options, placeholder }: { selected: string[]; onChange: (v: string[]) => void; options: { id: string; label: string; sub?: string }[]; placeholder: string }) {
+function SidebarMS({ selected, onChange, options, placeholder, showSelectAll }: { selected: string[]; onChange: (v: string[]) => void; options: { id: string; label: string; sub?: string; img?: string }[]; placeholder: string; showSelectAll?: boolean }) {
     const [open, setOpen] = useState(false); const [q, setQ] = useState(''); const ref = useRef<HTMLDivElement>(null);
     useEffect(() => { const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
-    const filtered = options.filter(o => o.label.toLowerCase().includes(q.toLowerCase()));
+    const filtered = options.filter(o => o.label.toLowerCase().includes(q.toLowerCase()) || (o.sub || '').toLowerCase().includes(q.toLowerCase()));
     const toggle = (id: string) => onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
+    const allSelected = selected.length === options.length;
     const has = selected.length > 0;
-    return (<div ref={ref} style={{ position: 'relative' }}><button className="tmap-ms-trigger" onClick={() => { setOpen(!open); setQ(''); }} style={{ color: has ? theme.text : theme.textDim, borderColor: has ? theme.accent + '40' : theme.border }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{has ? `${selected.length} selected` : placeholder}</span><svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2,4 5,7 8,4" /></svg></button>{open && <div className="tmap-ms-panel"><div className="tmap-ms-search"><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search..." autoFocus />{has && <button onClick={() => onChange([])} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: theme.danger, fontSize: 9, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, padding: '2px 6px', borderRadius: 3, flexShrink: 0 }}>Clear</button>}</div><div className="tmap-ms-list">{filtered.map(o => { const c = selected.includes(o.id); return <div key={o.id} className="tmap-ms-item" onClick={() => toggle(o.id)} style={{ color: c ? theme.accent : theme.text }}><div className={`tmap-ms-check ${c ? 'on' : ''}`}>{c && <svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div><div><div>{o.label}</div>{o.sub && <div style={{ fontSize: 9, color: theme.textDim }}>{o.sub}</div>}</div></div>; })}{filtered.length === 0 && <div style={{ padding: 12, fontSize: 10, color: theme.textDim, textAlign: 'center' }}>No results</div>}</div></div>}{has && <div className="tmap-tags">{selected.map(id => { const o = options.find(x => x.id === id); return o ? <span key={id} className="tmap-tag">{o.label.split(' ')[0]}<button onClick={e => { e.stopPropagation(); toggle(id); }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button></span> : null; })}</div>}</div>);
+    return (<div ref={ref} style={{ position: 'relative' }}><button className="tmap-ms-trigger" onClick={() => { setOpen(!open); setQ(''); }} style={{ color: has ? theme.text : theme.textDim, borderColor: has ? theme.accent + '40' : theme.border }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{has ? `${selected.length} of ${options.length} selected` : placeholder}</span><svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2,4 5,7 8,4" /></svg></button>{open && <div className="tmap-ms-panel"><div className="tmap-ms-search"><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search..." autoFocus />{has && <button onClick={() => onChange([])} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: theme.danger, fontSize: 9, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, padding: '2px 6px', borderRadius: 3, flexShrink: 0 }}>Clear</button>}</div>{showSelectAll && !q && <div className="tmap-ms-item" onClick={() => onChange(allSelected ? [] : options.map(o => o.id))} style={{ color: allSelected ? theme.accent : theme.textSecondary, borderBottom: `1px solid ${theme.border}`, fontWeight: 700, fontSize: 10 }}><div className={`tmap-ms-check ${allSelected ? 'on' : ''}`}>{allSelected && <svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>Select All</div>}<div className="tmap-ms-list">{filtered.map(o => { const c = selected.includes(o.id); return <div key={o.id} className="tmap-ms-item" onClick={() => toggle(o.id)} style={{ color: c ? theme.accent : theme.text }}><div className={`tmap-ms-check ${c ? 'on' : ''}`}>{c && <svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>{o.img && <img src={o.img} style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover', border: `1px solid ${theme.border}`, flexShrink: 0 }} />}<div><div>{o.label}</div>{o.sub && <div style={{ fontSize: 9, color: theme.textDim }}>{o.sub}</div>}</div></div>; })}{filtered.length === 0 && <div style={{ padding: 12, fontSize: 10, color: theme.textDim, textAlign: 'center' }}>No results</div>}</div></div>}{has && <div className="tmap-tags">{selected.slice(0, 6).map(id => { const o = options.find(x => x.id === id); return o ? <span key={id} className="tmap-tag">{o.label.split(' ')[0]}<button onClick={e => { e.stopPropagation(); toggle(id); }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button></span> : null; })}{selected.length > 6 && <span className="tmap-tag" style={{ opacity: 0.6 }}>+{selected.length - 6}</span>}</div>}</div>);
 }
 
 /* ═══ COLLAPSIBLE SECTION ═══ */
@@ -41,7 +57,8 @@ const Ico = {
     settings: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>,
 };
 
-const personOpts = mockPersons.map(p => ({ id: p.id.toString(), label: `${p.firstName} ${p.lastName}`, sub: p.nationality }));
+const personOpts = mockPersons.map(p => ({ id: p.id.toString(), label: `${p.firstName} ${p.lastName}`, sub: `${p.nationality} · ${p.risk}`, img: p.avatar || undefined }));
+const orgOpts = mockOrganizations.map(o => ({ id: o.id.toString(), label: o.name, sub: `${o.country} · ${o.industry}`, img: o.logo || undefined }));
 
 /* ═══ COMPASS WIDGET ═══ */
 function Compass({ bearing }: { bearing: number }) {
@@ -131,6 +148,7 @@ export default function MapIndex() {
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [selectedPersons, setSelectedPersons] = useState<string[]>([]);
+    const [selectedOrgs, setSelectedOrgs] = useState<string[]>([]);
 
     // Settings
     const [showMinimap, setShowMinimap] = useState(true);
@@ -275,13 +293,15 @@ export default function MapIndex() {
         { id: 'z-7', name: 'Sava River Buffer', shape: 'polygon', type: 'buffer', color: '#f59e0b', lat: 45.800, lng: 15.975, points: [{ lat: 45.803, lng: 15.960 }, { lat: 45.803, lng: 15.990 }, { lat: 45.797, lng: 15.990 }, { lat: 45.797, lng: 15.960 }] },
     ];
     const [zones, setZones] = useState<MapZone[]>(defaultZones);
+    const [hiddenZones, setHiddenZones] = useState<Set<string>>(new Set());
     const [zoneSearch, setZoneSearch] = useState('');
     const [zoneModal, setZoneModal] = useState<{ mode: 'add' | 'edit'; zone?: MapZone } | null>(null);
     const [zoneForm, setZoneForm] = useState({ name: '', shape: 'circle' as ZoneShape, type: 'monitored' as ZoneType, color: '#3b82f6', lat: '', lng: '', radius: '500' });
     const [zoneDeleteConfirm, setZoneDeleteConfirm] = useState<MapZone | null>(null);
     const [zoneDrawing, setZoneDrawing] = useState<{ shape: ZoneShape; points: { lat: number; lng: number }[] } | null>(null);
     const [zoneCtxMenu, setZoneCtxMenu] = useState<{ x: number; y: number; zone: MapZone } | null>(null);
-    const [zoneAddStep, setZoneAddStep] = useState<'pick' | 'form' | null>(null); // 'pick' = choose method, 'form' = fill details
+    const [zoneAddStep, setZoneAddStep] = useState<'pick' | 'form' | null>(null);
+    const [zoneEventsPanel, setZoneEventsPanel] = useState<MapZone | null>(null);
     const zoneColors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
     const openAddZone = () => { setZoneForm({ name: '', shape: 'circle', type: 'monitored', color: '#3b82f6', lat: '', lng: '', radius: '500' }); setZoneAddStep('pick'); setZoneModal(null); };
@@ -304,7 +324,31 @@ export default function MapIndex() {
     const confirmDeleteZone = () => { if (zoneDeleteConfirm) { setZones(prev => prev.filter(z => z.id !== zoneDeleteConfirm.id)); setZoneDeleteConfirm(null); } };
     const goToZone = (z: MapZone) => { mapRef.current?.flyTo({ center: [z.lng, z.lat], zoom: z.radius ? Math.max(13, 16 - Math.log2((z.radius || 500) / 100)) : 14, duration: 1200 }); };
     const startDrawZone = (shape: ZoneShape) => { setZoneDrawing({ shape, points: [] }); setRulerActive(false); };
+    const toggleZoneVisibility = (id: string) => { setHiddenZones(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; }); };
     const filteredZones = zones.filter(z => !zoneSearch || z.name.toLowerCase().includes(zoneSearch.toLowerCase()) || z.type.includes(zoneSearch.toLowerCase()));
+
+    // Mock zone events
+    const zoneEventTypes = ['Entry', 'Exit', 'Breach', 'Patrol', 'Sighting', 'Alert', 'Scan', 'Checkpoint'] as const;
+    const getZoneEvents = (z: MapZone) => {
+        const seed = z.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+        const count = 5 + (seed % 8);
+        const events: { id: string; type: string; person: string; time: string; detail: string; severity: 'critical' | 'warning' | 'info' }[] = [];
+        const persons = ['Marko Horvat', 'Viktor Petrović', 'Elena Vasquez', 'Sergei Volkov', 'Ahmed Al-Rashid', 'Ana Kovačević', 'Unknown Subject', 'Vehicle #ZG-4421'];
+        const severities: ('critical' | 'warning' | 'info')[] = ['critical', 'warning', 'info', 'info', 'warning', 'info', 'critical', 'info'];
+        for (let i = 0; i < count; i++) {
+            const h = ((seed * (i + 1) * 7) % 24); const m = ((seed * (i + 1) * 13) % 60);
+            const d = ((seed * (i + 1)) % 28) + 1;
+            events.push({
+                id: `ev-${z.id}-${i}`,
+                type: zoneEventTypes[(seed + i * 3) % zoneEventTypes.length],
+                person: persons[(seed + i * 5) % persons.length],
+                time: `2026-03-${String(d).padStart(2, '0')} ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+                detail: [`Detected at perimeter`, `Crossed boundary heading north`, `Stationary for 12 min`, `LPR match confirmed`, `Face match 94.2%`, `Signal lost after 3 min`, `Device handshake captured`, `Unauthorized access attempt`][(seed + i * 2) % 8],
+                severity: severities[(seed + i) % severities.length],
+            });
+        }
+        return events.sort((a, b) => b.time.localeCompare(a.time));
+    };
 
     // Circle GeoJSON helper (approximation with 64 segments)
     const circleToPolygon = (lat: number, lng: number, radiusM: number, segments = 64): number[][] => {
@@ -324,6 +368,7 @@ export default function MapIndex() {
         if (!map || !loaded) return;
         const geojson: any = { type: 'FeatureCollection', features: [] };
         zones.forEach(z => {
+            if (hiddenZones.has(z.id)) return; // skip hidden zones
             if (z.shape === 'circle' && z.radius) {
                 geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [circleToPolygon(z.lat, z.lng, z.radius)] }, properties: { id: z.id, color: z.color, name: z.name } });
             } else if (z.shape === 'polygon' && z.points && z.points.length >= 3) {
@@ -347,7 +392,7 @@ export default function MapIndex() {
                 map.addLayer({ id: 'zones-drawing-line', type: 'line', source: 'zones-source', filter: ['==', '$type', 'LineString'], paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 3] } });
             }
         } catch {}
-    }, [zones, zoneDrawing, loaded]);
+    }, [zones, zoneDrawing, hiddenZones, loaded]);
 
     // Zone draw click handler
     useEffect(() => {
@@ -403,6 +448,55 @@ export default function MapIndex() {
 
     // Close zone ctx menu on outside click
     useEffect(() => { const h = () => setZoneCtxMenu(null); window.addEventListener('click', h); return () => window.removeEventListener('click', h); }, []);
+
+    // Subject markers on map (persons + organizations)
+    const markersRef = useRef<any[]>([]);
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        // Remove old markers
+        markersRef.current.forEach(m => m.remove());
+        markersRef.current = [];
+        const ml = (window as any).maplibregl;
+        if (!ml) return;
+
+        // Add person markers
+        selectedPersons.forEach(pid => {
+            const p = mockPersons.find(x => x.id.toString() === pid);
+            if (!p || !p.addresses?.[0]) return;
+            const addr = p.addresses[0];
+            const mc = cityCoords[addr.city];
+            if (!mc) return;
+            const offset = ((p.id * 0.003) % 0.02) - 0.01;
+            const riskColor = p.risk === 'Critical' ? '#ef4444' : p.risk === 'High' ? '#f97316' : p.risk === 'Medium' ? '#f59e0b' : '#22c55e';
+            const el = document.createElement('div');
+            el.className = 'tmap-marker-person';
+            el.innerHTML = `<div class="tmap-marker-inner" style="width:32px;height:32px;border-radius:50%;border:2.5px solid ${riskColor};background:url(${p.avatar}) center/cover;box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>`;
+            el.title = `${p.firstName} ${p.lastName} — ${addr.city}, ${addr.country}`;
+            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([mc[0] + offset, mc[1] + offset * 0.7]).addTo(map);
+            markersRef.current.push(marker);
+        });
+
+        // Add organization markers
+        selectedOrgs.forEach(oid => {
+            const o = mockOrganizations.find(x => x.id.toString() === oid);
+            if (!o || !o.addresses?.[0]) return;
+            const addr = o.addresses[0];
+            const mc = cityCoords[addr.city];
+            if (!mc) return;
+            const offset = ((o.id * 0.004) % 0.02) - 0.008;
+            const riskColor = o.risk === 'Critical' ? '#ef4444' : o.risk === 'High' ? '#f97316' : o.risk === 'Medium' ? '#f59e0b' : '#22c55e';
+            const imgSrc = o.logo || `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(o.name)}&backgroundColor=1e3a5f`;
+            const el = document.createElement('div');
+            el.className = 'tmap-marker-org';
+            el.innerHTML = `<div class="tmap-marker-inner" style="width:32px;height:32px;border-radius:6px;border:2.5px solid ${riskColor};background:url(${imgSrc}) center/cover #0d1220;box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>`;
+            el.title = `${o.name} — ${addr.city}, ${addr.country}`;
+            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([mc[0] + offset, mc[1] - offset * 0.6]).addTo(map);
+            markersRef.current.push(marker);
+        });
+
+        return () => { markersRef.current.forEach(m => m.remove()); markersRef.current = []; };
+    }, [selectedPersons, selectedOrgs, loaded]);
 
     // Tiles
     type TileId = string;
@@ -789,7 +883,7 @@ export default function MapIndex() {
                 </div>
                 <div className="tmap-sidebar-body">
                     {/* PERIOD */}
-                    <Section title="Period" icon={Ico.period} defaultOpen={true}>
+                    <Section title="Period" icon={Ico.period} >
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>From</div><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={dateInputStyle} /></div>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>To</div><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={dateInputStyle} /></div>
@@ -801,13 +895,16 @@ export default function MapIndex() {
                     </Section>
 
                     {/* SUBJECTS */}
-                    <Section title="Subjects" icon={Ico.subjects} defaultOpen={true} badge={selectedPersons.length}>
-                        <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Persons</div><SidebarMS selected={selectedPersons} onChange={setSelectedPersons} options={personOpts} placeholder="Select persons to track..." /></div>
+                    <Section title="Subjects" icon={Ico.subjects} badge={selectedPersons.length + selectedOrgs.length}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Persons ({selectedPersons.length}/{mockPersons.length})</div><SidebarMS selected={selectedPersons} onChange={setSelectedPersons} options={personOpts} placeholder="Select persons to track..." showSelectAll /></div>
+                            <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Organizations ({selectedOrgs.length}/{mockOrganizations.length})</div><SidebarMS selected={selectedOrgs} onChange={setSelectedOrgs} options={orgOpts} placeholder="Select organizations..." showSelectAll /></div>
+                        </div>
                     </Section>
 
                     <Section title="Sources" icon={Ico.sources}><div className="tmap-empty">No source filters configured.</div></Section>
                     <Section title="Layers" icon={Ico.layers}><div className="tmap-empty">No custom layers configured.</div></Section>
-                    <Section title="Tiles" icon={Ico.tiles} defaultOpen={true} badge={active3D ? 1 : 0}>
+                    <Section title="Tiles" icon={Ico.tiles}  badge={active3D ? 1 : 0}>
                         <div>
                             <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>2D Base Maps</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 12 }}>
@@ -908,25 +1005,30 @@ export default function MapIndex() {
                                 {/* Zone list */}
                                 {filteredZones.length === 0 && <div className="tmap-empty">{zoneSearch ? 'No matching zones.' : 'No zones defined.'}</div>}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 180, overflowY: 'auto' }}>
-                                    {filteredZones.map(z => (
-                                        <div key={z.id} onClick={() => goToZone(z)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 6px', borderRadius: 5, border: `1px solid ${theme.border}`, cursor: 'pointer', transition: 'all 0.1s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = z.color + '40'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; }}>
-                                            <div style={{ width: 8, height: 8, borderRadius: z.shape === 'circle' ? '50%' : 2, background: z.color, flexShrink: 0, boxShadow: `0 0 4px ${z.color}40` }} />
+                                    {filteredZones.map(z => {
+                                        const isHidden = hiddenZones.has(z.id);
+                                        return (
+                                        <div key={z.id} onClick={() => goToZone(z)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 6px', borderRadius: 5, border: `1px solid ${theme.border}`, cursor: 'pointer', transition: 'all 0.1s', opacity: isHidden ? 0.4 : 1 }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = z.color + '40'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; }}>
+                                            <button onClick={e => { e.stopPropagation(); toggleZoneVisibility(z.id); }} style={{ background: 'none', border: 'none', color: isHidden ? theme.textDim : z.color, cursor: 'pointer', padding: 1, display: 'flex', flexShrink: 0 }} title={isHidden ? 'Show zone' : 'Hide zone'}>{isHidden ? <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/><line x1="3" y1="13" x2="13" y2="3"/></svg> : <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>}</button>
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontSize: 10, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{z.name}</div>
+                                                <div style={{ fontSize: 10, fontWeight: 600, color: isHidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, textDecoration: isHidden ? 'line-through' : 'none' }}>{z.name}</div>
                                                 <div style={{ fontSize: 8, color: theme.textDim }}>{zoneTypes.find(t => t.id === z.type)?.icon} {zoneTypes.find(t => t.id === z.type)?.label} · {z.shape === 'circle' ? `${z.radius}m` : `${z.points?.length || 0} pts`}</div>
                                             </div>
                                             <button onClick={e => { e.stopPropagation(); openEditZone(z); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)} title="Edit"><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg></button>
                                             <button onClick={e => { e.stopPropagation(); setZoneDeleteConfirm(z); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)} title="Delete"><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
-                                        </div>
-                                    ))}
+                                        </div>);
+                                    })}
                                 </div>
-                                <div style={{ marginTop: 4, fontSize: 8, color: theme.textDim }}>Right-click zone on map for options.</div>
+                                <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontSize: 8, color: theme.textDim }}>Right-click zone on map for options.</span>
+                                    {hiddenZones.size > 0 && <button onClick={() => setHiddenZones(new Set())} style={{ fontSize: 8, fontWeight: 600, color: theme.accent, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Show All ({hiddenZones.size} hidden)</button>}
+                                </div>
                             </div>
                         </div>
                     </Section>
                     <Section title="Intelligence" icon={Ico.intel}><div className="tmap-empty">Intelligence analysis panels coming soon.</div></Section>
                     <Section title="Custom Objects" icon={Ico.objects}><div className="tmap-empty">No custom objects placed.</div></Section>
-                    <Section title="Saved Places" icon={Ico.places} defaultOpen={true} badge={savedPlaces.length}>
+                    <Section title="Saved Places" icon={Ico.places}  badge={savedPlaces.length}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {/* Search + Add */}
                             <div style={{ display: 'flex', gap: 4 }}>
@@ -993,7 +1095,7 @@ export default function MapIndex() {
                     </Section>
 
                     {/* SETTINGS */}
-                    <Section title="Settings" icon={Ico.settings} defaultOpen={true}>
+                    <Section title="Settings" icon={Ico.settings} >
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <Toggle label="World Minimap" description="Satellite overview map in top-right" enabled={showMinimap} onChange={setShowMinimap} />
                             <Toggle label="Compass" description="Bearing indicator in bottom-left" enabled={showCompass} onChange={setShowCompass} />
@@ -1101,14 +1203,19 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Zone Context Menu (right-click on zone) */}
-                {zoneCtxMenu && <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: zoneCtxMenu.x, top: zoneCtxMenu.y, zIndex: 50, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 160 }}>
+                {zoneCtxMenu && <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: zoneCtxMenu.x, top: zoneCtxMenu.y, zIndex: 50, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 180 }}>
                     <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div style={{ width: 8, height: 8, borderRadius: zoneCtxMenu.zone.shape === 'circle' ? '50%' : 2, background: zoneCtxMenu.zone.color }} />
-                        <span style={{ fontSize: 11, fontWeight: 700, color: theme.text }}>{zoneCtxMenu.zone.name}</span>
+                        <div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: theme.text }}>{zoneCtxMenu.zone.name}</div>
+                            <div style={{ fontSize: 8, color: theme.textDim }}>{zoneTypes.find(t => t.id === zoneCtxMenu.zone.type)?.icon} {zoneTypes.find(t => t.id === zoneCtxMenu.zone.type)?.label}</div>
+                        </div>
                     </div>
                     <div style={{ padding: '2px 0' }}>
+                        <button onClick={() => { setZoneEventsPanel(zoneCtxMenu.zone); goToZone(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="6" y1="6" x2="6" y2="14"/></svg>Show Events</button>
                         <button onClick={() => { openEditZone(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg>Edit Zone</button>
                         <button onClick={() => { goToZone(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5"/></svg>Zoom to Zone</button>
+                        <button onClick={() => { toggleZoneVisibility(zoneCtxMenu.zone.id); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{hiddenZones.has(zoneCtxMenu.zone.id) ? <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>Show Zone</> : <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/><line x1="3" y1="13" x2="13" y2="3"/></svg>Hide Zone</>}</button>
                         <div style={{ height: 1, background: theme.border, margin: '2px 8px' }} />
                         <button onClick={() => { setZoneDeleteConfirm(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M6 4V3h4v1M5 4v8.5a.5.5 0 00.5.5h5a.5.5 0 00.5-.5V4"/></svg>Delete Zone</button>
                     </div>
@@ -1230,6 +1337,46 @@ export default function MapIndex() {
                         </div>
                     </div>
                 </div>}
+
+                {/* Zone Events Panel (bottom-left, floating) */}
+                {zoneEventsPanel && (() => {
+                    const events = getZoneEvents(zoneEventsPanel);
+                    const sevColors = { critical: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
+                    return <div style={{ position: 'absolute', bottom: 50, left: 10, zIndex: 35, width: 360, maxWidth: '80%', maxHeight: 380, background: 'rgba(13,18,32,0.97)', border: `1px solid ${zoneEventsPanel.color}30`, borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        {/* Header */}
+                        <div style={{ padding: '12px 14px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ width: 10, height: 10, borderRadius: zoneEventsPanel.shape === 'circle' ? '50%' : 3, background: zoneEventsPanel.color, boxShadow: `0 0 8px ${zoneEventsPanel.color}50` }} />
+                                <div>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>{zoneEventsPanel.name}</div>
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{zoneTypes.find(t => t.id === zoneEventsPanel.type)?.icon} {zoneTypes.find(t => t.id === zoneEventsPanel.type)?.label} · {events.length} events</div>
+                                </div>
+                            </div>
+                            <button onClick={() => setZoneEventsPanel(null)} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 4, display: 'flex' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                        </div>
+                        {/* Summary */}
+                        <div style={{ display: 'flex', gap: 6, padding: '8px 14px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
+                            {(['critical', 'warning', 'info'] as const).map(s => { const c = events.filter(e => e.severity === s).length; return <div key={s} style={{ flex: 1, padding: '4px 6px', borderRadius: 4, background: sevColors[s] + '10', border: `1px solid ${sevColors[s]}20`, textAlign: 'center' as const }}><div style={{ fontSize: 14, fontWeight: 800, color: sevColors[s] }}>{c}</div><div style={{ fontSize: 7, color: theme.textDim, textTransform: 'uppercase' as const, fontWeight: 600 }}>{s}</div></div>; })}
+                        </div>
+                        {/* Event list */}
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+                            {events.map((ev, i) => (
+                                <div key={ev.id} style={{ padding: '8px 14px', borderBottom: i < events.length - 1 ? `1px solid ${theme.border}` : 'none', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                    <div style={{ width: 6, height: 6, borderRadius: 3, background: sevColors[ev.severity], flexShrink: 0, marginTop: 5, boxShadow: `0 0 4px ${sevColors[ev.severity]}40` }} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                            <span style={{ fontSize: 10, fontWeight: 700, color: theme.text }}>{ev.type}</span>
+                                            <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: sevColors[ev.severity] + '15', color: sevColors[ev.severity], fontWeight: 600, textTransform: 'uppercase' as const }}>{ev.severity}</span>
+                                        </div>
+                                        <div style={{ fontSize: 10, color: theme.textSecondary, marginBottom: 1 }}>{ev.person}</div>
+                                        <div style={{ fontSize: 9, color: theme.textDim }}>{ev.detail}</div>
+                                    </div>
+                                    <span style={{ fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, whiteSpace: 'nowrap' as const }}>{ev.time.split(' ')[1]}<br/><span style={{ fontSize: 7 }}>{ev.time.split(' ')[0].slice(5)}</span></span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>;
+                })()}
             </div>
         </div>
     );
