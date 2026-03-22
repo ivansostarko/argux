@@ -7,7 +7,8 @@
 /* Map container */
 .tmap-container { flex: 1; position: relative; min-width: 0; }
 .tmap-container .maplibregl-map { width: 100%; height: 100%; }
-.tmap-container .maplibregl-ctrl-bottom-left,
+.tmap-container .maplibregl-ctrl-attrib { display: none !important; }
+.tmap-container .maplibregl-ctrl-bottom-left { display: none !important; }
 .tmap-container .maplibregl-ctrl-bottom-right { z-index: 5; }
 
 /* Sidebar */
@@ -38,7 +39,7 @@
 @media (max-width: 768px) {
     .tmap-sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; width: 280px; transform: translateX(-100%); transition: transform 0.25s; }
     .tmap-sidebar.open { transform: translateX(0); box-shadow: 8px 0 30px rgba(0,0,0,0.6); }
-    .tmap-mobile-toggle { display: flex; }
+    .tmap-mobile-toggle { display: flex; top: 54px; }
 }
 
 /* Multiselect in sidebar */

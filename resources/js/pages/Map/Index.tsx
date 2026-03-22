@@ -63,7 +63,7 @@ function Compass({ bearing }: { bearing: number }) {
 }
 
 /* ═══ MINIMAP WIDGET ═══ */
-function Minimap({ center, zoom: mainZoom }: { center: { lat: number; lng: number }; zoom: number }) {
+function Minimap({ center, zoom: mainZoom, onNavigate }: { center: { lat: number; lng: number }; zoom: number; onNavigate: (lat: number, lng: number) => void }) {
     const ref = useRef<HTMLDivElement>(null);
     const mmRef = useRef<any>(null);
 
@@ -72,9 +72,10 @@ function Minimap({ center, zoom: mainZoom }: { center: { lat: number; lng: numbe
         const ml = (window as any).maplibregl;
         const mm = new ml.Map({
             container: ref.current,
-            style: { version: 8, sources: { 'carto-light': { type: 'raster', tiles: ['https://basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png'], tileSize: 256 } }, layers: [{ id: 'bg', type: 'raster', source: 'carto-light' }] },
-            center: [center.lng, center.lat], zoom: Math.max(1, mainZoom - 6),
+            style: { version: 8, sources: { 'esri-world': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 } }, layers: [{ id: 'bg', type: 'raster', source: 'esri-world' }] },
+            center: [center.lng, center.lat], zoom: Math.max(0, mainZoom - 8),
             interactive: false, attributionControl: false,
+            maxZoom: 8,
         });
         mmRef.current = mm;
         return () => { mm.remove(); mmRef.current = null; };
@@ -83,17 +84,25 @@ function Minimap({ center, zoom: mainZoom }: { center: { lat: number; lng: numbe
     useEffect(() => {
         if (mmRef.current) {
             mmRef.current.setCenter([center.lng, center.lat]);
-            mmRef.current.setZoom(Math.max(1, mainZoom - 6));
+            mmRef.current.setZoom(Math.max(0, mainZoom - 8));
         }
     }, [center.lat, center.lng, mainZoom]);
 
-    return (<div style={{ width: 140, height: 100, borderRadius: 8, overflow: 'hidden', border: `1.5px solid ${theme.border}`, boxShadow: '0 4px 16px rgba(0,0,0,0.5)', position: 'relative' }}>
-        <div ref={ref} style={{ width: '100%', height: '100%' }} />
-        {/* Crosshair */}
+    const handleClick = (e: React.MouseEvent) => {
+        if (!mmRef.current) return;
+        const rect = (e.target as HTMLElement).closest('div')!.getBoundingClientRect();
+        const x = e.clientX - rect.left, y = e.clientY - rect.top;
+        const lngLat = mmRef.current.unproject([x, y]);
+        onNavigate(lngLat.lat, lngLat.lng);
+    };
+
+    return (<div onClick={handleClick} style={{ width: 140, height: 100, borderRadius: 8, overflow: 'hidden', border: `1.5px solid ${theme.border}`, boxShadow: '0 4px 16px rgba(0,0,0,0.5)', position: 'relative', cursor: 'crosshair' }}>
+        <div ref={ref} style={{ width: '100%', height: '100%', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round" opacity="0.8"><line x1="8" y1="2" x2="8" y2="6"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="2" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="14" y2="8"/></svg>
         </div>
-        <div style={{ position: 'absolute', top: 3, left: 5, fontSize: 7, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", opacity: 0.7 }}>OVERVIEW</div>
+        <div style={{ position: 'absolute', top: 3, left: 5, fontSize: 7, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", opacity: 0.7, pointerEvents: 'none' }}>OVERVIEW</div>
+        <div style={{ position: 'absolute', bottom: 2, right: 4, fontSize: 6, color: 'rgba(255,255,255,0.35)', fontFamily: "'JetBrains Mono', monospace", pointerEvents: 'none' }}>Click to navigate</div>
     </div>);
 }
 
@@ -124,8 +133,64 @@ export default function MapIndex() {
     const [showMinimap, setShowMinimap] = useState(true);
     const [showCompass, setShowCompass] = useState(true);
     const [showControls, setShowControls] = useState(true);
-    const [showLocalization, setShowLocalization] = useState(true);
+    const [showLocalization, setShowLocalization] = useState(false);
+    const [showCoords, setShowCoords] = useState(true);
+    const [showSearch, setShowSearch] = useState(true);
     const [showFps, setShowFps] = useState(false);
+
+    // Place search
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<{ name: string; lat: number; lng: number; sub: string }[]>([]);
+    const [searchFocused, setSearchFocused] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
+    useEffect(() => { const h = (e: MouseEvent) => { if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchFocused(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
+
+    const searchTimerRef = useRef<any>(null);
+    const [searchLoading, setSearchLoading] = useState(false);
+
+    // Live geocoding via Nominatim (OpenStreetMap) — debounced 400ms
+    useEffect(() => {
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        if (!searchQuery.trim() || searchQuery.trim().length < 2) { setSearchResults([]); setSearchLoading(false); return; }
+        setSearchLoading(true);
+        searchTimerRef.current = setTimeout(async () => {
+            try {
+                const q = encodeURIComponent(searchQuery.trim());
+                const viewbox = mapRef.current ? (() => {
+                    const b = mapRef.current.getBounds();
+                    return `&viewbox=${b.getWest()},${b.getNorth()},${b.getEast()},${b.getSouth()}`;
+                })() : '';
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&addressdetails=1&limit=10&accept-language=en${viewbox}&bounded=0`);
+                if (!res.ok) throw new Error('Search failed');
+                const data = await res.json();
+                setSearchResults(data.map((r: any) => {
+                    const parts: string[] = [];
+                    if (r.address?.road) parts.push(r.address.road);
+                    if (r.address?.city || r.address?.town || r.address?.village) parts.push(r.address.city || r.address.town || r.address.village);
+                    if (r.address?.state) parts.push(r.address.state);
+                    if (r.address?.country) parts.push(r.address.country);
+                    const sub = parts.length > 0 ? parts.join(', ') : (r.display_name || '').split(',').slice(1, 4).join(',').trim();
+                    const typeLabel = (r.type || '').replace(/_/g, ' ');
+                    return { name: r.display_name?.split(',')[0] || r.name || 'Unknown', lat: parseFloat(r.lat), lng: parseFloat(r.lon), sub: sub || typeLabel, type: r.type || '', osm_type: r.osm_type || '' };
+                }));
+            } catch { setSearchResults([]); }
+            setSearchLoading(false);
+        }, 400);
+        return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+    }, [searchQuery]);
+
+    const handleSearchSelect = (place: { name: string; lat: number; lng: number; type?: string }) => {
+        const t = (place.type || '').toLowerCase();
+        const zoom = ['house','building','address','residential','apartments','hotel','restaurant','cafe','shop','bar'].includes(t) ? 18
+            : ['street','road','path','footway','cycleway','pedestrian','service'].includes(t) ? 17
+            : ['neighbourhood','suburb','quarter','park','cemetery','stadium','university'].includes(t) ? 15
+            : ['city','town'].includes(t) ? 13
+            : ['state','region','province','county'].includes(t) ? 9
+            : ['country'].includes(t) ? 6
+            : 14;
+        mapRef.current?.flyTo({ center: [place.lng, place.lat], zoom, duration: 1200 });
+        setSearchQuery(''); setSearchResults([]); setSearchFocused(false);
+    };
 
     // FPS counter
     useEffect(() => {
@@ -146,6 +211,17 @@ export default function MapIndex() {
         return () => cancelAnimationFrame(raf);
     }, [showFps]);
 
+    // Localization: English always shown. When checked, add local language names too.
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        const tileUrl = showLocalization
+            ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'          // English + local names (high-res)
+            : 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'; // English names only
+        const src = map.getSource('carto-dark');
+        if (src && src.setTiles) src.setTiles([tileUrl]);
+    }, [showLocalization, loaded]);
+
     // Load MapLibre
     useEffect(() => {
         const maplibreCSS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
@@ -157,11 +233,9 @@ export default function MapIndex() {
             const ml = (window as any).maplibregl;
             const map = new ml.Map({
                 container: mapContainer.current,
-                style: { version: 8, sources: { 'carto-dark': { type: 'raster', tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'], tileSize: 256, attribution: '&copy; OpenStreetMap &copy; CARTO' } }, layers: [{ id: 'carto-dark-layer', type: 'raster', source: 'carto-dark', minzoom: 0, maxzoom: 20 }] },
+                style: { version: 8, sources: { 'carto-dark': { type: 'raster', tiles: ['https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'], tileSize: 256 } }, layers: [{ id: 'carto-dark-layer', type: 'raster', source: 'carto-dark', minzoom: 0, maxzoom: 20 }] },
                 center: [15.9819, 45.8150], zoom: 13, attributionControl: false,
             });
-            map.addControl(new ml.AttributionControl({ compact: true }), 'bottom-right');
-            map.addControl(new ml.ScaleControl({ maxWidth: 150 }), 'bottom-left');
             map.on('mousemove', (e: any) => setCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
             map.on('zoomend', () => setZoom(Math.round(map.getZoom() * 10) / 10));
             map.on('rotate', () => setBearing(map.getBearing()));
@@ -173,6 +247,7 @@ export default function MapIndex() {
     }, []);
 
     const handleRecenter = useCallback(() => { mapRef.current?.flyTo({ center: [15.9819, 45.8150], zoom: 13, bearing: 0, duration: 1000 }); }, []);
+    const handleMinimapNav = useCallback((lat: number, lng: number) => { mapRef.current?.flyTo({ center: [lng, lat], zoom: mapRef.current.getZoom(), duration: 800 }); }, []);
     const handleZoomIn = () => { mapRef.current?.zoomIn({ duration: 300 }); };
     const handleZoomOut = () => { mapRef.current?.zoomOut({ duration: 300 }); };
     const handleResetNorth = () => { mapRef.current?.rotateTo(0, { duration: 500 }); };
@@ -228,10 +303,12 @@ export default function MapIndex() {
                     {/* SETTINGS */}
                     <Section title="Settings" icon={Ico.settings} defaultOpen={true}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <Toggle label="World Minimap" description="Overview map in top-right corner" enabled={showMinimap} onChange={setShowMinimap} />
+                            <Toggle label="World Minimap" description="Satellite overview map in top-right" enabled={showMinimap} onChange={setShowMinimap} />
                             <Toggle label="Compass" description="Bearing indicator in bottom-left" enabled={showCompass} onChange={setShowCompass} />
                             <Toggle label="Map Controls" description="Zoom, fullscreen, rotation buttons" enabled={showControls} onChange={setShowControls} />
-                            <Toggle label="Localization" description="Coordinate bar and scale" enabled={showLocalization} onChange={setShowLocalization} />
+                            <Toggle label="Localization" description="Add local language names alongside English" enabled={showLocalization} onChange={setShowLocalization} />
+                            <Toggle label="Coordinates" description="Lat/lng, zoom and bearing bar" enabled={showCoords} onChange={setShowCoords} />
+                            <Toggle label="Place Search" description="Search bar for locations on map" enabled={showSearch} onChange={setShowSearch} />
                             <Toggle label="FPS Counter" description="Frames per second display" enabled={showFps} onChange={setShowFps} />
                         </div>
                     </Section>
@@ -243,13 +320,70 @@ export default function MapIndex() {
                 <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
                 {/* Loading */}
-                {!loaded && <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0e16', zIndex: 20, gap: 12 }}><div style={{ width: 40, height: 40, border: `3px solid ${theme.border}`, borderTop: `3px solid ${theme.accent}`, borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite' }} /><div style={{ fontSize: 12, fontWeight: 600, color: theme.textSecondary }}>Loading Tactical Map...</div></div>}
+                {!loaded && <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0e16', zIndex: 20 }}>
+                    {/* Animated rings */}
+                    <div style={{ position: 'relative', width: 120, height: 120, marginBottom: 20 }}>
+                        <svg width="120" height="120" viewBox="0 0 120 120" style={{ position: 'absolute', inset: 0, animation: 'argux-spin 3s linear infinite' }}>
+                            <circle cx="60" cy="60" r="54" fill="none" stroke={theme.border} strokeWidth="1" />
+                            <circle cx="60" cy="60" r="54" fill="none" stroke={theme.accent} strokeWidth="2" strokeDasharray="40 300" strokeLinecap="round" />
+                        </svg>
+                        <svg width="120" height="120" viewBox="0 0 120 120" style={{ position: 'absolute', inset: 0, animation: 'argux-spin 2s linear infinite reverse' }}>
+                            <circle cx="60" cy="60" r="44" fill="none" stroke={theme.border} strokeWidth="0.5" />
+                            <circle cx="60" cy="60" r="44" fill="none" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" strokeDasharray="25 250" strokeLinecap="round" />
+                        </svg>
+                        <svg width="120" height="120" viewBox="0 0 120 120" style={{ position: 'absolute', inset: 0, animation: 'argux-spin 5s linear infinite' }}>
+                            <circle cx="60" cy="60" r="34" fill="none" stroke={theme.border} strokeWidth="0.5" />
+                            <circle cx="60" cy="60" r="34" fill="none" stroke="rgba(34,197,94,0.5)" strokeWidth="1" strokeDasharray="15 200" strokeLinecap="round" />
+                        </svg>
+                        {/* Center crosshair */}
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round" opacity="0.8">
+                                <circle cx="14" cy="14" r="4" /><line x1="14" y1="2" x2="14" y2="8" /><line x1="14" y1="20" x2="14" y2="26" /><line x1="2" y1="14" x2="8" y2="14" /><line x1="20" y1="14" x2="26" y2="14" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, letterSpacing: '0.1em', marginBottom: 6 }}>TACTICAL MAP</div>
+                    <div style={{ fontSize: 11, color: theme.textSecondary, marginBottom: 16 }}>Initializing MapLibre GL JS</div>
+                    {/* Progress steps */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                        {['Loading map engine', 'Fetching tile sources', 'Configuring overlays'].map((step, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, animation: `argux-fadeIn 0.4s ease-out ${i * 0.3}s both` }}>
+                                <div style={{ width: 8, height: 8, borderRadius: '50%', border: `1.5px solid ${theme.accent}`, background: theme.accentDim, animation: 'argux-spin 1.5s linear infinite', animationDelay: `${i * 0.2}s` }} />
+                                <span style={{ fontSize: 10, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{step}...</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>}
+
+                {/* TOP-LEFT: Place Search */}
+                {showSearch && loaded && <div ref={searchRef} style={{ position: 'absolute', top: 10, left: 10, zIndex: 15, width: 300 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(13,18,32,0.92)', border: `1px solid ${searchFocused ? theme.accent + '60' : theme.border}`, borderRadius: 8, padding: '0 10px', backdropFilter: 'blur(8px)', transition: 'border-color 0.15s' }}>
+                        {searchLoading ? <div style={{ width: 13, height: 13, border: `2px solid ${theme.border}`, borderTop: `2px solid ${theme.accent}`, borderRadius: '50%', animation: 'argux-spin 0.6s linear infinite', flexShrink: 0 }} /> : <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={searchFocused ? theme.accent : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="14" y2="14"/></svg>}
+                        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} placeholder="Search any place worldwide..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '9px 0', color: theme.text, fontSize: 12, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
+                        {searchQuery && <button onClick={() => { setSearchQuery(''); setSearchResults([]); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', display: 'flex', padding: 2 }}><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
+                    </div>
+                    {searchFocused && searchResults.length > 0 && <div style={{ marginTop: 4, background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', maxHeight: 340, overflowY: 'auto' }}>
+                        {searchResults.map((r, i) => (
+                            <div key={i} onClick={() => handleSearchSelect(r)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: i < searchResults.length - 1 ? `1px solid ${theme.border}` : 'none', transition: 'background 0.1s', display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="1.5"/></svg>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.name}</div>
+                                    <div style={{ fontSize: 9, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.sub}</div>
+                                </div>
+                                <span style={{ fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{r.lat.toFixed(2)}, {r.lng.toFixed(2)}</span>
+                            </div>
+                        ))}
+                        <div style={{ padding: '4px 12px 5px', borderTop: `1px solid ${theme.border}`, fontSize: 8, color: theme.textDim, textAlign: 'center' }}>Powered by OpenStreetMap Nominatim</div>
+                    </div>}
+                    {searchFocused && !searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && <div style={{ marginTop: 4, background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '12px 14px', textAlign: 'center', fontSize: 11, color: theme.textDim, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>No places found for "{searchQuery}"</div>}
+                    {searchFocused && searchLoading && searchResults.length === 0 && <div style={{ marginTop: 4, background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '12px 14px', textAlign: 'center', fontSize: 11, color: theme.textDim, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>Searching...</div>}
+                </div>}
 
                 {/* TOP-RIGHT: Minimap */}
-                {showMinimap && loaded && <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 5 }}><Minimap center={coords} zoom={zoom} /></div>}
+                {showMinimap && loaded && <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 5 }}><Minimap center={coords} zoom={zoom} onNavigate={handleMinimapNav} /></div>}
 
                 {/* BOTTOM-LEFT: Compass */}
-                {showCompass && loaded && <div style={{ position: 'absolute', bottom: 30, left: 12, zIndex: 5 }}><Compass bearing={bearing} /></div>}
+                {showCompass && loaded && <div style={{ position: 'absolute', bottom: 60, left: 12, zIndex: 5 }}><Compass bearing={bearing} /></div>}
 
                 {/* BOTTOM-RIGHT: Map Controls */}
                 {showControls && loaded && <div style={{ position: 'absolute', bottom: 30, right: 12, zIndex: 5, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -264,7 +398,7 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Coordinates */}
-                {showLocalization && loaded && <div className="tmap-coords"><span>LAT {coords.lat.toFixed(5)}</span><span>LNG {coords.lng.toFixed(5)}</span><span>Z {zoom}</span><span>BRG {Math.round(bearing)}°</span></div>}
+                {showCoords && loaded && <div className="tmap-coords"><span>LAT {coords.lat.toFixed(5)}</span><span>LNG {coords.lng.toFixed(5)}</span><span>Z {zoom}</span><span>BRG {Math.round(bearing)}°</span></div>}
 
                 {/* FPS Counter */}
                 {showFps && loaded && <div style={{ position: 'absolute', top: showMinimap ? 118 : 10, right: 10, zIndex: 5, background: fps >= 50 ? 'rgba(34,197,94,0.12)' : fps >= 30 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${fps >= 50 ? '#22c55e30' : fps >= 30 ? '#f59e0b30' : '#ef444430'}`, borderRadius: 6, padding: '4px 10px', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 6 }}>
