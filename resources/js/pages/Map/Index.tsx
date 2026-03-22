@@ -436,10 +436,10 @@ export default function MapIndex() {
                 e.preventDefault();
                 const fid = features[0].properties?.id;
                 const zone = zones.find(z => z.id === fid);
-                if (zone) { setZoneCtxMenu({ x: e.point.x, y: e.point.y, zone }); }
+                if (zone) { setZoneCtxMenu({ x: e.point.x, y: e.point.y, zone }); setMarkerCtxMenu(null); }
             }
         };
-        const closeCtx = () => setZoneCtxMenu(null);
+        const closeCtx = () => { setZoneCtxMenu(null); setMarkerCtxMenu(null); };
         map.on('contextmenu', ctxHandler);
         map.on('click', closeCtx);
         map.on('movestart', closeCtx);
@@ -447,10 +447,11 @@ export default function MapIndex() {
     }, [zones, loaded]);
 
     // Close zone ctx menu on outside click
-    useEffect(() => { const h = () => setZoneCtxMenu(null); window.addEventListener('click', h); return () => window.removeEventListener('click', h); }, []);
+    useEffect(() => { const h = () => { setZoneCtxMenu(null); setMarkerCtxMenu(null); }; window.addEventListener('click', h); return () => window.removeEventListener('click', h); }, []);
 
     // Subject markers on map (persons + organizations)
     const markersRef = useRef<any[]>([]);
+    const [markerCtxMenu, setMarkerCtxMenu] = useState<{ x: number; y: number; type: 'person' | 'org'; id: number; name: string; img: string; riskColor: string } | null>(null);
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !loaded) return;
@@ -472,8 +473,46 @@ export default function MapIndex() {
             const el = document.createElement('div');
             el.className = 'tmap-marker-person';
             el.innerHTML = `<div class="tmap-marker-inner" style="width:32px;height:32px;border-radius:50%;border:2.5px solid ${riskColor};background:url(${p.avatar}) center/cover;box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>`;
-            el.title = `${p.firstName} ${p.lastName} — ${addr.city}, ${addr.country}`;
-            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([mc[0] + offset, mc[1] + offset * 0.7]).addTo(map);
+            const lngLat: [number, number] = [mc[0] + offset, mc[1] + offset * 0.7];
+            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat).addTo(map);
+            // Click → popup
+            const job = p.employment?.[0];
+            const lastSeenH = Math.floor(((p.id * 7 + 3) % 48));
+            const lastSeen = lastSeenH < 1 ? 'Just now' : lastSeenH < 24 ? `${lastSeenH}h ago` : `${Math.floor(lastSeenH / 24)}d ago`;
+            const statusColor = p.status === 'Active' ? '#22c55e' : p.status === 'Inactive' ? '#6b7280' : p.status === 'Under Review' ? '#f59e0b' : '#ef4444';
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                new ml.Popup({ offset: 20, maxWidth: '280px', className: 'tmap-popup' })
+                    .setLngLat(lngLat)
+                    .setHTML(`<div class="tmap-popup-card">
+                        <div class="tmap-popup-header">
+                            <img src="${p.avatar}" class="tmap-popup-avatar" />
+                            <div class="tmap-popup-hinfo">
+                                <div class="tmap-popup-name">${p.firstName} ${p.lastName}${p.nickname ? ` <span class="tmap-popup-nick">"${p.nickname}"</span>` : ''}</div>
+                                <div class="tmap-popup-meta">
+                                    <span class="tmap-popup-risk" style="background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${p.risk}</span>
+                                    <span class="tmap-popup-status"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusColor};margin-right:3px"></span>${p.status}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tmap-popup-grid">
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">📞 Phone</span><span class="tmap-popup-val">${p.phone || '—'}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">✉️ Email</span><span class="tmap-popup-val">${p.email || '—'}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">🏢 Work</span><span class="tmap-popup-val">${job ? `${job.title} at ${job.company}` : '—'}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">🌍 Nationality</span><span class="tmap-popup-val">${p.nationality}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr.address} ${addr.addressNumber}, ${addr.city}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">🎂 DOB</span><span class="tmap-popup-val">${p.dob}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">⏱️ Last Seen</span><span class="tmap-popup-val">${lastSeen}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">🔑 Tax ID</span><span class="tmap-popup-val">${p.taxNumber || '—'}</span></div>
+                        </div>
+                        <div class="tmap-popup-coords">${lngLat[1].toFixed(5)}, ${lngLat[0].toFixed(5)}</div>
+                    </div>`).addTo(map);
+            });
+            el.addEventListener('contextmenu', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                const rect = mapContainer.current?.getBoundingClientRect();
+                if (rect) { setMarkerCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top, type: 'person', id: p.id, name: `${p.firstName} ${p.lastName}`, img: p.avatar || '', riskColor }); setZoneCtxMenu(null); }
+            });
             markersRef.current.push(marker);
         });
 
@@ -490,8 +529,47 @@ export default function MapIndex() {
             const el = document.createElement('div');
             el.className = 'tmap-marker-org';
             el.innerHTML = `<div class="tmap-marker-inner" style="width:32px;height:32px;border-radius:6px;border:2.5px solid ${riskColor};background:url(${imgSrc}) center/cover #0d1220;box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>`;
-            el.title = `${o.name} — ${addr.city}, ${addr.country}`;
-            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([mc[0] + offset, mc[1] - offset * 0.6]).addTo(map);
+            const lngLat: [number, number] = [mc[0] + offset, mc[1] - offset * 0.6];
+            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat).addTo(map);
+            // Click → popup
+            const website = o.websites?.[0]?.url || '';
+            const empCount = 10 + ((o.id * 17) % 490);
+            const linkedCount = o.linkedPersons?.length || 0;
+            const statusColor = o.status === 'Active' ? '#22c55e' : o.status === 'Inactive' ? '#6b7280' : o.status === 'Under Review' ? '#f59e0b' : '#ef4444';
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                new ml.Popup({ offset: 20, maxWidth: '280px', className: 'tmap-popup' })
+                    .setLngLat(lngLat)
+                    .setHTML(`<div class="tmap-popup-card">
+                        <div class="tmap-popup-header">
+                            <img src="${imgSrc}" class="tmap-popup-avatar" style="border-radius:6px" />
+                            <div class="tmap-popup-hinfo">
+                                <div class="tmap-popup-name">${o.name}</div>
+                                <div class="tmap-popup-meta">
+                                    <span class="tmap-popup-risk" style="background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${o.risk}</span>
+                                    <span class="tmap-popup-status"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusColor};margin-right:3px"></span>${o.status}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tmap-popup-grid">
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">👤 CEO</span><span class="tmap-popup-val">${o.ceo || '—'}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">👑 Owner</span><span class="tmap-popup-val">${o.owner || '—'}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">🏭 Industry</span><span class="tmap-popup-val">${o.industry}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">🌐 Website</span><span class="tmap-popup-val">${website ? `<a href="${website}" target="_blank" style="color:#3b82f6">${website.replace('https://', '')}</a>` : '—'}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr.address} ${addr.addressNumber}, ${addr.city}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">🌍 Country</span><span class="tmap-popup-val">${o.country}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">📋 VAT</span><span class="tmap-popup-val">${o.vat || '—'}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">👥 Linked</span><span class="tmap-popup-val">${linkedCount} person${linkedCount !== 1 ? 's' : ''}</span></div>
+                            <div class="tmap-popup-row"><span class="tmap-popup-label">📊 Employees</span><span class="tmap-popup-val">~${empCount}</span></div>
+                        </div>
+                        <div class="tmap-popup-coords">${lngLat[1].toFixed(5)}, ${lngLat[0].toFixed(5)}</div>
+                    </div>`).addTo(map);
+            });
+            el.addEventListener('contextmenu', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                const rect = mapContainer.current?.getBoundingClientRect();
+                if (rect) { setMarkerCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top, type: 'org', id: o.id, name: o.name, img: imgSrc, riskColor }); setZoneCtxMenu(null); }
+            });
             markersRef.current.push(marker);
         });
 
@@ -1218,6 +1296,33 @@ export default function MapIndex() {
                         <button onClick={() => { toggleZoneVisibility(zoneCtxMenu.zone.id); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{hiddenZones.has(zoneCtxMenu.zone.id) ? <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>Show Zone</> : <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/><line x1="3" y1="13" x2="13" y2="3"/></svg>Hide Zone</>}</button>
                         <div style={{ height: 1, background: theme.border, margin: '2px 8px' }} />
                         <button onClick={() => { setZoneDeleteConfirm(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M6 4V3h4v1M5 4v8.5a.5.5 0 00.5.5h5a.5.5 0 00.5-.5V4"/></svg>Delete Zone</button>
+                    </div>
+                </div>}
+
+                {/* Marker Context Menu (right-click on person/org marker) */}
+                {markerCtxMenu && <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: markerCtxMenu.x, top: markerCtxMenu.y, zIndex: 55, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 190 }}>
+                    <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <img src={markerCtxMenu.img} style={{ width: 22, height: 22, borderRadius: markerCtxMenu.type === 'person' ? '50%' : 4, objectFit: 'cover', border: `2px solid ${markerCtxMenu.riskColor}` }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{markerCtxMenu.name}</span>
+                    </div>
+                    <div style={{ padding: '2px 0' }}>
+                        {(markerCtxMenu.type === 'person' ? [
+                            { label: 'Profile', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5"/></svg>, href: `/persons/${markerCtxMenu.id}` },
+                            { label: 'Vehicles', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="6" width="14" height="6" rx="1.5"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l2-3h6l2 3"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=vehicles` },
+                            { label: 'Devices', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="1" width="12" height="10" rx="1.5"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="11" x2="8" y2="14"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=devices` },
+                            { label: 'Connections', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="8" cy="12" r="2"/><line x1="5.5" y1="5.5" x2="6.5" y2="10.5"/><line x1="10.5" y1="5.5" x2="9.5" y2="10.5"/><line x1="6" y1="4" x2="10" y2="4"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=connections` },
+                            { label: 'AI Assistant', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="10" rx="2"/><path d="M5 7h6M5 9h3"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=ai` },
+                            { label: 'Notes', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=notes` },
+                        ] : [
+                            { label: 'Company Profile', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M5 4V2h6v2"/><line x1="2" y1="8" x2="14" y2="8"/></svg>, href: `/organizations/${markerCtxMenu.id}` },
+                            { label: 'Vehicles', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="6" width="14" height="6" rx="1.5"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l2-3h6l2 3"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=vehicles` },
+                            { label: 'Devices', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="1" width="12" height="10" rx="1.5"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="11" x2="8" y2="14"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=devices` },
+                            { label: 'Connections', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="8" cy="12" r="2"/><line x1="5.5" y1="5.5" x2="6.5" y2="10.5"/><line x1="10.5" y1="5.5" x2="9.5" y2="10.5"/><line x1="6" y1="4" x2="10" y2="4"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=connections` },
+                            { label: 'AI Assistant', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="10" rx="2"/><path d="M5 7h6M5 9h3"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=ai` },
+                            { label: 'Notes', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=notes` },
+                        ]).map((item, i) => (
+                            <a key={i} href={item.href} onClick={() => setMarkerCtxMenu(null)} style={{ display: 'flex', width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left', textDecoration: 'none', alignItems: 'center', gap: 8, boxSizing: 'border-box' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{item.icon}{item.label}</a>
+                        ))}
                     </div>
                 </div>}
 

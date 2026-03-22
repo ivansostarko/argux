@@ -67,3 +67,24 @@
 .tmap-marker-inner { transition: transform 0.15s ease, box-shadow 0.15s ease; pointer-events: auto; }
 .tmap-marker-person:hover .tmap-marker-inner,
 .tmap-marker-org:hover .tmap-marker-inner { transform: scale(1.25); box-shadow: 0 4px 16px rgba(0,0,0,0.7) !important; z-index: 100; }
+
+/* Marker popups */
+.tmap-popup .maplibregl-popup-content { background: rgba(13,18,32,0.97) !important; border: 1px solid var(--ax-border) !important; border-radius: 10px !important; padding: 0 !important; box-shadow: 0 12px 40px rgba(0,0,0,0.6) !important; backdrop-filter: blur(10px); min-width: 240px; }
+.tmap-popup .maplibregl-popup-tip { border-top-color: rgba(13,18,32,0.97) !important; }
+.tmap-popup .maplibregl-popup-close-button { color: var(--ax-text-dim); font-size: 18px; padding: 4px 8px; right: 2px; top: 2px; z-index: 2; }
+.tmap-popup .maplibregl-popup-close-button:hover { color: #fff; background: transparent; }
+
+.tmap-popup-card { font-family: 'Inter', system-ui, sans-serif; }
+.tmap-popup-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--ax-border); }
+.tmap-popup-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--ax-border); flex-shrink: 0; }
+.tmap-popup-hinfo { flex: 1; min-width: 0; }
+.tmap-popup-name { font-size: 13px; font-weight: 700; color: var(--ax-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tmap-popup-nick { font-weight: 500; color: var(--ax-text-dim); font-size: 11px; }
+.tmap-popup-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.tmap-popup-risk { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+.tmap-popup-status { font-size: 9px; color: var(--ax-text-dim); display: flex; align-items: center; }
+.tmap-popup-grid { padding: 8px 14px; display: flex; flex-direction: column; gap: 4px; }
+.tmap-popup-row { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; line-height: 1.4; }
+.tmap-popup-label { color: var(--ax-text-dim); flex-shrink: 0; width: 90px; font-size: 10px; }
+.tmap-popup-val { color: var(--ax-text); flex: 1; word-break: break-word; font-size: 10px; }
+.tmap-popup-coords { padding: 6px 14px; border-top: 1px solid var(--ax-border); font-size: 9px; color: var(--ax-text-dim); font-family: 'JetBrains Mono', monospace; text-align: center; }

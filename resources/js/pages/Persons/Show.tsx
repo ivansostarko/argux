@@ -46,7 +46,9 @@ export default function PersonShow() {
     const toast = useToast();
     const { id } = usePage<{ id: number; [key: string]: unknown }>().props;
     const p = getPersonById(Number(id));
-    const [tab, setTab] = useState<ShowTab>('overview');
+    const validTabs: ShowTab[] = ['overview','contacts','social','addresses','employment','vehicles','devices','connections','ai','notes'];
+    const urlTab = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tab') as ShowTab | null : null;
+    const [tab, setTab] = useState<ShowTab>(urlTab && validTabs.includes(urlTab) ? urlTab : 'overview');
     const [exporting, setExporting] = useState(false);
     const [avatarLightbox, setAvatarLightbox] = useState(false);
     const [summaryText, setSummaryText] = useState(p ? generateSummary(p) : '');

@@ -39,7 +39,9 @@ export default function OrgShow() {
     const toast = useToast();
     const { id } = usePage<{ id: number; [key: string]: unknown }>().props;
     const o = getOrgById(Number(id));
-    const [tab, setTab] = useState<ShowTab>('overview');
+    const validTabs: ShowTab[] = ['overview','contacts','social','addresses','vehicles','devices','connections','ai','notes'];
+    const urlTab = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tab') as ShowTab | null : null;
+    const [tab, setTab] = useState<ShowTab>(urlTab && validTabs.includes(urlTab) ? urlTab : 'overview');
     const [exporting, setExporting] = useState(false);
     const [logoLightbox, setLogoLightbox] = useState(false);
     const [summaryText, setSummaryText] = useState('');
