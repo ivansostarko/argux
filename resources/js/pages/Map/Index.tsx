@@ -140,6 +140,7 @@ export default function MapIndex() {
     const [showCoords, setShowCoords] = useState(true);
     const [showSearch, setShowSearch] = useState(true);
     const [showLabels, setShowLabels] = useState(true);
+    const [showZones, setShowZones] = useState(true);
     const [showFps, setShowFps] = useState(false);
 
     // Saved Places
@@ -249,6 +250,159 @@ export default function MapIndex() {
     const clearRuler = () => { setRulerPoints([]); };
     const undoRulerPoint = () => { setRulerPoints(prev => prev.slice(0, -1)); };
     const stopRuler = () => { setRulerActive(false); };
+
+    // Zone Editor
+    type ZoneShape = 'circle' | 'polygon';
+    type ZoneType = 'restricted' | 'monitored' | 'surveillance' | 'safe' | 'exclusion' | 'operations' | 'buffer' | 'quarantine';
+    interface MapZone { id: string; name: string; shape: ZoneShape; type: ZoneType; color: string; lat: number; lng: number; radius?: number; points?: { lat: number; lng: number }[]; }
+    const zoneTypes: { id: ZoneType; label: string; icon: string }[] = [
+        { id: 'restricted', label: 'Restricted', icon: '🚫' },
+        { id: 'monitored', label: 'Monitored', icon: '👁️' },
+        { id: 'surveillance', label: 'Surveillance', icon: '📡' },
+        { id: 'safe', label: 'Safe', icon: '✅' },
+        { id: 'exclusion', label: 'Exclusion', icon: '⛔' },
+        { id: 'operations', label: 'Operations', icon: '🎯' },
+        { id: 'buffer', label: 'Buffer', icon: '🔶' },
+        { id: 'quarantine', label: 'Quarantine', icon: '☣️' },
+    ];
+    const defaultZones: MapZone[] = [
+        { id: 'z-1', name: 'ASG HQ Perimeter', shape: 'circle', type: 'restricted', color: '#ef4444', lat: 45.8050, lng: 15.9719, radius: 300 },
+        { id: 'z-2', name: 'Zagreb Central Monitoring', shape: 'circle', type: 'monitored', color: '#3b82f6', lat: 45.8131, lng: 15.9775, radius: 800 },
+        { id: 'z-3', name: 'Maksimir Park Surveillance', shape: 'polygon', type: 'surveillance', color: '#8b5cf6', lat: 45.822, lng: 16.018, points: [{ lat: 45.825, lng: 16.012 }, { lat: 45.826, lng: 16.022 }, { lat: 45.820, lng: 16.024 }, { lat: 45.818, lng: 16.016 }] },
+        { id: 'z-4', name: 'Airport Safe Zone', shape: 'circle', type: 'safe', color: '#22c55e', lat: 45.7429, lng: 16.0688, radius: 1200 },
+        { id: 'z-5', name: 'Dubrava Exclusion Area', shape: 'polygon', type: 'exclusion', color: '#f97316', lat: 45.827, lng: 16.045, points: [{ lat: 45.830, lng: 16.040 }, { lat: 45.832, lng: 16.050 }, { lat: 45.825, lng: 16.052 }, { lat: 45.823, lng: 16.042 }] },
+        { id: 'z-6', name: 'Jarun Operations Zone', shape: 'circle', type: 'operations', color: '#06b6d4', lat: 45.7825, lng: 15.9300, radius: 500 },
+        { id: 'z-7', name: 'Sava River Buffer', shape: 'polygon', type: 'buffer', color: '#f59e0b', lat: 45.800, lng: 15.975, points: [{ lat: 45.803, lng: 15.960 }, { lat: 45.803, lng: 15.990 }, { lat: 45.797, lng: 15.990 }, { lat: 45.797, lng: 15.960 }] },
+    ];
+    const [zones, setZones] = useState<MapZone[]>(defaultZones);
+    const [zoneSearch, setZoneSearch] = useState('');
+    const [zoneModal, setZoneModal] = useState<{ mode: 'add' | 'edit'; zone?: MapZone } | null>(null);
+    const [zoneForm, setZoneForm] = useState({ name: '', shape: 'circle' as ZoneShape, type: 'monitored' as ZoneType, color: '#3b82f6', lat: '', lng: '', radius: '500' });
+    const [zoneDeleteConfirm, setZoneDeleteConfirm] = useState<MapZone | null>(null);
+    const [zoneDrawing, setZoneDrawing] = useState<{ shape: ZoneShape; points: { lat: number; lng: number }[] } | null>(null);
+    const [zoneCtxMenu, setZoneCtxMenu] = useState<{ x: number; y: number; zone: MapZone } | null>(null);
+    const [zoneAddStep, setZoneAddStep] = useState<'pick' | 'form' | null>(null); // 'pick' = choose method, 'form' = fill details
+    const zoneColors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+
+    const openAddZone = () => { setZoneForm({ name: '', shape: 'circle', type: 'monitored', color: '#3b82f6', lat: '', lng: '', radius: '500' }); setZoneAddStep('pick'); setZoneModal(null); };
+    const openAddZoneManual = (shape: ZoneShape) => {
+        const map = mapRef.current;
+        const c = map ? map.getCenter() : { lat: 45.815, lng: 15.982 };
+        setZoneForm({ name: '', shape, type: 'monitored', color: '#3b82f6', lat: c.lat.toFixed(5), lng: (c as any).lng.toFixed(5), radius: '500' });
+        setZoneAddStep(null); setZoneModal({ mode: 'add' });
+    };
+    const startDrawAndClose = (shape: ZoneShape) => { setZoneAddStep(null); startDrawZone(shape); };
+    const openEditZone = (z: MapZone) => { setZoneForm({ name: z.name, shape: z.shape, type: z.type, color: z.color, lat: z.lat.toString(), lng: z.lng.toString(), radius: (z.radius || 500).toString() }); setZoneModal({ mode: 'edit', zone: z }); };
+    const saveZone = () => {
+        const { name, shape, type, color, lat, lng, radius } = zoneForm;
+        if (!name.trim() || !lat || !lng) return;
+        const entry: MapZone = { id: zoneModal?.zone?.id || `z-${Date.now()}`, name: name.trim(), shape, type, color, lat: parseFloat(lat), lng: parseFloat(lng), radius: shape === 'circle' ? (parseInt(radius) || 500) : undefined, points: zoneModal?.zone?.points };
+        if (zoneModal?.mode === 'edit') setZones(prev => prev.map(z => z.id === entry.id ? entry : z));
+        else setZones(prev => [...prev, entry]);
+        setZoneModal(null);
+    };
+    const confirmDeleteZone = () => { if (zoneDeleteConfirm) { setZones(prev => prev.filter(z => z.id !== zoneDeleteConfirm.id)); setZoneDeleteConfirm(null); } };
+    const goToZone = (z: MapZone) => { mapRef.current?.flyTo({ center: [z.lng, z.lat], zoom: z.radius ? Math.max(13, 16 - Math.log2((z.radius || 500) / 100)) : 14, duration: 1200 }); };
+    const startDrawZone = (shape: ZoneShape) => { setZoneDrawing({ shape, points: [] }); setRulerActive(false); };
+    const filteredZones = zones.filter(z => !zoneSearch || z.name.toLowerCase().includes(zoneSearch.toLowerCase()) || z.type.includes(zoneSearch.toLowerCase()));
+
+    // Circle GeoJSON helper (approximation with 64 segments)
+    const circleToPolygon = (lat: number, lng: number, radiusM: number, segments = 64): number[][] => {
+        const coords: number[][] = [];
+        for (let i = 0; i <= segments; i++) {
+            const angle = (i / segments) * 2 * Math.PI;
+            const dLat = (radiusM / 6371000) * (180 / Math.PI);
+            const dLng = dLat / Math.cos(lat * Math.PI / 180);
+            coords.push([lng + dLng * Math.cos(angle), lat + dLat * Math.sin(angle)]);
+        }
+        return coords;
+    };
+
+    // Draw zones on map
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        const geojson: any = { type: 'FeatureCollection', features: [] };
+        zones.forEach(z => {
+            if (z.shape === 'circle' && z.radius) {
+                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [circleToPolygon(z.lat, z.lng, z.radius)] }, properties: { id: z.id, color: z.color, name: z.name } });
+            } else if (z.shape === 'polygon' && z.points && z.points.length >= 3) {
+                const coords = z.points.map(p => [p.lng, p.lat]);
+                coords.push(coords[0]); // close polygon
+                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] }, properties: { id: z.id, color: z.color, name: z.name } });
+            }
+        });
+        // Drawing preview
+        if (zoneDrawing && zoneDrawing.points.length >= 2) {
+            const coords = zoneDrawing.points.map(p => [p.lng, p.lat]);
+            if (zoneDrawing.shape === 'polygon' && coords.length >= 3) { coords.push(coords[0]); geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] }, properties: { id: 'drawing', color: '#ffffff', name: 'Drawing...' } }); }
+            else { geojson.features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: { id: 'drawing-line' } }); }
+        }
+        try {
+            if (map.getSource('zones-source')) { (map.getSource('zones-source') as any).setData(geojson); }
+            else {
+                map.addSource('zones-source', { type: 'geojson', data: geojson });
+                map.addLayer({ id: 'zones-fill', type: 'fill', source: 'zones-source', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.12 } });
+                map.addLayer({ id: 'zones-outline', type: 'line', source: 'zones-source', filter: ['==', '$type', 'Polygon'], paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.6 } });
+                map.addLayer({ id: 'zones-drawing-line', type: 'line', source: 'zones-source', filter: ['==', '$type', 'LineString'], paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 3] } });
+            }
+        } catch {}
+    }, [zones, zoneDrawing, loaded]);
+
+    // Zone draw click handler
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded || !zoneDrawing) return;
+        const handler = (e: any) => { setZoneDrawing(prev => prev ? { ...prev, points: [...prev.points, { lat: e.lngLat.lat, lng: e.lngLat.lng }] } : null); };
+        const dblHandler = (e: any) => {
+            e.preventDefault();
+            if (!zoneDrawing || zoneDrawing.points.length < 2) return;
+            if (zoneDrawing.shape === 'circle') {
+                const ctr = zoneDrawing.points[0];
+                const edge = zoneDrawing.points[zoneDrawing.points.length - 1];
+                const R = 6371000; const dLat = (edge.lat - ctr.lat) * Math.PI / 180; const dLng = (edge.lng - ctr.lng) * Math.PI / 180;
+                const a = Math.sin(dLat / 2) ** 2 + Math.cos(ctr.lat * Math.PI / 180) * Math.cos(edge.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+                const radius = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+                setZoneForm(f => ({ ...f, shape: 'circle', lat: ctr.lat.toFixed(5), lng: ctr.lng.toFixed(5), radius: radius.toString() }));
+                setZoneModal({ mode: 'add' });
+            } else {
+                const pts = zoneDrawing.points;
+                const cLat = pts.reduce((s, p) => s + p.lat, 0) / pts.length;
+                const cLng = pts.reduce((s, p) => s + p.lng, 0) / pts.length;
+                const newZone: MapZone = { id: `z-${Date.now()}`, name: '', shape: 'polygon', type: 'monitored', color: '#3b82f6', lat: cLat, lng: cLng, points: pts };
+                setZoneForm(f => ({ ...f, shape: 'polygon', lat: cLat.toFixed(5), lng: cLng.toFixed(5) }));
+                setZoneModal({ mode: 'add', zone: newZone });
+            }
+            setZoneDrawing(null);
+        };
+        map.on('click', handler);
+        map.on('dblclick', dblHandler);
+        map.getCanvas().style.cursor = 'crosshair';
+        return () => { map.off('click', handler); map.off('dblclick', dblHandler); if (mapRef.current) mapRef.current.getCanvas().style.cursor = ''; };
+    }, [zoneDrawing, loaded]);
+
+    // Zone right-click context menu
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        const ctxHandler = (e: any) => {
+            const features = map.queryRenderedFeatures(e.point, { layers: ['zones-fill'] });
+            if (features && features.length > 0) {
+                e.preventDefault();
+                const fid = features[0].properties?.id;
+                const zone = zones.find(z => z.id === fid);
+                if (zone) { setZoneCtxMenu({ x: e.point.x, y: e.point.y, zone }); }
+            }
+        };
+        const closeCtx = () => setZoneCtxMenu(null);
+        map.on('contextmenu', ctxHandler);
+        map.on('click', closeCtx);
+        map.on('movestart', closeCtx);
+        return () => { map.off('contextmenu', ctxHandler); map.off('click', closeCtx); map.off('movestart', closeCtx); };
+    }, [zones, loaded]);
+
+    // Close zone ctx menu on outside click
+    useEffect(() => { const h = () => setZoneCtxMenu(null); window.addEventListener('click', h); return () => window.removeEventListener('click', h); }, []);
 
     // Tiles
     type TileId = string;
@@ -374,6 +528,16 @@ export default function MapIndex() {
             }
         } catch {}
     }, [showLabels, loaded]);
+
+    // Hide/show zones
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        const vis = showZones ? 'visible' : 'none';
+        try { if (map.getLayer('zones-fill')) map.setLayoutProperty('zones-fill', 'visibility', vis); } catch {}
+        try { if (map.getLayer('zones-outline')) map.setLayoutProperty('zones-outline', 'visibility', vis); } catch {}
+        try { if (map.getLayer('zones-drawing-line')) map.setLayoutProperty('zones-drawing-line', 'visibility', vis); } catch {}
+    }, [showZones, loaded]);
 
     // Localization: swap label overlay tiles (English-only vs English+local)
     useEffect(() => {
@@ -666,7 +830,7 @@ export default function MapIndex() {
                             {active3D && <div style={{ marginTop: 8, padding: '5px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', fontSize: 9, color: 'rgba(139,92,246,0.7)' }}>3D mode active: {tiles3D.find(t => t.id === active3D)?.name}. Click again to disable.</div>}
                         </div>
                     </Section>
-                    <Section title="Tools" icon={Ico.tools} badge={rulerActive ? 1 : 0}>
+                    <Section title="Tools" icon={Ico.tools} badge={(rulerActive ? 1 : 0) + (zoneDrawing ? 1 : 0)}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {/* Ruler */}
                             <div style={{ border: `1px solid ${rulerActive ? '#f59e0b30' : theme.border}`, borderRadius: 6, padding: 8, background: rulerActive ? 'rgba(245,158,11,0.03)' : 'transparent' }}>
@@ -675,7 +839,7 @@ export default function MapIndex() {
                                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={rulerActive ? '#f59e0b' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 14L14 2"/><path d="M5 14L2 14L2 11"/><path d="M11 2L14 2L14 5"/><line x1="4" y1="10" x2="6" y2="12"/><line x1="6" y1="8" x2="8" y2="10"/><line x1="8" y1="6" x2="10" y2="8"/></svg>
                                         <span style={{ fontSize: 11, fontWeight: 600, color: rulerActive ? '#f59e0b' : theme.text }}>Ruler</span>
                                     </div>
-                                    <button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); } }} style={{ padding: '3px 10px', borderRadius: 4, border: `1px solid ${rulerActive ? '#f59e0b50' : theme.border}`, background: rulerActive ? 'rgba(245,158,11,0.1)' : 'transparent', color: rulerActive ? '#f59e0b' : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{rulerActive ? 'Stop' : 'Start'}</button>
+                                    <button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); setZoneDrawing(null); } }} style={{ padding: '3px 10px', borderRadius: 4, border: `1px solid ${rulerActive ? '#f59e0b50' : theme.border}`, background: rulerActive ? 'rgba(245,158,11,0.1)' : 'transparent', color: rulerActive ? '#f59e0b' : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{rulerActive ? 'Stop' : 'Start'}</button>
                                 </div>
                                 <div style={{ fontSize: 9, color: theme.textDim, marginBottom: rulerPoints.length > 0 ? 8 : 0 }}>
                                     {rulerActive ? 'Click on the map to add measurement points.' : 'Measure distance between multiple points on the map.'}
@@ -712,6 +876,51 @@ export default function MapIndex() {
                                         <button onClick={clearRuler} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)', color: theme.danger, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Clear All</button>
                                     </div>
                                 </>}
+                            </div>
+
+                            {/* Zone Editor */}
+                            <div style={{ border: `1px solid ${zoneDrawing ? '#8b5cf630' : theme.border}`, borderRadius: 6, padding: 8, background: zoneDrawing ? 'rgba(139,92,246,0.03)' : 'transparent' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={zoneDrawing ? '#8b5cf6' : theme.textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="3,2 13,2 15,8 10,14 6,14 1,8"/></svg>
+                                        <span style={{ fontSize: 11, fontWeight: 600, color: zoneDrawing ? '#8b5cf6' : theme.text }}>Zone Editor</span>
+                                        <span style={{ fontSize: 8, fontWeight: 600, color: theme.textDim, background: theme.bgInput, padding: '1px 5px', borderRadius: 3 }}>{zones.length}</span>
+                                    </div>
+                                    <button onClick={openAddZone} style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.accent, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>+ Add</button>
+                                </div>
+
+                                {/* Draw buttons */}
+                                {!zoneDrawing && <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                                    <button onClick={() => startDrawZone('circle')} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf650'; e.currentTarget.style.color = '#8b5cf6'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="6"/></svg>Draw Circle</button>
+                                    <button onClick={() => startDrawZone('polygon')} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf650'; e.currentTarget.style.color = '#8b5cf6'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><polygon points="3,12 8,2 13,12"/></svg>Draw Polygon</button>
+                                </div>}
+
+                                {/* Drawing mode */}
+                                {zoneDrawing && <div style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', marginBottom: 6, fontSize: 9, color: '#8b5cf6', fontWeight: 600 }}>Drawing active — see map for instructions</div>}
+
+                                {/* Zone search */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, padding: '0 7px', marginBottom: 4 }}>
+                                    <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                                    <input value={zoneSearch} onChange={e => setZoneSearch(e.target.value)} placeholder="Search zones..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '4px 0', color: theme.text, fontSize: 10, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
+                                    {zoneSearch && <button onClick={() => setZoneSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 0, display: 'flex' }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
+                                </div>
+
+                                {/* Zone list */}
+                                {filteredZones.length === 0 && <div className="tmap-empty">{zoneSearch ? 'No matching zones.' : 'No zones defined.'}</div>}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 180, overflowY: 'auto' }}>
+                                    {filteredZones.map(z => (
+                                        <div key={z.id} onClick={() => goToZone(z)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 6px', borderRadius: 5, border: `1px solid ${theme.border}`, cursor: 'pointer', transition: 'all 0.1s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = z.color + '40'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; }}>
+                                            <div style={{ width: 8, height: 8, borderRadius: z.shape === 'circle' ? '50%' : 2, background: z.color, flexShrink: 0, boxShadow: `0 0 4px ${z.color}40` }} />
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: 10, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{z.name}</div>
+                                                <div style={{ fontSize: 8, color: theme.textDim }}>{zoneTypes.find(t => t.id === z.type)?.icon} {zoneTypes.find(t => t.id === z.type)?.label} · {z.shape === 'circle' ? `${z.radius}m` : `${z.points?.length || 0} pts`}</div>
+                                            </div>
+                                            <button onClick={e => { e.stopPropagation(); openEditZone(z); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)} title="Edit"><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg></button>
+                                            <button onClick={e => { e.stopPropagation(); setZoneDeleteConfirm(z); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)} title="Delete"><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div style={{ marginTop: 4, fontSize: 8, color: theme.textDim }}>Right-click zone on map for options.</div>
                             </div>
                         </div>
                     </Section>
@@ -790,6 +999,7 @@ export default function MapIndex() {
                             <Toggle label="Compass" description="Bearing indicator in bottom-left" enabled={showCompass} onChange={setShowCompass} />
                             <Toggle label="Map Controls" description="Zoom, fullscreen, rotation buttons" enabled={showControls} onChange={setShowControls} />
                             <Toggle label="Show Labels" description="Place and road names on map" enabled={showLabels} onChange={setShowLabels} />
+                            <Toggle label="Show Zones" description="Display zone overlays on map" enabled={showZones} onChange={setShowZones} />
                             <Toggle label="Localization" description="Add local language names alongside English" enabled={showLocalization} onChange={setShowLocalization} />
                             <Toggle label="Coordinates" description="Lat/lng, zoom and bearing bar" enabled={showCoords} onChange={setShowCoords} />
                             <Toggle label="Place Search" description="Search bar for locations on map" enabled={showSearch} onChange={setShowSearch} />
@@ -888,6 +1098,137 @@ export default function MapIndex() {
                 {showFps && loaded && <div style={{ position: 'absolute', top: showMinimap ? 118 : 10, right: 10, zIndex: 5, background: fps >= 50 ? 'rgba(34,197,94,0.12)' : fps >= 30 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${fps >= 50 ? '#22c55e30' : fps >= 30 ? '#f59e0b30' : '#ef444430'}`, borderRadius: 6, padding: '4px 10px', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 6, height: 6, borderRadius: 3, background: fps >= 50 ? '#22c55e' : fps >= 30 ? '#f59e0b' : '#ef4444' }} />
                     <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: fps >= 50 ? '#22c55e' : fps >= 30 ? '#f59e0b' : '#ef4444' }}>{fps} FPS</span>
+                </div>}
+
+                {/* Zone Context Menu (right-click on zone) */}
+                {zoneCtxMenu && <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: zoneCtxMenu.x, top: zoneCtxMenu.y, zIndex: 50, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 160 }}>
+                    <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: zoneCtxMenu.zone.shape === 'circle' ? '50%' : 2, background: zoneCtxMenu.zone.color }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: theme.text }}>{zoneCtxMenu.zone.name}</span>
+                    </div>
+                    <div style={{ padding: '2px 0' }}>
+                        <button onClick={() => { openEditZone(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg>Edit Zone</button>
+                        <button onClick={() => { goToZone(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5"/></svg>Zoom to Zone</button>
+                        <div style={{ height: 1, background: theme.border, margin: '2px 8px' }} />
+                        <button onClick={() => { setZoneDeleteConfirm(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M6 4V3h4v1M5 4v8.5a.5.5 0 00.5.5h5a.5.5 0 00.5-.5V4"/></svg>Delete Zone</button>
+                    </div>
+                </div>}
+
+                {/* Zone Add: Method Picker Overlay */}
+                {zoneAddStep === 'pick' && <div style={{ position: 'absolute', inset: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div onClick={() => setZoneAddStep(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} />
+                    <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: 420, maxWidth: '92%', background: 'rgba(13,18,32,0.98)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,0.7)', padding: 24 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinejoin="round"><polygon points="3,2 13,2 15,8 10,14 6,14 1,8"/></svg>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>Add New Zone</span>
+                            </div>
+                            <button onClick={() => setZoneAddStep(null)} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 4, display: 'flex' }}><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                        </div>
+                        <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 16 }}>Choose how to create your zone — draw directly on the map or enter coordinates manually.</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                            {/* Draw Circle */}
+                            <button onClick={() => startDrawAndClose('circle')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'rgba(139,92,246,0.03)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf680'; e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'rgba(139,92,246,0.03)'; }}>
+                                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#8b5cf6" strokeWidth="1.5"><circle cx="16" cy="16" r="12" strokeDasharray="4 2"/><circle cx="16" cy="16" r="2" fill="#8b5cf6"/><line x1="16" y1="16" x2="28" y2="16" strokeDasharray="2 2" opacity="0.5"/></svg>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>Draw Circle</span>
+                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' }}>Click center then edge to set radius</span>
+                            </button>
+                            {/* Draw Polygon */}
+                            <button onClick={() => startDrawAndClose('polygon')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'rgba(139,92,246,0.03)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf680'; e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'rgba(139,92,246,0.03)'; }}>
+                                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#8b5cf6" strokeWidth="1.5"><polygon points="6,24 16,4 26,24" strokeDasharray="4 2"/><circle cx="6" cy="24" r="2" fill="#8b5cf6"/><circle cx="16" cy="4" r="2" fill="#8b5cf6"/><circle cx="26" cy="24" r="2" fill="#8b5cf6"/></svg>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>Draw Polygon</span>
+                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' }}>Click vertices, double-click to close</span>
+                            </button>
+                            {/* Manual Circle */}
+                            <button onClick={() => openAddZoneManual('circle')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + '80'; e.currentTarget.style.background = 'rgba(59,130,246,0.05)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'transparent'; }}>
+                                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke={theme.accent} strokeWidth="1.5"><circle cx="16" cy="16" r="12"/><text x="16" y="20" textAnchor="middle" fontSize="10" fill={theme.accent} stroke="none" fontFamily="JetBrains Mono, monospace">123</text></svg>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>Manual Circle</span>
+                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' }}>Enter coordinates and radius</span>
+                            </button>
+                            {/* Manual Polygon */}
+                            <button onClick={() => openAddZoneManual('polygon')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + '80'; e.currentTarget.style.background = 'rgba(59,130,246,0.05)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'transparent'; }}>
+                                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke={theme.accent} strokeWidth="1.5"><polygon points="6,24 16,4 26,24"/><text x="16" y="20" textAnchor="middle" fontSize="10" fill={theme.accent} stroke="none" fontFamily="JetBrains Mono, monospace">123</text></svg>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>Manual Polygon</span>
+                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' }}>Enter center coordinates</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>}
+
+                {/* Zone Drawing Instruction Bar (top-center) */}
+                {zoneDrawing && <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 30, background: 'rgba(13,18,32,0.95)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 10, padding: '10px 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 12, maxWidth: '90%' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6', animation: 'argux-spin 1s linear infinite', boxShadow: '0 0 8px #8b5cf6' }} />
+                    <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6' }}>Drawing {zoneDrawing.shape === 'circle' ? 'Circle Zone' : 'Polygon Zone'}</div>
+                        <div style={{ fontSize: 10, color: theme.textDim }}>{zoneDrawing.shape === 'circle' ? (zoneDrawing.points.length === 0 ? 'Click to place center point' : 'Click to set edge — double-click to finish') : (zoneDrawing.points.length < 3 ? `Click to add vertices (${zoneDrawing.points.length}/3 min)` : `${zoneDrawing.points.length} points — double-click to close`)}</div>
+                    </div>
+                    <span style={{ fontSize: 20, fontWeight: 800, color: '#8b5cf6', fontFamily: "'JetBrains Mono', monospace", minWidth: 24, textAlign: 'center' as const }}>{zoneDrawing.points.length}</span>
+                    <button onClick={() => setZoneDrawing(null)} style={{ padding: '5px 12px', borderRadius: 5, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>Cancel</button>
+                </div>}
+
+                {/* Zone Add/Edit Form Panel (right side) */}
+                {zoneModal && <div style={{ position: 'absolute', top: 10, right: showMinimap ? 160 : 10, bottom: 50, zIndex: 35, width: 320, maxWidth: '80%', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ flex: 1, background: 'rgba(13,18,32,0.97)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', padding: 16, display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinejoin="round"><polygon points="3,2 13,2 15,8 10,14 6,14 1,8"/></svg>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{zoneModal.mode === 'add' ? 'New Zone' : 'Edit Zone'}</span>
+                            </div>
+                            <button onClick={() => setZoneModal(null)} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                        </div>
+                        <input value={zoneForm.name} onChange={e => setZoneForm(f => ({ ...f, name: e.target.value }))} placeholder="Zone name *" autoFocus style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, color: theme.text, fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' as const }} />
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            {(['circle', 'polygon'] as ZoneShape[]).map(s => <button key={s} onClick={() => setZoneForm(f => ({ ...f, shape: s }))} style={{ flex: 1, padding: '6px 0', borderRadius: 5, border: `1.5px solid ${zoneForm.shape === s ? '#8b5cf6' : theme.border}`, background: zoneForm.shape === s ? 'rgba(139,92,246,0.1)' : 'transparent', color: zoneForm.shape === s ? '#8b5cf6' : theme.textDim, fontSize: 10, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>{s === 'circle' ? '⬤ Circle' : '⬡ Polygon'}</button>)}
+                        </div>
+                        <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Type</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3 }}>
+                                {zoneTypes.map(t => <button key={t.id} onClick={() => setZoneForm(f => ({ ...f, type: t.id }))} style={{ padding: '5px 2px', borderRadius: 4, border: `1.5px solid ${zoneForm.type === t.id ? '#8b5cf6' : theme.border}`, background: zoneForm.type === t.id ? 'rgba(139,92,246,0.08)' : 'transparent', color: zoneForm.type === t.id ? '#8b5cf6' : theme.textDim, fontSize: 8, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'center' as const }}><div style={{ fontSize: 13 }}>{t.icon}</div>{t.label}</button>)}
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            <div style={{ flex: 1 }}><div style={{ fontSize: 8, fontWeight: 600, color: theme.textDim, marginBottom: 2 }}>Latitude *</div><input value={zoneForm.lat} onChange={e => setZoneForm(f => ({ ...f, lat: e.target.value }))} placeholder="45.8150" style={{ width: '100%', padding: '6px 8px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 4, color: theme.text, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', boxSizing: 'border-box' as const }} /></div>
+                            <div style={{ flex: 1 }}><div style={{ fontSize: 8, fontWeight: 600, color: theme.textDim, marginBottom: 2 }}>Longitude *</div><input value={zoneForm.lng} onChange={e => setZoneForm(f => ({ ...f, lng: e.target.value }))} placeholder="15.9819" style={{ width: '100%', padding: '6px 8px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 4, color: theme.text, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', boxSizing: 'border-box' as const }} /></div>
+                            {zoneForm.shape === 'circle' && <div style={{ width: 72 }}><div style={{ fontSize: 8, fontWeight: 600, color: theme.textDim, marginBottom: 2 }}>Radius (m)</div><input value={zoneForm.radius} onChange={e => setZoneForm(f => ({ ...f, radius: e.target.value }))} placeholder="500" style={{ width: '100%', padding: '6px 4px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 4, color: theme.text, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', boxSizing: 'border-box' as const, textAlign: 'center' as const }} /></div>}
+                        </div>
+                        {zoneForm.shape === 'circle' && zoneForm.radius && <div>
+                            <input type="range" min="50" max="5000" step="50" value={parseInt(zoneForm.radius) || 500} onChange={e => setZoneForm(f => ({ ...f, radius: e.target.value }))} style={{ width: '100%', accentColor: '#8b5cf6', height: 4 }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: theme.textDim }}><span>50m</span><span style={{ color: '#8b5cf6', fontWeight: 700 }}>{zoneForm.radius}m</span><span>5000m</span></div>
+                        </div>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span style={{ fontSize: 9, color: theme.textDim }}>Color</span>
+                            {zoneColors.map(c => <button key={c} onClick={() => setZoneForm(f => ({ ...f, color: c }))} style={{ width: 18, height: 18, borderRadius: 4, background: c, border: zoneForm.color === c ? '2px solid #fff' : '2px solid transparent', cursor: 'pointer', padding: 0, boxShadow: zoneForm.color === c ? `0 0 6px ${c}60` : 'none', transition: 'all 0.1s' }} />)}
+                        </div>
+                        {/* Preview */}
+                        <div style={{ padding: '8px 10px', borderRadius: 6, background: `${zoneForm.color}10`, border: `1px solid ${zoneForm.color}25`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 12, height: 12, borderRadius: zoneForm.shape === 'circle' ? '50%' : 3, background: zoneForm.color, boxShadow: `0 0 8px ${zoneForm.color}50` }} />
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{zoneForm.name || 'Untitled Zone'}</div>
+                                <div style={{ fontSize: 8, color: theme.textDim }}>{zoneTypes.find(t => t.id === zoneForm.type)?.icon} {zoneTypes.find(t => t.id === zoneForm.type)?.label} · {zoneForm.shape === 'circle' ? `${zoneForm.radius || 0}m` : 'Polygon'}</div>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                            <button onClick={saveZone} disabled={!zoneForm.name.trim() || !zoneForm.lat || !zoneForm.lng} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: 'none', background: (!zoneForm.name.trim() || !zoneForm.lat || !zoneForm.lng) ? theme.border : '#8b5cf6', color: '#fff', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: (!zoneForm.name.trim() || !zoneForm.lat || !zoneForm.lng) ? 'not-allowed' : 'pointer', opacity: (!zoneForm.name.trim() || !zoneForm.lat || !zoneForm.lng) ? 0.4 : 1 }}>{zoneModal.mode === 'add' ? 'Create Zone' : 'Update Zone'}</button>
+                            <button onClick={() => setZoneModal(null)} style={{ padding: '8px 16px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                    </div>
+                </div>}
+
+                {/* Zone Delete Confirm Overlay */}
+                {zoneDeleteConfirm && <div style={{ position: 'absolute', inset: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div onClick={() => setZoneDeleteConfirm(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} />
+                    <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: 340, maxWidth: '90%', background: 'rgba(13,18,32,0.98)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', padding: 20 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke={theme.danger} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="9"/><circle cx="8" cy="11.5" r="0.5" fill={theme.danger}/></svg>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: theme.danger }}>Delete Zone</span>
+                        </div>
+                        <div style={{ fontSize: 13, color: theme.text, marginBottom: 4 }}>Are you sure you want to delete <strong style={{ color: zoneDeleteConfirm.color }}>{zoneDeleteConfirm.name}</strong>?</div>
+                        <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 6 }}>{zoneTypes.find(t => t.id === zoneDeleteConfirm.type)?.icon} {zoneTypes.find(t => t.id === zoneDeleteConfirm.type)?.label} · {zoneDeleteConfirm.shape === 'circle' ? `${zoneDeleteConfirm.radius}m radius` : `${zoneDeleteConfirm.points?.length || 0} vertices`}</div>
+                        <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 16 }}>This zone will be permanently removed from the map. This action cannot be undone.</div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button onClick={confirmDeleteZone} style={{ flex: 1, padding: '9px 0', borderRadius: 6, border: 'none', background: theme.danger, color: '#fff', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>Delete Zone</button>
+                            <button onClick={() => setZoneDeleteConfirm(null)} style={{ padding: '9px 20px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                    </div>
                 </div>}
             </div>
         </div>
