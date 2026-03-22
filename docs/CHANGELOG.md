@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.8.1 - 2026-03-22
+
+### Added — Map Overlays & Settings
+- **World Minimap** (top-right): 140×100px overview map using a second MapLibre GL JS instance with CARTO Dark No-Labels tiles. Non-interactive. Follows main map center and zoom (offset by -6 zoom levels). Crosshair SVG in center. "OVERVIEW" label top-left. Rounded corners with border and shadow. Visible by default, togglable in Settings.
+- **Compass widget** (bottom-left): 60px SVG compass rose that rotates based on map bearing in real-time. Features: N/S/E/W cardinal labels, red north needle, white south needle, 8 tick marks (major at 90° intervals), accent-colored center dot, bearing readout in degrees below. Smooth CSS transition on rotation. Visible by default, togglable in Settings.
+- **Map Controls** (bottom-right): Vertical button stack with 7 controls:
+  - **Zoom In** (+) — `map.zoomIn()` with 300ms animation
+  - **Zoom Out** (−) — `map.zoomOut()` with 300ms animation
+  - *Divider*
+  - **Fullscreen** (expand/collapse icon) — toggles native Fullscreen API on `.tmap-page`. Icon changes between expand/collapse states. Active highlight when fullscreen. Listens to `fullscreenchange` event for external exits (Esc key).
+  - *Divider*
+  - **Rotate Left** (↺) — rotates bearing -45° with 400ms animation
+  - **Reset North** (compass arrow) — resets bearing to 0° with 500ms animation. Active highlight when bearing ≠ 0°.
+  - **Rotate Right** (↻) — rotates bearing +45° with 400ms animation
+  - All buttons: 32×32px, dark blurred background, border, hover highlight. `MapBtn` component with `active` prop for state highlighting.
+- **FPS Counter** (top-right, below minimap): Real-time frames-per-second display using `requestAnimationFrame` loop. Color-coded: green (≥50 FPS), amber (≥30 FPS), red (<30 FPS) with matching dot indicator and tinted background. JetBrains Mono font. **Disabled by default** — enable in Settings. Positioned below minimap when both visible, otherwise top-right corner.
+- **Coordinates bar updated**: Now includes bearing (`BRG 0°`) alongside LAT, LNG, Z. Visibility togglable via Settings.
+
+### Changed — Settings Section
+- **Settings section** now open by default with 5 toggle switches:
+  - **World Minimap** — "Overview map in top-right corner" — default: ON
+  - **Compass** — "Bearing indicator in bottom-left" — default: ON
+  - **Map Controls** — "Zoom, fullscreen, rotation buttons" — default: ON
+  - **Localization** — "Coordinate bar and scale" — default: ON
+  - **FPS Counter** — "Frames per second display" — default: OFF
+- **Toggle component**: Custom switch with 34×18px track, 14px knob, smooth slide animation, accent color when enabled, label + description text.
+- **Removed** built-in MapLibre `NavigationControl` — replaced by custom Map Controls buttons (bottom-right).
+- **Map bearing tracking**: Added `map.on('rotate')` listener to update `bearing` state, consumed by Compass widget, Reset North active state, and coordinates bar.
+- **Minimap component**: Second MapLibre instance with lifecycle management — creates on mount, updates center/zoom on main map move, removes on unmount.
+
 ## 0.8.0 - 2026-03-21
 
 ### Added — Tactical Map Module
