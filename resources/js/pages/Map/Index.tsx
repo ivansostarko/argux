@@ -1,5 +1,5 @@
 import PageMeta from '../../components/layout/PageMeta';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { mockPersons } from '../../mock/persons';
@@ -306,6 +306,55 @@ export default function MapIndex() {
     ];
     const edgeColors: Record<string, string> = { financial: '#f59e0b', family: '#ec4899', business: '#3b82f6', criminal: '#ef4444', comms: '#8b5cf6', surveillance: '#22c55e' };
 
+    // LPR Layer
+    const [layerLPR, setLayerLPR] = useState(false);
+    interface LPRSighting { id: string; plate: string; vehicleId: number; personId: number; personName: string; orgId?: number; orgName?: string; lat: number; lng: number; direction: string; speed: number; confidence: number; cameraId: string; cameraName: string; timestamp: string; photoUrl: string; }
+    const mockLPR: LPRSighting[] = [
+        { id: 'lpr-1', plate: 'ZG-1234-AB', vehicleId: 1, personId: 1, personName: 'Marko Horvat', orgId: 1, orgName: 'Alpha Security', lat: 45.8131, lng: 15.9775, direction: 'NE', speed: 42, confidence: 98.7, cameraId: 'sc1', cameraName: 'Ban Jelačić Cam', timestamp: '2026-03-23 08:14', photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/car_1.jpg' },
+        { id: 'lpr-2', plate: 'ZG-1234-AB', vehicleId: 1, personId: 1, personName: 'Marko Horvat', orgId: 1, orgName: 'Alpha Security', lat: 45.8048, lng: 15.9620, direction: 'S', speed: 55, confidence: 96.2, cameraId: 'sc3', cameraName: 'Savska Intersection', timestamp: '2026-03-23 08:22', photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/car_1.jpg' },
+        { id: 'lpr-3', plate: 'ZG-5678-CD', vehicleId: 2, personId: 12, personName: 'Ivan Babić', orgId: 1, orgName: 'Alpha Security', lat: 45.8100, lng: 15.9930, direction: 'W', speed: 38, confidence: 99.1, cameraId: 'sc4', cameraName: 'Maksimir Entrance', timestamp: '2026-03-23 07:55', photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/car_2.jpeg' },
+        { id: 'lpr-4', plate: 'ZG-5678-CD', vehicleId: 2, personId: 12, personName: 'Ivan Babić', orgId: 1, orgName: 'Alpha Security', lat: 45.8210, lng: 15.9850, direction: 'N', speed: 28, confidence: 94.8, cameraId: 'sc8', cameraName: 'Kaptol Area Cam', timestamp: '2026-03-23 09:03', photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/car_2.jpeg' },
+        { id: 'lpr-5', plate: 'SA-9012-RH', vehicleId: 3, personId: 3, personName: 'Ahmed Al-Rashid', orgId: 2, orgName: 'Rashid Holdings', lat: 45.8000, lng: 15.9710, direction: 'E', speed: 60, confidence: 97.5, cameraId: 'sc5', cameraName: 'Main Station South', timestamp: '2026-03-23 10:30', photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/car_1.jpg' },
+        { id: 'lpr-6', plate: 'SA-3456-RH', vehicleId: 4, personId: 3, personName: 'Ahmed Al-Rashid', orgId: 2, orgName: 'Rashid Holdings', lat: 45.8155, lng: 15.9690, direction: 'SE', speed: 45, confidence: 95.3, cameraId: 'sc2', cameraName: 'Ilica Street Cam', timestamp: '2026-03-23 10:45', photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/car_1.jpg' },
+        { id: 'lpr-7', plate: 'EG-4567-FT', vehicleId: 7, personId: 7, personName: 'Omar Hassan', orgId: 5, orgName: 'Falcon Trading', lat: 45.8060, lng: 16.0010, direction: 'NW', speed: 52, confidence: 92.1, cameraId: 'sc7', cameraName: 'Dubrava Overpass', timestamp: '2026-03-23 06:18', photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/car_2.jpeg' },
+        { id: 'lpr-8', plate: 'ZG-UNKN-01', vehicleId: 0, personId: 0, personName: 'Unknown', lat: 45.8195, lng: 15.9555, direction: 'W', speed: 75, confidence: 88.4, cameraId: 'sc6', cameraName: 'Črnomerec Junction', timestamp: '2026-03-22 23:47', photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/car_1.jpg' },
+        { id: 'lpr-9', plate: 'CO-MEND-99', vehicleId: 0, personId: 9, personName: 'Carlos Mendoza', orgId: 6, orgName: 'Mendoza IE', lat: 45.8088, lng: 15.9680, direction: 'N', speed: 33, confidence: 91.7, cameraId: 'sh2', cameraName: 'OP-HAWK Bravo', timestamp: '2026-03-23 02:12', photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/car_2.jpeg' },
+    ];
+
+    // Face Recognition Layer
+    const [layerFace, setLayerFace] = useState(false);
+    interface FaceMatch { id: string; personId: number; personName: string; personAvatar: string; risk: string; lat: number; lng: number; confidence: number; cameraId: string; cameraName: string; timestamp: string; captureUrl: string; emotion: string; wearing: string; }
+    const mockFaces: FaceMatch[] = [
+        { id: 'fr-1', personId: 1, personName: 'Marko Horvat', personAvatar: mockPersons.find(p => p.id === 1)?.avatar || '', risk: 'Critical', lat: 45.8133, lng: 15.9778, confidence: 97.4, cameraId: 'sc1', cameraName: 'Ban Jelačić Cam', timestamp: '2026-03-23 08:12', captureUrl: mockPersons.find(p => p.id === 1)?.avatar || '', emotion: 'Neutral', wearing: 'Sunglasses, Dark jacket' },
+        { id: 'fr-2', personId: 1, personName: 'Marko Horvat', personAvatar: mockPersons.find(p => p.id === 1)?.avatar || '', risk: 'Critical', lat: 45.8115, lng: 15.9830, confidence: 94.2, cameraId: 'sp1', cameraName: 'ASG HQ Interior', timestamp: '2026-03-23 09:45', captureUrl: mockPersons.find(p => p.id === 1)?.avatar || '', emotion: 'Focused', wearing: 'Suit, No glasses' },
+        { id: 'fr-3', personId: 12, personName: 'Ivan Babić', personAvatar: '', risk: 'High', lat: 45.8105, lng: 15.9935, confidence: 92.8, cameraId: 'sc4', cameraName: 'Maksimir Entrance', timestamp: '2026-03-23 07:30', captureUrl: '', emotion: 'Neutral', wearing: 'Cap, Windbreaker' },
+        { id: 'fr-4', personId: 3, personName: 'Ahmed Al-Rashid', personAvatar: mockPersons.find(p => p.id === 3)?.avatar || '', risk: 'Critical', lat: 45.8002, lng: 15.9715, confidence: 89.5, cameraId: 'sc5', cameraName: 'Main Station South', timestamp: '2026-03-23 10:28', captureUrl: mockPersons.find(p => p.id === 3)?.avatar || '', emotion: 'Phone call', wearing: 'White thobe, Briefcase' },
+        { id: 'fr-5', personId: 7, personName: 'Omar Hassan', personAvatar: mockPersons.find(p => p.id === 7)?.avatar || '', risk: 'High', lat: 45.8062, lng: 16.0015, confidence: 86.3, cameraId: 'sc7', cameraName: 'Dubrava Overpass', timestamp: '2026-03-23 06:15', captureUrl: mockPersons.find(p => p.id === 7)?.avatar || '', emotion: 'Alert', wearing: 'Leather jacket, Bag' },
+        { id: 'fr-6', personId: 9, personName: 'Carlos Mendoza', personAvatar: '', risk: 'Critical', lat: 45.8090, lng: 15.9685, confidence: 78.1, cameraId: 'sh2', cameraName: 'OP-HAWK Bravo', timestamp: '2026-03-23 02:10', captureUrl: '', emotion: 'Suspicious', wearing: 'Hoodie, Mask (partial)' },
+        { id: 'fr-7', personId: 2, personName: 'Ana Kovačević', personAvatar: mockPersons.find(p => p.id === 2)?.avatar || '', risk: 'High', lat: 45.8142, lng: 15.9762, confidence: 95.6, cameraId: 'sh1', cameraName: 'OP-HAWK Alpha', timestamp: '2026-03-23 11:02', captureUrl: mockPersons.find(p => p.id === 2)?.avatar || '', emotion: 'Conversation', wearing: 'Red coat, Scarf' },
+        { id: 'fr-8', personId: 0, personName: 'Unknown Subject', personAvatar: '', risk: 'Unknown', lat: 45.8170, lng: 15.9810, confidence: 0, cameraId: 'sh3', cameraName: 'OP-HAWK Charlie', timestamp: '2026-03-23 04:33', captureUrl: '', emotion: 'Unknown', wearing: 'Dark clothing, Hood' },
+        { id: 'fr-9', personId: 4, personName: 'Elena Petrova', personAvatar: mockPersons.find(p => p.id === 4)?.avatar || '', risk: 'Medium', lat: 45.8070, lng: 15.9755, confidence: 91.0, cameraId: 'sp3', cameraName: 'Safehouse Bravo', timestamp: '2026-03-22 22:18', captureUrl: mockPersons.find(p => p.id === 4)?.avatar || '', emotion: 'Neutral', wearing: 'Business attire' },
+        { id: 'fr-10', personId: 10, personName: 'Li Wei', personAvatar: '', risk: 'Medium', lat: 45.8200, lng: 15.9605, confidence: 83.7, cameraId: 'sc6', cameraName: 'Črnomerec Junction', timestamp: '2026-03-22 19:45', captureUrl: '', emotion: 'Hurried', wearing: 'Backpack, Glasses' },
+    ];
+
+    // ═══ TIMELINE ═══
+    const [timelineOpen, setTimelineOpen] = useState(false);
+    const [timelinePlaying, setTimelinePlaying] = useState(false);
+    const [timelineSpeed, setTimelineSpeed] = useState(1);
+    const [timelineCursor, setTimelineCursor] = useState(100); // 0..100 %
+    const [tlFilterTypes, setTlFilterTypes] = useState<Set<string>>(new Set(['lpr', 'face', 'source', 'zone', 'object']));
+    const [tlPersonIds, setTlPersonIds] = useState<Set<number>>(new Set()); // filter by persons
+    const [tlOrgIds, setTlOrgIds] = useState<Set<number>>(new Set()); // filter by orgs
+    const [tlAutoMarkers, setTlAutoMarkers] = useState(true); // show markers for visible events
+    const [tlTrackingPerson, setTlTrackingPerson] = useState<number | null>(null); // person being tracked
+    const [tlTracking3D, setTlTracking3D] = useState(false); // 3D tracking mode
+    const [tlTrackStep, setTlTrackStep] = useState(-1); // current step in tracking animation
+    const [tlShowPersonPanel, setTlShowPersonPanel] = useState(false);
+    const timelinePlayRef = useRef<number | null>(null);
+    const tlEventMarkersRef = useRef<any[]>([]);
+    const tlTrackLineRef = useRef<boolean>(false);
+    const timelineActive = timelineOpen && timelineCursor < 100;
+
     // Objects
     type ObjType = 'marker' | 'line' | 'rectangle' | 'polygon' | 'freehand' | 'circle';
     interface MapObject { id: string; type: ObjType; name: string; color: string; coords: [number, number][]; visible: boolean; assignedTo?: { type: 'person' | 'org'; id: string; name: string } | null; createdAt: string; }
@@ -505,6 +554,163 @@ export default function MapIndex() {
     const [zoneAddStep, setZoneAddStep] = useState<'pick' | 'form' | null>(null);
     const [zoneEventsPanel, setZoneEventsPanel] = useState<MapZone | null>(null);
     const zoneColors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+
+    // ═══ TIMELINE COMPUTED (depends on zones) ═══
+    interface TLEvent { id: string; type: string; icon: string; title: string; sub: string; ts: string; lat: number; lng: number; sev: string; color: string; personId?: number; orgId?: number; personName?: string; }
+    const allTLEvents = useMemo<TLEvent[]>(() => {
+        const evts: TLEvent[] = [
+            ...mockLPR.map(l => ({ id: l.id, type: 'lpr', icon: '🚗', title: `LPR: ${l.plate}`, sub: `${l.personName} · ${l.cameraName} · ${l.speed}km/h ${l.direction}`, ts: l.timestamp, lat: l.lat, lng: l.lng, sev: l.confidence >= 95 ? 'high' : 'medium', color: '#10b981', personId: l.personId, orgId: l.orgId, personName: l.personName })),
+            ...mockFaces.map(f => ({ id: f.id, type: 'face', icon: '🧑‍🦲', title: `Face: ${f.personName}`, sub: `${f.confidence}% · ${f.cameraName} · ${f.emotion}`, ts: f.timestamp, lat: f.lat, lng: f.lng, sev: f.risk === 'Critical' ? 'critical' : f.risk === 'High' ? 'high' : 'medium', color: '#ec4899', personId: f.personId, personName: f.personName })),
+            ...zones.flatMap(z => { const s = z.id.charCodeAt(z.id.length - 1); const pids = [1, 12, 0]; return [0, 1, 2].map(i => { const h = (s * 3 + i * 7) % 24; const m = (s * 11 + i * 17) % 60; const labels = ['Entry', 'Exit', 'Breach']; const names = ['Marko Horvat', 'Ivan Babić', 'Unknown']; return { id: `ze-${z.id}-${i}`, type: 'zone', icon: '🛡️', title: `Zone ${labels[i]}: ${z.name}`, sub: `${names[i]} · ${z.type}`, ts: `2026-03-23 ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, lat: z.lat, lng: z.lng, sev: z.type === 'restricted' ? 'critical' : 'info', color: z.color, personId: pids[i], personName: names[i] }; }); }),
+            { id: 'se1', type: 'source', icon: '📹', title: 'Camera: Motion Detected', sub: 'Ban Jelačić Cam · Zone A perimeter', ts: '2026-03-23 07:42', lat: 45.8131, lng: 15.9775, sev: 'info', color: '#3b82f6' },
+            { id: 'se2', type: 'source', icon: '🎙️', title: 'Audio: Keyword Detected', sub: 'MIC-ALPHA · "delivery" ×3', ts: '2026-03-23 09:15', lat: 45.8133, lng: 15.977, sev: 'high', color: '#f59e0b', personId: 1, personName: 'Marko Horvat' },
+            { id: 'se3', type: 'source', icon: '📡', title: 'GPS: Speed Alert', sub: 'GPS-004 >70km/h in monitored zone', ts: '2026-03-23 05:30', lat: 45.802, lng: 15.995, sev: 'high', color: '#22c55e', personId: 7, personName: 'Omar Hassan' },
+            { id: 'se4', type: 'source', icon: '📱', title: 'Mobile: Signal Lost', sub: 'Target Mike phone powered off', ts: '2026-03-23 03:45', lat: 45.8175, lng: 15.988, sev: 'critical', color: '#06b6d4', personId: 9, personName: 'Carlos Mendoza' },
+            { id: 'se5', type: 'source', icon: '📹', title: 'Camera: Offline', sub: 'Črnomerec Junction', ts: '2026-03-22 18:00', lat: 45.8195, lng: 15.9555, sev: 'low', color: '#3b82f6' },
+            { id: 'se6', type: 'source', icon: '🔴', title: 'Covert: Battery Low', sub: 'OP-HAWK Charlie 23%', ts: '2026-03-23 06:00', lat: 45.817, lng: 15.981, sev: 'medium', color: '#ef4444' },
+            { id: 'oe1', type: 'object', icon: '📌', title: 'Marker: Observation Alpha', sub: 'By Mitchell · Assigned Horvat', ts: '2026-03-20 14:30', lat: 45.814, lng: 15.979, sev: 'info', color: '#ef4444', personId: 1, personName: 'Marko Horvat' },
+            { id: 'oe2', type: 'object', icon: '📏', title: 'Route: Suspect Route A', sub: 'Tracking Babić movement', ts: '2026-03-19 09:15', lat: 45.813, lng: 15.975, sev: 'info', color: '#f59e0b', personId: 12, personName: 'Ivan Babić' },
+        ];
+        return evts.sort((a, b) => a.ts.localeCompare(b.ts));
+    }, [zones]);
+
+    // Period-filtered events (dateFrom/dateTo from sidebar)
+    const periodFilteredEvents = useMemo(() => {
+        let evts = allTLEvents;
+        if (dateFrom) { const d = new Date(dateFrom + 'T00:00:00').getTime(); evts = evts.filter(e => new Date(e.ts.replace(' ', 'T')).getTime() >= d); }
+        if (dateTo) { const d = new Date(dateTo + 'T23:59:59').getTime(); evts = evts.filter(e => new Date(e.ts.replace(' ', 'T')).getTime() <= d); }
+        return evts;
+    }, [allTLEvents, dateFrom, dateTo]);
+
+    // Person/Org + type filtered
+    const filteredTLEvents = useMemo(() => {
+        let evts = periodFilteredEvents.filter(e => tlFilterTypes.has(e.type));
+        if (tlPersonIds.size > 0) evts = evts.filter(e => e.personId && tlPersonIds.has(e.personId));
+        if (tlOrgIds.size > 0) evts = evts.filter(e => e.orgId && tlOrgIds.has(e.orgId));
+        return evts;
+    }, [periodFilteredEvents, tlFilterTypes, tlPersonIds, tlOrgIds]);
+
+    const tlStart = filteredTLEvents.length > 0 ? new Date(filteredTLEvents[0].ts.replace(' ', 'T')).getTime() : Date.now() - 86400000;
+    const tlEnd = filteredTLEvents.length > 0 ? new Date(filteredTLEvents[filteredTLEvents.length - 1].ts.replace(' ', 'T')).getTime() : Date.now();
+    const tlRange = Math.max(tlEnd - tlStart, 1);
+    const tlCursorMs = tlStart + (timelineCursor / 100) * tlRange;
+    const fmtTlTime = (ms: number) => { const d = new Date(ms); return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+
+    const visibleTLEvents = filteredTLEvents.filter(e => new Date(e.ts.replace(' ', 'T')).getTime() <= tlCursorMs);
+
+    // Density bars
+    const tlDensity = useMemo(() => {
+        const buckets = new Array(50).fill(0);
+        filteredTLEvents.forEach(e => {
+            const t = new Date(e.ts.replace(' ', 'T')).getTime();
+            const idx = Math.min(49, Math.floor(((t - tlStart) / tlRange) * 50));
+            buckets[idx]++;
+        });
+        const max = Math.max(...buckets, 1);
+        return buckets.map(b => b / max);
+    }, [filteredTLEvents, tlStart, tlRange]);
+
+    // Unique persons in events for person picker
+    const tlPersonOptions = useMemo(() => {
+        const map = new Map<number, string>();
+        allTLEvents.forEach(e => { if (e.personId && e.personId > 0 && e.personName) map.set(e.personId, e.personName); });
+        return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+    }, [allTLEvents]);
+
+    // Tracking: events for tracked person
+    const tlTrackEvents = useMemo(() => {
+        if (!tlTrackingPerson) return [];
+        return filteredTLEvents.filter(e => e.personId === tlTrackingPerson);
+    }, [tlTrackingPerson, filteredTLEvents]);
+
+    // Playback loop
+    useEffect(() => {
+        if (!timelinePlaying) { if (timelinePlayRef.current) clearInterval(timelinePlayRef.current); timelinePlayRef.current = null; return; }
+        timelinePlayRef.current = window.setInterval(() => {
+            setTimelineCursor(prev => { const n = prev + 0.15 * timelineSpeed; if (n >= 100) { setTimelinePlaying(false); return 100; } return n; });
+        }, 50);
+        return () => { if (timelinePlayRef.current) clearInterval(timelinePlayRef.current); };
+    }, [timelinePlaying, timelineSpeed]);
+
+    const toggleTlFilter = (t: string) => setTlFilterTypes(p => { const n = new Set(p); n.has(t) ? n.delete(t) : n.add(t); return n; });
+    const toggleTlPerson = (id: number) => setTlPersonIds(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+    // Timeline event markers on map
+    useEffect(() => {
+        tlEventMarkersRef.current.forEach(m => m.remove());
+        tlEventMarkersRef.current = [];
+        const map = mapRef.current;
+        const ml = (window as any).maplibregl;
+        if (!map || !ml || !loaded || !timelineOpen || !tlAutoMarkers) return;
+        visibleTLEvents.forEach((ev, i) => {
+            const el = document.createElement('div');
+            el.style.cssText = `width:14px;height:14px;border-radius:50%;background:${ev.color};border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 8px ${ev.color}80,0 2px 6px rgba(0,0,0,0.4);cursor:pointer;transition:transform 0.15s;position:relative;`;
+            // Pulse ring for recent events (last 5)
+            if (i >= visibleTLEvents.length - 5) {
+                const ring = document.createElement('div');
+                ring.style.cssText = `position:absolute;inset:-4px;border-radius:50%;border:1.5px solid ${ev.color};animation:tmap3d-pulse 2s ease-in-out infinite;pointer-events:none;`;
+                el.appendChild(ring);
+            }
+            el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.5)'; });
+            el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; });
+            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([ev.lng, ev.lat]).addTo(map);
+            el.addEventListener('click', (e: Event) => {
+                e.stopPropagation();
+                const sevColor = ev.sev === 'critical' ? '#ef4444' : ev.sev === 'high' ? '#f97316' : ev.sev === 'medium' ? '#f59e0b' : '#3b82f6';
+                new ml.Popup({ offset: 10, maxWidth: '240px', className: 'tmap-popup' }).setLngLat([ev.lng, ev.lat]).setHTML(`<div class="tmap-popup-card"><div class="tmap-popup-header"><span style="font-size:18px">${ev.icon}</span><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${ev.title}</div><div class="tmap-popup-meta"><span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${sevColor}15;color:${sevColor};border:1px solid ${sevColor}30">${ev.sev}</span><span style="font-size:8px;color:var(--ax-text-dim)">${ev.ts}</span></div></div></div><div style="padding:6px 14px 8px;font-size:10px;color:var(--ax-text-sec)">${ev.sub}${ev.personName ? `<br/><span style="color:var(--ax-accent)">👤 ${ev.personName}</span>` : ''}</div></div>`).addTo(map);
+            });
+            tlEventMarkersRef.current.push(marker);
+        });
+        return () => { tlEventMarkersRef.current.forEach(m => m.remove()); tlEventMarkersRef.current = []; };
+    }, [visibleTLEvents, timelineOpen, tlAutoMarkers, loaded]);
+
+    // Tracking animation: fly from event to event
+    const tlTrackAnimRef = useRef<number | null>(null);
+    const startTracking = (personId: number, use3D: boolean) => {
+        setTlTrackingPerson(personId);
+        setTlTracking3D(use3D);
+        setTlTrackStep(0);
+        setTimelineCursor(0);
+        setTimelinePlaying(false);
+        // Auto-select person filter
+        setTlPersonIds(new Set([personId]));
+    };
+    const stopTracking = () => {
+        setTlTrackingPerson(null);
+        setTlTrackStep(-1);
+        if (tlTrackAnimRef.current) { cancelAnimationFrame(tlTrackAnimRef.current); tlTrackAnimRef.current = null; }
+        // Clean up track line
+        const map = mapRef.current;
+        if (map) { try { if (map.getLayer('tl-track-line')) map.removeLayer('tl-track-line'); if (map.getSource('tl-track-src')) map.removeSource('tl-track-src'); } catch {} }
+        tlTrackLineRef.current = false;
+    };
+    // Tracking step effect
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded || !tlTrackingPerson || tlTrackStep < 0) return;
+        const evts = tlTrackEvents;
+        if (evts.length === 0 || tlTrackStep >= evts.length) { stopTracking(); return; }
+        const ev = evts[tlTrackStep];
+        // Move cursor to this event's time
+        const evTime = new Date(ev.ts.replace(' ', 'T')).getTime();
+        const pct = Math.min(100, Math.max(0, ((evTime - tlStart) / tlRange) * 100));
+        setTimelineCursor(pct);
+        // Draw accumulated track line
+        const lineCoords = evts.slice(0, tlTrackStep + 1).map(e => [e.lng, e.lat]);
+        const geojson: any = { type: 'FeatureCollection', features: lineCoords.length >= 2 ? [{ type: 'Feature', geometry: { type: 'LineString', coordinates: lineCoords }, properties: {} }] : [] };
+        try {
+            if (map.getSource('tl-track-src')) { (map.getSource('tl-track-src') as any).setData(geojson); }
+            else { map.addSource('tl-track-src', { type: 'geojson', data: geojson }); map.addLayer({ id: 'tl-track-line', type: 'line', source: 'tl-track-src', paint: { 'line-color': '#3b82f6', 'line-width': 3, 'line-opacity': 0.7, 'line-dasharray': [2, 2] } }); tlTrackLineRef.current = true; }
+        } catch {}
+        // Fly to event
+        map.flyTo({ center: [ev.lng, ev.lat], zoom: tlTracking3D ? 17 : 16, pitch: tlTracking3D ? 60 : 0, bearing: tlTracking3D && tlTrackStep > 0 ? (() => { const prev = evts[tlTrackStep - 1]; const dx = ev.lng - prev.lng; const dy = ev.lat - prev.lat; return (Math.atan2(dx, dy) * 180 / Math.PI); })() : 0, duration: 1500 });
+        // Auto-advance after pause
+        const timer = setTimeout(() => {
+            if (tlTrackStep < evts.length - 1) setTlTrackStep(s => s + 1);
+            else stopTracking();
+        }, 2000 + (1500 / timelineSpeed));
+        return () => clearTimeout(timer);
+    }, [tlTrackStep, tlTrackingPerson, loaded]);
 
     const openAddZone = () => { setZoneForm({ name: '', shape: 'circle', type: 'monitored', color: '#3b82f6', lat: '', lng: '', radius: '500' }); setZoneAddStep('pick'); setZoneModal(null); };
     const openAddZoneManual = (shape: ZoneShape) => {
@@ -912,6 +1118,95 @@ export default function MapIndex() {
         return () => { networkMarkersRef.current.forEach(m => m.remove()); networkMarkersRef.current = []; };
     }, [layerNetwork, networkShowPersons, networkShowOrgs, networkShowDevices, loaded]);
 
+    // LPR markers on map
+    const lprMarkersRef = useRef<any[]>([]);
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        lprMarkersRef.current.forEach(m => m.remove());
+        lprMarkersRef.current = [];
+        const ml = (window as any).maplibregl;
+        if (!ml || !layerLPR) return;
+
+        const lprFiltered = timelineActive ? mockLPR.filter(l => new Date(l.timestamp.replace(' ', 'T')).getTime() <= tlCursorMs) : mockLPR;
+        // Also draw connection lines from LPR to person/org markers if they're on the map
+        const lprLineFeats: any[] = [];
+        lprFiltered.forEach(lpr => {
+            const riskColor = lpr.personId === 0 ? '#6b7280' : (mockPersons.find(p => p.id === lpr.personId)?.risk === 'Critical' ? '#ef4444' : '#f97316');
+            const el = document.createElement('div');
+            el.className = 'tmap-marker-source';
+            el.innerHTML = `<div class="tmap-marker-inner" style="width:28px;height:28px;border-radius:4px;border:2px solid #10b981;background:rgba(13,18,32,0.92);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.5);font-size:13px;position:relative;">🚗<div style="position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:${riskColor};border:1.5px solid rgba(13,18,32,0.9)"></div></div>`;
+            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([lpr.lng, lpr.lat]).addTo(map);
+            el.addEventListener('click', (e: Event) => {
+                e.stopPropagation();
+                const confColor = lpr.confidence >= 95 ? '#22c55e' : lpr.confidence >= 85 ? '#f59e0b' : '#ef4444';
+                new ml.Popup({ offset: 16, maxWidth: '280px', className: 'tmap-popup' }).setLngLat([lpr.lng, lpr.lat]).setHTML(`<div class="tmap-popup-card">
+                    <div class="tmap-popup-header"><img src="${lpr.photoUrl}" class="tmap-popup-avatar" style="border-radius:6px;width:48px;height:36px;object-fit:cover" /><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:14px;font-family:'JetBrains Mono',monospace;letter-spacing:0.05em">${lpr.plate}</div><div class="tmap-popup-meta"><span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${confColor}15;color:${confColor};border:1px solid ${confColor}30">${lpr.confidence}% match</span><span class="tmap-popup-status"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#10b981;margin-right:3px"></span>LPR</span></div></div></div>
+                    <div class="tmap-popup-grid">
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">👤 Owner</span><span class="tmap-popup-val">${lpr.personName}${lpr.orgName ? ` · ${lpr.orgName}` : ''}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Direction</span><span class="tmap-popup-val">${lpr.direction} at ${lpr.speed} km/h</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val">${lpr.cameraName}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${lpr.timestamp}</span></div>
+                    </div><div class="tmap-popup-coords">${lpr.lat.toFixed(5)}, ${lpr.lng.toFixed(5)}</div></div>`).addTo(map);
+            });
+            lprMarkersRef.current.push(marker);
+            // Line from LPR to next sighting of same plate (route trail)
+            const samePlate = lprFiltered.filter(l => l.plate === lpr.plate);
+            const idx = samePlate.indexOf(lpr);
+            if (idx < samePlate.length - 1) {
+                const next = samePlate[idx + 1];
+                lprLineFeats.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lpr.lng, lpr.lat], [next.lng, next.lat]] }, properties: { color: '#10b981', width: 2 } });
+            }
+        });
+        // LPR route lines
+        const geojson: any = { type: 'FeatureCollection', features: lprLineFeats };
+        try {
+            if (map.getSource('lpr-routes')) { (map.getSource('lpr-routes') as any).setData(geojson); }
+            else { map.addSource('lpr-routes', { type: 'geojson', data: geojson }); map.addLayer({ id: 'lpr-routes-line', type: 'line', source: 'lpr-routes', paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [4, 3] } }); }
+        } catch {}
+        return () => { lprMarkersRef.current.forEach(m => m.remove()); lprMarkersRef.current = []; try { if (map.getLayer('lpr-routes-line')) map.removeLayer('lpr-routes-line'); if (map.getSource('lpr-routes')) map.removeSource('lpr-routes'); } catch {} };
+    }, [layerLPR, loaded, timelineActive, tlCursorMs]);
+
+    // Face Recognition markers on map
+    const faceMarkersRef = useRef<any[]>([]);
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        faceMarkersRef.current.forEach(m => m.remove());
+        faceMarkersRef.current = [];
+        const ml = (window as any).maplibregl;
+        if (!ml || !layerFace) return;
+        const faceFiltered = timelineActive ? mockFaces.filter(f => new Date(f.timestamp.replace(' ', 'T')).getTime() <= tlCursorMs) : mockFaces;
+        faceFiltered.forEach(fr => {
+            const confColor = fr.confidence >= 90 ? '#22c55e' : fr.confidence >= 75 ? '#f59e0b' : fr.personId === 0 ? '#ef4444' : '#6b7280';
+            const riskColor = fr.risk === 'Critical' ? '#ef4444' : fr.risk === 'High' ? '#f97316' : fr.risk === 'Medium' ? '#f59e0b' : '#6b7280';
+            const el = document.createElement('div');
+            el.className = 'tmap-marker-source';
+            const hasAvatar = fr.personAvatar && fr.personId > 0;
+            el.innerHTML = `<div class="tmap-marker-inner" style="width:30px;height:30px;border-radius:50%;border:2.5px solid ${riskColor};background:${hasAvatar ? `url(${fr.personAvatar}) center/cover` : 'rgba(13,18,32,0.92)'};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.5);font-size:12px;position:relative;${hasAvatar ? '' : ''}">${hasAvatar ? '' : '👤'}<div style="position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:${confColor};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;"><span style="font-size:5px;font-weight:900;color:#fff">${fr.confidence > 0 ? Math.round(fr.confidence) : '?'}</span></div></div>`;
+            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([fr.lng, fr.lat]).addTo(map);
+            el.addEventListener('click', (e: Event) => {
+                e.stopPropagation();
+                new ml.Popup({ offset: 18, maxWidth: '280px', className: 'tmap-popup' }).setLngLat([fr.lng, fr.lat]).setHTML(`<div class="tmap-popup-card">
+                    <div class="tmap-popup-header">
+                        <div style="width:44px;height:44px;border-radius:50%;border:2.5px solid ${riskColor};background:${hasAvatar ? `url(${fr.personAvatar}) center/cover` : 'rgba(13,18,32,0.9)'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${hasAvatar ? '' : '👤'}</div>
+                        <div class="tmap-popup-hinfo"><div class="tmap-popup-name">${fr.personName}</div><div class="tmap-popup-meta">
+                            <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${fr.risk}</span>
+                            <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${confColor}15;color:${confColor};border:1px solid ${confColor}30">${fr.confidence > 0 ? fr.confidence + '% match' : 'No match'}</span>
+                        </div></div>
+                    </div>
+                    <div class="tmap-popup-grid">
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val">${fr.cameraName}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${fr.timestamp}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">😐 Emotion</span><span class="tmap-popup-val">${fr.emotion}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">👕 Wearing</span><span class="tmap-popup-val">${fr.wearing}</span></div>
+                    </div><div class="tmap-popup-coords">${fr.lat.toFixed(5)}, ${fr.lng.toFixed(5)}</div></div>`).addTo(map);
+            });
+            faceMarkersRef.current.push(marker);
+        });
+        return () => { faceMarkersRef.current.forEach(m => m.remove()); faceMarkersRef.current = []; };
+    }, [layerFace, loaded, timelineActive, tlCursorMs]);
+
     // Object drawing click handler
     useEffect(() => {
         const map = mapRef.current;
@@ -1232,13 +1527,17 @@ export default function MapIndex() {
         }
     }, [active3D, loaded]);
 
-    // 3D mode: swap flat fill → fill-extrusion for zones and objects, elevate markers
+    // 3D mode: swap flat fill → fill-extrusion for zones and objects, animate
+    const anim3dRef = useRef<number | null>(null);
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !loaded) return;
         const is3D = !!active3D;
         const container = mapContainer.current?.parentElement;
         if (container) { is3D ? container.classList.add('tmap-3d-active') : container.classList.remove('tmap-3d-active'); }
+
+        // Stop any existing animation
+        if (anim3dRef.current) { cancelAnimationFrame(anim3dRef.current); anim3dRef.current = null; }
 
         try {
             // ZONES: swap fill → fill-extrusion or back
@@ -1253,13 +1552,19 @@ export default function MapIndex() {
                             'fill-extrusion-opacity': 0.35,
                         }});
                     }
-                    if (map.getLayer('zones-outline')) map.setPaintProperty('zones-outline', 'line-width', 3);
+                    if (map.getLayer('zones-outline')) {
+                        map.setPaintProperty('zones-outline', 'line-width', 3);
+                        map.setPaintProperty('zones-outline', 'line-dasharray', [6, 3]);
+                    }
                 } else {
                     if (map.getLayer('zones-fill-3d')) map.removeLayer('zones-fill-3d');
                     if (!map.getLayer('zones-fill')) {
                         map.addLayer({ id: 'zones-fill', type: 'fill', source: 'zones-source', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.12 } });
                     }
-                    if (map.getLayer('zones-outline')) map.setPaintProperty('zones-outline', 'line-width', 2);
+                    if (map.getLayer('zones-outline')) {
+                        map.setPaintProperty('zones-outline', 'line-width', 2);
+                        map.setPaintProperty('zones-outline', 'line-dasharray', [1, 0]);
+                    }
                 }
             }
             // OBJECTS: swap fill → fill-extrusion or back
@@ -1274,14 +1579,20 @@ export default function MapIndex() {
                             'fill-extrusion-opacity': 0.4,
                         }});
                     }
-                    if (map.getLayer('objects-outline')) map.setPaintProperty('objects-outline', 'line-width', 3);
+                    if (map.getLayer('objects-outline')) {
+                        map.setPaintProperty('objects-outline', 'line-width', 3);
+                        map.setPaintProperty('objects-outline', 'line-dasharray', [5, 3]);
+                    }
                     if (map.getLayer('objects-line')) map.setPaintProperty('objects-line', 'line-width', 4);
                 } else {
                     if (map.getLayer('objects-fill-3d')) map.removeLayer('objects-fill-3d');
                     if (!map.getLayer('objects-fill')) {
                         map.addLayer({ id: 'objects-fill', type: 'fill', source: 'objects-source', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.15 } });
                     }
-                    if (map.getLayer('objects-outline')) map.setPaintProperty('objects-outline', 'line-width', 2);
+                    if (map.getLayer('objects-outline')) {
+                        map.setPaintProperty('objects-outline', 'line-width', 2);
+                        map.setPaintProperty('objects-outline', 'line-dasharray', [1, 0]);
+                    }
                     if (map.getLayer('objects-line')) map.setPaintProperty('objects-line', 'line-width', ['coalesce', ['get', 'width'], 3]);
                 }
             }
@@ -1289,7 +1600,56 @@ export default function MapIndex() {
             if (map.getLayer('heatmap-layer')) {
                 map.setPaintProperty('heatmap-layer', 'heatmap-opacity', is3D ? 0.9 : 0.75);
             }
+
+            // 3D animation loop: breathing opacity + gentle height pulse for zones & objects
+            if (is3D) {
+                const startTime = performance.now();
+                const animate = () => {
+                    if (!mapRef.current || !active3D) return;
+                    const t = (performance.now() - startTime) / 1000;
+
+                    try {
+                        // Zones: breathing opacity (0.25 → 0.45) + height oscillation ±5%
+                        if (mapRef.current.getLayer('zones-fill-3d')) {
+                            const zoneOp = 0.35 + Math.sin(t * 0.8) * 0.1;
+                            mapRef.current.setPaintProperty('zones-fill-3d', 'fill-extrusion-opacity', zoneOp);
+                        }
+                        // Zone outlines: glowing opacity
+                        if (mapRef.current.getLayer('zones-outline')) {
+                            const outlineOp = 0.6 + Math.sin(t * 1.2) * 0.25;
+                            mapRef.current.setPaintProperty('zones-outline', 'line-opacity', outlineOp);
+                        }
+                        // Objects: breathing opacity offset from zones
+                        if (mapRef.current.getLayer('objects-fill-3d')) {
+                            const objOp = 0.4 + Math.sin(t * 1.0 + 1.5) * 0.1;
+                            mapRef.current.setPaintProperty('objects-fill-3d', 'fill-extrusion-opacity', objOp);
+                        }
+                        // Object outlines: glow
+                        if (mapRef.current.getLayer('objects-outline')) {
+                            const objOutOp = 0.7 + Math.sin(t * 1.5 + 0.8) * 0.2;
+                            mapRef.current.setPaintProperty('objects-outline', 'line-opacity', objOutOp);
+                        }
+                        // Network lines: pulse
+                        if (mapRef.current.getLayer('network-lines')) {
+                            const netOp = 0.4 + Math.sin(t * 0.6 + 2.0) * 0.2;
+                            mapRef.current.setPaintProperty('network-lines', 'line-opacity', netOp);
+                        }
+                    } catch {}
+                    anim3dRef.current = requestAnimationFrame(animate);
+                };
+                anim3dRef.current = requestAnimationFrame(animate);
+            } else {
+                // Reset static opacities
+                try {
+                    if (map.getLayer('zones-outline')) map.setPaintProperty('zones-outline', 'line-opacity', 0.6);
+                    if (map.getLayer('objects-outline')) map.setPaintProperty('objects-outline', 'line-opacity', 0.7);
+                    if (map.getLayer('objects-line')) map.setPaintProperty('objects-line', 'line-opacity', 0.8);
+                    if (map.getLayer('network-lines')) map.setPaintProperty('network-lines', 'line-opacity', ['get', 'opacity']);
+                } catch {}
+            }
         } catch (e) { console.warn('3D layer swap:', e); }
+
+        return () => { if (anim3dRef.current) { cancelAnimationFrame(anim3dRef.current); anim3dRef.current = null; } };
     }, [active3D, loaded]);
 
     // Load MapLibre + map create/rebuild helpers
@@ -1486,6 +1846,10 @@ export default function MapIndex() {
                                 {['24h', '7d', '30d'].map(p => <button key={p} onClick={() => { const d = new Date(); const f = new Date(); if (p === '24h') f.setDate(d.getDate() - 1); if (p === '7d') f.setDate(d.getDate() - 7); if (p === '30d') f.setDate(d.getDate() - 30); setDateFrom(f.toISOString().slice(0, 10)); setDateTo(d.toISOString().slice(0, 10)); }} style={{ flex: 1, padding: '4px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.color = theme.accent; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}>{p}</button>)}
                                 {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); }} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>×</button>}
                             </div>
+                            {(dateFrom || dateTo) && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2, padding: '5px 8px', borderRadius: 5, background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.12)' }}>
+                                <span style={{ fontSize: 9, color: theme.textSecondary }}>{periodFilteredEvents.length} events in period</span>
+                                <button onClick={() => { setTimelineOpen(true); setTimelineCursor(100); }} style={{ fontSize: 8, fontWeight: 700, color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>Open Timeline →</button>
+                            </div>}
                         </div>
                     </Section>
 
@@ -1531,7 +1895,7 @@ export default function MapIndex() {
                             </div>}
                         </div>
                     </Section>
-                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0)}>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0)}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {/* Heatmap Layer */}
                             <div style={{ border: `1px solid ${layerHeatmap ? '#f59e0b30' : theme.border}`, borderRadius: 6, padding: 8, background: layerHeatmap ? 'rgba(245,158,11,0.03)' : 'transparent' }}>
@@ -1596,9 +1960,64 @@ export default function MapIndex() {
                                     </div>
                                 </div>}
                             </div>
+
+                            {/* LPR Layer */}
+                            <div style={{ border: `1px solid ${layerLPR ? '#10b98130' : theme.border}`, borderRadius: 6, padding: 8, background: layerLPR ? 'rgba(16,185,129,0.03)' : 'transparent' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: layerLPR ? 8 : 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 12 }}>🚗</span>
+                                        <span style={{ fontSize: 11, fontWeight: 600, color: layerLPR ? '#10b981' : theme.text }}>Plate Recognition</span>
+                                    </div>
+                                    <button onClick={() => setLayerLPR(!layerLPR)} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerLPR ? '#10b981' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
+                                        <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerLPR ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                    </button>
+                                </div>
+                                {layerLPR && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{mockLPR.length} sightings · {new Set(mockLPR.map(l => l.plate)).size} unique plates · Route trails shown</div>
+                                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                        {Array.from(new Set(mockLPR.map(l => l.plate))).slice(0, 5).map(plate => {
+                                            const lpr = mockLPR.find(l => l.plate === plate)!;
+                                            const count = mockLPR.filter(l => l.plate === plate).length;
+                                            return <span key={plate} style={{ fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 3, background: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', fontFamily: "'JetBrains Mono', monospace", display: 'flex', alignItems: 'center', gap: 3 }}>{plate}<span style={{ fontSize: 7, color: theme.textDim }}>×{count}</span></span>;
+                                        })}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                                        {[['🟢', '≥95%'], ['🟡', '85-94%'], ['🔴', '<85%']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 8, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}>{ico} {lbl}</span>)}
+                                    </div>
+                                </div>}
+                            </div>
+
+                            {/* Face Recognition Layer */}
+                            <div style={{ border: `1px solid ${layerFace ? '#ec489930' : theme.border}`, borderRadius: 6, padding: 8, background: layerFace ? 'rgba(236,72,153,0.03)' : 'transparent' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: layerFace ? 8 : 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 12 }}>🧑‍🦲</span>
+                                        <span style={{ fontSize: 11, fontWeight: 600, color: layerFace ? '#ec4899' : theme.text }}>Face Recognition</span>
+                                    </div>
+                                    <button onClick={() => setLayerFace(!layerFace)} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerFace ? '#ec4899' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
+                                        <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerFace ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                    </button>
+                                </div>
+                                {layerFace && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{mockFaces.length} captures · {mockFaces.filter(f => f.personId > 0).length} matched · {mockFaces.filter(f => f.personId === 0).length} unidentified</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        {mockFaces.filter(f => f.personId > 0).slice(0, 5).map(fr => {
+                                            const riskColor = fr.risk === 'Critical' ? '#ef4444' : fr.risk === 'High' ? '#f97316' : fr.risk === 'Medium' ? '#f59e0b' : '#6b7280';
+                                            return <div key={fr.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9 }}>
+                                                <div style={{ width: 14, height: 14, borderRadius: '50%', border: `1.5px solid ${riskColor}`, background: fr.personAvatar ? `url(${fr.personAvatar}) center/cover` : 'rgba(13,18,32,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, flexShrink: 0 }}>{fr.personAvatar ? '' : '👤'}</div>
+                                                <span style={{ color: theme.text, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{fr.personName}</span>
+                                                <span style={{ color: fr.confidence >= 90 ? '#22c55e' : '#f59e0b', fontFamily: "'JetBrains Mono', monospace", fontSize: 8, fontWeight: 700 }}>{fr.confidence}%</span>
+                                            </div>;
+                                        })}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                                        {[['🟢', '≥90%'], ['🟡', '75-89%'], ['🔴', '<75%'], ['⚫', 'Unknown']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 8, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}>{ico} {lbl}</span>)}
+                                    </div>
+                                </div>}
+                            </div>
                         </div>
                     </Section>
-                    <Section title="Tiles" icon={Ico.tiles}  badge={active3D ? 1 : 0}>
+                    <Section title="Tiles" icon={Ico.tiles} badge={active3D ? 1 : 0}>
                         <div>
                             <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>2D Base Maps</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 12 }}>
@@ -1918,8 +2337,119 @@ export default function MapIndex() {
                     <MapBtn onClick={handleRotateCW} title="Rotate Right"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 7a5 5 0 00-9 1"/><polyline points="14,4 12,7 9,5"/></svg></MapBtn>
                 </div>}
 
+                {/* Timeline Toggle */}
+                {loaded && <button onClick={() => { setTimelineOpen(!timelineOpen); if (!timelineOpen) { setTimelineCursor(100); setTlTrackingPerson(null); setTlTrackStep(-1); } setTimelinePlaying(false); }} style={{ position: 'absolute', bottom: timelineOpen ? 282 : (showCoords ? 36 : 10), left: '50%', transform: 'translateX(-50%)', zIndex: 15, background: timelineOpen ? 'rgba(59,130,246,0.15)' : 'rgba(13,18,32,0.9)', border: `1px solid ${timelineOpen ? '#3b82f650' : theme.border}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 6, transition: 'bottom 0.3s ease, background 0.2s', fontFamily: 'inherit' }}>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={timelineOpen ? '#3b82f6' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><polyline points="8,5 8,8 11,8"/></svg>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: timelineOpen ? '#3b82f6' : theme.textDim }}>Timeline</span>
+                    {timelineActive && <span style={{ fontSize: 8, fontWeight: 800, padding: '1px 4px', borderRadius: 3, background: '#3b82f620', color: '#3b82f6', border: '1px solid #3b82f630' }}>ACTIVE</span>}
+                    {tlTrackingPerson && <span style={{ fontSize: 8, fontWeight: 800, padding: '1px 4px', borderRadius: 3, background: '#22c55e20', color: '#22c55e', border: '1px solid #22c55e30' }}>TRACKING</span>}
+                    {(dateFrom || dateTo) && <span style={{ fontSize: 8, fontWeight: 800, padding: '1px 4px', borderRadius: 3, background: '#f59e0b20', color: '#f59e0b', border: '1px solid #f59e0b30' }}>PERIOD</span>}
+                </button>}
+
+                {/* Timeline Panel */}
+                {timelineOpen && loaded && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 12, background: 'rgba(10,14,22,0.96)', borderTop: `1px solid ${theme.border}`, backdropFilter: 'blur(12px)' }}>
+                    {/* Row 1: Transport + time + stats + tracking */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderBottom: `1px solid ${theme.border}20`, flexWrap: 'wrap' }}>
+                        <button onClick={() => { if (timelineCursor >= 100) setTimelineCursor(0); setTimelinePlaying(!timelinePlaying); }} style={{ width: 26, height: 26, borderRadius: 5, border: `1px solid ${timelinePlaying ? '#3b82f650' : theme.border}`, background: timelinePlaying ? 'rgba(59,130,246,0.12)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: timelinePlaying ? '#3b82f6' : theme.textDim, flexShrink: 0 }}>
+                            {timelinePlaying ? <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="4" height="10" rx="1"/><rect x="9" y="3" width="4" height="10" rx="1"/></svg> : <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><polygon points="4,2 14,8 4,14"/></svg>}
+                        </button>
+                        <button onClick={() => setTimelineCursor(Math.max(0, timelineCursor - 2))} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, flexShrink: 0, padding: 0 }}><svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><polygon points="10,2 4,8 10,14"/></svg></button>
+                        <button onClick={() => setTimelineCursor(Math.min(100, timelineCursor + 2))} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, flexShrink: 0, padding: 0 }}><svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><polygon points="6,2 12,8 6,14"/></svg></button>
+                        <div style={{ display: 'flex', gap: 2 }}>{[0.5, 1, 2, 4].map(s => <button key={s} onClick={() => setTimelineSpeed(s)} style={{ padding: '2px 5px', borderRadius: 3, border: `1px solid ${timelineSpeed === s ? '#3b82f640' : theme.border}`, background: timelineSpeed === s ? 'rgba(59,130,246,0.1)' : 'transparent', color: timelineSpeed === s ? '#3b82f6' : theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{s}×</button>)}</div>
+                        <div style={{ width: 1, height: 16, background: theme.border, flexShrink: 0 }} />
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, color: timelineActive ? '#3b82f6' : theme.text, letterSpacing: '0.03em', flexShrink: 0 }}>{fmtTlTime(tlCursorMs)}</div>
+                        <span style={{ fontSize: 8, color: theme.textDim, flexShrink: 0 }}>{visibleTLEvents.length}/{filteredTLEvents.length}</span>
+                        {(dateFrom || dateTo) && <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: '#f59e0b10', color: '#f59e0b', border: '1px solid #f59e0b20' }}>📅 {dateFrom || '∞'} → {dateTo || '∞'}</span>}
+                        <div style={{ flex: 1 }} />
+                        {/* Auto markers toggle */}
+                        <button onClick={() => setTlAutoMarkers(!tlAutoMarkers)} style={{ padding: '2px 8px', borderRadius: 3, border: `1px solid ${tlAutoMarkers ? '#22c55e40' : theme.border}`, background: tlAutoMarkers ? 'rgba(34,197,94,0.08)' : 'transparent', color: tlAutoMarkers ? '#22c55e' : theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>📍 Markers {tlAutoMarkers ? 'ON' : 'OFF'}</button>
+                        {/* Person tracking */}
+                        <button onClick={() => setTlShowPersonPanel(!tlShowPersonPanel)} style={{ padding: '2px 8px', borderRadius: 3, border: `1px solid ${tlShowPersonPanel ? '#ec489940' : theme.border}`, background: tlShowPersonPanel ? 'rgba(236,72,153,0.08)' : 'transparent', color: tlShowPersonPanel ? '#ec4899' : theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>👤 Persons</button>
+                        <button onClick={() => { setTimelineCursor(100); setTimelinePlaying(false); stopTracking(); }} style={{ padding: '2px 7px', borderRadius: 3, border: `1px solid ${theme.border}`, background: timelineCursor < 100 ? 'rgba(59,130,246,0.08)' : 'transparent', cursor: 'pointer', fontSize: 8, fontWeight: 700, color: timelineCursor < 100 ? '#3b82f6' : theme.textDim, fontFamily: 'inherit' }}>Reset</button>
+                        <button onClick={() => { setTimelineOpen(false); setTimelinePlaying(false); setTimelineCursor(100); stopTracking(); }} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, flexShrink: 0, padding: 0, fontSize: 10 }}>✕</button>
+                    </div>
+
+                    {/* Tracking indicator */}
+                    {tlTrackingPerson && <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px', background: 'rgba(34,197,94,0.06)', borderBottom: `1px solid #22c55e20` }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', animation: 'tmap3d-pulse 1.5s infinite' }} />
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#22c55e' }}>TRACKING: {tlPersonOptions.find(p => p.id === tlTrackingPerson)?.name}</span>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>Step {tlTrackStep + 1}/{tlTrackEvents.length} · {tlTracking3D ? '3D' : '2D'}</span>
+                        <div style={{ flex: 1 }} />
+                        <button onClick={() => { if (tlTrackStep > 0) setTlTrackStep(s => s - 1); }} style={{ padding: '1px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, cursor: 'pointer', fontFamily: 'inherit' }}>◀ Prev</button>
+                        <button onClick={() => { if (tlTrackStep < tlTrackEvents.length - 1) setTlTrackStep(s => s + 1); }} style={{ padding: '1px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, cursor: 'pointer', fontFamily: 'inherit' }}>Next ▶</button>
+                        <button onClick={stopTracking} style={{ padding: '1px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>Stop</button>
+                    </div>}
+
+                    {/* Scrubber */}
+                    <div style={{ padding: '4px 12px 2px' }}>
+                        <div style={{ display: 'flex', gap: 1, height: 20, alignItems: 'flex-end', marginBottom: 1 }}>
+                            {tlDensity.map((d, i) => { const pct = ((i + 0.5) / 50) * 100; const past = pct <= timelineCursor; return <div key={i} style={{ flex: 1, height: `${Math.max(2, d * 100)}%`, background: past ? '#3b82f6' : `rgba(${d > 0.5 ? '239,68,68' : '107,114,128'},${0.15 + d * 0.3})`, borderRadius: '2px 2px 0 0', transition: 'background 0.1s' }} />; })}
+                        </div>
+                        <input type="range" min="0" max="100" step="0.1" value={timelineCursor} onChange={e => { setTimelineCursor(parseFloat(e.target.value)); setTimelinePlaying(false); }} style={{ width: '100%', height: 6, appearance: 'none', WebkitAppearance: 'none', background: `linear-gradient(to right, #3b82f6 ${timelineCursor}%, ${theme.border} ${timelineCursor}%)`, borderRadius: 3, outline: 'none', cursor: 'pointer', margin: '2px 0' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 7, fontFamily: "'JetBrains Mono', monospace", color: theme.textDim }}><span>{fmtTlTime(tlStart)}</span><span>{fmtTlTime(tlStart + tlRange * 0.25)}</span><span>{fmtTlTime(tlStart + tlRange * 0.5)}</span><span>{fmtTlTime(tlStart + tlRange * 0.75)}</span><span>{fmtTlTime(tlEnd)}</span></div>
+                    </div>
+
+                    {/* Bottom: filters + person panel + event feed */}
+                    <div style={{ display: 'flex', height: tlShowPersonPanel ? 140 : 100, borderTop: `1px solid ${theme.border}20`, marginTop: 2 }}>
+                        {/* Type filters */}
+                        <div style={{ width: 110, borderRight: `1px solid ${theme.border}20`, padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0, overflowY: 'auto' }}>
+                            <div style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 1 }}>Types</div>
+                            {[{ id: 'lpr', icon: '🚗', label: 'LPR', color: '#10b981' }, { id: 'face', icon: '🧑‍🦲', label: 'Face', color: '#ec4899' }, { id: 'source', icon: '📡', label: 'Sources', color: '#3b82f6' }, { id: 'zone', icon: '🛡️', label: 'Zones', color: '#f59e0b' }, { id: 'object', icon: '📌', label: 'Objects', color: '#8b5cf6' }].map(f => {
+                                const on = tlFilterTypes.has(f.id); const count = periodFilteredEvents.filter(e => e.type === f.id).length;
+                                return <button key={f.id} onClick={() => toggleTlFilter(f.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 5px', borderRadius: 3, border: `1px solid ${on ? f.color + '40' : theme.border}`, background: on ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' }}><span style={{ fontSize: 9 }}>{f.icon}</span><span style={{ fontSize: 8, fontWeight: 600, color: on ? f.color : theme.textDim, flex: 1 }}>{f.label}</span><span style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{count}</span></button>;
+                            })}
+                            {tlPersonIds.size > 0 && <div style={{ marginTop: 4, paddingTop: 4, borderTop: `1px solid ${theme.border}20` }}>
+                                <div style={{ fontSize: 7, fontWeight: 700, color: '#ec4899', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Persons</div>
+                                {Array.from(tlPersonIds).map(pid => { const p = tlPersonOptions.find(x => x.id === pid); return p ? <div key={pid} style={{ fontSize: 7, color: theme.textSecondary, display: 'flex', alignItems: 'center', gap: 3, marginBottom: 1 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ec4899', flexShrink: 0 }} />{p.name}<button onClick={() => toggleTlPerson(pid)} style={{ background: 'none', border: 'none', color: theme.danger, cursor: 'pointer', fontSize: 8, padding: 0, marginLeft: 'auto' }}>×</button></div> : null; })}
+                            </div>}
+                        </div>
+
+                        {/* Person panel (toggleable) */}
+                        {tlShowPersonPanel && <div style={{ width: 160, borderRight: `1px solid ${theme.border}20`, padding: '4px 8px', overflowY: 'auto', flexShrink: 0 }}>
+                            <div style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Filter / Track Person</div>
+                            {tlPersonOptions.map(p => {
+                                const isFiltered = tlPersonIds.has(p.id);
+                                const isTracking = tlTrackingPerson === p.id;
+                                const evtCount = filteredTLEvents.filter(e => e.personId === p.id).length;
+                                const avatar = mockPersons.find(x => x.id === p.id)?.avatar;
+                                return <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 4px', borderRadius: 4, marginBottom: 2, background: isTracking ? 'rgba(34,197,94,0.08)' : isFiltered ? 'rgba(236,72,153,0.06)' : 'transparent', border: `1px solid ${isTracking ? '#22c55e30' : isFiltered ? '#ec489920' : 'transparent'}` }}>
+                                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: avatar ? `url(${avatar}) center/cover` : 'rgba(59,130,246,0.15)', border: `1.5px solid ${isFiltered ? '#ec4899' : theme.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7 }}>{avatar ? '' : '👤'}</div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 8, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                                        <div style={{ fontSize: 7, color: theme.textDim }}>{evtCount} events</div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                                        <button onClick={() => toggleTlPerson(p.id)} title="Filter" style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isFiltered ? '#ec489940' : theme.border}`, background: isFiltered ? 'rgba(236,72,153,0.1)' : 'transparent', color: isFiltered ? '#ec4899' : theme.textDim, fontSize: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>🔍</button>
+                                        <button onClick={() => startTracking(p.id, false)} title="Track 2D" style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isTracking && !tlTracking3D ? '#22c55e40' : theme.border}`, background: isTracking && !tlTracking3D ? 'rgba(34,197,94,0.1)' : 'transparent', color: theme.textDim, fontSize: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>▶</button>
+                                        <button onClick={() => startTracking(p.id, true)} title="Track 3D" style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isTracking && tlTracking3D ? '#8b5cf640' : theme.border}`, background: isTracking && tlTracking3D ? 'rgba(139,92,246,0.1)' : 'transparent', color: theme.textDim, fontSize: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontWeight: 700 }}>3D</button>
+                                    </div>
+                                </div>;
+                            })}
+                        </div>}
+
+                        {/* Event feed */}
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '2px 0', scrollbarWidth: 'thin' }}>
+                            {visibleTLEvents.length === 0 && <div style={{ padding: 16, textAlign: 'center', fontSize: 10, color: theme.textDim }}>No events at this time position.{timelineCursor >= 100 ? ' Use the slider or press Play.' : ' Drag slider forward.'}</div>}
+                            {[...visibleTLEvents].reverse().slice(0, 60).map((ev, idx) => {
+                                const sevColor = ev.sev === 'critical' ? '#ef4444' : ev.sev === 'high' ? '#f97316' : ev.sev === 'medium' ? '#f59e0b' : ev.sev === 'low' ? '#6b7280' : '#3b82f6';
+                                const isTrackEv = tlTrackingPerson && ev.personId === tlTrackingPerson;
+                                return <div key={ev.id + idx} onClick={() => { const map = mapRef.current; if (map) map.flyTo({ center: [ev.lng, ev.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 }); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', cursor: 'pointer', borderBottom: `1px solid ${theme.border}10`, transition: 'background 0.1s', background: isTrackEv ? 'rgba(34,197,94,0.04)' : 'transparent' }} onMouseEnter={e => (e.currentTarget.style.background = isTrackEv ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.02)')} onMouseLeave={e => (e.currentTarget.style.background = isTrackEv ? 'rgba(34,197,94,0.04)' : 'transparent')}>
+                                    <div style={{ width: 3, height: 20, borderRadius: 2, background: sevColor, flexShrink: 0 }} />
+                                    <span style={{ fontSize: 12, flexShrink: 0 }}>{ev.icon}</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 9, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</div>
+                                        <div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.sub}</div>
+                                    </div>
+                                    {ev.personName && <span style={{ fontSize: 7, color: '#ec4899', flexShrink: 0, maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.personName}</span>}
+                                    <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, whiteSpace: 'nowrap' }}>{ev.ts.split(' ')[1]}</span>
+                                </div>;
+                            })}
+                        </div>
+                    </div>
+                </div>}
+
                 {/* Coordinates */}
-                {showCoords && loaded && <div className="tmap-coords"><span>LAT {coords.lat.toFixed(5)}</span><span>LNG {coords.lng.toFixed(5)}</span><span>Z {zoom}</span><span>BRG {Math.round(bearing)}°</span></div>}
+                {showCoords && loaded && <div className="tmap-coords" style={{ bottom: timelineOpen ? 282 : 8, transition: 'bottom 0.3s ease', zIndex: 15 }}><span>LAT {coords.lat.toFixed(5)}</span><span>LNG {coords.lng.toFixed(5)}</span><span>Z {zoom}</span><span>BRG {Math.round(bearing)}°</span></div>}
 
                 {/* FPS Counter */}
                 {showFps && loaded && <div style={{ position: 'absolute', top: showMinimap ? 118 : 10, right: 10, zIndex: 5, background: fps >= 50 ? 'rgba(34,197,94,0.12)' : fps >= 30 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${fps >= 50 ? '#22c55e30' : fps >= 30 ? '#f59e0b30' : '#ef444430'}`, borderRadius: 6, padding: '4px 10px', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 6 }}>
