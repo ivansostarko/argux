@@ -310,6 +310,9 @@ export default function MapIndex() {
 
     // LPR Layer
     const [layerLPR, setLayerLPR] = useState(false);
+    const [lprSearch, setLprSearch] = useState('');
+    const [lprSelected, setLprSelected] = useState<Set<string>>(new Set());
+    const [lprHidden, setLprHidden] = useState<Set<string>>(new Set());
     interface LPRSighting { id: string; plate: string; vehicleId: number; personId: number; personName: string; orgId?: number; orgName?: string; lat: number; lng: number; direction: string; speed: number; confidence: number; cameraId: string; cameraName: string; timestamp: string; photoUrl: string; }
     const mockLPR: LPRSighting[] = [
         { id: 'lpr-1', plate: 'ZG-1234-AB', vehicleId: 1, personId: 1, personName: 'Marko Horvat', orgId: 1, orgName: 'Alpha Security', lat: 45.8131, lng: 15.9775, direction: 'NE', speed: 42, confidence: 98.7, cameraId: 'sc1', cameraName: 'Ban Jelačić Cam', timestamp: '2026-03-23 08:14', photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/car_1.jpg' },
@@ -425,6 +428,57 @@ export default function MapIndex() {
     const [showZones, setShowZones] = useState(false);
     const [showObjects, setShowObjects] = useState(false);
     const [showFps, setShowFps] = useState(false);
+    const [showLiveFeed, setShowLiveFeed] = useState(false);
+    const [liveFeedRunning, setLiveFeedRunning] = useState(true);
+    const [liveFeedEvents, setLiveFeedEvents] = useState<any[]>([]);
+    const [liveFeedFilter, setLiveFeedFilter] = useState<Set<string>>(new Set(['lpr', 'face', 'zone', 'source', 'alert']));
+    const [liveFeedPinned, setLiveFeedPinned] = useState<Set<string>>(new Set());
+    const [liveFeedMuted, setLiveFeedMuted] = useState(false);
+    const liveFeedIdRef = useRef(0);
+    const liveFeedMarkerRef = useRef<any>(null);
+    const liveFeedPopupRef = useRef<any>(null);
+    const showLiveFeedMarker = (evt: any) => {
+        const map = mapRef.current;
+        const ml = (window as any).maplibregl;
+        if (!map || !ml) return;
+        // Remove previous
+        if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; }
+        if (liveFeedPopupRef.current) { liveFeedPopupRef.current.remove(); liveFeedPopupRef.current = null; }
+        // Create marker
+        const sevColor = evt.sev === 'critical' ? '#ef4444' : evt.sev === 'high' ? '#f97316' : evt.sev === 'medium' ? '#f59e0b' : evt.sev === 'low' ? '#6b7280' : '#3b82f6';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tmap-marker-source';
+        wrapper.style.cssText = 'width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:visible;';
+        wrapper.innerHTML = `<div class="tmap-marker-inner" style="width:36px;height:36px;border-radius:50%;border:3px solid ${evt.color};background:rgba(13,18,32,0.92);box-shadow:0 0 16px ${evt.color}60,0 0 30px ${evt.color}20,0 4px 12px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:18px;position:relative;overflow:visible;"><span>${evt.icon}</span><div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid ${evt.color};opacity:0;pointer-events:none;" class="tmap-tl-pulse"></div><div style="position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:${sevColor};border:2px solid rgba(13,18,32,0.9);pointer-events:none;"></div></div>`;
+        const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([evt.lng, evt.lat]).addTo(map);
+        liveFeedMarkerRef.current = marker;
+        // Create popup
+        const addr = mockAddress(evt.lat, evt.lng);
+        const popup = new ml.Popup({ offset: 24, maxWidth: '260px', className: 'tmap-popup', closeOnClick: false }).setLngLat([evt.lng, evt.lat]).setHTML(`<div class="tmap-popup-card">
+            <div class="tmap-popup-header" style="gap:8px">
+                <div style="width:30px;height:30px;border-radius:8px;background:${evt.color}15;border:1.5px solid ${evt.color}40;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${evt.icon}</div>
+                <div class="tmap-popup-hinfo">
+                    <div class="tmap-popup-name" style="font-size:11px">${evt.title}</div>
+                    <div class="tmap-popup-meta">
+                        <span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${sevColor}15;color:${sevColor};border:1px solid ${sevColor}30">${evt.sev.toUpperCase()}</span>
+                        <span style="font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;background:${evt.color}15;color:${evt.color};border:1px solid ${evt.color}30">${evt.type.toUpperCase()}</span>
+                        <span style="font-size:7px;font-weight:800;padding:1px 4px;border-radius:2px;background:#ef444420;color:#ef4444;border:1px solid #ef444430">LIVE</span>
+                    </div>
+                </div>
+            </div>
+            <div class="tmap-popup-grid">
+                <div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div>
+                ${evt.person ? `<div class="tmap-popup-row"><span class="tmap-popup-label">👤 Person</span><span class="tmap-popup-val" style="color:var(--ax-accent)">${evt.person}</span></div>` : ''}
+                ${evt.camera ? `<div class="tmap-popup-row"><span class="tmap-popup-label">📹 Source</span><span class="tmap-popup-val">${evt.camera}</span></div>` : ''}
+                <div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${evt.ts}</span></div>
+            </div>
+            <div class="tmap-popup-coords">${evt.lat.toFixed(5)}, ${evt.lng.toFixed(5)}</div>
+        </div>`).addTo(map);
+        liveFeedPopupRef.current = popup;
+        popup.on('close', () => { if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; } liveFeedPopupRef.current = null; });
+        // Fly to
+        map.flyTo({ center: [evt.lng, evt.lat], zoom: Math.max(map.getZoom(), 16), duration: 600 });
+    };
 
     // Saved Places
     interface SavedPlace { id: string; name: string; lat: number; lng: number; zoom: number; color: string; note?: string; }
@@ -1241,29 +1295,83 @@ export default function MapIndex() {
         const ml = (window as any).maplibregl;
         if (!ml || !layerLPR) return;
 
-        const lprFiltered = timelineActive ? mockLPR.filter(l => new Date(l.timestamp.replace(' ', 'T')).getTime() <= tlCursorMs) : mockLPR;
-        // Also draw connection lines from LPR to person/org markers if they're on the map
+        let lprFiltered = timelineActive ? mockLPR.filter(l => new Date(l.timestamp.replace(' ', 'T')).getTime() <= tlCursorMs) : mockLPR;
+        if (lprSelected.size > 0) lprFiltered = lprFiltered.filter(l => lprSelected.has(l.id));
+        lprFiltered = lprFiltered.filter(l => !lprHidden.has(l.id));
+        if (lprSearch.trim()) { const q = lprSearch.toLowerCase(); lprFiltered = lprFiltered.filter(l => l.plate.toLowerCase().includes(q) || l.personName.toLowerCase().includes(q) || l.cameraName.toLowerCase().includes(q) || (l.orgName || '').toLowerCase().includes(q)); }
+
+        const platePhoto = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg';
+        const ownerPhoto = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg';
         const lprLineFeats: any[] = [];
         lprFiltered.forEach(lpr => {
+            const v = mockVehicles.find(vv => vv.id === lpr.vehicleId);
             const riskColor = lpr.personId === 0 ? '#6b7280' : (mockPersons.find(p => p.id === lpr.personId)?.risk === 'Critical' ? '#ef4444' : '#f97316');
-            const el = document.createElement('div');
-            el.className = 'tmap-marker-source';
-            el.innerHTML = `<div class="tmap-marker-inner" style="width:28px;height:28px;border-radius:4px;border:2px solid #10b981;background:rgba(13,18,32,0.92);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.5);font-size:13px;position:relative;">🚗<div style="position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:${riskColor};border:1.5px solid rgba(13,18,32,0.9)"></div></div>`;
-            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([lpr.lng, lpr.lat]).addTo(map);
-            el.addEventListener('click', (e: Event) => {
+            const confColor = lpr.confidence >= 95 ? '#22c55e' : lpr.confidence >= 85 ? '#f59e0b' : '#ef4444';
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tmap-marker-source';
+            wrapper.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:visible;';
+            const inner = document.createElement('div');
+            inner.className = 'tmap-marker-inner tmap-tl-event-dot';
+            inner.style.cssText = `width:30px;height:22px;border-radius:4px;border:2.5px solid #10b981;background:url(${platePhoto}) center/cover;box-shadow:0 0 10px #10b98140,0 2px 8px rgba(0,0,0,0.5);position:relative;overflow:visible;`;
+            const badge = document.createElement('div');
+            badge.style.cssText = `position:absolute;bottom:-4px;right:-4px;min-width:16px;height:12px;border-radius:6px;background:${confColor};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;padding:0 2px;pointer-events:none;`;
+            badge.innerHTML = `<span style="font-size:6px;font-weight:900;color:#fff;line-height:1">${Math.round(lpr.confidence)}%</span>`;
+            inner.appendChild(badge);
+            const sevDot = document.createElement('div');
+            sevDot.style.cssText = `position:absolute;top:-2px;left:-2px;width:8px;height:8px;border-radius:50%;background:${riskColor};border:1.5px solid rgba(13,18,32,0.9);pointer-events:none;`;
+            inner.appendChild(sevDot);
+            wrapper.appendChild(inner);
+            const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([lpr.lng, lpr.lat]).addTo(map);
+
+            wrapper.addEventListener('click', (e: Event) => {
                 e.stopPropagation();
-                const confColor = lpr.confidence >= 95 ? '#22c55e' : lpr.confidence >= 85 ? '#f59e0b' : '#ef4444';
-                new ml.Popup({ offset: 16, maxWidth: '280px', className: 'tmap-popup' }).setLngLat([lpr.lng, lpr.lat]).setHTML(`<div class="tmap-popup-card">
-                    <div class="tmap-popup-header"><img src="${lpr.photoUrl}" class="tmap-popup-avatar" style="border-radius:6px;width:48px;height:36px;object-fit:cover" /><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:14px;font-family:'JetBrains Mono',monospace;letter-spacing:0.05em">${lpr.plate}</div><div class="tmap-popup-meta"><span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${confColor}15;color:${confColor};border:1px solid ${confColor}30">${lpr.confidence}% match</span><span class="tmap-popup-status"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#10b981;margin-right:3px"></span>LPR</span></div></div></div>
+                const addr = mockAddress(lpr.lat, lpr.lng);
+                const ago = timeAgo(lpr.timestamp);
+                const occ = mockLPR.filter(l => l.plate === lpr.plate).length;
+                const popup = new ml.Popup({ offset: 16, maxWidth: '300px', className: 'tmap-popup' }).setLngLat([lpr.lng, lpr.lat]).setHTML(`<div class="tmap-popup-card">
+                    <div style="position:relative;border-bottom:1px solid var(--ax-border)">
+                        <img src="${platePhoto}" class="tmap-lpr-plate-photo" style="width:100%;height:80px;object-fit:cover;display:block;cursor:zoom-in;" />
+                        <div style="position:absolute;bottom:6px;left:8px;font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.8);letter-spacing:0.06em">${lpr.plate}</div>
+                        <div style="position:absolute;top:6px;right:6px;display:flex;gap:3px">
+                            <span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:${confColor};backdrop-filter:blur(4px)">${lpr.confidence}%</span>
+                            <span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:#10b981;backdrop-filter:blur(4px)">LPR</span>
+                        </div>
+                    </div>
+                    <div class="tmap-popup-header" style="gap:8px">
+                        <div class="tmap-lpr-owner-photo" style="width:36px;height:36px;border-radius:50%;border:2.5px solid ${riskColor};background:url(${ownerPhoto}) center/cover;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;cursor:zoom-in" data-lightbox="${ownerPhoto}"></div>
+                        <div class="tmap-popup-hinfo">
+                            <div class="tmap-popup-name" style="font-size:12px;font-family:'JetBrains Mono',monospace;letter-spacing:0.04em">${lpr.plate}</div>
+                            <div style="font-size:10px;color:var(--ax-text-sec);margin-top:1px">${lpr.personId > 0 ? `<a href="/persons/${lpr.personId}" style="color:var(--ax-accent);text-decoration:none">${lpr.personName}</a>` : lpr.personName}${lpr.orgName ? ` · <a href="/organizations/${lpr.orgId}" style="color:var(--ax-accent);text-decoration:none">${lpr.orgName}</a>` : ''}</div>
+                        </div>
+                    </div>
                     <div class="tmap-popup-grid">
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">👤 Owner</span><span class="tmap-popup-val">${lpr.personName}${lpr.orgName ? ` · ${lpr.orgName}` : ''}</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Direction</span><span class="tmap-popup-val">${lpr.direction} at ${lpr.speed} km/h</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val">${lpr.cameraName}</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${lpr.timestamp}</span></div>
-                    </div><div class="tmap-popup-coords">${lpr.lat.toFixed(5)}, ${lpr.lng.toFixed(5)}</div></div>`).addTo(map);
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${lpr.timestamp} <span style="color:var(--ax-text-dim);font-size:9px">(${ago})</span></span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🎯 Confidence</span><span class="tmap-popup-val" style="color:${confColor};font-weight:700">${lpr.confidence}%</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">⚠️ Risk</span><span class="tmap-popup-val" style="color:${riskColor};font-weight:600">${v?.risk || 'Unknown'}</span></div>
+                        ${occ > 1 ? `<div class="tmap-popup-row"><span class="tmap-popup-label">📊 Occurrences</span><span class="tmap-popup-val">${occ} sightings</span></div>` : ''}
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Speed</span><span class="tmap-popup-val">${lpr.direction} at ${lpr.speed} km/h</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🚙 Vehicle</span><span class="tmap-popup-val">${v ? `${v.type} · ${v.make} ${v.model} · ${v.color}` : '—'}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val"><a href="/devices/${lpr.cameraId}" style="color:var(--ax-accent);text-decoration:none">${lpr.cameraName}</a></span></div>
+                    </div>
+                    ${v ? `<div style="padding:4px 14px 8px;display:flex;gap:6px"><a href="/vehicles/${v.id}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:5px;border-radius:5px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);color:#10b981;font-size:9px;font-weight:700;text-decoration:none;font-family:inherit">🚗 Vehicle Details</a>${lpr.personId > 0 ? `<a href="/persons/${lpr.personId}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:5px;border-radius:5px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);color:var(--ax-accent);font-size:9px;font-weight:700;text-decoration:none;font-family:inherit">👤 Person</a>` : ''}</div>` : ''}
+                    <div class="tmap-popup-coords">${lpr.lat.toFixed(5)}, ${lpr.lng.toFixed(5)}</div>
+                </div>`).addTo(map);
+                setTimeout(() => {
+                    const el = popup.getElement();
+                    el?.querySelectorAll('.tmap-lpr-plate-photo').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setTlLightbox(platePhoto); }); });
+                    el?.querySelectorAll('.tmap-lpr-owner-photo').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setTlLightbox(img.getAttribute('data-lightbox')); }); });
+                }, 50);
             });
+
+            wrapper.addEventListener('contextmenu', (e: Event) => {
+                e.preventDefault(); e.stopPropagation();
+                const me = e as MouseEvent;
+                const rect = mapContainer.current?.getBoundingClientRect();
+                if (rect) setTlMarkerCtx({ x: me.clientX - rect.left, y: me.clientY - rect.top, ev: { id: lpr.id, type: 'lpr', icon: '🚗', title: `LPR: ${lpr.plate}`, sub: lpr.cameraName, ts: lpr.timestamp, lat: lpr.lat, lng: lpr.lng, sev: lpr.confidence >= 95 ? 'high' : 'medium', color: '#10b981', personId: lpr.personId, personName: lpr.personName, orgId: lpr.orgId, orgName: lpr.orgName, photoUrl: platePhoto, cameraId: lpr.cameraId, cameraName: lpr.cameraName, vehicleId: lpr.vehicleId, plate: lpr.plate } });
+            });
+
             lprMarkersRef.current.push(marker);
-            // Line from LPR to next sighting of same plate (route trail)
             const samePlate = lprFiltered.filter(l => l.plate === lpr.plate);
             const idx = samePlate.indexOf(lpr);
             if (idx < samePlate.length - 1) {
@@ -1271,14 +1379,13 @@ export default function MapIndex() {
                 lprLineFeats.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lpr.lng, lpr.lat], [next.lng, next.lat]] }, properties: { color: '#10b981', width: 2 } });
             }
         });
-        // LPR route lines
         const geojson: any = { type: 'FeatureCollection', features: lprLineFeats };
         try {
             if (map.getSource('lpr-routes')) { (map.getSource('lpr-routes') as any).setData(geojson); }
             else { map.addSource('lpr-routes', { type: 'geojson', data: geojson }); map.addLayer({ id: 'lpr-routes-line', type: 'line', source: 'lpr-routes', paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [4, 3] } }); }
         } catch {}
         return () => { lprMarkersRef.current.forEach(m => m.remove()); lprMarkersRef.current = []; try { if (map.getLayer('lpr-routes-line')) map.removeLayer('lpr-routes-line'); if (map.getSource('lpr-routes')) map.removeSource('lpr-routes'); } catch {} };
-    }, [layerLPR, loaded, timelineActive, tlCursorMs]);
+    }, [layerLPR, loaded, timelineActive, tlCursorMs, lprSelected, lprHidden, lprSearch]);
 
     // Face Recognition markers on map
     const faceMarkersRef = useRef<any[]>([]);
@@ -1591,6 +1698,36 @@ export default function MapIndex() {
         raf = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(raf);
     }, [showFps]);
+
+    // Live Feed: generate mock events at intervals
+    useEffect(() => {
+        if (!showLiveFeed || !liveFeedRunning) return;
+        const templates = [
+            { type: 'lpr', icon: '🚗', titles: ['LPR: ZG-1234-AB detected', 'LPR: SA-9012-RH captured', 'LPR: ZG-5678-CD spotted', 'LPR: EG-4567-FT flagged', 'LPR: CO-MEND-99 tracked'], sev: ['high', 'medium', 'critical', 'high', 'medium'], color: '#10b981', persons: ['Marko Horvat', 'Ahmed Al-Rashid', 'Ivan Babić', 'Omar Hassan', 'Carlos Mendoza'], cameras: ['Ban Jelačić Cam', 'Savska Intersection', 'Maksimir Entrance', 'Dubrava Overpass', 'Črnomerec Junction'] },
+            { type: 'face', icon: '🧑‍🦲', titles: ['Face match: Marko Horvat', 'Face match: Ivan Babić', 'Face detected: Unknown', 'Face match: Ahmed Al-Rashid', 'Face match: Ana Kovačević'], sev: ['critical', 'high', 'medium', 'critical', 'high'], color: '#ec4899', persons: ['Marko Horvat', 'Ivan Babić', 'Unknown Subject', 'Ahmed Al-Rashid', 'Ana Kovačević'], cameras: ['OP-HAWK Alpha', 'Maksimir Entrance', 'OP-HAWK Charlie', 'Main Station', 'ASG HQ Interior'] },
+            { type: 'zone', icon: '🛡️', titles: ['Zone breach: Restricted Area A', 'Zone entry: Surveillance Zone B', 'Zone exit: Monitored C', 'Zone alert: Operations Zone', 'Zone patrol check: Buffer D'], sev: ['critical', 'info', 'info', 'high', 'low'], color: '#f59e0b', persons: ['Marko Horvat', 'Ivan Babić', 'Unknown', '', 'Patrol Unit 3'], cameras: [] },
+            { type: 'source', icon: '📡', titles: ['GPS: Speed alert triggered', 'Camera: Motion detected', 'Audio: Keyword flagged', 'Mobile: Signal lost', 'Sensor: Anomaly detected'], sev: ['high', 'info', 'high', 'critical', 'medium'], color: '#3b82f6', persons: ['Omar Hassan', '', 'Marko Horvat', 'Carlos Mendoza', ''], cameras: ['GPS-004', 'Ban Jelačić Cam', 'MIC-ALPHA', 'APP-LOC', 'Sensor Grid'] },
+            { type: 'alert', icon: '🚨', titles: ['ALERT: Co-location detected', 'ALERT: Geofence breach', 'ALERT: Pattern anomaly', 'ALERT: Signal intercept', 'ALERT: Surveillance gap'], sev: ['critical', 'critical', 'high', 'high', 'medium'], color: '#ef4444', persons: ['Horvat + Al-Rashid', 'Omar Hassan', 'Ivan Babić', 'Carlos Mendoza', ''], cameras: [] },
+        ];
+        const interval = setInterval(() => {
+            const tpl = templates[Math.floor(Math.random() * templates.length)];
+            const idx = Math.floor(Math.random() * tpl.titles.length);
+            const id = `lf-${++liveFeedIdRef.current}`;
+            const now = new Date();
+            const ts = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            const lat = 45.800 + Math.random() * 0.025;
+            const lng = 15.955 + Math.random() * 0.05;
+            const evt = {
+                id, type: tpl.type, icon: tpl.icon, title: tpl.titles[idx], sev: tpl.sev[idx],
+                color: tpl.color, person: tpl.persons[idx], camera: tpl.cameras[idx] || '',
+                ts, lat, lng, isNew: true,
+            };
+            setLiveFeedEvents(prev => [evt, ...prev].slice(0, 100));
+            // Clear "new" flag after animation
+            setTimeout(() => setLiveFeedEvents(prev => prev.map(e => e.id === id ? { ...e, isNew: false } : e)), 2000);
+        }, 2500 + Math.random() * 2000);
+        return () => clearInterval(interval);
+    }, [showLiveFeed, liveFeedRunning]);
 
     // Tile switching — only when user changes tile, not on initial load
     useEffect(() => {
@@ -2149,19 +2286,46 @@ export default function MapIndex() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <span style={{ fontSize: 12 }}>🚗</span>
                                         <span style={{ fontSize: 11, fontWeight: 600, color: layerLPR ? '#10b981' : theme.text }}>Plate Recognition</span>
+                                        {layerLPR && <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: '#10b98110', color: '#10b981', border: '1px solid #10b98120' }}>{mockLPR.filter(l => !lprHidden.has(l.id) && (lprSelected.size === 0 || lprSelected.has(l.id))).length}</span>}
                                     </div>
                                     <button onClick={() => setLayerLPR(!layerLPR)} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerLPR ? '#10b981' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
                                         <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerLPR ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                                     </button>
                                 </div>
                                 {layerLPR && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    <div style={{ fontSize: 9, color: theme.textDim }}>{mockLPR.length} sightings · {new Set(mockLPR.map(l => l.plate)).size} unique plates · Route trails shown</div>
-                                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                        {Array.from(new Set(mockLPR.map(l => l.plate))).slice(0, 5).map(plate => {
-                                            const lpr = mockLPR.find(l => l.plate === plate)!;
-                                            const count = mockLPR.filter(l => l.plate === plate).length;
-                                            return <span key={plate} style={{ fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 3, background: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', fontFamily: "'JetBrains Mono', monospace", display: 'flex', alignItems: 'center', gap: 3 }}>{plate}<span style={{ fontSize: 7, color: theme.textDim }}>×{count}</span></span>;
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{mockLPR.length} sightings · {new Set(mockLPR.map(l => l.plate)).size} plates{lprHidden.size > 0 ? ` · ${lprHidden.size} hidden` : ''}</div>
+                                    {/* Search */}
+                                    <input value={lprSearch} onChange={e => setLprSearch(e.target.value)} placeholder="Search plates, persons..." style={{ padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${lprSearch ? '#10b98150' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
+                                    {/* Capture list */}
+                                    <div style={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, scrollbarWidth: 'thin' }}>
+                                        {mockLPR.filter(l => { if (lprSearch.trim()) { const q = lprSearch.toLowerCase(); return l.plate.toLowerCase().includes(q) || l.personName.toLowerCase().includes(q) || l.cameraName.toLowerCase().includes(q) || (l.orgName || '').toLowerCase().includes(q); } return true; }).map(lpr => {
+                                            const confColor = lpr.confidence >= 95 ? '#22c55e' : lpr.confidence >= 85 ? '#f59e0b' : '#ef4444';
+                                            const riskColor = lpr.personId === 0 ? '#6b7280' : (mockPersons.find(p => p.id === lpr.personId)?.risk === 'Critical' ? '#ef4444' : '#f97316');
+                                            const v = mockVehicles.find(vv => vv.id === lpr.vehicleId);
+                                            const isSelected = lprSelected.size === 0 || lprSelected.has(lpr.id);
+                                            const isHidden = lprHidden.has(lpr.id);
+                                            return <div key={lpr.id} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 4px', borderRadius: 4, background: isHidden ? 'rgba(107,114,128,0.06)' : isSelected && lprSelected.size > 0 ? 'rgba(16,185,129,0.06)' : 'transparent', border: `1px solid ${isHidden ? theme.border + '50' : isSelected && lprSelected.size > 0 ? '#10b98120' : 'transparent'}`, opacity: isHidden ? 0.5 : 1 }}>
+                                                <button onClick={() => { setLprSelected(prev => { const n = new Set(prev); if (prev.size === 0) { mockLPR.forEach(l => { if (l.id !== lpr.id) n.add(l.id); }); } else if (n.has(lpr.id)) { n.delete(lpr.id); if (n.size === 0) return new Set(); } else { n.add(lpr.id); } return n; }); }} style={{ width: 12, height: 12, borderRadius: 2, border: `1.5px solid ${isSelected ? '#10b981' : theme.border}`, background: isSelected && lprSelected.size > 0 ? '#10b981' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>{isSelected && lprSelected.size > 0 && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</button>
+                                                <div style={{ width: 26, height: 18, borderRadius: 3, border: `1.5px solid #10b981`, background: `url(https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg) center/cover`, flexShrink: 0, cursor: 'pointer' }} onClick={() => setTlLightbox('https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg')} />
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                                        <span style={{ fontSize: 9, fontWeight: 700, color: isHidden ? theme.textDim : theme.text, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.03em' }}>{lpr.plate}</span>
+                                                        <span style={{ fontSize: 7, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{lpr.confidence}%</span>
+                                                    </div>
+                                                    <div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                                                        {lpr.personName}{v ? ` · ${v.make} ${v.model}` : ''} · {lpr.speed}km/h {lpr.direction}
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => setLprHidden(prev => { const n = new Set(prev); n.has(lpr.id) ? n.delete(lpr.id) : n.add(lpr.id); return n; })} title={isHidden ? 'Show on map' : 'Hide from map'} style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isHidden ? theme.danger + '30' : theme.border}`, background: isHidden ? 'rgba(239,68,68,0.06)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, fontSize: 8, color: isHidden ? theme.danger : theme.textDim }}>{isHidden ? '👁️‍🗨️' : '👁️'}</button>
+                                            </div>;
                                         })}
+                                    </div>
+                                    {/* Bulk actions */}
+                                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                        <button onClick={() => setLprSelected(new Set())} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: lprSelected.size === 0 ? '#10b98108' : 'transparent', color: lprSelected.size === 0 ? '#10b981' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>All</button>
+                                        <button onClick={() => setLprSelected(new Set(mockLPR.filter(l => l.personId > 0).map(l => l.id)))} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Known</button>
+                                        <button onClick={() => setLprSelected(new Set(mockLPR.filter(l => l.personId === 0).map(l => l.id)))} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Unknown</button>
+                                        {lprHidden.size > 0 && <button onClick={() => setLprHidden(new Set())} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Show {lprHidden.size} hidden</button>}
                                     </div>
                                     <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                                         {[['🟢', '≥95%'], ['🟡', '85-94%'], ['🔴', '<85%']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 8, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}>{ico} {lbl}</span>)}
@@ -2460,6 +2624,7 @@ export default function MapIndex() {
                             <Toggle label="Coordinates" description="Lat/lng, zoom and bearing bar" enabled={showCoords} onChange={setShowCoords} />
                             <Toggle label="Place Search" description="Search bar for locations on map" enabled={showSearch} onChange={setShowSearch} />
                             <Toggle label="FPS Counter" description="Frames per second display" enabled={showFps} onChange={setShowFps} />
+                            <Toggle label="Live Feed" description="Real-time event feed widget" enabled={showLiveFeed} onChange={v => { setShowLiveFeed(v); if (v) setLiveFeedRunning(true); }} />
                         </div>
                     </Section>
                 </div>
@@ -2712,12 +2877,12 @@ export default function MapIndex() {
                     <div style={{ padding: '2px 0' }}>
                         {tlMarkerCtx.ev.type === 'face' && tlMarkerCtx.ev.personId && tlMarkerCtx.ev.personId > 0 && <button onClick={() => { router.visit(`/persons/${tlMarkerCtx.ev.personId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.accent, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👤 Person Details</button>}
                         {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.vehicleId && tlMarkerCtx.ev.vehicleId > 0 && <button onClick={() => { router.visit(`/vehicles/${tlMarkerCtx.ev.vehicleId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.accent, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🚗 Vehicle Details</button>}
-                        {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.personId && tlMarkerCtx.ev.personId > 0 && <button onClick={() => { router.visit(`/persons/${tlMarkerCtx.ev.personId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👤 Owner Profile</button>}
+                        {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.personId && tlMarkerCtx.ev.personId > 0 && <button onClick={() => { router.visit(`/persons/${tlMarkerCtx.ev.personId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👤 Person Details</button>}
                         {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.orgId && <button onClick={() => { router.visit(`/organizations/${tlMarkerCtx.ev.orgId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🏢 Organization</button>}
                         {tlMarkerCtx.ev.cameraId && <button onClick={() => { router.visit(`/devices/${tlMarkerCtx.ev.cameraId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>📹 Camera Details</button>}
                         {tlMarkerCtx.ev.photoUrl && <button onClick={() => { setTlLightbox(tlMarkerCtx.ev.photoUrl!); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🔍 View Photo</button>}
                         <div style={{ height: 1, background: theme.border, margin: '2px 8px' }} />
-                        <button onClick={() => { if (tlMarkerCtx.ev.type === 'face') setFaceHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlHiddenIds(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👁️‍🗨️ Hide from Map</button>
+                        <button onClick={() => { if (tlMarkerCtx.ev.type === 'face') setFaceHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); if (tlMarkerCtx.ev.type === 'lpr') setLprHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlHiddenIds(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👁️‍🗨️ Hide from Map</button>
                     </div>
                 </div></div>}
 
@@ -2728,6 +2893,100 @@ export default function MapIndex() {
                 {showFps && loaded && <div style={{ position: 'absolute', top: showMinimap ? 118 : 10, right: 10, zIndex: 5, background: fps >= 50 ? 'rgba(34,197,94,0.12)' : fps >= 30 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${fps >= 50 ? '#22c55e30' : fps >= 30 ? '#f59e0b30' : '#ef444430'}`, borderRadius: 6, padding: '4px 10px', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 6, height: 6, borderRadius: 3, background: fps >= 50 ? '#22c55e' : fps >= 30 ? '#f59e0b' : '#ef4444' }} />
                     <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: fps >= 50 ? '#22c55e' : fps >= 30 ? '#f59e0b' : '#ef4444' }}>{fps} FPS</span>
+                </div>}
+
+                {/* Live Feed Toggle Button */}
+                {loaded && !showLiveFeed && <button onClick={() => { setShowLiveFeed(true); setLiveFeedRunning(true); }} style={{ position: 'absolute', top: showMinimap ? 118 : 10, right: showFps ? 85 : 10, zIndex: 6, background: 'rgba(13,18,32,0.9)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => (e.currentTarget.style.borderColor = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.borderColor = theme.border)}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', animation: 'tmap-tl-ring 1.5s infinite' }} />
+                    <span style={{ fontSize: 9, fontWeight: 700, color: theme.textDim }}>LIVE</span>
+                </button>}
+
+                {/* Live Feed Widget */}
+                {showLiveFeed && loaded && <div style={{ position: 'absolute', top: 10, right: 10, width: 320, maxHeight: 'calc(100% - 20px)', zIndex: 14, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.96)', border: `1px solid ${liveFeedRunning ? '#ef444425' : theme.border}`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: liveFeedRunning ? '#ef4444' : theme.textDim, boxShadow: liveFeedRunning ? '0 0 8px #ef444460' : 'none', animation: liveFeedRunning ? 'tmap-tl-ring 1.5s infinite' : 'none' }} />
+                            <span style={{ fontSize: 11, fontWeight: 800, color: liveFeedRunning ? '#ef4444' : theme.textDim, letterSpacing: '0.08em' }}>LIVE FEED</span>
+                        </div>
+                        <span style={{ fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{liveFeedEvents.length} events</span>
+                        <div style={{ flex: 1 }} />
+                        {/* Mute */}
+                        <button onClick={() => setLiveFeedMuted(!liveFeedMuted)} title={liveFeedMuted ? 'Unmute alerts' : 'Mute alerts'} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${liveFeedMuted ? '#f59e0b30' : theme.border}`, background: liveFeedMuted ? 'rgba(245,158,11,0.08)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: liveFeedMuted ? '#f59e0b' : theme.textDim, fontSize: 10, padding: 0, flexShrink: 0 }}>{liveFeedMuted ? '🔇' : '🔔'}</button>
+                        {/* Start/Stop */}
+                        <button onClick={() => setLiveFeedRunning(!liveFeedRunning)} style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${liveFeedRunning ? '#ef444430' : '#22c55e30'}`, background: liveFeedRunning ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)', cursor: 'pointer', fontSize: 8, fontWeight: 700, color: liveFeedRunning ? '#ef4444' : '#22c55e', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                            {liveFeedRunning ? <><svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="4" height="10" rx="1"/><rect x="9" y="3" width="4" height="10" rx="1"/></svg>Pause</> : <><svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor"><polygon points="4,2 14,8 4,14"/></svg>Resume</>}
+                        </button>
+                        {/* Clear */}
+                        <button onClick={() => { setLiveFeedEvents([]); if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; } if (liveFeedPopupRef.current) { liveFeedPopupRef.current.remove(); liveFeedPopupRef.current = null; } }} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 9, padding: 0, flexShrink: 0 }} title="Clear feed">🗑️</button>
+                        {/* Close */}
+                        <button onClick={() => { setShowLiveFeed(false); if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; } if (liveFeedPopupRef.current) { liveFeedPopupRef.current.remove(); liveFeedPopupRef.current = null; } }} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 10, padding: 0, flexShrink: 0 }}>✕</button>
+                    </div>
+
+                    {/* Severity summary strip */}
+                    <div style={{ display: 'flex', gap: 6, padding: '5px 12px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0 }}>
+                        {[{ sev: 'critical', color: '#ef4444', label: 'CRIT' }, { sev: 'high', color: '#f97316', label: 'HIGH' }, { sev: 'medium', color: '#f59e0b', label: 'MED' }, { sev: 'info', color: '#3b82f6', label: 'INFO' }, { sev: 'low', color: '#6b7280', label: 'LOW' }].map(s => {
+                            const count = liveFeedEvents.filter(e => e.sev === s.sev).length;
+                            return <div key={s.sev} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 8 }}>
+                                <div style={{ width: 5, height: 5, borderRadius: 1, background: count > 0 ? s.color : theme.border }} />
+                                <span style={{ fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: count > 0 ? s.color : theme.textDim }}>{count}</span>
+                            </div>;
+                        })}
+                    </div>
+
+                    {/* Filter chips */}
+                    <div style={{ display: 'flex', gap: 3, padding: '4px 12px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, flexWrap: 'wrap' }}>
+                        {[{ id: 'lpr', icon: '🚗', label: 'LPR', color: '#10b981' }, { id: 'face', icon: '🧑‍🦲', label: 'Face', color: '#ec4899' }, { id: 'zone', icon: '🛡️', label: 'Zone', color: '#f59e0b' }, { id: 'source', icon: '📡', label: 'Source', color: '#3b82f6' }, { id: 'alert', icon: '🚨', label: 'Alert', color: '#ef4444' }].map(f => {
+                            const on = liveFeedFilter.has(f.id);
+                            return <button key={f.id} onClick={() => setLiveFeedFilter(prev => { const n = new Set(prev); n.has(f.id) ? n.delete(f.id) : n.add(f.id); return n; })} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${on ? f.color + '40' : theme.border}`, background: on ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3, fontSize: 8, fontWeight: 600, color: on ? f.color : theme.textDim }}>{f.icon} {f.label}</button>;
+                        })}
+                    </div>
+
+                    {/* Event list */}
+                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                        {liveFeedEvents.filter(e => liveFeedFilter.has(e.type)).length === 0 && <div style={{ padding: 30, textAlign: 'center', color: theme.textDim, fontSize: 11 }}>{liveFeedRunning ? 'Waiting for events...' : 'Feed paused'}<br /><span style={{ fontSize: 9, marginTop: 4, display: 'inline-block' }}>{liveFeedRunning ? 'Events will appear here in real-time' : 'Press Resume to continue receiving events'}</span></div>}
+                        {liveFeedEvents.filter(e => liveFeedFilter.has(e.type)).map(evt => {
+                            const sevColor = evt.sev === 'critical' ? '#ef4444' : evt.sev === 'high' ? '#f97316' : evt.sev === 'medium' ? '#f59e0b' : evt.sev === 'low' ? '#6b7280' : '#3b82f6';
+                            const isPinned = liveFeedPinned.has(evt.id);
+                            return <div key={evt.id} onClick={() => showLiveFeedMarker(evt)} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 12px', cursor: 'pointer', borderBottom: `1px solid ${theme.border}10`, transition: 'background 0.15s, opacity 0.3s', background: evt.isNew ? `${evt.color}08` : isPinned ? 'rgba(139,92,246,0.04)' : 'transparent', animation: evt.isNew ? 'argux-fadeIn 0.3s ease-out' : 'none' }} onMouseEnter={e => (e.currentTarget.style.background = `${evt.color}08`)} onMouseLeave={e => (e.currentTarget.style.background = evt.isNew ? `${evt.color}08` : isPinned ? 'rgba(139,92,246,0.04)' : 'transparent')}>
+                                {/* Severity strip + icon */}
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0, paddingTop: 1 }}>
+                                    <div style={{ width: 3, height: 16, borderRadius: 2, background: sevColor }} />
+                                    <span style={{ fontSize: 13 }}>{evt.icon}</span>
+                                </div>
+                                {/* Content */}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 1 }}>
+                                        <span style={{ fontSize: 10, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{evt.title}</span>
+                                        {evt.isNew && <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: '#ef444420', color: '#ef4444', border: '1px solid #ef444430', flexShrink: 0, animation: 'tmap-tl-ring 1s infinite' }}>NEW</span>}
+                                    </div>
+                                    <div style={{ fontSize: 8, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
+                                        {evt.person && <span style={{ color: '#ec4899', fontWeight: 600 }}>{evt.person}</span>}
+                                        {evt.person && evt.camera ? ' · ' : ''}
+                                        {evt.camera && <span>{evt.camera}</span>}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <span style={{ fontSize: 7, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: `${sevColor}15`, color: sevColor, border: `1px solid ${sevColor}25` }}>{evt.sev.toUpperCase()}</span>
+                                        <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${evt.color}10`, color: evt.color, border: `1px solid ${evt.color}20` }}>{evt.type.toUpperCase()}</span>
+                                        <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", marginLeft: 'auto' }}>{evt.ts}</span>
+                                    </div>
+                                </div>
+                                {/* Pin button */}
+                                <button onClick={e => { e.stopPropagation(); setLiveFeedPinned(prev => { const n = new Set(prev); n.has(evt.id) ? n.delete(evt.id) : n.add(evt.id); return n; }); }} title={isPinned ? 'Unpin' : 'Pin'} style={{ width: 18, height: 18, borderRadius: 3, border: `1px solid ${isPinned ? '#8b5cf640' : 'transparent'}`, background: isPinned ? 'rgba(139,92,246,0.08)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, fontSize: 8, color: isPinned ? '#8b5cf6' : theme.textDim, marginTop: 2 }}>📌</button>
+                            </div>;
+                        })}
+                    </div>
+
+                    {/* Footer: stats + connection indicator */}
+                    <div style={{ padding: '5px 12px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: liveFeedRunning ? '#22c55e' : '#6b7280', boxShadow: liveFeedRunning ? '0 0 6px #22c55e60' : 'none' }} />
+                        <span style={{ fontSize: 8, color: liveFeedRunning ? '#22c55e' : theme.textDim, fontWeight: 600 }}>{liveFeedRunning ? 'Connected' : 'Disconnected'}</span>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>·</span>
+                        <span style={{ fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{liveFeedEvents.filter(e => liveFeedFilter.has(e.type)).length} shown</span>
+                        {liveFeedPinned.size > 0 && <><span style={{ fontSize: 8, color: theme.textDim }}>·</span><span style={{ fontSize: 8, color: '#8b5cf6', fontWeight: 600 }}>📌 {liveFeedPinned.size}</span></>}
+                        <div style={{ flex: 1 }} />
+                        <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveFeedRunning ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6001</span></span>
+                    </div>
                 </div>}
 
                 {/* Zone Context Menu (right-click on zone) */}
