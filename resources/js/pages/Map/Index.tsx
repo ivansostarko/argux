@@ -2012,6 +2012,41 @@ export default function MapIndex() {
         return () => clearInterval(interval);
     }, [showLiveFeed, liveFeedRunning]);
 
+    // ═══ KEYBOARD SHORTCUTS ═══
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                // Close in priority order: lightbox → context menu → workspace modal → zone modal → place modal → timeline → sidebar (mobile)
+                if (tlLightbox) { setTlLightbox(null); return; }
+                if (tlMarkerCtx) { setTlMarkerCtx(null); return; }
+                if (markerCtxMenu) { setMarkerCtxMenu(null); return; }
+                if (mapCtxMenu) { setMapCtxMenu(null); return; }
+                if (zoneCtxMenu) { setZoneCtxMenu(null); return; }
+                if (objCtxMenu) { setObjCtxMenu(null); return; }
+                if (wsModal) { setWsModal(null); return; }
+                if (zoneModal) { setZoneModal(null); return; }
+                if (placeModal) { setPlaceModal(null); return; }
+                if (deleteConfirm) { setDeleteConfirm(null); return; }
+                if (zoneDrawing) { setZoneDrawing(null); return; }
+                if (objDrawing) { setObjDrawing(null); return; }
+                if (rulerActive) { setRulerActive(false); return; }
+                if (placingMarker) { setPlacingMarker(false); return; }
+                if (timelineOpen) { setTimelineOpen(false); setTimelinePlaying(false); return; }
+                if (sidebarOpen) { setSidebarOpen(false); return; }
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, sidebarOpen]);
+
+    // ═══ GLOBAL CLEANUP on unmount ═══
+    useEffect(() => {
+        return () => {
+            if (timelinePlayRef.current) clearInterval(timelinePlayRef.current);
+            if (topLoaderTimer.current) clearTimeout(topLoaderTimer.current);
+        };
+    }, []);
+
     // Tile switching — only when user changes tile, not on initial load
     useEffect(() => {
         if (tileInitRef.current) return; // skip initial render
@@ -3341,7 +3376,7 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Timeline Marker Context Menu */}
-                {tlMarkerCtx && <div onClick={() => setTlMarkerCtx(null)} style={{ position: 'fixed', inset: 0, zIndex: 100 }}><div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: tlMarkerCtx.x + (mapContainer.current?.getBoundingClientRect().left || 0), top: tlMarkerCtx.y + (mapContainer.current?.getBoundingClientRect().top || 0), zIndex: 101, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 180 }}>
+                {tlMarkerCtx && <div onClick={() => setTlMarkerCtx(null)} style={{ position: 'fixed', inset: 0, zIndex: 100 }}><div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: Math.min(tlMarkerCtx.x + (mapContainer.current?.getBoundingClientRect().left || 0), window.innerWidth - 200), top: Math.min(tlMarkerCtx.y + (mapContainer.current?.getBoundingClientRect().top || 0), window.innerHeight - 220), zIndex: 101, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 180 }}>
                     <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
                         {tlMarkerCtx.ev.photoUrl ? <img src={tlMarkerCtx.ev.photoUrl} style={{ width: 22, height: 22, borderRadius: tlMarkerCtx.ev.type === 'face' ? '50%' : 4, objectFit: 'cover', border: `2px solid ${tlMarkerCtx.ev.color}` }} /> : <span style={{ fontSize: 14 }}>{tlMarkerCtx.ev.icon}</span>}
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -3364,6 +3399,20 @@ export default function MapIndex() {
                 {/* Coordinates */}
                 {showCoords && loaded && <div className="tmap-coords" style={{ bottom: timelineOpen ? 282 : 8, transition: 'bottom 0.3s ease', zIndex: 15 }}><span>LAT {coords.lat.toFixed(5)}</span><span>LNG {coords.lng.toFixed(5)}</span><span>Z {zoom}</span><span>BRG {Math.round(bearing)}°</span></div>}
 
+                {/* Status Bar (bottom-left) */}
+                {loaded && <div style={{ position: 'absolute', bottom: timelineOpen ? 282 : 8, left: 8, zIndex: 5, display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 220, transition: 'bottom 0.3s ease' }}>
+                    {activeSources.size > 0 && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(6,182,212,0.1)', color: '#06b6d4', border: '1px solid rgba(6,182,212,0.2)', backdropFilter: 'blur(6px)' }}>📡 {activeSources.size} sources</span>}
+                    {layerHeatmap && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)', backdropFilter: 'blur(6px)' }}>🔥 Heatmap</span>}
+                    {layerNetwork && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.2)', backdropFilter: 'blur(6px)' }}>🕸️ Network</span>}
+                    {layerLPR && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', backdropFilter: 'blur(6px)' }}>🚗 LPR</span>}
+                    {layerFace && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(236,72,153,0.1)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.2)', backdropFilter: 'blur(6px)' }}>🧑‍🦲 Face</span>}
+                    {showZones && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)', backdropFilter: 'blur(6px)' }}>🛡️ Zones</span>}
+                    {active3D && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.2)', backdropFilter: 'blur(6px)' }}>🏢 3D</span>}
+                    {rulerActive && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)', backdropFilter: 'blur(6px)' }}>📏 Ruler</span>}
+                    {selectedPersons.length > 0 && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(236,72,153,0.1)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.2)', backdropFilter: 'blur(6px)' }}>👤 {selectedPersons.length}</span>}
+                    {hiddenSources.size > 0 && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)', backdropFilter: 'blur(6px)' }}>👁️ {hiddenSources.size} hidden</span>}
+                </div>}
+
                 {/* FPS Counter */}
                 {showFps && loaded && <div style={{ position: 'absolute', top: showMinimap ? 118 : 10, right: 10, zIndex: 5, background: fps >= 50 ? 'rgba(34,197,94,0.12)' : fps >= 30 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${fps >= 50 ? '#22c55e30' : fps >= 30 ? '#f59e0b30' : '#ef444430'}`, borderRadius: 6, padding: '4px 10px', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 6, height: 6, borderRadius: 3, background: fps >= 50 ? '#22c55e' : fps >= 30 ? '#f59e0b' : '#ef4444' }} />
@@ -3377,7 +3426,7 @@ export default function MapIndex() {
                 </button>}
 
                 {/* Live Feed Widget */}
-                {showLiveFeed && loaded && <div style={{ position: 'absolute', top: 10, right: 10, width: 320, maxHeight: 'calc(100% - 20px)', zIndex: 14, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.96)', border: `1px solid ${liveFeedRunning ? '#ef444425' : theme.border}`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden' }}>
+                {showLiveFeed && loaded && <div style={{ position: 'absolute', top: 10, right: 10, width: 'min(320px, calc(100vw - 20px))', maxHeight: 'calc(100% - 20px)', zIndex: 14, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.96)', border: `1px solid ${liveFeedRunning ? '#ef444425' : theme.border}`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden' }}>
                     {/* Header */}
                     <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
