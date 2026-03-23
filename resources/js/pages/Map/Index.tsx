@@ -141,6 +141,19 @@ export default function MapIndex() {
     const mapVersionRef = useRef(0);
     const tileInitRef = useRef(true); // skip first run of tile/loc effects
     const [loaded, setLoaded] = useState(false);
+    const [topLoader, setTopLoader] = useState(0); // 0 = hidden, 1-99 = progress, 100 = done
+    const topLoaderTimer = useRef<number | null>(null);
+    const triggerTopLoader = useCallback(() => {
+        if (topLoaderTimer.current) clearTimeout(topLoaderTimer.current);
+        setTopLoader(30);
+        topLoaderTimer.current = window.setTimeout(() => {
+            setTopLoader(70);
+            topLoaderTimer.current = window.setTimeout(() => {
+                setTopLoader(100);
+                topLoaderTimer.current = window.setTimeout(() => setTopLoader(0), 400);
+            }, 200);
+        }, 150);
+    }, []);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [coords, setCoords] = useState({ lat: 45.8150, lng: 15.9819 });
     const [zoom, setZoom] = useState(13);
@@ -169,73 +182,75 @@ export default function MapIndex() {
         { id: 'app-audio', label: 'Mobile Audio', group: 'Mobile App', color: '#a855f7', icon: '🔊', shape: 'circle' },
         { id: 'app-camera', label: 'Mobile Camera', group: 'Mobile App', color: '#14b8a6', icon: '📱', shape: 'circle' },
     ];
-    interface SourceMarker { id: string; sourceId: SourceId; lat: number; lng: number; label: string; status: 'online' | 'offline' | 'degraded'; detail: string; }
+    interface SourceMarker { id: string; sourceId: SourceId; lat: number; lng: number; label: string; status: 'online' | 'offline' | 'degraded'; detail: string; personId?: number; personName?: string; personLastName?: string; personNickname?: string; personAvatar?: string; risk?: string; accuracy?: string; lastUpdated?: string; phoneType?: 'ios' | 'android'; battery?: number; deviceId?: number; signal?: number; orgId?: number; orgName?: string; orgAvatar?: string; }
+    const [hiddenSources, setHiddenSources] = useState<Set<string>>(new Set());
     const mockSourceMarkers: SourceMarker[] = [
         // Public Cameras (8)
-        { id: 'sc1', sourceId: 'cam-public', lat: 45.8131, lng: 15.9775, label: 'Ban Jelačić Square Cam', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Uptime: 99.8%' },
-        { id: 'sc2', sourceId: 'cam-public', lat: 45.8155, lng: 15.9690, label: 'Ilica Street Cam #1', status: 'online', detail: 'Resolution: 1080p · FPS: 25 · Uptime: 98.5%' },
-        { id: 'sc3', sourceId: 'cam-public', lat: 45.8048, lng: 15.9620, label: 'Savska Cesta Intersection', status: 'degraded', detail: 'Resolution: 1080p · FPS: 15 · Signal weak' },
-        { id: 'sc4', sourceId: 'cam-public', lat: 45.8100, lng: 15.9930, label: 'Maksimir Park Entrance', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Night vision enabled' },
-        { id: 'sc5', sourceId: 'cam-public', lat: 45.8000, lng: 15.9710, label: 'Main Station South', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Facial recognition active' },
-        { id: 'sc6', sourceId: 'cam-public', lat: 45.8195, lng: 15.9555, label: 'Črnomerec Junction', status: 'offline', detail: 'Maintenance since 2026-03-20' },
-        { id: 'sc7', sourceId: 'cam-public', lat: 45.8060, lng: 16.0010, label: 'Dubrava Overpass', status: 'online', detail: 'Resolution: 1080p · FPS: 25' },
-        { id: 'sc8', sourceId: 'cam-public', lat: 45.8210, lng: 15.9850, label: 'Kaptol Area Cam', status: 'online', detail: 'Resolution: 4K · PTZ · FPS: 30' },
+        { id: 'sc1', sourceId: 'cam-public', lat: 45.8131, lng: 15.9775, label: 'Ban Jelačić Square Cam', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Uptime: 99.8%', deviceId: 101, lastUpdated: '5s ago' },
+        { id: 'sc2', sourceId: 'cam-public', lat: 45.8155, lng: 15.9690, label: 'Ilica Street Cam #1', status: 'online', detail: 'Resolution: 1080p · FPS: 25 · Uptime: 98.5%', deviceId: 102, lastUpdated: '8s ago' },
+        { id: 'sc3', sourceId: 'cam-public', lat: 45.8048, lng: 15.9620, label: 'Savska Cesta Intersection', status: 'degraded', detail: 'Resolution: 1080p · FPS: 15 · Signal weak', deviceId: 103, lastUpdated: '2m ago' },
+        { id: 'sc4', sourceId: 'cam-public', lat: 45.8100, lng: 15.9930, label: 'Maksimir Park Entrance', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Night vision enabled', deviceId: 104, lastUpdated: '3s ago' },
+        { id: 'sc5', sourceId: 'cam-public', lat: 45.8000, lng: 15.9710, label: 'Main Station South', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Facial recognition active', deviceId: 105, lastUpdated: '1s ago' },
+        { id: 'sc6', sourceId: 'cam-public', lat: 45.8195, lng: 15.9555, label: 'Črnomerec Junction', status: 'offline', detail: 'Maintenance since 2026-03-20', deviceId: 106, lastUpdated: '3d ago' },
+        { id: 'sc7', sourceId: 'cam-public', lat: 45.8060, lng: 16.0010, label: 'Dubrava Overpass', status: 'online', detail: 'Resolution: 1080p · FPS: 25', deviceId: 107, lastUpdated: '12s ago' },
+        { id: 'sc8', sourceId: 'cam-public', lat: 45.8210, lng: 15.9850, label: 'Kaptol Area Cam', status: 'online', detail: 'Resolution: 4K · PTZ · FPS: 30', deviceId: 108, lastUpdated: '2s ago' },
         // Hidden Cameras (5)
-        { id: 'sh1', sourceId: 'cam-hidden', lat: 45.8142, lng: 15.9760, label: 'OP-HAWK Unit Alpha', status: 'online', detail: 'Covert · Battery: 89% · Last ping: 2m ago' },
-        { id: 'sh2', sourceId: 'cam-hidden', lat: 45.8088, lng: 15.9680, label: 'OP-HAWK Unit Bravo', status: 'online', detail: 'Covert · Battery: 72% · Last ping: 5m ago' },
-        { id: 'sh3', sourceId: 'cam-hidden', lat: 45.8170, lng: 15.9810, label: 'OP-HAWK Unit Charlie', status: 'degraded', detail: 'Covert · Battery: 23% · Low battery warning' },
-        { id: 'sh4', sourceId: 'cam-hidden', lat: 45.8050, lng: 15.9900, label: 'OP-HAWK Unit Delta', status: 'online', detail: 'Covert · Battery: 95% · Last ping: 1m ago' },
-        { id: 'sh5', sourceId: 'cam-hidden', lat: 45.8120, lng: 15.9580, label: 'OP-HAWK Unit Echo', status: 'offline', detail: 'Covert · Device unreachable since 18:00' },
+        { id: 'sh1', sourceId: 'cam-hidden', lat: 45.8142, lng: 15.9760, label: 'OP-HAWK Unit Alpha', status: 'online', detail: 'Covert · Battery: 89% · Last ping: 2m ago', deviceId: 201, personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 89, signal: 95, lastUpdated: '2m ago' },
+        { id: 'sh2', sourceId: 'cam-hidden', lat: 45.8088, lng: 15.9680, label: 'OP-HAWK Unit Bravo', status: 'online', detail: 'Covert · Battery: 72% · Last ping: 5m ago', deviceId: 202, personId: 12, personName: 'Ivan', personLastName: 'Babić', personNickname: 'Ghost', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', battery: 72, signal: 88, lastUpdated: '5m ago' },
+        { id: 'sh3', sourceId: 'cam-hidden', lat: 45.8170, lng: 15.9810, label: 'OP-HAWK Unit Charlie', status: 'degraded', detail: 'Covert · Battery: 23% · Low battery warning', deviceId: 203, orgId: 1, orgName: 'Alpha Security', orgAvatar: '', risk: 'Medium', battery: 23, signal: 45, lastUpdated: '8m ago' },
+        { id: 'sh4', sourceId: 'cam-hidden', lat: 45.8050, lng: 15.9900, label: 'OP-HAWK Unit Delta', status: 'online', detail: 'Covert · Battery: 95% · Last ping: 1m ago', deviceId: 204, personId: 3, personName: 'Ahmed', personLastName: 'Al-Rashid', personNickname: 'Mike', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 95, signal: 92, lastUpdated: '1m ago' },
+        { id: 'sh5', sourceId: 'cam-hidden', lat: 45.8120, lng: 15.9580, label: 'OP-HAWK Unit Echo', status: 'offline', detail: 'Covert · Device unreachable since 18:00', deviceId: 205, orgId: 2, orgName: 'Rashid Holdings', orgAvatar: '', risk: 'High', battery: 0, signal: 0, lastUpdated: '6h ago' },
         // Private Cameras (4)
-        { id: 'sp1', sourceId: 'cam-private', lat: 45.8115, lng: 15.9830, label: 'ASG HQ Interior #1', status: 'online', detail: 'Private · Restricted access · Recording' },
-        { id: 'sp2', sourceId: 'cam-private', lat: 45.8117, lng: 15.9835, label: 'ASG HQ Interior #2', status: 'online', detail: 'Private · Restricted access · Recording' },
-        { id: 'sp3', sourceId: 'cam-private', lat: 45.8070, lng: 15.9750, label: 'Safehouse Bravo Cam', status: 'online', detail: 'Private · Motion-triggered · 128GB storage' },
-        { id: 'sp4', sourceId: 'cam-private', lat: 45.8190, lng: 15.9700, label: 'Drop Point Zulu Cam', status: 'degraded', detail: 'Private · Intermittent connection' },
+        { id: 'sp1', sourceId: 'cam-private', lat: 45.8115, lng: 15.9830, label: 'ASG HQ Interior #1', status: 'online', detail: 'Private · Restricted access · Recording', deviceId: 301, orgId: 1, orgName: 'Alpha Security', orgAvatar: '', risk: 'High', battery: 100, signal: 100, lastUpdated: '1s ago' },
+        { id: 'sp2', sourceId: 'cam-private', lat: 45.8117, lng: 15.9835, label: 'ASG HQ Interior #2', status: 'online', detail: 'Private · Restricted access · Recording', deviceId: 302, orgId: 1, orgName: 'Alpha Security', orgAvatar: '', risk: 'High', battery: 100, signal: 98, lastUpdated: '3s ago' },
+        { id: 'sp3', sourceId: 'cam-private', lat: 45.8070, lng: 15.9750, label: 'Safehouse Bravo Cam', status: 'online', detail: 'Private · Motion-triggered · 128GB storage', deviceId: 303, personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 100, signal: 90, lastUpdated: '10s ago' },
+        { id: 'sp4', sourceId: 'cam-private', lat: 45.8190, lng: 15.9700, label: 'Drop Point Zulu Cam', status: 'degraded', detail: 'Private · Intermittent connection', deviceId: 304, orgId: 2, orgName: 'Rashid Holdings', orgAvatar: '', risk: 'Critical', battery: 56, signal: 32, lastUpdated: '12m ago' },
         // GPS Trackers (7)
-        { id: 'sg1', sourceId: 'gps', lat: 45.8138, lng: 15.9780, label: 'GPS-001 (Horvat Vehicle)', status: 'online', detail: 'Speed: 0 km/h · Parked · Battery: 94%' },
-        { id: 'sg2', sourceId: 'gps', lat: 45.8075, lng: 15.9850, label: 'GPS-002 (Babić Vehicle)', status: 'online', detail: 'Speed: 42 km/h · Moving SE · Battery: 88%' },
-        { id: 'sg3', sourceId: 'gps', lat: 45.8200, lng: 15.9600, label: 'GPS-003 (Package Alpha)', status: 'online', detail: 'Speed: 0 km/h · Stationary · Battery: 76%' },
-        { id: 'sg4', sourceId: 'gps', lat: 45.8020, lng: 15.9950, label: 'GPS-004 (Suspect Van)', status: 'degraded', detail: 'Speed: 15 km/h · Signal intermittent' },
-        { id: 'sg5', sourceId: 'gps', lat: 45.8160, lng: 15.9500, label: 'GPS-005 (Asset Foxtrot)', status: 'online', detail: 'Speed: 0 km/h · Parked · Battery: 100%' },
-        { id: 'sg6', sourceId: 'gps', lat: 45.8095, lng: 15.9720, label: 'GPS-006 (Motorcycle)', status: 'offline', detail: 'Last position 3h ago · Battery: 12%' },
-        { id: 'sg7', sourceId: 'gps', lat: 45.8180, lng: 15.9920, label: 'GPS-007 (Cargo Trailer)', status: 'online', detail: 'Speed: 0 km/h · Port area · Battery: 67%' },
+        { id: 'sg1', sourceId: 'gps', lat: 45.8138, lng: 15.9780, label: 'GPS-001 (Horvat Vehicle)', status: 'online', detail: 'Speed: 0 km/h · Parked · Battery: 94%', deviceId: 401, personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 94, signal: 98, lastUpdated: '10s ago' },
+        { id: 'sg2', sourceId: 'gps', lat: 45.8075, lng: 15.9850, label: 'GPS-002 (Babić Vehicle)', status: 'online', detail: 'Speed: 42 km/h · Moving SE · Battery: 88%', deviceId: 402, personId: 12, personName: 'Ivan', personLastName: 'Babić', personNickname: 'Ghost', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', battery: 88, signal: 91, lastUpdated: '5s ago' },
+        { id: 'sg3', sourceId: 'gps', lat: 45.8200, lng: 15.9600, label: 'GPS-003 (Package Alpha)', status: 'online', detail: 'Speed: 0 km/h · Stationary · Battery: 76%', deviceId: 403, orgId: 1, orgName: 'Alpha Security', orgAvatar: '', risk: 'Medium', battery: 76, signal: 85, lastUpdated: '30s ago' },
+        { id: 'sg4', sourceId: 'gps', lat: 45.8020, lng: 15.9950, label: 'GPS-004 (Suspect Van)', status: 'degraded', detail: 'Speed: 15 km/h · Signal intermittent', deviceId: 404, personId: 9, personName: 'Carlos', personLastName: 'Mendoza', personNickname: 'Lima', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 45, signal: 28, lastUpdated: '4m ago' },
+        { id: 'sg5', sourceId: 'gps', lat: 45.8160, lng: 15.9500, label: 'GPS-005 (Asset Foxtrot)', status: 'online', detail: 'Speed: 0 km/h · Parked · Battery: 100%', deviceId: 405, orgId: 5, orgName: 'Falcon Trading', orgAvatar: '', risk: 'Medium', battery: 100, signal: 96, lastUpdated: '15s ago' },
+        { id: 'sg6', sourceId: 'gps', lat: 45.8095, lng: 15.9720, label: 'GPS-006 (Motorcycle)', status: 'offline', detail: 'Last position 3h ago · Battery: 12%', deviceId: 406, personId: 7, personName: 'Omar', personLastName: 'Hassan', personNickname: 'Kilo', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', battery: 12, signal: 0, lastUpdated: '3h ago' },
+        { id: 'sg7', sourceId: 'gps', lat: 45.8180, lng: 15.9920, label: 'GPS-007 (Cargo Trailer)', status: 'online', detail: 'Speed: 0 km/h · Port area · Battery: 67%', deviceId: 407, orgId: 6, orgName: 'Mendoza IE', orgAvatar: '', risk: 'High', battery: 67, signal: 82, lastUpdated: '1m ago' },
         // Audio Recorders (4)
-        { id: 'sa1', sourceId: 'audio', lat: 45.8133, lng: 15.9770, label: 'MIC-ALPHA (Café Target)', status: 'online', detail: 'Recording · Duration: 4h 23m · Quality: High' },
-        { id: 'sa2', sourceId: 'audio', lat: 45.8110, lng: 15.9840, label: 'MIC-BRAVO (Office Bug)', status: 'online', detail: 'Recording · Duration: 12h 05m · Quality: High' },
-        { id: 'sa3', sourceId: 'audio', lat: 45.8065, lng: 15.9660, label: 'MIC-CHARLIE (Vehicle)', status: 'degraded', detail: 'Recording · Duration: 1h 44m · Background noise' },
-        { id: 'sa4', sourceId: 'audio', lat: 45.8185, lng: 15.9730, label: 'MIC-DELTA (Meeting Rm)', status: 'offline', detail: 'Battery depleted · Last recording: 09:15' },
+        { id: 'sa1', sourceId: 'audio', lat: 45.8133, lng: 15.9770, label: 'MIC-ALPHA (Café Target)', status: 'online', detail: 'Recording · Duration: 4h 23m · Quality: High', deviceId: 501, personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 78, signal: 92, lastUpdated: '20s ago' },
+        { id: 'sa2', sourceId: 'audio', lat: 45.8110, lng: 15.9840, label: 'MIC-BRAVO (Office Bug)', status: 'online', detail: 'Recording · Duration: 12h 05m · Quality: High', deviceId: 502, orgId: 1, orgName: 'Alpha Security', orgAvatar: '', risk: 'High', battery: 61, signal: 88, lastUpdated: '45s ago' },
+        { id: 'sa3', sourceId: 'audio', lat: 45.8065, lng: 15.9660, label: 'MIC-CHARLIE (Vehicle)', status: 'degraded', detail: 'Recording · Duration: 1h 44m · Background noise', deviceId: 503, personId: 12, personName: 'Ivan', personLastName: 'Babić', personNickname: 'Ghost', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', battery: 34, signal: 41, lastUpdated: '6m ago' },
+        { id: 'sa4', sourceId: 'audio', lat: 45.8185, lng: 15.9730, label: 'MIC-DELTA (Meeting Rm)', status: 'offline', detail: 'Battery depleted · Last recording: 09:15', deviceId: 504, orgId: 2, orgName: 'Rashid Holdings', orgAvatar: '', risk: 'Critical', battery: 0, signal: 0, lastUpdated: '5h ago' },
         // Mobile App - Locator (5)
-        { id: 'ml1', sourceId: 'app-locator', lat: 45.8125, lng: 15.9795, label: 'APP-LOC Horvat Phone', status: 'online', detail: 'Accuracy: 3m · Provider: GPS+WiFi · Updated: 30s ago' },
-        { id: 'ml2', sourceId: 'app-locator', lat: 45.8080, lng: 15.9870, label: 'APP-LOC Babić Phone', status: 'online', detail: 'Accuracy: 8m · Provider: Cell · Updated: 2m ago' },
-        { id: 'ml3', sourceId: 'app-locator', lat: 45.8155, lng: 15.9650, label: 'APP-LOC Suspect Kilo', status: 'online', detail: 'Accuracy: 5m · Provider: GPS · Updated: 45s ago' },
-        { id: 'ml4', sourceId: 'app-locator', lat: 45.8040, lng: 15.9780, label: 'APP-LOC Asset Lima', status: 'degraded', detail: 'Accuracy: 150m · Cell only · Last update: 15m ago' },
-        { id: 'ml5', sourceId: 'app-locator', lat: 45.8175, lng: 15.9880, label: 'APP-LOC Target Mike', status: 'offline', detail: 'Phone powered off · Last seen: 2h ago' },
+        { id: 'ml1', sourceId: 'app-locator', lat: 45.8125, lng: 15.9795, label: 'APP-LOC Horvat Phone', status: 'online', detail: 'Accuracy: 3m · Provider: GPS+WiFi · Updated: 30s ago', personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', accuracy: '3m', lastUpdated: '30s ago', phoneType: 'ios', battery: 87 },
+        { id: 'ml2', sourceId: 'app-locator', lat: 45.8080, lng: 15.9870, label: 'APP-LOC Babić Phone', status: 'online', detail: 'Accuracy: 8m · Provider: Cell · Updated: 2m ago', personId: 12, personName: 'Ivan', personLastName: 'Babić', personNickname: 'Ghost', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', accuracy: '8m', lastUpdated: '2m ago', phoneType: 'android', battery: 64 },
+        { id: 'ml3', sourceId: 'app-locator', lat: 45.8155, lng: 15.9650, label: 'APP-LOC Suspect Kilo', status: 'online', detail: 'Accuracy: 5m · Provider: GPS · Updated: 45s ago', personId: 7, personName: 'Omar', personLastName: 'Hassan', personNickname: 'Kilo', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', accuracy: '5m', lastUpdated: '45s ago', phoneType: 'android', battery: 42 },
+        { id: 'ml4', sourceId: 'app-locator', lat: 45.8040, lng: 15.9780, label: 'APP-LOC Asset Lima', status: 'degraded', detail: 'Accuracy: 150m · Cell only · Last update: 15m ago', personId: 9, personName: 'Carlos', personLastName: 'Mendoza', personNickname: 'Lima', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', accuracy: '150m', lastUpdated: '15m ago', phoneType: 'ios', battery: 23 },
+        { id: 'ml5', sourceId: 'app-locator', lat: 45.8175, lng: 15.9880, label: 'APP-LOC Target Mike', status: 'offline', detail: 'Phone powered off · Last seen: 2h ago', personId: 3, personName: 'Ahmed', personLastName: 'Al-Rashid', personNickname: 'Mike', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', accuracy: '—', lastUpdated: '2h ago', phoneType: 'android', battery: 0 },
         // Mobile App - Photo (3)
-        { id: 'mp1', sourceId: 'app-photo', lat: 45.8130, lng: 15.9810, label: 'APP-PHO Horvat Phone', status: 'online', detail: 'Auto-capture: ON · 47 photos today · Storage: 62%' },
-        { id: 'mp2', sourceId: 'app-photo', lat: 45.8090, lng: 15.9690, label: 'APP-PHO Babić Phone', status: 'online', detail: 'Auto-capture: ON · 12 photos today · Storage: 84%' },
-        { id: 'mp3', sourceId: 'app-photo', lat: 45.8165, lng: 15.9560, label: 'APP-PHO Suspect Kilo', status: 'degraded', detail: 'Auto-capture: OFF · Manual only · Storage: 91%' },
+        { id: 'mp1', sourceId: 'app-photo', lat: 45.8130, lng: 15.9810, label: 'APP-PHO Horvat Phone', status: 'online', detail: 'Auto-capture: ON · 47 photos today · Storage: 62%', personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', accuracy: '3m', lastUpdated: '1m ago', phoneType: 'ios', battery: 87 },
+        { id: 'mp2', sourceId: 'app-photo', lat: 45.8090, lng: 15.9690, label: 'APP-PHO Babić Phone', status: 'online', detail: 'Auto-capture: ON · 12 photos today · Storage: 84%', personId: 12, personName: 'Ivan', personLastName: 'Babić', personNickname: 'Ghost', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', accuracy: '8m', lastUpdated: '3m ago', phoneType: 'android', battery: 64 },
+        { id: 'mp3', sourceId: 'app-photo', lat: 45.8165, lng: 15.9560, label: 'APP-PHO Suspect Kilo', status: 'degraded', detail: 'Auto-capture: OFF · Manual only · Storage: 91%', personId: 7, personName: 'Omar', personLastName: 'Hassan', personNickname: 'Kilo', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', accuracy: '12m', lastUpdated: '8m ago', phoneType: 'android', battery: 42 },
         // Mobile App - Video (3)
-        { id: 'mv1', sourceId: 'app-video', lat: 45.8145, lng: 15.9750, label: 'APP-VID Horvat Phone', status: 'online', detail: 'Live stream available · Quality: 720p' },
-        { id: 'mv2', sourceId: 'app-video', lat: 45.8060, lng: 15.9810, label: 'APP-VID Babić Phone', status: 'online', detail: 'Recording in background · 2.3 GB captured' },
-        { id: 'mv3', sourceId: 'app-video', lat: 45.8195, lng: 15.9640, label: 'APP-VID Target Oscar', status: 'offline', detail: 'No video permission · App restricted' },
+        { id: 'mv1', sourceId: 'app-video', lat: 45.8145, lng: 15.9750, label: 'APP-VID Horvat Phone', status: 'online', detail: 'Live stream available · Quality: 720p', personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', accuracy: '3m', lastUpdated: '15s ago', phoneType: 'ios', battery: 87 },
+        { id: 'mv2', sourceId: 'app-video', lat: 45.8060, lng: 15.9810, label: 'APP-VID Babić Phone', status: 'online', detail: 'Recording in background · 2.3 GB captured', personId: 12, personName: 'Ivan', personLastName: 'Babić', personNickname: 'Ghost', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', accuracy: '5m', lastUpdated: '1m ago', phoneType: 'android', battery: 64 },
+        { id: 'mv3', sourceId: 'app-video', lat: 45.8195, lng: 15.9640, label: 'APP-VID Target Oscar', status: 'offline', detail: 'No video permission · App restricted', personId: 7, personName: 'Omar', personLastName: 'Hassan', personNickname: 'Oscar', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', accuracy: '—', lastUpdated: '45m ago', phoneType: 'android', battery: 18 },
         // Mobile App - Audio Recorder (3)
-        { id: 'ma1', sourceId: 'app-audio', lat: 45.8128, lng: 15.9820, label: 'APP-AUD Horvat Phone', status: 'online', detail: 'Ambient recording · Duration: 3h 12m · -42dB' },
-        { id: 'ma2', sourceId: 'app-audio', lat: 45.8082, lng: 15.9740, label: 'APP-AUD Babić Phone', status: 'online', detail: 'Call recording active · 7 calls intercepted' },
-        { id: 'ma3', sourceId: 'app-audio', lat: 45.8170, lng: 15.9900, label: 'APP-AUD Suspect Papa', status: 'degraded', detail: 'Mic permission revoked · Retry pending' },
+        { id: 'ma1', sourceId: 'app-audio', lat: 45.8128, lng: 15.9820, label: 'APP-AUD Horvat Phone', status: 'online', detail: 'Ambient recording · Duration: 3h 12m · -42dB', personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', accuracy: '3m', lastUpdated: '10s ago', phoneType: 'ios', battery: 87 },
+        { id: 'ma2', sourceId: 'app-audio', lat: 45.8082, lng: 15.9740, label: 'APP-AUD Babić Phone', status: 'online', detail: 'Call recording active · 7 calls intercepted', personId: 12, personName: 'Ivan', personLastName: 'Babić', personNickname: 'Ghost', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', accuracy: '8m', lastUpdated: '2m ago', phoneType: 'android', battery: 64 },
+        { id: 'ma3', sourceId: 'app-audio', lat: 45.8170, lng: 15.9900, label: 'APP-AUD Suspect Papa', status: 'degraded', detail: 'Mic permission revoked · Retry pending', personId: 9, personName: 'Carlos', personLastName: 'Mendoza', personNickname: 'Papa', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', accuracy: '25m', lastUpdated: '12m ago', phoneType: 'ios', battery: 31 },
         // Mobile App - Camera (3)
-        { id: 'mc1', sourceId: 'app-camera', lat: 45.8135, lng: 15.9760, label: 'APP-CAM Horvat Phone', status: 'online', detail: 'Front cam accessible · Stealth mode · Last snap: 5m' },
-        { id: 'mc2', sourceId: 'app-camera', lat: 45.8070, lng: 15.9850, label: 'APP-CAM Babić Phone', status: 'online', detail: 'Rear cam accessible · Stealth mode · Last snap: 22m' },
-        { id: 'mc3', sourceId: 'app-camera', lat: 45.8150, lng: 15.9580, label: 'APP-CAM Target Quebec', status: 'offline', detail: 'Camera blocked by user · App hidden' },
+        { id: 'mc1', sourceId: 'app-camera', lat: 45.8135, lng: 15.9760, label: 'APP-CAM Horvat Phone', status: 'online', detail: 'Front cam accessible · Stealth mode · Last snap: 5m', personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', accuracy: '3m', lastUpdated: '5m ago', phoneType: 'ios', battery: 87 },
+        { id: 'mc2', sourceId: 'app-camera', lat: 45.8070, lng: 15.9850, label: 'APP-CAM Babić Phone', status: 'online', detail: 'Rear cam accessible · Stealth mode · Last snap: 22m', personId: 12, personName: 'Ivan', personLastName: 'Babić', personNickname: 'Ghost', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', accuracy: '5m', lastUpdated: '22m ago', phoneType: 'android', battery: 64 },
+        { id: 'mc3', sourceId: 'app-camera', lat: 45.8150, lng: 15.9580, label: 'APP-CAM Target Quebec', status: 'offline', detail: 'Camera blocked by user · App hidden', personId: 9, personName: 'Carlos', personLastName: 'Mendoza', personNickname: 'Quebec', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', accuracy: '—', lastUpdated: '1h ago', phoneType: 'ios', battery: 5 },
     ];
     const [activeSources, setActiveSources] = useState<Set<SourceId>>(new Set());
-    const toggleSource = (id: SourceId) => setActiveSources(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    const toggleSource = (id: SourceId) => { triggerTopLoader(); setActiveSources(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; }); };
     const toggleSourceGroup = (group: string) => {
+        triggerTopLoader();
         const groupIds = sourceTypes.filter(s => s.group === group).map(s => s.id);
         const allOn = groupIds.every(id => activeSources.has(id));
         setActiveSources(prev => { const n = new Set(prev); groupIds.forEach(id => allOn ? n.delete(id) : n.add(id)); return n; });
     };
     const activeSourceCount = activeSources.size;
-    const activeSourceMarkers = mockSourceMarkers.filter(m => activeSources.has(m.sourceId));
+    const activeSourceMarkers = mockSourceMarkers.filter(m => activeSources.has(m.sourceId) && !hiddenSources.has(m.id));
 
     // Layers
     const [layerHeatmap, setLayerHeatmap] = useState(false);
@@ -245,6 +260,12 @@ export default function MapIndex() {
     const [networkShowPersons, setNetworkShowPersons] = useState(true);
     const [networkShowOrgs, setNetworkShowOrgs] = useState(true);
     const [networkShowDevices, setNetworkShowDevices] = useState(true);
+    const [netSearch, setNetSearch] = useState('');
+    const [netEdgeFilters, setNetEdgeFilters] = useState<Set<string>>(new Set(['financial', 'family', 'business', 'criminal', 'comms', 'surveillance']));
+    const [netStrengthMin, setNetStrengthMin] = useState(0);
+    const [netIsolatedEdge, setNetIsolatedEdge] = useState<string | null>(null); // "from|to" key
+    const [netFocusNode, setNetFocusNode] = useState<string | null>(null);
+    const [netShowLabels, setNetShowLabels] = useState(true);
 
     // Heatmap mock data — activity hotspots across Zagreb
     const heatmapPoints: [number, number, number][] = [
@@ -306,8 +327,17 @@ export default function MapIndex() {
         { from: 'p1', to: 'd5', strength: 0.9, type: 'surveillance' },
         { from: 'p2', to: 'o1', strength: 0.45, type: 'comms' },
         { from: 'p7', to: 'p9', strength: 0.35, type: 'criminal' },
+        { from: 'p2', to: 'p7', strength: 0.25, type: 'comms' },
+        { from: 'p1', to: 'p3', strength: 0.7, type: 'criminal' },
+        { from: 'p12', to: 'p2', strength: 0.55, type: 'family' },
+        { from: 'p3', to: 'o6', strength: 0.45, type: 'financial' },
+        { from: 'p9', to: 'd2', strength: 0.6, type: 'surveillance' },
+        { from: 'o1', to: 'o2', strength: 0.2, type: 'financial' },
     ];
     const edgeColors: Record<string, string> = { financial: '#f59e0b', family: '#ec4899', business: '#3b82f6', criminal: '#ef4444', comms: '#8b5cf6', surveillance: '#22c55e' };
+    const edgeKey = (e: NetEdge) => `${e.from}|${e.to}`;
+    const netNodeConns = (nodeId: string) => netEdges.filter(e => e.from === nodeId || e.to === nodeId);
+    const netFilteredEdges = useMemo(() => netEdges.filter(e => netEdgeFilters.has(e.type) && e.strength >= netStrengthMin), [netEdgeFilters, netStrengthMin]);
 
     // LPR Layer
     const [layerLPR, setLayerLPR] = useState(false);
@@ -416,7 +446,7 @@ export default function MapIndex() {
         }
         setObjModal(null);
     };
-    const goToObj = (o: MapObject) => { if (o.coords.length > 0) mapRef.current?.flyTo({ center: o.coords[0], zoom: 16, duration: 1200 }); };
+    const goToObj = (o: MapObject) => { triggerTopLoader(); if (o.coords.length > 0) mapRef.current?.flyTo({ center: o.coords[0], zoom: 16, duration: 1200 }); };
 
     // Settings
     const [showMinimap, setShowMinimap] = useState(true);
@@ -497,6 +527,7 @@ export default function MapIndex() {
 
     const saveWorkspace = () => {
         if (!wsForm.name.trim()) return;
+        triggerTopLoader();
         const now = new Date();
         const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         if (wsModal?.mode === 'edit' && wsModal.ws) {
@@ -511,6 +542,7 @@ export default function MapIndex() {
     };
 
     const loadWorkspace = (ws: MapWorkspace) => {
+        triggerTopLoader();
         const s = ws.state;
         setDateFrom(s.dateFrom); setDateTo(s.dateTo);
         setSelectedPersons(s.selectedPersons); setSelectedOrgs(s.selectedOrgs);
@@ -524,10 +556,10 @@ export default function MapIndex() {
         if (map) setTimeout(() => { map.flyTo({ center: s.viewport.center, zoom: s.viewport.zoom, pitch: s.viewport.pitch, bearing: s.viewport.bearing, duration: 1200 }); }, 100);
     };
 
-    const deleteWorkspace = (id: string) => { setWorkspaces(prev => prev.filter(w => w.id !== id)); if (wsActiveId === id) setWsActiveId(null); setWsDeleteConfirm(null); };
-    const openSaveWs = () => { setWsForm({ name: '', description: '', tags: '' }); setWsModal({ mode: 'save' }); };
-    const openEditWs = (ws: MapWorkspace) => { setWsForm({ name: ws.name, description: ws.description, tags: ws.tags.join(', ') }); setWsModal({ mode: 'edit', ws }); };
-    const updateWsState = (ws: MapWorkspace) => { const now = new Date(); const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; setWorkspaces(prev => prev.map(w => w.id === ws.id ? { ...w, state: captureWorkspaceState(), updatedAt: ts } : w)); };
+    const deleteWorkspace = (id: string) => { triggerTopLoader(); setWorkspaces(prev => prev.filter(w => w.id !== id)); if (wsActiveId === id) setWsActiveId(null); setWsDeleteConfirm(null); };
+    const openSaveWs = () => { triggerTopLoader(); setWsForm({ name: '', description: '', tags: '' }); setWsModal({ mode: 'save' }); };
+    const openEditWs = (ws: MapWorkspace) => { triggerTopLoader(); setWsForm({ name: ws.name, description: ws.description, tags: ws.tags.join(', ') }); setWsModal({ mode: 'edit', ws }); };
+    const updateWsState = (ws: MapWorkspace) => { triggerTopLoader(); const now = new Date(); const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; setWorkspaces(prev => prev.map(w => w.id === ws.id ? { ...w, state: captureWorkspaceState(), updatedAt: ts } : w)); };
     const liveFeedMarkerRef = useRef<any>(null);
     const liveFeedPopupRef = useRef<any>(null);
     const showLiveFeedMarker = (evt: any) => {
@@ -587,7 +619,7 @@ export default function MapIndex() {
     const [deleteConfirm, setDeleteConfirm] = useState<SavedPlace | null>(null);
     const placeColors = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
-    const openAddPlace = () => { setPlaceForm({ name: '', lat: '', lng: '', zoom: '13', color: '#3b82f6', note: '' }); setPlaceModal({ mode: 'add' }); };
+    const openAddPlace = () => { triggerTopLoader(); setPlaceForm({ name: '', lat: '', lng: '', zoom: '13', color: '#3b82f6', note: '' }); setPlaceModal({ mode: 'add' }); };
     const openEditPlace = (p: SavedPlace) => { setPlaceForm({ name: p.name, lat: p.lat.toString(), lng: p.lng.toString(), zoom: p.zoom.toString(), color: p.color, note: p.note || '' }); setPlaceModal({ mode: 'edit', place: p }); };
     const savePlace = () => {
         const { name, lat, lng, zoom, color, note } = placeForm;
@@ -598,8 +630,8 @@ export default function MapIndex() {
         setPlaceModal(null);
     };
     const confirmDeletePlace = () => { if (deleteConfirm) { setSavedPlaces(prev => prev.filter(p => p.id !== deleteConfirm.id)); setDeleteConfirm(null); } };
-    const goToPlace = (p: SavedPlace) => { mapRef.current?.flyTo({ center: [p.lng, p.lat], zoom: p.zoom, duration: 1500, essential: true }); };
-    const addCurrentLocation = () => {
+    const goToPlace = (p: SavedPlace) => { triggerTopLoader(); mapRef.current?.flyTo({ center: [p.lng, p.lat], zoom: p.zoom, duration: 1500, essential: true }); };
+    const addCurrentLocation = () => { triggerTopLoader();
         const map = mapRef.current;
         if (!map) return;
         const c = map.getCenter();
@@ -972,7 +1004,7 @@ export default function MapIndex() {
         return () => clearTimeout(timer);
     }, [tlTrackStep, tlTrackingPerson, loaded]);
 
-    const openAddZone = () => { setZoneForm({ name: '', shape: 'circle', type: 'monitored', color: '#3b82f6', lat: '', lng: '', radius: '500' }); setZoneAddStep('pick'); setZoneModal(null); };
+    const openAddZone = () => { triggerTopLoader(); setZoneForm({ name: '', shape: 'circle', type: 'monitored', color: '#3b82f6', lat: '', lng: '', radius: '500' }); setZoneAddStep('pick'); setZoneModal(null); };
     const openAddZoneManual = (shape: ZoneShape) => {
         const map = mapRef.current;
         const c = map ? map.getCenter() : { lat: 45.815, lng: 15.982 };
@@ -990,8 +1022,8 @@ export default function MapIndex() {
         setZoneModal(null);
     };
     const confirmDeleteZone = () => { if (zoneDeleteConfirm) { setZones(prev => prev.filter(z => z.id !== zoneDeleteConfirm.id)); setZoneDeleteConfirm(null); } };
-    const goToZone = (z: MapZone) => { mapRef.current?.flyTo({ center: [z.lng, z.lat], zoom: z.radius ? Math.max(13, 16 - Math.log2((z.radius || 500) / 100)) : 14, duration: 1200 }); };
-    const startDrawZone = (shape: ZoneShape) => { setZoneDrawing({ shape, points: [] }); setRulerActive(false); };
+    const goToZone = (z: MapZone) => { triggerTopLoader(); mapRef.current?.flyTo({ center: [z.lng, z.lat], zoom: z.radius ? Math.max(13, 16 - Math.log2((z.radius || 500) / 100)) : 14, duration: 1200 }); };
+    const startDrawZone = (shape: ZoneShape) => { triggerTopLoader(); setZoneDrawing({ shape, points: [] }); setRulerActive(false); };
     const toggleZoneVisibility = (id: string) => { setHiddenZones(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; }); };
     const filteredZones = zones.filter(z => !zoneSearch || z.name.toLowerCase().includes(zoneSearch.toLowerCase()) || z.type.includes(zoneSearch.toLowerCase()));
 
@@ -1248,48 +1280,130 @@ export default function MapIndex() {
 
     // Source markers on map
     const sourceMarkersRef = useRef<any[]>([]);
+    const sourcePopupsRef = useRef<any[]>([]);
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !loaded) return;
         sourceMarkersRef.current.forEach(m => m.remove());
         sourceMarkersRef.current = [];
+        sourcePopupsRef.current.forEach(p => { try { p.remove(); } catch {} });
+        sourcePopupsRef.current = [];
         const ml = (window as any).maplibregl;
         if (!ml) return;
+        const isMobile = (id: SourceId) => id.startsWith('app-');
+        const isCamera = (id: SourceId) => id.startsWith('cam-');
+        const videoUrl = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/rtl_direkt.mp4';
+        const audioUrl = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/audio.mp3';
+        const photoUrl = 'https://picsum.photos/800/600?random=742';
+
         activeSourceMarkers.forEach(sm => {
             const st = sourceTypes.find(s => s.id === sm.sourceId);
             if (!st) return;
             const statusDot = sm.status === 'online' ? '#22c55e' : sm.status === 'degraded' ? '#f59e0b' : '#6b7280';
+            const riskColor = sm.risk === 'Critical' ? '#ef4444' : sm.risk === 'High' ? '#f97316' : sm.risk === 'Medium' ? '#f59e0b' : '#6b7280';
             const el = document.createElement('div');
             el.className = 'tmap-marker-source';
             const borderRadius = st.shape === 'circle' ? '50%' : st.shape === 'diamond' ? '4px' : '4px';
             const rotate = st.shape === 'diamond' ? 'transform:rotate(45deg);' : '';
             const innerRotate = st.shape === 'diamond' ? 'transform:rotate(-45deg);' : '';
-            el.innerHTML = `<div class="tmap-marker-inner" style="width:26px;height:26px;border-radius:${borderRadius};border:2px solid ${st.color};background:rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.5);${rotate}"><span style="font-size:12px;line-height:1;${innerRotate}">${st.icon}</span></div><div class="tmap-marker-status" style="background:${statusDot}"></div>`;
+            const hasPerson = !!sm.personId;
+            const hasOrg = !!sm.orgId;
+            const hasOwner = hasPerson || hasOrg;
+            const sigColor = (sm.signal || 0) > 70 ? '#22c55e' : (sm.signal || 0) > 30 ? '#f59e0b' : '#ef4444';
+            const batColor = (sm.battery ?? 100) > 60 ? '#22c55e' : (sm.battery ?? 100) > 20 ? '#f59e0b' : '#ef4444';
+
+            if (isMobile(sm.sourceId) && sm.personAvatar) {
+                el.innerHTML = `<div class="tmap-marker-inner" style="width:30px;height:30px;border-radius:50%;border:2.5px solid ${riskColor};background:url(${sm.personAvatar}) center/cover;box-shadow:0 0 10px ${riskColor}40,0 2px 8px rgba(0,0,0,0.5);position:relative;overflow:visible;"><div style="position:absolute;bottom:-3px;right:-3px;min-width:14px;height:12px;border-radius:6px;background:${st.color};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;padding:0 2px;pointer-events:none"><span style="font-size:7px;line-height:1">${st.icon}</span></div><div style="position:absolute;top:-2px;left:-2px;width:8px;height:8px;border-radius:50%;background:${statusDot};border:1.5px solid rgba(13,18,32,0.9);pointer-events:none"></div></div>`;
+            } else {
+                el.innerHTML = `<div class="tmap-marker-inner" style="width:26px;height:26px;border-radius:${borderRadius};border:2px solid ${st.color};background:rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.5);${rotate}"><span style="font-size:12px;line-height:1;${innerRotate}">${st.icon}</span></div><div class="tmap-marker-status" style="background:${statusDot}"></div>`;
+            }
             const lngLat: [number, number] = [sm.lng, sm.lat];
             const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat).addTo(map);
+
             el.addEventListener('click', (e: Event) => {
                 e.stopPropagation();
-                new ml.Popup({ offset: 16, maxWidth: '240px', className: 'tmap-popup' })
-                    .setLngLat(lngLat)
-                    .setHTML(`<div class="tmap-popup-card">
-                        <div class="tmap-popup-header" style="gap:8px">
-                            <span style="font-size:20px">${st.icon}</span>
-                            <div class="tmap-popup-hinfo">
-                                <div class="tmap-popup-name" style="font-size:12px">${sm.label}</div>
-                                <div class="tmap-popup-meta">
-                                    <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span>
-                                    <span class="tmap-popup-status"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusDot};margin-right:3px"></span>${sm.status}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="padding:8px 14px;font-size:10px;color:var(--ax-text-dim);line-height:1.5">${sm.detail}</div>
-                        <div class="tmap-popup-coords">${lngLat[1].toFixed(5)}, ${lngLat[0].toFixed(5)}</div>
-                    </div>`).addTo(map);
+                let popupHtml = '';
+                const addr = mockAddress(sm.lat, sm.lng);
+                const batBar = sm.battery !== undefined ? `<div style="width:100%;height:4px;border-radius:2px;background:${theme.border};overflow:hidden"><div style="width:${sm.battery}%;height:100%;background:${batColor};border-radius:2px"></div></div>` : '';
+                const sigBar = sm.signal !== undefined ? `<div style="width:100%;height:4px;border-radius:2px;background:${theme.border};overflow:hidden"><div style="width:${sm.signal}%;height:100%;background:${sigColor};border-radius:2px"></div></div>` : '';
+                const phoneIcon = sm.phoneType === 'ios' ? '🍎' : sm.phoneType === 'android' ? '🤖' : '';
+
+                // Owner header (person or org)
+                const ownerHeader = hasOwner ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ax-border)"><div class="tmap-src-avatar" style="width:40px;height:40px;border-radius:${hasPerson ? '50%' : '8px'};border:2.5px solid ${riskColor};background:${sm.personAvatar ? `url(${sm.personAvatar}) center/cover` : `rgba(59,130,246,0.15)`};flex-shrink:0;cursor:${sm.personAvatar ? 'zoom-in' : 'default'};display:flex;align-items:center;justify-content:center;font-size:18px" ${sm.personAvatar ? `data-lightbox="${sm.personAvatar}"` : ''}>${!sm.personAvatar ? (hasOrg ? '🏢' : '👤') : ''}</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ax-text)">${hasPerson ? `<a href="/persons/${sm.personId}" style="color:var(--ax-accent);text-decoration:none">${sm.personName} ${sm.personLastName}</a>` : `<a href="/organizations/${sm.orgId}" style="color:var(--ax-accent);text-decoration:none">${sm.orgName}</a>`}</div>${hasPerson && sm.personNickname ? `<div style="font-size:9px;color:var(--ax-text-dim)">aka <span style="font-weight:600;color:var(--ax-text-sec)">${sm.personNickname}</span></div>` : ''}<div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${sm.risk || 'Unknown'}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${statusDot}15;color:${statusDot};border:1px solid ${statusDot}30"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDot};margin-right:2px;vertical-align:middle"></span>${sm.status}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span></div></div></div>` : '';
+
+                // Device header (for public cameras — no owner)
+                const deviceHeader = !hasOwner ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ax-border)"><div style="width:36px;height:36px;border-radius:8px;background:${st.color}12;border:2px solid ${st.color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${st.icon}</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ax-text)">${sm.label}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${statusDot}15;color:${statusDot};border:1px solid ${statusDot}30"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDot};margin-right:2px;vertical-align:middle"></span>${sm.status}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span></div></div></div>` : '';
+
+                // Info grid (shared)
+                const infoRows = [
+                    `<div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div>`,
+                    sm.lastUpdated ? `<div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Updated</span><span class="tmap-popup-val">${sm.lastUpdated}</span></div>` : '',
+                    sm.accuracy ? `<div class="tmap-popup-row"><span class="tmap-popup-label">🎯 Accuracy</span><span class="tmap-popup-val">${sm.accuracy}</span></div>` : '',
+                    sm.phoneType ? `<div class="tmap-popup-row"><span class="tmap-popup-label">${phoneIcon} Phone</span><span class="tmap-popup-val" style="text-transform:capitalize">${sm.phoneType}</span></div>` : '',
+                    sm.signal !== undefined ? `<div class="tmap-popup-row"><span class="tmap-popup-label">📶 Signal</span><span class="tmap-popup-val" style="color:${sigColor};font-weight:700">${sm.signal}%</span></div>` : '',
+                    sm.battery !== undefined ? `<div class="tmap-popup-row"><span class="tmap-popup-label">🔋 Battery</span><span class="tmap-popup-val" style="color:${batColor};font-weight:700">${sm.battery}%</span></div>` : '',
+                ].filter(Boolean).join('');
+                const infoGrid = `<div class="tmap-popup-grid">${infoRows}</div>${sm.battery !== undefined ? `<div style="padding:0 14px 4px">${batBar}</div>` : ''}${sm.signal !== undefined ? `<div style="padding:0 14px 6px">${sigBar}</div>` : ''}`;
+
+                // Video block
+                const videoBlock = `<div style="border-bottom:1px solid var(--ax-border);background:#000"><video style="width:100%;height:140px;object-fit:cover;display:block" src="${videoUrl}" preload="metadata" controls controlsList="nodownload" playsinline></video></div>`;
+                // Audio block
+                const audioBlock = `<div style="padding:8px 14px;border-bottom:1px solid var(--ax-border);background:rgba(245,158,11,0.04)"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:14px">🎙️</span><span style="font-size:10px;font-weight:700;color:var(--ax-text)">Audio Recording</span><span style="font-size:7px;padding:1px 5px;border-radius:3px;background:${sm.status === 'online' ? '#22c55e15' : '#6b728015'};color:${sm.status === 'online' ? '#22c55e' : '#6b7280'};border:1px solid ${sm.status === 'online' ? '#22c55e20' : '#6b728020'};font-weight:700">${sm.status === 'online' ? 'RECORDING' : 'INACTIVE'}</span></div><audio style="width:100%;height:32px" src="${audioUrl}" preload="metadata" controls controlsList="nodownload"></audio></div>`;
+
+                if (sm.sourceId === 'cam-public') {
+                    popupHtml = `<div class="tmap-popup-card">${deviceHeader}${videoBlock}${infoGrid}<div style="padding:6px 14px;font-size:9px;color:var(--ax-text-dim);line-height:1.5">${sm.detail}</div><div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
+                } else if (sm.sourceId === 'cam-hidden' || sm.sourceId === 'cam-private') {
+                    popupHtml = `<div class="tmap-popup-card">${ownerHeader}${videoBlock}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
+                } else if (sm.sourceId === 'gps') {
+                    popupHtml = `<div class="tmap-popup-card">${ownerHeader}${infoGrid}<div style="padding:4px 14px 6px;font-size:9px;color:var(--ax-text-dim);line-height:1.5">${sm.detail}</div><div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
+                } else if (sm.sourceId === 'audio') {
+                    popupHtml = `<div class="tmap-popup-card">${ownerHeader}${audioBlock}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
+                } else if (isMobile(sm.sourceId) && sm.personId) {
+                    const mobileHeader = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ax-border)"><div class="tmap-src-avatar" style="width:40px;height:40px;border-radius:50%;border:2.5px solid ${riskColor};background:url(${sm.personAvatar || ''}) center/cover;flex-shrink:0;cursor:zoom-in" data-lightbox="${sm.personAvatar || ''}"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ax-text)"><a href="/persons/${sm.personId}" style="color:var(--ax-accent);text-decoration:none">${sm.personName} ${sm.personLastName}</a></div><div style="font-size:9px;color:var(--ax-text-dim)">aka <span style="font-weight:600;color:var(--ax-text-sec)">${sm.personNickname}</span></div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${sm.risk}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${statusDot}15;color:${statusDot};border:1px solid ${statusDot}30"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDot};margin-right:2px;vertical-align:middle"></span>${sm.status}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span></div></div></div>`;
+                    if (sm.sourceId === 'app-photo') {
+                        popupHtml = `<div class="tmap-popup-card">${mobileHeader}<div style="border-bottom:1px solid var(--ax-border)"><img src="${photoUrl}" class="tmap-src-media-photo" style="width:100%;height:120px;object-fit:cover;display:block;cursor:zoom-in" /></div>${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
+                    } else if (sm.sourceId === 'app-video' || sm.sourceId === 'app-camera') {
+                        popupHtml = `<div class="tmap-popup-card">${mobileHeader}${videoBlock}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
+                    } else if (sm.sourceId === 'app-audio') {
+                        const mobileAudioBlock = `<div style="padding:8px 14px;border-bottom:1px solid var(--ax-border);background:rgba(168,85,247,0.04)"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:14px">🎵</span><span style="font-size:10px;font-weight:700;color:var(--ax-text)">Audio Recording</span><span style="font-size:7px;padding:1px 5px;border-radius:3px;background:#a855f715;color:#a855f7;border:1px solid #a855f720;font-weight:700">${sm.status === 'online' ? 'RECORDING' : 'PAUSED'}</span></div><audio style="width:100%;height:32px" src="${audioUrl}" preload="metadata" controls controlsList="nodownload"></audio></div>`;
+                        popupHtml = `<div class="tmap-popup-card">${mobileHeader}${mobileAudioBlock}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
+                    } else {
+                        popupHtml = `<div class="tmap-popup-card">${mobileHeader}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
+                    }
+                } else {
+                    popupHtml = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><span style="font-size:20px">${st.icon}</span><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${sm.label}</div><div class="tmap-popup-meta"><span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span><span class="tmap-popup-status"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusDot};margin-right:3px"></span>${sm.status}</span></div></div></div><div style="padding:8px 14px;font-size:10px;color:var(--ax-text-dim);line-height:1.5">${sm.detail}</div><div class="tmap-popup-coords">${lngLat[1].toFixed(5)}, ${lngLat[0].toFixed(5)}</div></div>`;
+                }
+                const popup = new ml.Popup({ offset: 18, maxWidth: '300px', className: 'tmap-popup' }).setLngLat(lngLat).setHTML(popupHtml).addTo(map);
+                sourcePopupsRef.current.push(popup);
+                setTimeout(() => {
+                    const pel = popup.getElement();
+                    pel?.querySelectorAll('.tmap-src-avatar[data-lightbox]').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); const url = img.getAttribute('data-lightbox'); if (url) setTlLightbox(url); }); });
+                    pel?.querySelectorAll('.tmap-src-media-photo').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setTlLightbox(photoUrl); }); });
+                }, 50);
+            });
+
+            // Right-click → context menu
+            el.addEventListener('contextmenu', (ev: Event) => {
+                ev.preventDefault(); ev.stopPropagation();
+                const me = ev as MouseEvent;
+                const rect = mapContainer.current?.getBoundingClientRect();
+                if (!rect) return;
+                const x = me.clientX - rect.left;
+                const y = me.clientY - rect.top;
+                if (sm.sourceId === 'cam-public') {
+                    setTlMarkerCtx({ x, y, ev: { id: sm.id, type: 'source', icon: st.icon, title: sm.label, sub: st.label, ts: sm.lastUpdated || '', lat: sm.lat, lng: sm.lng, sev: 'info', color: st.color, cameraId: sm.deviceId } });
+                } else if (hasPerson) {
+                    setTlMarkerCtx({ x, y, ev: { id: sm.id, type: 'face', icon: st.icon, title: `${sm.personName} ${sm.personLastName}`, sub: st.label, ts: sm.lastUpdated || '', lat: sm.lat, lng: sm.lng, sev: sm.risk === 'Critical' ? 'critical' : 'high', color: st.color, personId: sm.personId, personName: `${sm.personName} ${sm.personLastName}`, cameraId: sm.deviceId } });
+                } else if (hasOrg) {
+                    setTlMarkerCtx({ x, y, ev: { id: sm.id, type: 'lpr', icon: st.icon, title: sm.orgName || sm.label, sub: st.label, ts: sm.lastUpdated || '', lat: sm.lat, lng: sm.lng, sev: sm.risk === 'Critical' ? 'critical' : 'high', color: st.color, orgId: sm.orgId, orgName: sm.orgName, cameraId: sm.deviceId } });
+                } else {
+                    setTlMarkerCtx({ x, y, ev: { id: sm.id, type: 'source', icon: st.icon, title: sm.label, sub: st.label, ts: '', lat: sm.lat, lng: sm.lng, sev: 'info', color: st.color, cameraId: sm.deviceId } });
+                }
             });
             sourceMarkersRef.current.push(marker);
         });
-        return () => { sourceMarkersRef.current.forEach(m => m.remove()); sourceMarkersRef.current = []; };
-    }, [activeSources, loaded]);
+        return () => { sourceMarkersRef.current.forEach(m => m.remove()); sourceMarkersRef.current = []; sourcePopupsRef.current.forEach(p => { try { p.remove(); } catch {} }); sourcePopupsRef.current = []; };
+    }, [activeSources, hiddenSources, loaded]);
 
     // Heatmap layer
     useEffect(() => {
@@ -1331,13 +1445,35 @@ export default function MapIndex() {
         networkMarkersRef.current = [];
         try {
             if (layerNetwork) {
-                const visibleNodes = netNodes.filter(n => (n.type === 'person' && networkShowPersons) || (n.type === 'org' && networkShowOrgs) || (n.type === 'device' && networkShowDevices));
+                const visibleNodes = netNodes.filter(n => {
+                    if (n.type === 'person' && !networkShowPersons) return false;
+                    if (n.type === 'org' && !networkShowOrgs) return false;
+                    if (n.type === 'device' && !networkShowDevices) return false;
+                    if (netSearch.trim()) { const q = netSearch.toLowerCase(); if (!n.label.toLowerCase().includes(q) && !n.id.toLowerCase().includes(q)) return false; }
+                    return true;
+                });
                 const visibleIds = new Set(visibleNodes.map(n => n.id));
-                const visibleEdges = netEdges.filter(e => visibleIds.has(e.from) && visibleIds.has(e.to));
+                const visibleEdges = netFilteredEdges.filter(e => visibleIds.has(e.from) && visibleIds.has(e.to));
+
+                // Determine which nodes/edges are highlighted (isolated edge or focused node)
+                const isoEdge = netIsolatedEdge ? visibleEdges.find(e => edgeKey(e) === netIsolatedEdge) : null;
+                const focusConns = netFocusNode ? visibleEdges.filter(e => e.from === netFocusNode || e.to === netFocusNode) : null;
+                const highlightedNodeIds = new Set<string>();
+                if (isoEdge) { highlightedNodeIds.add(isoEdge.from); highlightedNodeIds.add(isoEdge.to); }
+                if (focusConns) { highlightedNodeIds.add(netFocusNode!); focusConns.forEach(e => { highlightedNodeIds.add(e.from); highlightedNodeIds.add(e.to); }); }
+                const hasHighlight = isoEdge || focusConns;
+
                 const edgeFeatures = visibleEdges.map(e => {
                     const from = netNodes.find(n => n.id === e.from)!;
                     const to = netNodes.find(n => n.id === e.to)!;
-                    return { type: 'Feature' as const, geometry: { type: 'LineString' as const, coordinates: [[from.lng, from.lat], [to.lng, to.lat]] }, properties: { color: edgeColors[e.type] || '#6b7280', width: 1 + e.strength * 3, type: e.type, opacity: 0.3 + e.strength * 0.5 } };
+                    let opacity = 0.3 + e.strength * 0.5;
+                    let width = 1 + e.strength * 3;
+                    if (hasHighlight) {
+                        const isHighlighted = isoEdge ? edgeKey(e) === netIsolatedEdge : focusConns!.some(fc => edgeKey(fc) === edgeKey(e));
+                        opacity = isHighlighted ? 0.9 : 0.06;
+                        width = isHighlighted ? 2 + e.strength * 4 : 1;
+                    }
+                    return { type: 'Feature' as const, geometry: { type: 'LineString' as const, coordinates: [[from.lng, from.lat], [to.lng, to.lat]] }, properties: { color: edgeColors[e.type] || '#6b7280', width, type: e.type, opacity, edgeId: edgeKey(e), from: e.from, to: e.to, strength: e.strength } };
                 });
                 const geojson: any = { type: 'FeatureCollection', features: edgeFeatures };
                 if (map.getSource('network-source')) {
@@ -1345,28 +1481,82 @@ export default function MapIndex() {
                 } else {
                     map.addSource('network-source', { type: 'geojson', data: geojson });
                     map.addLayer({ id: 'network-lines', type: 'line', source: 'network-source', paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'width'], 'line-opacity': ['get', 'opacity'], 'line-dasharray': [3, 2] } });
+                    // Click on line to isolate
+                    map.on('click', 'network-lines', (ev: any) => {
+                        if (ev.features && ev.features.length > 0) {
+                            const eid = ev.features[0].properties.edgeId;
+                            setNetIsolatedEdge(prev => prev === eid ? null : eid);
+                            setNetFocusNode(null);
+                        }
+                    });
+                    map.on('mouseenter', 'network-lines', () => { map.getCanvas().style.cursor = 'pointer'; });
+                    map.on('mouseleave', 'network-lines', () => { map.getCanvas().style.cursor = ''; });
                 }
                 // Node markers
                 const ml = (window as any).maplibregl;
                 if (ml) {
                     visibleNodes.forEach(n => {
-                        const el = document.createElement('div');
-                        el.className = 'tmap-net-node';
+                        const isHighlighted = !hasHighlight || highlightedNodeIds.has(n.id);
+                        const isFocused = netFocusNode === n.id;
+                        const conns = visibleEdges.filter(e => e.from === n.id || e.to === n.id);
+                        const connCount = conns.length;
                         const icon = n.type === 'person' ? '👤' : n.type === 'org' ? '🏢' : '📡';
-                        const shape = n.type === 'org' ? 'border-radius:4px' : 'border-radius:50%';
-                        el.innerHTML = `<div style="width:20px;height:20px;${shape};border:2px solid ${n.color};background:rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.5);font-size:10px;cursor:pointer;" title="${n.label}">${icon}</div>`;
-                        const conns = visibleEdges.filter(e => e.from === n.id || e.to === n.id).length;
-                        const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([n.lng, n.lat]).addTo(map);
-                        el.addEventListener('click', (ev: Event) => {
+                        const shape = n.type === 'org' ? 'border-radius:5px' : 'border-radius:50%';
+                        const size = isFocused ? 28 : 22;
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'tmap-marker-source';
+                        wrapper.style.cssText = `opacity:${isHighlighted ? 1 : 0.15};transition:opacity 0.3s;cursor:pointer;`;
+                        wrapper.innerHTML = `<div class="tmap-marker-inner" style="width:${size}px;height:${size}px;${shape};border:${isFocused ? 3 : 2}px solid ${n.color};background:rgba(13,18,32,0.92);display:flex;align-items:center;justify-content:center;box-shadow:${isFocused ? `0 0 14px ${n.color}60,` : ''}0 2px 8px rgba(0,0,0,0.5);font-size:${isFocused ? 14 : 11}px;position:relative;overflow:visible;">${icon}${connCount > 0 ? `<div style="position:absolute;top:-4px;right:-4px;min-width:12px;height:12px;border-radius:6px;background:${n.color};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;padding:0 2px"><span style="font-size:6px;font-weight:900;color:#fff;line-height:1">${connCount}</span></div>` : ''}</div>${netShowLabels ? `<div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:2px;font-size:7px;font-weight:700;color:${isHighlighted ? n.color : theme.textDim};white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.8);pointer-events:none">${n.label}</div>` : ''}`;
+                        const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([n.lng, n.lat]).addTo(map);
+
+                        // Click → popup with connections
+                        wrapper.addEventListener('click', (ev: Event) => {
                             ev.stopPropagation();
-                            const connDetails = visibleEdges.filter(e => e.from === n.id || e.to === n.id).map(e => {
+                            const connDetails = conns.map(e => {
                                 const other = netNodes.find(nn => nn.id === (e.from === n.id ? e.to : e.from));
-                                return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0"><span style="width:8px;height:3px;border-radius:1px;background:${edgeColors[e.type]};flex-shrink:0"></span><span style="font-size:10px;color:var(--ax-text)">${other?.label || '?'}</span><span style="font-size:8px;padding:1px 4px;border-radius:2px;background:${edgeColors[e.type]}15;color:${edgeColors[e.type]};font-weight:600">${e.type}</span><span style="font-size:8px;color:var(--ax-text-dim)">${Math.round(e.strength * 100)}%</span></div>`;
+                                const otherIcon = other?.type === 'person' ? '👤' : other?.type === 'org' ? '🏢' : '📡';
+                                return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0;cursor:pointer" class="tmap-net-conn-row" data-edge="${edgeKey(e)}"><span style="width:8px;height:3px;border-radius:1px;background:${edgeColors[e.type]};flex-shrink:0"></span><span style="font-size:9px">${otherIcon}</span><span style="font-size:10px;color:var(--ax-text);font-weight:600;flex:1">${other?.label || '?'}</span><span style="font-size:7px;padding:1px 4px;border-radius:2px;background:${edgeColors[e.type]}15;color:${edgeColors[e.type]};font-weight:700">${e.type}</span><span style="font-size:7px;color:var(--ax-text-dim);font-family:'JetBrains Mono',monospace">${Math.round(e.strength * 100)}%</span></div>`;
                             }).join('');
-                            new ml.Popup({ offset: 14, maxWidth: '220px', className: 'tmap-popup' })
-                                .setLngLat([n.lng, n.lat])
-                                .setHTML(`<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><span style="font-size:18px">${icon}</span><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${n.label}</div><div style="font-size:9px;color:var(--ax-text-dim)">${n.type.charAt(0).toUpperCase() + n.type.slice(1)} · ${conns} connection${conns !== 1 ? 's' : ''}</div></div></div><div style="padding:6px 14px">${connDetails}</div></div>`).addTo(map);
+                            const strengthAvg = conns.length > 0 ? Math.round(conns.reduce((s, e) => s + e.strength, 0) / conns.length * 100) : 0;
+                            const typeBreakdown = Object.entries(edgeColors).map(([t, c]) => { const cnt = conns.filter(e => e.type === t).length; return cnt > 0 ? `<span style="font-size:7px;padding:1px 4px;border-radius:2px;background:${c}12;color:${c};font-weight:700;border:1px solid ${c}20">${t} ${cnt}</span>` : ''; }).filter(Boolean).join(' ');
+                            const popup = new ml.Popup({ offset: 16, maxWidth: '260px', className: 'tmap-popup' }).setLngLat([n.lng, n.lat]).setHTML(`<div class="tmap-popup-card">
+                                <div class="tmap-popup-header" style="gap:8px">
+                                    <div style="width:32px;height:32px;${shape};border:2.5px solid ${n.color};background:rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:0 0 10px ${n.color}30">${icon}</div>
+                                    <div class="tmap-popup-hinfo">
+                                        <div class="tmap-popup-name" style="font-size:12px">${n.label}</div>
+                                        <div style="font-size:9px;color:var(--ax-text-dim)">${n.type.charAt(0).toUpperCase() + n.type.slice(1)} · ${connCount} conn · avg ${strengthAvg}%</div>
+                                    </div>
+                                </div>
+                                <div style="padding:4px 14px 2px;display:flex;gap:3px;flex-wrap:wrap">${typeBreakdown}</div>
+                                <div style="padding:4px 14px 2px"><span style="font-size:8px;font-weight:700;color:var(--ax-text-dim);text-transform:uppercase;letter-spacing:0.06em">Connections</span></div>
+                                <div style="padding:2px 14px 8px;max-height:140px;overflow-y:auto">${connDetails}</div>
+                                <div style="padding:4px 14px 8px;display:flex;gap:4px">
+                                    <button class="tmap-net-focus-btn" style="flex:1;padding:4px;border-radius:4px;border:1px solid ${n.color}30;background:${n.color}08;color:${n.color};font-size:8px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center">🔍 Focus</button>
+                                    <button class="tmap-net-isolate-btn" style="flex:1;padding:4px;border-radius:4px;border:1px solid var(--ax-border);background:transparent;color:var(--ax-text-dim);font-size:8px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center">🎯 Isolate All</button>
+                                </div>
+                                <div class="tmap-popup-coords">${n.lat.toFixed(5)}, ${n.lng.toFixed(5)}</div>
+                            </div>`).addTo(map);
+                            // Wire popup button clicks
+                            setTimeout(() => {
+                                const pel = popup.getElement();
+                                pel?.querySelector('.tmap-net-focus-btn')?.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setNetFocusNode(prev => prev === n.id ? null : n.id); setNetIsolatedEdge(null); popup.remove(); });
+                                pel?.querySelector('.tmap-net-isolate-btn')?.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setNetFocusNode(null); setNetIsolatedEdge(null); popup.remove(); });
+                                pel?.querySelectorAll('.tmap-net-conn-row').forEach((row: any) => { row.addEventListener('click', (pe: Event) => { pe.stopPropagation(); const eid = row.getAttribute('data-edge'); setNetIsolatedEdge((prev: string | null) => prev === eid ? null : eid); setNetFocusNode(null); popup.remove(); }); });
+                            }, 50);
                         });
+
+                        // Right-click → context menu
+                        wrapper.addEventListener('contextmenu', (ev: Event) => {
+                            ev.preventDefault(); ev.stopPropagation();
+                            const me = ev as MouseEvent;
+                            const rect = mapContainer.current?.getBoundingClientRect();
+                            if (rect) {
+                                const personId = n.type === 'person' ? parseInt(n.id.replace('p', '')) : 0;
+                                const orgId = n.type === 'org' ? parseInt(n.id.replace('o', '')) : 0;
+                                setTlMarkerCtx({ x: me.clientX - rect.left, y: me.clientY - rect.top, ev: { id: n.id, type: n.type === 'person' ? 'face' : n.type === 'org' ? 'zone' : 'source', icon, title: n.label, sub: `${n.type} · ${connCount} connections`, ts: '', lat: n.lat, lng: n.lng, sev: 'info', color: n.color, personId: personId > 0 ? personId : undefined, orgId: orgId > 0 ? orgId : undefined, cameraId: undefined } });
+                            }
+                        });
+
                         networkMarkersRef.current.push(marker);
                     });
                 }
@@ -1376,7 +1566,7 @@ export default function MapIndex() {
             }
         } catch {}
         return () => { networkMarkersRef.current.forEach(m => m.remove()); networkMarkersRef.current = []; };
-    }, [layerNetwork, networkShowPersons, networkShowOrgs, networkShowDevices, loaded]);
+    }, [layerNetwork, networkShowPersons, networkShowOrgs, networkShowDevices, netSearch, netEdgeFilters, netStrengthMin, netIsolatedEdge, netFocusNode, netShowLabels, loaded]);
 
     // LPR markers on map
     const lprMarkersRef = useRef<any[]>([]);
@@ -2265,8 +2455,8 @@ export default function MapIndex() {
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>From</div><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={dateInputStyle} /></div>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>To</div><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={dateInputStyle} /></div>
                             <div style={{ display: 'flex', gap: 6 }}>
-                                {['24h', '7d', '30d'].map(p => <button key={p} onClick={() => { const d = new Date(); const f = new Date(); if (p === '24h') f.setDate(d.getDate() - 1); if (p === '7d') f.setDate(d.getDate() - 7); if (p === '30d') f.setDate(d.getDate() - 30); setDateFrom(f.toISOString().slice(0, 10)); setDateTo(d.toISOString().slice(0, 10)); }} style={{ flex: 1, padding: '4px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.color = theme.accent; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}>{p}</button>)}
-                                {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); }} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>×</button>}
+                                {['24h', '7d', '30d'].map(p => <button key={p} onClick={() => { const d = new Date(); const f = new Date(); if (p === '24h') f.setDate(d.getDate() - 1); if (p === '7d') f.setDate(d.getDate() - 7); if (p === '30d') f.setDate(d.getDate() - 30); setDateFrom(f.toISOString().slice(0, 10)); setDateTo(d.toISOString().slice(0, 10)); triggerTopLoader(); }} style={{ flex: 1, padding: '4px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.color = theme.accent; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}>{p}</button>)}
+                                {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); triggerTopLoader(); }} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>×</button>}
                             </div>
                             {(dateFrom || dateTo) && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2, padding: '5px 8px', borderRadius: 5, background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.12)' }}>
                                 <span style={{ fontSize: 9, color: theme.textSecondary }}>{periodFilteredEvents.length} events in period</span>
@@ -2280,8 +2470,8 @@ export default function MapIndex() {
                     <div className={`tmap-section-wrap${dragSectionId === 'subjects' ? ' dragging' : ''}${dragOverId === 'subjects' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('subjects') }} onDragOver={e => handleSectionDragOver(e, 'subjects')} onDrop={() => handleSectionDrop('subjects')}>
                     <Section title="Subjects" icon={Ico.subjects} badge={selectedPersons.length + selectedOrgs.length} dragHandle={dragHandleEl('subjects')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Persons ({selectedPersons.length}/{mockPersons.length})</div><SidebarMS selected={selectedPersons} onChange={setSelectedPersons} options={personOpts} placeholder="Select persons to track..." showSelectAll /></div>
-                            <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Organizations ({selectedOrgs.length}/{mockOrganizations.length})</div><SidebarMS selected={selectedOrgs} onChange={setSelectedOrgs} options={orgOpts} placeholder="Select organizations..." showSelectAll /></div>
+                            <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Persons ({selectedPersons.length}/{mockPersons.length})</div><SidebarMS selected={selectedPersons} onChange={v => { setSelectedPersons(v); triggerTopLoader(); }} options={personOpts} placeholder="Select persons to track..." showSelectAll /></div>
+                            <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Organizations ({selectedOrgs.length}/{mockOrganizations.length})</div><SidebarMS selected={selectedOrgs} onChange={v => { setSelectedOrgs(v); triggerTopLoader(); }} options={orgOpts} placeholder="Select organizations..." showSelectAll /></div>
                         </div>
                     </Section>
                     </div>
@@ -2317,7 +2507,7 @@ export default function MapIndex() {
                             })}
                             {activeSourceCount > 0 && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, borderTop: `1px solid ${theme.border}` }}>
                                 <span style={{ fontSize: 9, color: theme.textDim }}>{activeSourceMarkers.length} markers visible</span>
-                                <button onClick={() => setActiveSources(new Set())} style={{ fontSize: 8, fontWeight: 600, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Disable All</button>
+                                <button onClick={() => { setActiveSources(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, fontWeight: 600, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Disable All</button>
                             </div>}
                         </div>
                     </Section>
@@ -2332,7 +2522,7 @@ export default function MapIndex() {
                                         <span style={{ fontSize: 12 }}>🔥</span>
                                         <span style={{ fontSize: 11, fontWeight: 600, color: layerHeatmap ? '#f59e0b' : theme.text }}>Activity Heatmap</span>
                                     </div>
-                                    <button onClick={() => setLayerHeatmap(!layerHeatmap)} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerHeatmap ? '#f59e0b' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
+                                    <button onClick={() => { setLayerHeatmap(!layerHeatmap); triggerTopLoader(); }} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerHeatmap ? '#f59e0b' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
                                         <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerHeatmap ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                                     </button>
                                 </div>
@@ -2358,21 +2548,34 @@ export default function MapIndex() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <span style={{ fontSize: 12 }}>🕸️</span>
                                         <span style={{ fontSize: 11, fontWeight: 600, color: layerNetwork ? '#8b5cf6' : theme.text }}>Network Graph</span>
+                                        {layerNetwork && <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: '#8b5cf610', color: '#8b5cf6', border: '1px solid #8b5cf620' }}>{netFilteredEdges.length}</span>}
                                     </div>
-                                    <button onClick={() => setLayerNetwork(!layerNetwork)} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerNetwork ? '#8b5cf6' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
+                                    <button onClick={() => { setLayerNetwork(!layerNetwork); triggerTopLoader(); }} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerNetwork ? '#8b5cf6' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
                                         <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerNetwork ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                                     </button>
                                 </div>
                                 {layerNetwork && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    <div style={{ fontSize: 9, color: theme.textDim }}>{netNodes.length} nodes · {netEdges.length} connections</div>
+                                    {/* Stats */}
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{netNodes.length} nodes · {netFilteredEdges.length}/{netEdges.length} connections{netIsolatedEdge ? ' · 1 isolated' : ''}{netFocusNode ? ` · focused: ${netNodes.find(n => n.id === netFocusNode)?.label}` : ''}</div>
+                                    {/* Isolation/Focus indicator */}
+                                    {(netIsolatedEdge || netFocusNode) && <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
+                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', flexShrink: 0 }} />
+                                        <span style={{ fontSize: 9, color: '#8b5cf6', fontWeight: 600, flex: 1 }}>
+                                            {netIsolatedEdge ? (() => { const e = netEdges.find(ee => edgeKey(ee) === netIsolatedEdge); if (!e) return 'Isolated edge'; const from = netNodes.find(n => n.id === e.from); const to = netNodes.find(n => n.id === e.to); return `${from?.label} ↔ ${to?.label} (${e.type})`; })() : `Focus: ${netNodes.find(n => n.id === netFocusNode)?.label}`}
+                                        </span>
+                                        <button onClick={() => { setNetIsolatedEdge(null); setNetFocusNode(null); }} style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(139,92,246,0.25)', background: 'transparent', color: '#8b5cf6', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>✕ Clear</button>
+                                    </div>}
+                                    {/* Search */}
+                                    <input value={netSearch} onChange={e => setNetSearch(e.target.value)} placeholder="Search nodes..." style={{ padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${netSearch ? '#8b5cf650' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
+                                    {/* Node type filters */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Show</span>
+                                        <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Nodes</span>
                                         {[
                                             { label: 'Persons', icon: '👤', enabled: networkShowPersons, toggle: setNetworkShowPersons, count: netNodes.filter(n => n.type === 'person').length, color: '#ef4444' },
                                             { label: 'Organizations', icon: '🏢', enabled: networkShowOrgs, toggle: setNetworkShowOrgs, count: netNodes.filter(n => n.type === 'org').length, color: '#3b82f6' },
                                             { label: 'Devices', icon: '📡', enabled: networkShowDevices, toggle: setNetworkShowDevices, count: netNodes.filter(n => n.type === 'device').length, color: '#22c55e' },
                                         ].map(f => (
-                                            <button key={f.label} onClick={() => f.toggle(!f.enabled)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', borderRadius: 4, border: `1px solid ${f.enabled ? f.color + '40' : theme.border}`, background: f.enabled ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}>
+                                            <button key={f.label} onClick={() => { f.toggle(!f.enabled); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', borderRadius: 4, border: `1px solid ${f.enabled ? f.color + '40' : theme.border}`, background: f.enabled ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}>
                                                 <span style={{ fontSize: 10 }}>{f.icon}</span>
                                                 <span style={{ flex: 1, fontSize: 10, fontWeight: 600, color: f.enabled ? f.color : theme.textDim }}>{f.label}</span>
                                                 <span style={{ fontSize: 8, color: theme.textDim }}>{f.count}</span>
@@ -2380,11 +2583,49 @@ export default function MapIndex() {
                                             </button>
                                         ))}
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    {/* Edge type filters */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                         <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Connection Types</span>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                                            {Object.entries(edgeColors).map(([type, color]) => <span key={type} style={{ fontSize: 8, display: 'flex', alignItems: 'center', gap: 3, color: theme.textDim }}><span style={{ width: 10, height: 3, borderRadius: 1, background: color }} />{type}</span>)}
+                                            {Object.entries(edgeColors).map(([type, color]) => {
+                                                const on = netEdgeFilters.has(type);
+                                                const cnt = netEdges.filter(e => e.type === type).length;
+                                                return <button key={type} onClick={() => { setNetEdgeFilters(prev => { const n = new Set(prev); n.has(type) ? n.delete(type) : n.add(type); return n; }); triggerTopLoader(); }} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${on ? color + '40' : theme.border}`, background: on ? color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3, fontSize: 8, fontWeight: 600, color: on ? color : theme.textDim }}>
+                                                    <span style={{ width: 8, height: 3, borderRadius: 1, background: on ? color : theme.border }} />{type} <span style={{ fontSize: 7, opacity: 0.7 }}>{cnt}</span>
+                                                </button>;
+                                            })}
                                         </div>
+                                    </div>
+                                    {/* Strength threshold */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                                            <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Min Strength</span>
+                                            <span style={{ fontSize: 8, fontWeight: 700, color: '#8b5cf6', fontFamily: "'JetBrains Mono', monospace" }}>{Math.round(netStrengthMin * 100)}%</span>
+                                        </div>
+                                        <input type="range" min={0} max={100} value={netStrengthMin * 100} onChange={e => setNetStrengthMin(parseInt(e.target.value) / 100)} style={{ width: '100%', height: 4, appearance: 'none', background: `linear-gradient(to right, #8b5cf6 ${netStrengthMin * 100}%, ${theme.border} ${netStrengthMin * 100}%)`, borderRadius: 2, outline: 'none', cursor: 'pointer' }} />
+                                    </div>
+                                    {/* Connection list (clickable) */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                        <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Connections <span style={{ fontWeight: 400 }}>· click to isolate</span></span>
+                                        <div style={{ maxHeight: 120, overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                            {netFilteredEdges.map(e => {
+                                                const from = netNodes.find(n => n.id === e.from);
+                                                const to = netNodes.find(n => n.id === e.to);
+                                                const isIso = netIsolatedEdge === edgeKey(e);
+                                                return <button key={edgeKey(e)} onClick={() => { setNetIsolatedEdge(prev => prev === edgeKey(e) ? null : edgeKey(e)); setNetFocusNode(null); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 5px', borderRadius: 3, border: `1px solid ${isIso ? '#8b5cf630' : 'transparent'}`, background: isIso ? 'rgba(139,92,246,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}>
+                                                    <span style={{ width: 8, height: 3, borderRadius: 1, background: edgeColors[e.type], flexShrink: 0 }} />
+                                                    <span style={{ fontSize: 8, fontWeight: 600, color: isIso ? '#8b5cf6' : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{from?.label} ↔ {to?.label}</span>
+                                                    <span style={{ fontSize: 7, color: edgeColors[e.type], fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{Math.round(e.strength * 100)}%</span>
+                                                    {isIso && <span style={{ fontSize: 7, color: '#8b5cf6', fontWeight: 800 }}>🎯</span>}
+                                                </button>;
+                                            })}
+                                        </div>
+                                    </div>
+                                    {/* Options */}
+                                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                        <button onClick={() => { setNetShowLabels(!netShowLabels); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${netShowLabels ? '#8b5cf630' : theme.border}`, background: netShowLabels ? '#8b5cf608' : 'transparent', color: netShowLabels ? '#8b5cf6' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🏷️ Labels {netShowLabels ? 'On' : 'Off'}</button>
+                                        <button onClick={() => { setNetIsolatedEdge(null); setNetFocusNode(null); setNetStrengthMin(0); setNetEdgeFilters(new Set(['financial', 'family', 'business', 'criminal', 'comms', 'surveillance'])); setNetSearch(''); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🔄 Reset</button>
+                                        <button onClick={() => { triggerTopLoader(); const map = mapRef.current; if (!map) return; const lats = netNodes.map(n => n.lat); const lngs = netNodes.map(n => n.lng); map.fitBounds([[Math.min(...lngs) - 0.005, Math.min(...lats) - 0.005], [Math.max(...lngs) + 0.005, Math.max(...lats) + 0.005]], { padding: 40, duration: 800 }); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🔎 Fit All</button>
                                     </div>
                                 </div>}
                             </div>
@@ -2397,7 +2638,7 @@ export default function MapIndex() {
                                         <span style={{ fontSize: 11, fontWeight: 600, color: layerLPR ? '#10b981' : theme.text }}>Plate Recognition</span>
                                         {layerLPR && <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: '#10b98110', color: '#10b981', border: '1px solid #10b98120' }}>{mockLPR.filter(l => !lprHidden.has(l.id) && (lprSelected.size === 0 || lprSelected.has(l.id))).length}</span>}
                                     </div>
-                                    <button onClick={() => setLayerLPR(!layerLPR)} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerLPR ? '#10b981' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
+                                    <button onClick={() => { setLayerLPR(!layerLPR); triggerTopLoader(); }} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerLPR ? '#10b981' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
                                         <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerLPR ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                                     </button>
                                 </div>
@@ -2431,10 +2672,10 @@ export default function MapIndex() {
                                     </div>
                                     {/* Bulk actions */}
                                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                        <button onClick={() => setLprSelected(new Set())} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: lprSelected.size === 0 ? '#10b98108' : 'transparent', color: lprSelected.size === 0 ? '#10b981' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>All</button>
-                                        <button onClick={() => setLprSelected(new Set(mockLPR.filter(l => l.personId > 0).map(l => l.id)))} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Known</button>
-                                        <button onClick={() => setLprSelected(new Set(mockLPR.filter(l => l.personId === 0).map(l => l.id)))} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Unknown</button>
-                                        {lprHidden.size > 0 && <button onClick={() => setLprHidden(new Set())} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Show {lprHidden.size} hidden</button>}
+                                        <button onClick={() => { setLprSelected(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: lprSelected.size === 0 ? '#10b98108' : 'transparent', color: lprSelected.size === 0 ? '#10b981' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>All</button>
+                                        <button onClick={() => { setLprSelected(new Set(mockLPR.filter(l => l.personId > 0).map(l => l.id))); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Known</button>
+                                        <button onClick={() => { setLprSelected(new Set(mockLPR.filter(l => l.personId === 0).map(l => l.id))); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Unknown</button>
+                                        {lprHidden.size > 0 && <button onClick={() => { setLprHidden(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Show {lprHidden.size} hidden</button>}
                                     </div>
                                     <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                                         {[['🟢', '≥95%'], ['🟡', '85-94%'], ['🔴', '<85%']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 8, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}>{ico} {lbl}</span>)}
@@ -2450,7 +2691,7 @@ export default function MapIndex() {
                                         <span style={{ fontSize: 11, fontWeight: 600, color: layerFace ? '#ec4899' : theme.text }}>Face Recognition</span>
                                         {layerFace && <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: '#ec489910', color: '#ec4899', border: '1px solid #ec489920' }}>{mockFaces.filter(f => !faceHidden.has(f.id) && (faceSelected.size === 0 || faceSelected.has(f.id))).length}</span>}
                                     </div>
-                                    <button onClick={() => setLayerFace(!layerFace)} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerFace ? '#ec4899' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
+                                    <button onClick={() => { setLayerFace(!layerFace); triggerTopLoader(); }} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerFace ? '#ec4899' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
                                         <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerFace ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                                     </button>
                                 </div>
@@ -2486,10 +2727,10 @@ export default function MapIndex() {
                                     </div>
                                     {/* Bulk actions */}
                                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                        <button onClick={() => setFaceSelected(new Set())} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: faceSelected.size === 0 ? '#ec489908' : 'transparent', color: faceSelected.size === 0 ? '#ec4899' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>All</button>
-                                        <button onClick={() => setFaceSelected(new Set(mockFaces.filter(f => f.personId > 0).map(f => f.id)))} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Matched</button>
-                                        <button onClick={() => setFaceSelected(new Set(mockFaces.filter(f => f.personId === 0).map(f => f.id)))} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Unknown</button>
-                                        {faceHidden.size > 0 && <button onClick={() => setFaceHidden(new Set())} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Show {faceHidden.size} hidden</button>}
+                                        <button onClick={() => { setFaceSelected(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: faceSelected.size === 0 ? '#ec489908' : 'transparent', color: faceSelected.size === 0 ? '#ec4899' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>All</button>
+                                        <button onClick={() => { setFaceSelected(new Set(mockFaces.filter(f => f.personId > 0).map(f => f.id))); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Matched</button>
+                                        <button onClick={() => { setFaceSelected(new Set(mockFaces.filter(f => f.personId === 0).map(f => f.id))); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Unknown</button>
+                                        {faceHidden.size > 0 && <button onClick={() => { setFaceHidden(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Show {faceHidden.size} hidden</button>}
                                     </div>
                                     {/* Legend */}
                                     <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
@@ -2506,7 +2747,7 @@ export default function MapIndex() {
                             <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>2D Base Maps</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 12 }}>
                                 {tiles2D.map(t => { const isActive = activeTile === t.id; return (
-                                    <button key={t.id} onClick={() => setActiveTile(t.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 2px', borderRadius: 6, border: `1.5px solid ${isActive ? theme.accent : theme.border}`, background: isActive ? theme.accentDim : 'transparent', cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'inherit' }} onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')} onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}>
+                                    <button key={t.id} onClick={() => { setActiveTile(t.id); triggerTopLoader(); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 2px', borderRadius: 6, border: `1.5px solid ${isActive ? theme.accent : theme.border}`, background: isActive ? theme.accentDim : 'transparent', cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'inherit' }} onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')} onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}>
                                         <span style={{ fontSize: 16 }}>{t.preview}</span>
                                         <span style={{ fontSize: 8, fontWeight: 600, color: isActive ? theme.accent : theme.textDim, lineHeight: 1.1, textAlign: 'center' }}>{t.name}</span>
                                     </button>
@@ -2515,7 +2756,7 @@ export default function MapIndex() {
                             <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>3D Modes</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
                                 {tiles3D.map(t => { const isActive = active3D === t.id; return (
-                                    <button key={t.id} onClick={() => setActive3D(isActive ? null : t.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 2px', borderRadius: 6, border: `1.5px solid ${isActive ? '#8b5cf6' : theme.border}`, background: isActive ? 'rgba(139,92,246,0.08)' : 'transparent', cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'inherit' }} onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')} onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}>
+                                    <button key={t.id} onClick={() => { setActive3D(isActive ? null : t.id); triggerTopLoader(); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 2px', borderRadius: 6, border: `1.5px solid ${isActive ? '#8b5cf6' : theme.border}`, background: isActive ? 'rgba(139,92,246,0.08)' : 'transparent', cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'inherit' }} onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')} onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}>
                                         <span style={{ fontSize: 18 }}>{t.preview}</span>
                                         <span style={{ fontSize: 8, fontWeight: 600, color: isActive ? '#8b5cf6' : theme.textDim, lineHeight: 1.1, textAlign: 'center' }}>{t.name}</span>
                                     </button>
@@ -2535,7 +2776,7 @@ export default function MapIndex() {
                                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={rulerActive ? '#f59e0b' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 14L14 2"/><path d="M5 14L2 14L2 11"/><path d="M11 2L14 2L14 5"/><line x1="4" y1="10" x2="6" y2="12"/><line x1="6" y1="8" x2="8" y2="10"/><line x1="8" y1="6" x2="10" y2="8"/></svg>
                                         <span style={{ fontSize: 11, fontWeight: 600, color: rulerActive ? '#f59e0b' : theme.text }}>Ruler</span>
                                     </div>
-                                    <button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); setZoneDrawing(null); } }} style={{ padding: '3px 10px', borderRadius: 4, border: `1px solid ${rulerActive ? '#f59e0b50' : theme.border}`, background: rulerActive ? 'rgba(245,158,11,0.1)' : 'transparent', color: rulerActive ? '#f59e0b' : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{rulerActive ? 'Stop' : 'Start'}</button>
+                                    <button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); triggerTopLoader(); setZoneDrawing(null); } }} style={{ padding: '3px 10px', borderRadius: 4, border: `1px solid ${rulerActive ? '#f59e0b50' : theme.border}`, background: rulerActive ? 'rgba(245,158,11,0.1)' : 'transparent', color: rulerActive ? '#f59e0b' : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{rulerActive ? 'Stop' : 'Start'}</button>
                                 </div>
                                 <div style={{ fontSize: 9, color: theme.textDim, marginBottom: rulerPoints.length > 0 ? 8 : 0 }}>
                                     {rulerActive ? 'Click on the map to add measurement points.' : 'Measure distance between multiple points on the map.'}
@@ -2620,7 +2861,7 @@ export default function MapIndex() {
                                 </div>
                                 <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <span style={{ fontSize: 8, color: theme.textDim }}>Right-click zone on map for options.</span>
-                                    {hiddenZones.size > 0 && <button onClick={() => setHiddenZones(new Set())} style={{ fontSize: 8, fontWeight: 600, color: theme.accent, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Show All ({hiddenZones.size} hidden)</button>}
+                                    {hiddenZones.size > 0 && <button onClick={() => { setHiddenZones(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, fontWeight: 600, color: theme.accent, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Show All ({hiddenZones.size} hidden)</button>}
                                 </div>
                             </div>
                         </div>
@@ -2778,7 +3019,7 @@ export default function MapIndex() {
                                             <button onClick={() => deleteWorkspace(ws.id)} style={{ padding: '3px 8px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: theme.danger, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Yes</button>
                                             <button onClick={() => setWsDeleteConfirm(null)} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>No</button>
                                         </div> : <div style={{ display: 'flex', gap: 3 }}>
-                                            <button onClick={() => loadWorkspace(ws)} style={{ flex: 1, padding: '4px', borderRadius: 4, border: `1px solid ${isActive ? '#22c55e25' : theme.accent + '25'}`, background: isActive ? 'rgba(34,197,94,0.06)' : `${theme.accent}06`, color: isActive ? '#22c55e' : theme.accent, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>{isActive ? '🔄 Reload' : '📂 Load'}</button>
+                                            <button onClick={() => { loadWorkspace(ws); triggerTopLoader(); }} style={{ flex: 1, padding: '4px', borderRadius: 4, border: `1px solid ${isActive ? '#22c55e25' : theme.accent + '25'}`, background: isActive ? 'rgba(34,197,94,0.06)' : `${theme.accent}06`, color: isActive ? '#22c55e' : theme.accent, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>{isActive ? '🔄 Reload' : '📂 Load'}</button>
                                             <button onClick={() => openEditWs(ws)} style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>✏️</button>
                                             <button onClick={() => { updateWsState(ws); }} title="Overwrite with current map state" style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>💾</button>
                                             <button onClick={() => setWsDeleteConfirm(ws.id)} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.04)', color: theme.danger, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>🗑️</button>
@@ -2840,17 +3081,17 @@ export default function MapIndex() {
                     <div className={`tmap-section-wrap${dragSectionId === 'settings' ? ' dragging' : ''}${dragOverId === 'settings' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('settings') }} onDragOver={e => handleSectionDragOver(e, 'settings')} onDrop={() => handleSectionDrop('settings')}>
                     <Section title="Settings" icon={Ico.settings}  dragHandle={dragHandleEl('settings')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <Toggle label="World Minimap" description="Satellite overview map in top-right" enabled={showMinimap} onChange={setShowMinimap} />
-                            <Toggle label="Compass" description="Bearing indicator in bottom-left" enabled={showCompass} onChange={setShowCompass} />
-                            <Toggle label="Map Controls" description="Zoom, fullscreen, rotation buttons" enabled={showControls} onChange={setShowControls} />
-                            <Toggle label="Show Labels" description="Place and road names on map" enabled={showLabels} onChange={setShowLabels} />
-                            <Toggle label="Show Zones" description="Display zone overlays on map" enabled={showZones} onChange={setShowZones} />
-                            <Toggle label="Show Objects" description="Display custom objects on map" enabled={showObjects} onChange={setShowObjects} />
-                            <Toggle label="Localization" description="Add local language names alongside English" enabled={showLocalization} onChange={setShowLocalization} />
-                            <Toggle label="Coordinates" description="Lat/lng, zoom and bearing bar" enabled={showCoords} onChange={setShowCoords} />
-                            <Toggle label="Place Search" description="Search bar for locations on map" enabled={showSearch} onChange={setShowSearch} />
-                            <Toggle label="FPS Counter" description="Frames per second display" enabled={showFps} onChange={setShowFps} />
-                            <Toggle label="Live Feed" description="Real-time event feed widget" enabled={showLiveFeed} onChange={v => { setShowLiveFeed(v); if (v) setLiveFeedRunning(true); }} />
+                            <Toggle label="World Minimap" description="Satellite overview map in top-right" enabled={showMinimap} onChange={v => { setShowMinimap(v); triggerTopLoader(); }} />
+                            <Toggle label="Compass" description="Bearing indicator in bottom-left" enabled={showCompass} onChange={v => { setShowCompass(v); triggerTopLoader(); }} />
+                            <Toggle label="Map Controls" description="Zoom, fullscreen, rotation buttons" enabled={showControls} onChange={v => { setShowControls(v); triggerTopLoader(); }} />
+                            <Toggle label="Show Labels" description="Place and road names on map" enabled={showLabels} onChange={v => { setShowLabels(v); triggerTopLoader(); }} />
+                            <Toggle label="Show Zones" description="Display zone overlays on map" enabled={showZones} onChange={v => { setShowZones(v); triggerTopLoader(); }} />
+                            <Toggle label="Show Objects" description="Display custom objects on map" enabled={showObjects} onChange={v => { setShowObjects(v); triggerTopLoader(); }} />
+                            <Toggle label="Localization" description="Add local language names alongside English" enabled={showLocalization} onChange={v => { setShowLocalization(v); triggerTopLoader(); }} />
+                            <Toggle label="Coordinates" description="Lat/lng, zoom and bearing bar" enabled={showCoords} onChange={v => { setShowCoords(v); triggerTopLoader(); }} />
+                            <Toggle label="Place Search" description="Search bar for locations on map" enabled={showSearch} onChange={v => { setShowSearch(v); triggerTopLoader(); }} />
+                            <Toggle label="FPS Counter" description="Frames per second display" enabled={showFps} onChange={v => { setShowFps(v); triggerTopLoader(); }} />
+                            <Toggle label="Live Feed" description="Real-time event feed widget" enabled={showLiveFeed} onChange={v => { setShowLiveFeed(v); if (v) setLiveFeedRunning(true); triggerTopLoader(); }} />
                         </div>
                     </Section>
                     </div>
@@ -2860,6 +3101,13 @@ export default function MapIndex() {
             {/* Map */}
             <div className="tmap-container">
                 <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
+
+                {/* Top Loader Bar */}
+                {topLoader > 0 && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, zIndex: 60, overflow: 'hidden', background: 'transparent' }}>
+                    <div style={{ height: '100%', width: `${topLoader}%`, background: `linear-gradient(90deg, ${theme.accent}, #8b5cf6, #ec4899)`, borderRadius: '0 2px 2px 0', transition: topLoader === 100 ? 'width 0.2s ease-out, opacity 0.4s ease-out' : 'width 0.3s ease-out', opacity: topLoader === 100 ? 0 : 1, boxShadow: `0 0 10px ${theme.accent}60, 0 0 4px ${theme.accent}40` }}>
+                        <div style={{ position: 'absolute', right: 0, top: 0, width: 60, height: '100%', background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.3))`, animation: 'tmap-loader-shimmer 0.8s ease-in-out infinite' }} />
+                    </div>
+                </div>}
 
                 {/* Loading */}
                 {!loaded && <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0e16', zIndex: 20 }}>
@@ -3106,10 +3354,10 @@ export default function MapIndex() {
                         {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.vehicleId && tlMarkerCtx.ev.vehicleId > 0 && <button onClick={() => { router.visit(`/vehicles/${tlMarkerCtx.ev.vehicleId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.accent, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🚗 Vehicle Details</button>}
                         {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.personId && tlMarkerCtx.ev.personId > 0 && <button onClick={() => { router.visit(`/persons/${tlMarkerCtx.ev.personId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👤 Person Details</button>}
                         {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.orgId && <button onClick={() => { router.visit(`/organizations/${tlMarkerCtx.ev.orgId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🏢 Organization</button>}
-                        {tlMarkerCtx.ev.cameraId && <button onClick={() => { router.visit(`/devices/${tlMarkerCtx.ev.cameraId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>📹 Camera Details</button>}
+                        {tlMarkerCtx.ev.cameraId && <button onClick={() => { router.visit(`/devices/${tlMarkerCtx.ev.cameraId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>📡 Device</button>}
                         {tlMarkerCtx.ev.photoUrl && <button onClick={() => { setTlLightbox(tlMarkerCtx.ev.photoUrl!); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🔍 View Photo</button>}
                         <div style={{ height: 1, background: theme.border, margin: '2px 8px' }} />
-                        <button onClick={() => { if (tlMarkerCtx.ev.type === 'face') setFaceHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); if (tlMarkerCtx.ev.type === 'lpr') setLprHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlHiddenIds(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👁️‍🗨️ Hide from Map</button>
+                        <button onClick={() => { if (tlMarkerCtx.ev.type === 'face') setFaceHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); if (tlMarkerCtx.ev.type === 'lpr') setLprHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); const sid = tlMarkerCtx.ev.id; if (/^(ml|mp|mv|ma|mc|sc|sh|sp|sg|sa)\d/.test(sid)) setHiddenSources(prev => new Set([...prev, sid])); setTlHiddenIds(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👁️‍🗨️ Hide from Map</button>
                     </div>
                 </div></div>}
 
