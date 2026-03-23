@@ -2,6 +2,9 @@ import { useState, ReactNode, createContext, useContext, useEffect } from 'react
 import { usePage } from '@inertiajs/react';
 import Sidebar from '../components/layout/Sidebar';
 import AppHeader from '../components/layout/AppHeader';
+import Breadcrumbs from '../components/layout/Breadcrumbs';
+import PermissionPrompt from '../components/layout/PermissionPrompt';
+import { usePermissions } from '../hooks/usePermissions';
 import { ToastProvider } from '../components/ui/Toast';
 import type { SharedProps } from '../types/shared';
 
@@ -73,6 +76,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     const f = fonts.find(x => x.id === fontId) || fonts[0];
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
 
+    // Permissions
+    const { permissions, showPrompt, requesting, requestAll, dismissPrompt } = usePermissions();
+
     // PWA badge support
     useEffect(() => {
         const handler = () => {
@@ -81,6 +87,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         document.addEventListener('argux-badge-update', handler);
         return () => document.removeEventListener('argux-badge-update', handler);
     }, []);
+
+    // Determine if breadcrumbs should show (not on map, auth, error pages)
+    const noBreadcrumbPaths = ['/map', '/login', '/register', '/2fa', '/forgot-password'];
+    const showBreadcrumbs = !noBreadcrumbPaths.some(p => currentPath === p || currentPath.startsWith('/errors'));
 
     return (
         <AppSettingsContext.Provider value={{ currentTheme: t, setThemeId, currentFont: f, setFontId, dir, setDir }}>
@@ -107,9 +117,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <div className="ax-app-main">
                 <AppHeader onMenuToggle={() => setMobileOpen(!mobileOpen)} />
                 <main className="ax-app-content" style={{ background: t.bg }}>
+                    {showBreadcrumbs && <Breadcrumbs />}
                     {children}
                 </main>
             </div>
+
+            {showPrompt && <PermissionPrompt permissions={permissions} requesting={requesting} onAccept={requestAll} onDismiss={dismissPrompt} />}
         </div>
         </ToastProvider>
         </AppSettingsContext.Provider>

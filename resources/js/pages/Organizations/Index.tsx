@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
@@ -58,7 +59,7 @@ export default function OrganizationsIndex() {
     const copyUuid = (uuid: string, e: React.MouseEvent) => { e.stopPropagation(); navigator.clipboard.writeText(uuid).then(()=>toast.info('UUID copied',uuid.slice(0,20)+'…')); };
     const gridCols = '72px 40px minmax(140px,1fr) 90px 90px 100px 80px 130px 60px 86px';
 
-    return (<div>
+    return (<><PageMeta title="Organizations" section="organizations" /><div>
         <ConfirmModal open={deleteTarget!==null} title="Delete Organization" message={`Permanently delete ${orgs.find(o=>o.id===deleteTarget)?.name}? This cannot be undone.`} onConfirm={handleDelete} onCancel={()=>setDeleteTarget(null)} />
         {ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} orgId={ctxMenu.id} onClose={()=>setCtxMenu(null)} onDelete={id=>{setCtxMenu(null);setDeleteTarget(id);}} />}
 
@@ -123,7 +124,7 @@ export default function OrganizationsIndex() {
         </>}
 
         {!loading && totalPages>1 && <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:16, flexWrap:'wrap', gap:8 }}><span style={{fontSize:12,color:theme.textSecondary}}>Page {page} of {totalPages} ({filtered.length} results)</span><div style={{display:'flex',gap:4,flexWrap:'wrap'}}><button onClick={()=>setPage(Math.max(1,page-1))} disabled={page===1} style={{background:'none',border:`1px solid ${theme.border}`,borderRadius:6,padding:'6px 10px',cursor:page===1?'not-allowed':'pointer',color:page===1?theme.textDim:theme.textSecondary,fontSize:12,fontFamily:'inherit',opacity:page===1?0.4:1}}>Prev</button>{Array.from({length:Math.min(totalPages,5)}).map((_,i)=>{const pg=page<=3?i+1:Math.min(page-2+i,totalPages-4+i+1);if(pg<1||pg>totalPages)return null;return <button key={pg} onClick={()=>setPage(pg)} style={{background:page===pg?theme.accentDim:'none',border:`1px solid ${page===pg?theme.accent:theme.border}`,borderRadius:6,padding:'6px 10px',cursor:'pointer',color:page===pg?theme.accent:theme.textSecondary,fontSize:12,fontWeight:page===pg?700:400,fontFamily:'inherit'}}>{pg}</button>;})}<button onClick={()=>setPage(Math.min(totalPages,page+1))} disabled={page===totalPages} style={{background:'none',border:`1px solid ${theme.border}`,borderRadius:6,padding:'6px 10px',cursor:page===totalPages?'not-allowed':'pointer',color:page===totalPages?theme.textDim:theme.textSecondary,fontSize:12,fontFamily:'inherit',opacity:page===totalPages?0.4:1}}>Next</button></div></div>}
-    </div>);
+    </div></>);
 }
 
 OrganizationsIndex.layout = (page: React.ReactNode) => <AppLayout>{page}</AppLayout>;

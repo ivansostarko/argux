@@ -1,8 +1,11 @@
+import PageMeta from '../../components/layout/PageMeta';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 
 export default function Index() {
     return (
+        <>
+        <PageMeta title="Dashboard" description="ARGUX operational overview and system status" section="dashboard" />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
             <div style={{ textAlign: 'center' }}>
                 <div style={{
@@ -21,6 +24,7 @@ export default function Index() {
                 </p>
             </div>
         </div>
+        </>
     );
 }
 

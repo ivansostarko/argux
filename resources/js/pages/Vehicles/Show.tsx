@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
@@ -23,7 +24,9 @@ export default function VehicleShow() {
     if (!v) return <div style={{ textAlign: 'center', padding: '60px 20px' }}><h2 style={{ fontSize: 18, fontWeight: 700, color: theme.text }}>Vehicle Not Found</h2><Button variant="secondary" onClick={() => router.visit('/vehicles')} style={{ width: 'auto', padding: '10px 20px', marginTop: 16 }}>Back</Button></div>;
 
     return (
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+                <>
+        <PageMeta title="Vehicle Detail" section="vehicles" />
+<div style={{ maxWidth: 900, margin: '0 auto' }}>
             <style>{`@media(max-width:768px){.vh-header-row{flex-direction:column!important}.vh-header-btns{width:100%}.vh-header-btns button{flex:1}}`}</style>
 
             {/* Header */}
@@ -122,6 +125,7 @@ export default function VehicleShow() {
                 </div>
             </div>
         </div>
+    </>
     );
 }
 VehicleShow.layout = (page: React.ReactNode) => <AppLayout>{page}</AppLayout>;

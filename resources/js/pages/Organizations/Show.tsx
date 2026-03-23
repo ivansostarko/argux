@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
@@ -64,7 +65,7 @@ export default function OrgShow() {
 
     if (!o) return <div style={{textAlign:'center',padding:'60px 20px'}}><h2 style={{fontSize:18,fontWeight:700,color:theme.text}}>Organization Not Found</h2><Button variant="secondary" onClick={()=>router.visit('/organizations')} style={{width:'auto',padding:'10px 20px',marginTop:16}}>Back</Button></div>;
 
-    return (<div style={{maxWidth:1000,margin:'0 auto'}}>
+    return (<><PageMeta title={o.name} description={`Organization profile for ${o.name}`} section="organizations" entityName={o.name} /><div style={{maxWidth:1000,margin:'0 auto'}}>
         <style>{`@media(max-width:768px){.os-vtabs{display:none!important}.os-htabs{display:flex!important}.os-layout{flex-direction:column!important}.os-header-row{flex-direction:column!important}.os-header-btns{width:100%}.os-header-btns button{flex:1}}`}</style>
 
         {/* Logo Lightbox */}
@@ -183,7 +184,7 @@ export default function OrgShow() {
                 {tab==='notes' && <Section title={`Notes (${o.notes.length})`}>{o.notes.length===0 ? <p style={{fontSize:13,color:theme.textDim}}>No notes.</p> : o.notes.map(n=><div key={n.id} style={{background:theme.bgInput,border:`1px solid ${theme.border}`,borderRadius:10,padding:14,marginBottom:10}}><p style={{fontSize:13,color:theme.text,lineHeight:1.6,margin:'0 0 8px',whiteSpace:'pre-wrap' as const}}>{n.text}</p><div style={{fontSize:10,color:theme.textDim}}>Created: {new Date(n.createdAt).toLocaleString()} · Updated: {new Date(n.updatedAt).toLocaleString()}</div></div>)}</Section>}
             </div>
         </div>
-    </div>);
+    </div></>);
 }
 
 OrgShow.layout = (page: React.ReactNode) => <AppLayout>{page}</AppLayout>;

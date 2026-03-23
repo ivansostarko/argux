@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
@@ -14,7 +15,7 @@ function MS({ selected, onChange, options, placeholder }: { selected: string[]; 
     const toggle = (o: string) => onChange(selected.includes(o) ? selected.filter(x => x !== o) : [...selected, o]);
     const has = selected.length > 0;
     return (
-        <div ref={ref} style={{ position: 'relative', flex: 1, minWidth: 130 }}>
+<div ref={ref} style={{ position: 'relative', flex: 1, minWidth: 130 }}>
             <button onClick={() => { setOpen(!open); setSearch(''); }} style={{ width: '100%', padding: '7px 10px', background: theme.bgInput, color: has ? theme.text : theme.textDim, border: `1px solid ${has ? theme.accent+'60' : theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{has ? `${selected.length} selected` : placeholder}</span>
                 {has && <span style={{ background: theme.accentDim, color: theme.accent, fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 4, flexShrink: 0 }}>{selected.length}</span>}
@@ -117,6 +118,8 @@ export default function PersonsIndex() {
     const gridCols = '80px 40px minmax(120px,1fr) 80px 90px 80px 140px 120px 80px 60px 60px 86px';
 
     return (
+        <>
+        <PageMeta title="Persons" section="persons" />
         <div>
             <ConfirmModal open={deleteTarget !== null} title="Delete Person" message={`Are you sure you want to permanently delete ${persons.find(p => p.id === deleteTarget)?.firstName} ${persons.find(p => p.id === deleteTarget)?.lastName}? This action cannot be undone.`} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
             {ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} personId={ctxMenu.id} onClose={() => setCtxMenu(null)} onDelete={id => { setCtxMenu(null); setDeleteTarget(id); }} />}
@@ -233,6 +236,7 @@ export default function PersonsIndex() {
                 </div>
             )}
         </div>
+    </>
     );
 }
 

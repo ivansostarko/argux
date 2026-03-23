@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
@@ -346,7 +347,9 @@ export default function ConnectionsIndex() {
     const { nodes: visibleNodes, edges: curEdges } = getVisibleData();
 
     return (
-        <div className="conn-page">
+                <>
+        <PageMeta title="Connections" section="connections" />
+<div className="conn-page">
             {ctxMenu && <CtxMenu x={ctxMenu.x} y={ctxMenu.y} node={ctxMenu.node} onClose={() => setCtxMenu(null)} />}
 
             {/* Toolbar */}
@@ -439,6 +442,7 @@ export default function ConnectionsIndex() {
                 )}
             </div>
         </div>
+    </>
     );
 }
 

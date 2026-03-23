@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { usePage } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import OrgForm from './OrgForm';
@@ -7,6 +8,6 @@ export default function OrgEdit() {
     const { id } = usePage<{ id: number; [key: string]: unknown }>().props;
     const org = getOrgById(Number(id));
     if (!org) return <div style={{ textAlign:'center', padding:'60px 20px' }}><h2 style={{ fontSize:18, fontWeight:700, color:theme.text }}>Organization Not Found</h2><p style={{ fontSize:13, color:theme.textSecondary }}>ID {String(id)} not found.</p></div>;
-    return <OrgForm mode="edit" org={org} />;
+    return <><PageMeta title="Edit Organization" section="organizations" /><OrgForm mode="edit" org={org} /></>;
 }
 OrgEdit.layout = (page: React.ReactNode) => <AppLayout>{page}</AppLayout>;

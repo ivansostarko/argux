@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
@@ -35,6 +36,8 @@ export default function VehicleCreate() {
     };
 
     return (
+        <>
+        <PageMeta title="Create Vehicle" section="vehicles" />
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
                 <div><h1 style={{ fontSize: 20, fontWeight: 700, color: theme.text, margin: '0 0 4px' }}>Add New Vehicle</h1><p style={{ fontSize: 12, color: theme.textSecondary, margin: 0 }}>Register a vehicle in the surveillance database.</p></div>
@@ -85,6 +88,7 @@ export default function VehicleCreate() {
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Additional intelligence notes about this vehicle..." rows={4} style={{ width: '100%', padding: '12px 14px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', resize: 'vertical' }} />
             </div>
         </div>
+        </>
     );
 }
 

@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { useState, useEffect, useRef } from 'react';
 import AppLayout, { useAppSettings, themes, fonts } from '../../layouts/AppLayout';
 import { Input, Button, Toggle, Skeleton, Icons } from '../../components/ui';
@@ -60,7 +61,7 @@ function formatDatePreview(fmt: string): string { const map: Record<string, stri
 function DateRangeFilter({ from, to, onChange }: { from: string; to: string; onChange: (f: string, t: string) => void }) {
     const inputStyle: React.CSSProperties = { padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${(from || to) ? theme.accent + '60' : theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", outline: 'none', cursor: 'pointer', flex: 1, minWidth: 110, colorScheme: 'dark' as any };
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 2, minWidth: 240 }}>
+<div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 2, minWidth: 240 }}>
             <input type="date" value={from} onChange={e => onChange(e.target.value, to)} style={inputStyle} />
             <span style={{ fontSize: 11, color: theme.textDim, flexShrink: 0 }}>→</span>
             <input type="date" value={to} onChange={e => onChange(from, e.target.value)} style={inputStyle} />
@@ -288,6 +289,8 @@ export default function ProfilePage() {
     useEffect(() => { const t = setTimeout(() => setLoading(false), 800); return () => clearTimeout(t); }, []);
 
     return (
+        <>
+        <PageMeta title="My Profile" section="profile" />
         <div style={{ maxWidth: 840, margin: '0 auto' }}>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: theme.text, margin: '0 0 4px' }}>My Profile</h1>
             <p style={{ fontSize: 13, color: theme.textSecondary, margin: '0 0 24px' }}>Manage your account, security, and preferences.</p>
@@ -306,6 +309,7 @@ export default function ProfilePage() {
                 {activeTab === 'audit' && <AuditLogsTab />}
             </div>}
         </div>
+    </>
     );
 }
 

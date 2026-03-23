@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { useState, useRef, useEffect } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
@@ -36,7 +37,9 @@ export default function VehicleEdit() {
     const handleSave = () => { if (!plate) { toast.error('Validation', 'Plate required.'); return; } setLoading(true); setTimeout(() => { setLoading(false); toast.success('Vehicle updated', `${plate} saved.`); router.visit('/vehicles'); }, 1200); };
 
     return (
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+                <>
+        <PageMeta title="Edit Vehicle" section="vehicles" />
+<div style={{ maxWidth: 800, margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
                 <div><h1 style={{ fontSize: 20, fontWeight: 700, color: theme.text, margin: '0 0 4px' }}>Edit Vehicle: {v.plate}</h1><p style={{ fontSize: 12, color: theme.textSecondary, margin: 0 }}>{v.make} {v.model} ({v.year})</p></div>
                 <div style={{ display: 'flex', gap: 8 }}><Button variant="secondary" onClick={() => router.visit('/vehicles')} style={{ width: 'auto', padding: '9px 18px', fontSize: 11 }}>Cancel</Button><Button onClick={handleSave} loading={loading} style={{ width: 'auto', padding: '9px 22px', fontSize: 11 }}>Save Changes</Button></div>
@@ -76,6 +79,7 @@ export default function VehicleEdit() {
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} style={{ width: '100%', padding: '12px 14px', background: theme.bg, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', resize: 'vertical' }} />
             </div>
         </div>
+    </>
     );
 }
 VehicleEdit.layout = (page: React.ReactNode) => <AppLayout>{page}</AppLayout>;

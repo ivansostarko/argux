@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
@@ -90,7 +91,9 @@ export default function ChatIndex() {
     const handleExportPDF = () => { if (!activeConv) return; setExporting(true); setTimeout(() => { setExporting(false); toast.success('PDF exported', `${activeConv.title.slice(0, 30)}_transcript.pdf`); }, 1500); };
 
     return (
-        <div className="chat-page">
+                <>
+        <PageMeta title="AI Assistant" section="chat" />
+<div className="chat-page">
             {/* Lightbox */}
             {lightboxUrl && <div className="veh-lightbox" onClick={() => setLightboxUrl(null)}><button className="veh-lightbox-close" onClick={() => setLightboxUrl(null)}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button><img src={lightboxUrl} alt="" onClick={e => e.stopPropagation()} style={{ borderRadius: 10 }} /></div>}
 
@@ -186,6 +189,7 @@ export default function ChatIndex() {
                 )}
             </div>
         </div>
+    </>
     );
 }
 

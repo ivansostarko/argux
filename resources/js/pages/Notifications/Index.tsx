@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { useState } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
@@ -99,7 +100,9 @@ export default function NotificationsPage() {
     };
 
     return (
-        <div style={{ maxWidth: 960, margin: '0 auto' }}>
+                <>
+        <PageMeta title="Notifications" section="notifications" />
+<div style={{ maxWidth: 960, margin: '0 auto' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
                 <div>
@@ -246,6 +249,7 @@ export default function NotificationsPage() {
                 <span style={{ color: theme.accent }}>{counts.info} info</span>
             </div>
         </div>
+    </>
     );
 }
 

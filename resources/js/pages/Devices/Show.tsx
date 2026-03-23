@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { router, usePage } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { Button } from '../../components/ui';
@@ -18,7 +19,9 @@ export default function DevicesShow() {
     const isCamera = d.type.includes('Camera');
 
     return (
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+                <>
+        <PageMeta title="Device Detail" section="devices" />
+<div style={{ maxWidth: 900, margin: '0 auto' }}>
             {/* Header */}
             <div style={{ background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 14, padding: '20px 24px', marginBottom: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
@@ -106,6 +109,7 @@ export default function DevicesShow() {
                 <p style={{ fontSize: 13, color: theme.text, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' as const }}>{d.notes}</p>
             </div>}
         </div>
+    </>
     );
 }
 DevicesShow.layout = (page: React.ReactNode) => <AppLayout>{page}</AppLayout>;

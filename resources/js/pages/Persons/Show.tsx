@@ -1,3 +1,4 @@
+import PageMeta from '../../components/layout/PageMeta';
 import { useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
@@ -72,6 +73,8 @@ export default function PersonShow() {
     const handleExportPdf = () => { setExporting(true); setTimeout(() => { setExporting(false); toast.success('PDF exported', `${p.firstName}_${p.lastName}_dossier.pdf`); }, 1500); };
 
     return (
+        <>
+        <PageMeta title={`${p.firstName} ${p.lastName}`} description={`Intelligence dossier for ${p.firstName} ${p.lastName}`} section="persons" entityName={`${p.firstName} ${p.lastName}`} />
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
             <style>{`@media(max-width:768px){.show-vtabs{display:none!important}.show-htabs{display:flex!important}.show-layout{flex-direction:column!important}.show-header-row{flex-direction:column!important}.show-header-btns{width:100%}.show-header-btns button{flex:1}}`}</style>
 
@@ -233,6 +236,7 @@ export default function PersonShow() {
                 </div>
             </div>
         </div>
+        </>
     );
 }
 
