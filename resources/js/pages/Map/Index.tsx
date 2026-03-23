@@ -325,6 +325,9 @@ export default function MapIndex() {
 
     // Face Recognition Layer
     const [layerFace, setLayerFace] = useState(false);
+    const [faceSearch, setFaceSearch] = useState('');
+    const [faceSelected, setFaceSelected] = useState<Set<string>>(new Set()); // selected face IDs to show (empty = all)
+    const [faceHidden, setFaceHidden] = useState<Set<string>>(new Set()); // hidden face IDs
     interface FaceMatch { id: string; personId: number; personName: string; personAvatar: string; risk: string; lat: number; lng: number; confidence: number; cameraId: string; cameraName: string; timestamp: string; captureUrl: string; emotion: string; wearing: string; }
     const mockFaces: FaceMatch[] = [
         { id: 'fr-1', personId: 1, personName: 'Marko Horvat', personAvatar: mockPersons.find(p => p.id === 1)?.avatar || '', risk: 'Critical', lat: 45.8133, lng: 15.9778, confidence: 97.4, cameraId: 'sc1', cameraName: 'Ban Jelačić Cam', timestamp: '2026-03-23 08:12', captureUrl: mockPersons.find(p => p.id === 1)?.avatar || '', emotion: 'Neutral', wearing: 'Sunglasses, Dark jacket' },
@@ -419,7 +422,8 @@ export default function MapIndex() {
     const [showCoords, setShowCoords] = useState(false);
     const [showSearch, setShowSearch] = useState(true);
     const [showLabels, setShowLabels] = useState(true);
-    const [showZones, setShowZones] = useState(true);
+    const [showZones, setShowZones] = useState(false);
+    const [showObjects, setShowObjects] = useState(false);
     const [showFps, setShowFps] = useState(false);
 
     // Saved Places
@@ -1285,36 +1289,92 @@ export default function MapIndex() {
         faceMarkersRef.current = [];
         const ml = (window as any).maplibregl;
         if (!ml || !layerFace) return;
-        const faceFiltered = timelineActive ? mockFaces.filter(f => new Date(f.timestamp.replace(' ', 'T')).getTime() <= tlCursorMs) : mockFaces;
+        let faceFiltered = timelineActive ? mockFaces.filter(f => new Date(f.timestamp.replace(' ', 'T')).getTime() <= tlCursorMs) : mockFaces;
+        // Apply selection filter (empty = show all)
+        if (faceSelected.size > 0) faceFiltered = faceFiltered.filter(f => faceSelected.has(f.id));
+        // Apply hidden filter
+        faceFiltered = faceFiltered.filter(f => !faceHidden.has(f.id));
+        // Apply search
+        if (faceSearch.trim()) { const q = faceSearch.toLowerCase(); faceFiltered = faceFiltered.filter(f => f.personName.toLowerCase().includes(q) || f.cameraName.toLowerCase().includes(q)); }
+
         faceFiltered.forEach(fr => {
             const confColor = fr.confidence >= 90 ? '#22c55e' : fr.confidence >= 75 ? '#f59e0b' : fr.personId === 0 ? '#ef4444' : '#6b7280';
             const riskColor = fr.risk === 'Critical' ? '#ef4444' : fr.risk === 'High' ? '#f97316' : fr.risk === 'Medium' ? '#f59e0b' : '#6b7280';
-            const el = document.createElement('div');
-            el.className = 'tmap-marker-source';
-            const hasAvatar = fr.personAvatar && fr.personId > 0;
-            el.innerHTML = `<div class="tmap-marker-inner" style="width:30px;height:30px;border-radius:50%;border:2.5px solid ${riskColor};background:${hasAvatar ? `url(${fr.personAvatar}) center/cover` : 'rgba(13,18,32,0.92)'};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.5);font-size:12px;position:relative;${hasAvatar ? '' : ''}">${hasAvatar ? '' : '👤'}<div style="position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:${confColor};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;"><span style="font-size:5px;font-weight:900;color:#fff">${fr.confidence > 0 ? Math.round(fr.confidence) : '?'}</span></div></div>`;
-            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([fr.lng, fr.lat]).addTo(map);
-            el.addEventListener('click', (e: Event) => {
+            const capturePhoto = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg';
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tmap-marker-source';
+            wrapper.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:visible;';
+            const inner = document.createElement('div');
+            inner.className = 'tmap-marker-inner tmap-tl-event-dot';
+            inner.style.cssText = `width:30px;height:30px;border-radius:50%;border:2.5px solid ${riskColor};background:url(${capturePhoto}) center/cover;box-shadow:0 0 10px ${riskColor}40,0 2px 8px rgba(0,0,0,0.5);position:relative;overflow:visible;`;
+            // Confidence badge
+            const badge = document.createElement('div');
+            badge.style.cssText = `position:absolute;bottom:-3px;right:-3px;min-width:16px;height:12px;border-radius:6px;background:${confColor};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;padding:0 2px;pointer-events:none;`;
+            badge.innerHTML = `<span style="font-size:6px;font-weight:900;color:#fff;line-height:1">${fr.confidence > 0 ? Math.round(fr.confidence) : '?'}%</span>`;
+            inner.appendChild(badge);
+            // Risk dot
+            const sevDot = document.createElement('div');
+            sevDot.style.cssText = `position:absolute;top:-2px;left:-2px;width:8px;height:8px;border-radius:50%;background:${riskColor};border:1.5px solid rgba(13,18,32,0.9);pointer-events:none;`;
+            inner.appendChild(sevDot);
+            wrapper.appendChild(inner);
+            const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([fr.lng, fr.lat]).addTo(map);
+
+            // Click → rich popup with photo + lightbox
+            wrapper.addEventListener('click', (e: Event) => {
                 e.stopPropagation();
-                new ml.Popup({ offset: 18, maxWidth: '280px', className: 'tmap-popup' }).setLngLat([fr.lng, fr.lat]).setHTML(`<div class="tmap-popup-card">
-                    <div class="tmap-popup-header">
-                        <div style="width:44px;height:44px;border-radius:50%;border:2.5px solid ${riskColor};background:${hasAvatar ? `url(${fr.personAvatar}) center/cover` : 'rgba(13,18,32,0.9)'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${hasAvatar ? '' : '👤'}</div>
-                        <div class="tmap-popup-hinfo"><div class="tmap-popup-name">${fr.personName}</div><div class="tmap-popup-meta">
-                            <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${fr.risk}</span>
-                            <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${confColor}15;color:${confColor};border:1px solid ${confColor}30">${fr.confidence > 0 ? fr.confidence + '% match' : 'No match'}</span>
-                        </div></div>
+                const addr = mockAddress(fr.lat, fr.lng);
+                const ago = timeAgo(fr.timestamp);
+                const occ = mockFaces.filter(f => f.personId === fr.personId && fr.personId > 0).length;
+                const popup = new ml.Popup({ offset: 18, maxWidth: '300px', className: 'tmap-popup' }).setLngLat([fr.lng, fr.lat]).setHTML(`<div class="tmap-popup-card">
+                    <div style="position:relative;border-bottom:1px solid var(--ax-border)">
+                        <img src="${capturePhoto}" class="tmap-fr-photo" style="width:100%;height:100px;object-fit:cover;display:block;cursor:zoom-in;" />
+                        <div style="position:absolute;top:6px;right:6px;display:flex;gap:3px">
+                            <span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:${riskColor};backdrop-filter:blur(4px)">${fr.risk}</span>
+                            <span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:${confColor};backdrop-filter:blur(4px)">${fr.confidence}%</span>
+                        </div>
+                    </div>
+                    <div class="tmap-popup-header" style="gap:8px">
+                        <div class="tmap-fr-avatar" style="width:36px;height:36px;border-radius:50%;border:2.5px solid ${riskColor};background:${fr.personAvatar ? `url(${fr.personAvatar}) center/cover` : 'rgba(13,18,32,0.9)'};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;cursor:${fr.personAvatar ? 'zoom-in' : 'default'}" ${fr.personAvatar ? `data-lightbox="${fr.personAvatar}"` : ''}>${fr.personAvatar ? '' : '👤'}</div>
+                        <div class="tmap-popup-hinfo">
+                            <div class="tmap-popup-name" style="font-size:12px">${fr.personId > 0 ? `<a href="/persons/${fr.personId}" style="color:var(--ax-accent);text-decoration:none">${fr.personName}</a>` : fr.personName}</div>
+                            <div class="tmap-popup-meta">
+                                <span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${fr.risk}</span>
+                                <span style="font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;background:#ec489915;color:#ec4899;border:1px solid #ec489930">FACE</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="tmap-popup-grid">
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val">${fr.cameraName}</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${fr.timestamp}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${fr.timestamp} <span style="color:var(--ax-text-dim);font-size:9px">(${ago})</span></span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🎯 Confidence</span><span class="tmap-popup-val" style="color:${confColor};font-weight:700">${fr.confidence}%</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">⚠️ Risk</span><span class="tmap-popup-val" style="color:${riskColor};font-weight:600">${fr.risk}</span></div>
+                        ${occ > 1 ? `<div class="tmap-popup-row"><span class="tmap-popup-label">📊 Occurrences</span><span class="tmap-popup-val">${occ} captures in period</span></div>` : ''}
                         <div class="tmap-popup-row"><span class="tmap-popup-label">😐 Emotion</span><span class="tmap-popup-val">${fr.emotion}</span></div>
                         <div class="tmap-popup-row"><span class="tmap-popup-label">👕 Wearing</span><span class="tmap-popup-val">${fr.wearing}</span></div>
-                    </div><div class="tmap-popup-coords">${fr.lat.toFixed(5)}, ${fr.lng.toFixed(5)}</div></div>`).addTo(map);
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val"><a href="/devices/${fr.cameraId}" style="color:var(--ax-accent);text-decoration:none">${fr.cameraName}</a></span></div>
+                    </div>
+                    <div class="tmap-popup-coords">${fr.lat.toFixed(5)}, ${fr.lng.toFixed(5)}</div>
+                </div>`).addTo(map);
+                // Wire lightbox clicks
+                setTimeout(() => {
+                    const el = popup.getElement();
+                    el?.querySelectorAll('.tmap-fr-photo').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setTlLightbox(capturePhoto); }); });
+                    el?.querySelectorAll('.tmap-fr-avatar[data-lightbox]').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setTlLightbox(img.getAttribute('data-lightbox')); }); });
+                }, 50);
             });
+
+            // Right-click → context menu
+            wrapper.addEventListener('contextmenu', (e: Event) => {
+                e.preventDefault(); e.stopPropagation();
+                const me = e as MouseEvent;
+                const rect = mapContainer.current?.getBoundingClientRect();
+                if (rect) setTlMarkerCtx({ x: me.clientX - rect.left, y: me.clientY - rect.top, ev: { id: fr.id, type: 'face', icon: '🧑‍🦲', title: `Face: ${fr.personName}`, sub: fr.cameraName, ts: fr.timestamp, lat: fr.lat, lng: fr.lng, sev: fr.risk === 'Critical' ? 'critical' : 'high', color: '#ec4899', personId: fr.personId, personName: fr.personName, photoUrl: capturePhoto, cameraId: fr.cameraId, cameraName: fr.cameraName } });
+            });
+
             faceMarkersRef.current.push(marker);
         });
         return () => { faceMarkersRef.current.forEach(m => m.remove()); faceMarkersRef.current = []; };
-    }, [layerFace, loaded, timelineActive, tlCursorMs]);
+    }, [layerFace, loaded, timelineActive, tlCursorMs, faceSelected, faceHidden, faceSearch]);
 
     // Object drawing click handler
     useEffect(() => {
@@ -1569,6 +1629,19 @@ export default function MapIndex() {
         try { if (map.getLayer('zones-outline')) map.setLayoutProperty('zones-outline', 'visibility', vis); } catch {}
         try { if (map.getLayer('zones-drawing-line')) map.setLayoutProperty('zones-drawing-line', 'visibility', vis); } catch {}
     }, [showZones, loaded]);
+
+    // Show/hide objects layers
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        const vis = showObjects ? 'visible' : 'none';
+        try { if (map.getLayer('objects-fill')) map.setLayoutProperty('objects-fill', 'visibility', vis); } catch {}
+        try { if (map.getLayer('objects-fill-3d')) map.setLayoutProperty('objects-fill-3d', 'visibility', vis); } catch {}
+        try { if (map.getLayer('objects-outline')) map.setLayoutProperty('objects-outline', 'visibility', vis); } catch {}
+        try { if (map.getLayer('objects-line')) map.setLayoutProperty('objects-line', 'visibility', vis); } catch {}
+        // Toggle DOM markers
+        objMarkersRef.current.forEach(m => { try { m.getElement().style.display = showObjects ? '' : 'none'; } catch {} });
+    }, [showObjects, loaded]);
 
     // Localization: swap label overlay tiles (English-only vs English+local)
     useEffect(() => {
@@ -2102,23 +2175,50 @@ export default function MapIndex() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <span style={{ fontSize: 12 }}>🧑‍🦲</span>
                                         <span style={{ fontSize: 11, fontWeight: 600, color: layerFace ? '#ec4899' : theme.text }}>Face Recognition</span>
+                                        {layerFace && <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: '#ec489910', color: '#ec4899', border: '1px solid #ec489920' }}>{mockFaces.filter(f => !faceHidden.has(f.id) && (faceSelected.size === 0 || faceSelected.has(f.id))).length}</span>}
                                     </div>
                                     <button onClick={() => setLayerFace(!layerFace)} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerFace ? '#ec4899' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
                                         <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerFace ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                                     </button>
                                 </div>
                                 {layerFace && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    <div style={{ fontSize: 9, color: theme.textDim }}>{mockFaces.length} captures · {mockFaces.filter(f => f.personId > 0).length} matched · {mockFaces.filter(f => f.personId === 0).length} unidentified</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        {mockFaces.filter(f => f.personId > 0).slice(0, 5).map(fr => {
+                                    {/* Stats */}
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{mockFaces.length} captures · {mockFaces.filter(f => f.personId > 0).length} matched · {mockFaces.filter(f => f.personId === 0).length} unidentified{faceHidden.size > 0 ? ` · ${faceHidden.size} hidden` : ''}</div>
+                                    {/* Search */}
+                                    <input value={faceSearch} onChange={e => setFaceSearch(e.target.value)} placeholder="Search captures..." style={{ padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${faceSearch ? '#ec489950' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
+                                    {/* Capture list with multiselect + hide */}
+                                    <div style={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, scrollbarWidth: 'thin' }}>
+                                        {mockFaces.filter(fr => { if (faceSearch.trim()) { const q = faceSearch.toLowerCase(); return fr.personName.toLowerCase().includes(q) || fr.cameraName.toLowerCase().includes(q) || fr.emotion.toLowerCase().includes(q); } return true; }).map(fr => {
                                             const riskColor = fr.risk === 'Critical' ? '#ef4444' : fr.risk === 'High' ? '#f97316' : fr.risk === 'Medium' ? '#f59e0b' : '#6b7280';
-                                            return <div key={fr.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9 }}>
-                                                <div style={{ width: 14, height: 14, borderRadius: '50%', border: `1.5px solid ${riskColor}`, background: fr.personAvatar ? `url(${fr.personAvatar}) center/cover` : 'rgba(13,18,32,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, flexShrink: 0 }}>{fr.personAvatar ? '' : '👤'}</div>
-                                                <span style={{ color: theme.text, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{fr.personName}</span>
-                                                <span style={{ color: fr.confidence >= 90 ? '#22c55e' : '#f59e0b', fontFamily: "'JetBrains Mono', monospace", fontSize: 8, fontWeight: 700 }}>{fr.confidence}%</span>
+                                            const confColor = fr.confidence >= 90 ? '#22c55e' : fr.confidence >= 75 ? '#f59e0b' : '#ef4444';
+                                            const isSelected = faceSelected.size === 0 || faceSelected.has(fr.id);
+                                            const isHidden = faceHidden.has(fr.id);
+                                            return <div key={fr.id} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 4px', borderRadius: 4, background: isHidden ? 'rgba(107,114,128,0.06)' : isSelected && faceSelected.size > 0 ? 'rgba(236,72,153,0.06)' : 'transparent', border: `1px solid ${isHidden ? theme.border + '50' : isSelected && faceSelected.size > 0 ? '#ec489920' : 'transparent'}`, opacity: isHidden ? 0.5 : 1 }}>
+                                                {/* Select checkbox */}
+                                                <button onClick={() => { setFaceSelected(prev => { const n = new Set(prev); if (prev.size === 0) { mockFaces.forEach(f => { if (f.id !== fr.id) n.add(f.id); }); } else if (n.has(fr.id)) { n.delete(fr.id); if (n.size === 0) return new Set(); } else { n.add(fr.id); } return n; }); }} style={{ width: 12, height: 12, borderRadius: 2, border: `1.5px solid ${isSelected ? '#ec4899' : theme.border}`, background: isSelected && faceSelected.size > 0 ? '#ec4899' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>{isSelected && faceSelected.size > 0 && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</button>
+                                                {/* Capture photo thumbnail */}
+                                                <div style={{ width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${riskColor}`, background: `url(https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg) center/cover`, flexShrink: 0, cursor: 'pointer' }} onClick={() => setTlLightbox('https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg')} />
+                                                {/* Info */}
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontSize: 9, fontWeight: 600, color: isHidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{fr.personName}</div>
+                                                    <div style={{ fontSize: 7, color: theme.textDim, display: 'flex', gap: 4, alignItems: 'center' }}>
+                                                        <span>{fr.cameraName}</span>
+                                                        <span style={{ color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{fr.confidence}%</span>
+                                                    </div>
+                                                </div>
+                                                {/* Hide/show toggle */}
+                                                <button onClick={() => setFaceHidden(prev => { const n = new Set(prev); n.has(fr.id) ? n.delete(fr.id) : n.add(fr.id); return n; })} title={isHidden ? 'Show on map' : 'Hide from map'} style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isHidden ? theme.danger + '30' : theme.border}`, background: isHidden ? 'rgba(239,68,68,0.06)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, fontSize: 8, color: isHidden ? theme.danger : theme.textDim }}>{isHidden ? '👁️‍🗨️' : '👁️'}</button>
                                             </div>;
                                         })}
                                     </div>
+                                    {/* Bulk actions */}
+                                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                        <button onClick={() => setFaceSelected(new Set())} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: faceSelected.size === 0 ? '#ec489908' : 'transparent', color: faceSelected.size === 0 ? '#ec4899' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>All</button>
+                                        <button onClick={() => setFaceSelected(new Set(mockFaces.filter(f => f.personId > 0).map(f => f.id)))} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Matched</button>
+                                        <button onClick={() => setFaceSelected(new Set(mockFaces.filter(f => f.personId === 0).map(f => f.id)))} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Unknown</button>
+                                        {faceHidden.size > 0 && <button onClick={() => setFaceHidden(new Set())} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Show {faceHidden.size} hidden</button>}
+                                    </div>
+                                    {/* Legend */}
                                     <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                                         {[['🟢', '≥90%'], ['🟡', '75-89%'], ['🔴', '<75%'], ['⚫', 'Unknown']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 8, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}>{ico} {lbl}</span>)}
                                     </div>
@@ -2355,6 +2455,7 @@ export default function MapIndex() {
                             <Toggle label="Map Controls" description="Zoom, fullscreen, rotation buttons" enabled={showControls} onChange={setShowControls} />
                             <Toggle label="Show Labels" description="Place and road names on map" enabled={showLabels} onChange={setShowLabels} />
                             <Toggle label="Show Zones" description="Display zone overlays on map" enabled={showZones} onChange={setShowZones} />
+                            <Toggle label="Show Objects" description="Display custom objects on map" enabled={showObjects} onChange={setShowObjects} />
                             <Toggle label="Localization" description="Add local language names alongside English" enabled={showLocalization} onChange={setShowLocalization} />
                             <Toggle label="Coordinates" description="Lat/lng, zoom and bearing bar" enabled={showCoords} onChange={setShowCoords} />
                             <Toggle label="Place Search" description="Search bar for locations on map" enabled={showSearch} onChange={setShowSearch} />
@@ -2616,7 +2717,7 @@ export default function MapIndex() {
                         {tlMarkerCtx.ev.cameraId && <button onClick={() => { router.visit(`/devices/${tlMarkerCtx.ev.cameraId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>📹 Camera Details</button>}
                         {tlMarkerCtx.ev.photoUrl && <button onClick={() => { setTlLightbox(tlMarkerCtx.ev.photoUrl!); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🔍 View Photo</button>}
                         <div style={{ height: 1, background: theme.border, margin: '2px 8px' }} />
-                        <button onClick={() => { setTlHiddenIds(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👁️‍🗨️ Hide from Map</button>
+                        <button onClick={() => { if (tlMarkerCtx.ev.type === 'face') setFaceHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlHiddenIds(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👁️‍🗨️ Hide from Map</button>
                     </div>
                 </div></div>}
 
