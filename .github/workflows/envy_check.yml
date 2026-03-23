@@ -1,0 +1,19 @@
+name: Envy Check
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  envy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - run: composer install --no-interaction --no-progress
+      - run: php artisan envy:sync --dry
+      - run: php artisan envy:prune --dry

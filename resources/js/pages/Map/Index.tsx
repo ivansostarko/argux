@@ -150,6 +150,161 @@ export default function MapIndex() {
     const [selectedPersons, setSelectedPersons] = useState<string[]>([]);
     const [selectedOrgs, setSelectedOrgs] = useState<string[]>([]);
 
+    // Sources
+    type SourceId = 'cam-public' | 'cam-hidden' | 'cam-private' | 'gps' | 'audio' | 'app-locator' | 'app-photo' | 'app-video' | 'app-audio' | 'app-camera';
+    interface SourceType { id: SourceId; label: string; group: string; color: string; icon: string; shape: 'circle' | 'square' | 'diamond'; }
+    const sourceTypes: SourceType[] = [
+        { id: 'cam-public', label: 'Public Camera', group: 'Camera', color: '#3b82f6', icon: '📹', shape: 'square' },
+        { id: 'cam-hidden', label: 'Hidden Camera', group: 'Camera', color: '#ef4444', icon: '🔴', shape: 'square' },
+        { id: 'cam-private', label: 'Private Camera', group: 'Camera', color: '#8b5cf6', icon: '📷', shape: 'square' },
+        { id: 'gps', label: 'GPS Tracker', group: 'GPS', color: '#22c55e', icon: '📡', shape: 'circle' },
+        { id: 'audio', label: 'Audio Recorder', group: 'Audio', color: '#f59e0b', icon: '🎙️', shape: 'diamond' },
+        { id: 'app-locator', label: 'Mobile Locator', group: 'Mobile App', color: '#06b6d4', icon: '📍', shape: 'circle' },
+        { id: 'app-photo', label: 'Mobile Photo', group: 'Mobile App', color: '#ec4899', icon: '🖼️', shape: 'circle' },
+        { id: 'app-video', label: 'Mobile Video', group: 'Mobile App', color: '#f97316', icon: '🎬', shape: 'circle' },
+        { id: 'app-audio', label: 'Mobile Audio', group: 'Mobile App', color: '#a855f7', icon: '🔊', shape: 'circle' },
+        { id: 'app-camera', label: 'Mobile Camera', group: 'Mobile App', color: '#14b8a6', icon: '📱', shape: 'circle' },
+    ];
+    interface SourceMarker { id: string; sourceId: SourceId; lat: number; lng: number; label: string; status: 'online' | 'offline' | 'degraded'; detail: string; }
+    const mockSourceMarkers: SourceMarker[] = [
+        // Public Cameras (8)
+        { id: 'sc1', sourceId: 'cam-public', lat: 45.8131, lng: 15.9775, label: 'Ban Jelačić Square Cam', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Uptime: 99.8%' },
+        { id: 'sc2', sourceId: 'cam-public', lat: 45.8155, lng: 15.9690, label: 'Ilica Street Cam #1', status: 'online', detail: 'Resolution: 1080p · FPS: 25 · Uptime: 98.5%' },
+        { id: 'sc3', sourceId: 'cam-public', lat: 45.8048, lng: 15.9620, label: 'Savska Cesta Intersection', status: 'degraded', detail: 'Resolution: 1080p · FPS: 15 · Signal weak' },
+        { id: 'sc4', sourceId: 'cam-public', lat: 45.8100, lng: 15.9930, label: 'Maksimir Park Entrance', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Night vision enabled' },
+        { id: 'sc5', sourceId: 'cam-public', lat: 45.8000, lng: 15.9710, label: 'Main Station South', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Facial recognition active' },
+        { id: 'sc6', sourceId: 'cam-public', lat: 45.8195, lng: 15.9555, label: 'Črnomerec Junction', status: 'offline', detail: 'Maintenance since 2026-03-20' },
+        { id: 'sc7', sourceId: 'cam-public', lat: 45.8060, lng: 16.0010, label: 'Dubrava Overpass', status: 'online', detail: 'Resolution: 1080p · FPS: 25' },
+        { id: 'sc8', sourceId: 'cam-public', lat: 45.8210, lng: 15.9850, label: 'Kaptol Area Cam', status: 'online', detail: 'Resolution: 4K · PTZ · FPS: 30' },
+        // Hidden Cameras (5)
+        { id: 'sh1', sourceId: 'cam-hidden', lat: 45.8142, lng: 15.9760, label: 'OP-HAWK Unit Alpha', status: 'online', detail: 'Covert · Battery: 89% · Last ping: 2m ago' },
+        { id: 'sh2', sourceId: 'cam-hidden', lat: 45.8088, lng: 15.9680, label: 'OP-HAWK Unit Bravo', status: 'online', detail: 'Covert · Battery: 72% · Last ping: 5m ago' },
+        { id: 'sh3', sourceId: 'cam-hidden', lat: 45.8170, lng: 15.9810, label: 'OP-HAWK Unit Charlie', status: 'degraded', detail: 'Covert · Battery: 23% · Low battery warning' },
+        { id: 'sh4', sourceId: 'cam-hidden', lat: 45.8050, lng: 15.9900, label: 'OP-HAWK Unit Delta', status: 'online', detail: 'Covert · Battery: 95% · Last ping: 1m ago' },
+        { id: 'sh5', sourceId: 'cam-hidden', lat: 45.8120, lng: 15.9580, label: 'OP-HAWK Unit Echo', status: 'offline', detail: 'Covert · Device unreachable since 18:00' },
+        // Private Cameras (4)
+        { id: 'sp1', sourceId: 'cam-private', lat: 45.8115, lng: 15.9830, label: 'ASG HQ Interior #1', status: 'online', detail: 'Private · Restricted access · Recording' },
+        { id: 'sp2', sourceId: 'cam-private', lat: 45.8117, lng: 15.9835, label: 'ASG HQ Interior #2', status: 'online', detail: 'Private · Restricted access · Recording' },
+        { id: 'sp3', sourceId: 'cam-private', lat: 45.8070, lng: 15.9750, label: 'Safehouse Bravo Cam', status: 'online', detail: 'Private · Motion-triggered · 128GB storage' },
+        { id: 'sp4', sourceId: 'cam-private', lat: 45.8190, lng: 15.9700, label: 'Drop Point Zulu Cam', status: 'degraded', detail: 'Private · Intermittent connection' },
+        // GPS Trackers (7)
+        { id: 'sg1', sourceId: 'gps', lat: 45.8138, lng: 15.9780, label: 'GPS-001 (Horvat Vehicle)', status: 'online', detail: 'Speed: 0 km/h · Parked · Battery: 94%' },
+        { id: 'sg2', sourceId: 'gps', lat: 45.8075, lng: 15.9850, label: 'GPS-002 (Babić Vehicle)', status: 'online', detail: 'Speed: 42 km/h · Moving SE · Battery: 88%' },
+        { id: 'sg3', sourceId: 'gps', lat: 45.8200, lng: 15.9600, label: 'GPS-003 (Package Alpha)', status: 'online', detail: 'Speed: 0 km/h · Stationary · Battery: 76%' },
+        { id: 'sg4', sourceId: 'gps', lat: 45.8020, lng: 15.9950, label: 'GPS-004 (Suspect Van)', status: 'degraded', detail: 'Speed: 15 km/h · Signal intermittent' },
+        { id: 'sg5', sourceId: 'gps', lat: 45.8160, lng: 15.9500, label: 'GPS-005 (Asset Foxtrot)', status: 'online', detail: 'Speed: 0 km/h · Parked · Battery: 100%' },
+        { id: 'sg6', sourceId: 'gps', lat: 45.8095, lng: 15.9720, label: 'GPS-006 (Motorcycle)', status: 'offline', detail: 'Last position 3h ago · Battery: 12%' },
+        { id: 'sg7', sourceId: 'gps', lat: 45.8180, lng: 15.9920, label: 'GPS-007 (Cargo Trailer)', status: 'online', detail: 'Speed: 0 km/h · Port area · Battery: 67%' },
+        // Audio Recorders (4)
+        { id: 'sa1', sourceId: 'audio', lat: 45.8133, lng: 15.9770, label: 'MIC-ALPHA (Café Target)', status: 'online', detail: 'Recording · Duration: 4h 23m · Quality: High' },
+        { id: 'sa2', sourceId: 'audio', lat: 45.8110, lng: 15.9840, label: 'MIC-BRAVO (Office Bug)', status: 'online', detail: 'Recording · Duration: 12h 05m · Quality: High' },
+        { id: 'sa3', sourceId: 'audio', lat: 45.8065, lng: 15.9660, label: 'MIC-CHARLIE (Vehicle)', status: 'degraded', detail: 'Recording · Duration: 1h 44m · Background noise' },
+        { id: 'sa4', sourceId: 'audio', lat: 45.8185, lng: 15.9730, label: 'MIC-DELTA (Meeting Rm)', status: 'offline', detail: 'Battery depleted · Last recording: 09:15' },
+        // Mobile App - Locator (5)
+        { id: 'ml1', sourceId: 'app-locator', lat: 45.8125, lng: 15.9795, label: 'APP-LOC Horvat Phone', status: 'online', detail: 'Accuracy: 3m · Provider: GPS+WiFi · Updated: 30s ago' },
+        { id: 'ml2', sourceId: 'app-locator', lat: 45.8080, lng: 15.9870, label: 'APP-LOC Babić Phone', status: 'online', detail: 'Accuracy: 8m · Provider: Cell · Updated: 2m ago' },
+        { id: 'ml3', sourceId: 'app-locator', lat: 45.8155, lng: 15.9650, label: 'APP-LOC Suspect Kilo', status: 'online', detail: 'Accuracy: 5m · Provider: GPS · Updated: 45s ago' },
+        { id: 'ml4', sourceId: 'app-locator', lat: 45.8040, lng: 15.9780, label: 'APP-LOC Asset Lima', status: 'degraded', detail: 'Accuracy: 150m · Cell only · Last update: 15m ago' },
+        { id: 'ml5', sourceId: 'app-locator', lat: 45.8175, lng: 15.9880, label: 'APP-LOC Target Mike', status: 'offline', detail: 'Phone powered off · Last seen: 2h ago' },
+        // Mobile App - Photo (3)
+        { id: 'mp1', sourceId: 'app-photo', lat: 45.8130, lng: 15.9810, label: 'APP-PHO Horvat Phone', status: 'online', detail: 'Auto-capture: ON · 47 photos today · Storage: 62%' },
+        { id: 'mp2', sourceId: 'app-photo', lat: 45.8090, lng: 15.9690, label: 'APP-PHO Babić Phone', status: 'online', detail: 'Auto-capture: ON · 12 photos today · Storage: 84%' },
+        { id: 'mp3', sourceId: 'app-photo', lat: 45.8165, lng: 15.9560, label: 'APP-PHO Suspect Kilo', status: 'degraded', detail: 'Auto-capture: OFF · Manual only · Storage: 91%' },
+        // Mobile App - Video (3)
+        { id: 'mv1', sourceId: 'app-video', lat: 45.8145, lng: 15.9750, label: 'APP-VID Horvat Phone', status: 'online', detail: 'Live stream available · Quality: 720p' },
+        { id: 'mv2', sourceId: 'app-video', lat: 45.8060, lng: 15.9810, label: 'APP-VID Babić Phone', status: 'online', detail: 'Recording in background · 2.3 GB captured' },
+        { id: 'mv3', sourceId: 'app-video', lat: 45.8195, lng: 15.9640, label: 'APP-VID Target Oscar', status: 'offline', detail: 'No video permission · App restricted' },
+        // Mobile App - Audio Recorder (3)
+        { id: 'ma1', sourceId: 'app-audio', lat: 45.8128, lng: 15.9820, label: 'APP-AUD Horvat Phone', status: 'online', detail: 'Ambient recording · Duration: 3h 12m · -42dB' },
+        { id: 'ma2', sourceId: 'app-audio', lat: 45.8082, lng: 15.9740, label: 'APP-AUD Babić Phone', status: 'online', detail: 'Call recording active · 7 calls intercepted' },
+        { id: 'ma3', sourceId: 'app-audio', lat: 45.8170, lng: 15.9900, label: 'APP-AUD Suspect Papa', status: 'degraded', detail: 'Mic permission revoked · Retry pending' },
+        // Mobile App - Camera (3)
+        { id: 'mc1', sourceId: 'app-camera', lat: 45.8135, lng: 15.9760, label: 'APP-CAM Horvat Phone', status: 'online', detail: 'Front cam accessible · Stealth mode · Last snap: 5m' },
+        { id: 'mc2', sourceId: 'app-camera', lat: 45.8070, lng: 15.9850, label: 'APP-CAM Babić Phone', status: 'online', detail: 'Rear cam accessible · Stealth mode · Last snap: 22m' },
+        { id: 'mc3', sourceId: 'app-camera', lat: 45.8150, lng: 15.9580, label: 'APP-CAM Target Quebec', status: 'offline', detail: 'Camera blocked by user · App hidden' },
+    ];
+    const [activeSources, setActiveSources] = useState<Set<SourceId>>(new Set());
+    const toggleSource = (id: SourceId) => setActiveSources(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    const toggleSourceGroup = (group: string) => {
+        const groupIds = sourceTypes.filter(s => s.group === group).map(s => s.id);
+        const allOn = groupIds.every(id => activeSources.has(id));
+        setActiveSources(prev => { const n = new Set(prev); groupIds.forEach(id => allOn ? n.delete(id) : n.add(id)); return n; });
+    };
+    const activeSourceCount = activeSources.size;
+    const activeSourceMarkers = mockSourceMarkers.filter(m => activeSources.has(m.sourceId));
+
+    // Layers
+    const [layerHeatmap, setLayerHeatmap] = useState(false);
+    const [heatmapIntensity, setHeatmapIntensity] = useState(0.6);
+    const [heatmapRadius, setHeatmapRadius] = useState(25);
+    const [layerNetwork, setLayerNetwork] = useState(false);
+    const [networkShowPersons, setNetworkShowPersons] = useState(true);
+    const [networkShowOrgs, setNetworkShowOrgs] = useState(true);
+    const [networkShowDevices, setNetworkShowDevices] = useState(true);
+
+    // Heatmap mock data — activity hotspots across Zagreb
+    const heatmapPoints: [number, number, number][] = [
+        // [lng, lat, weight] — high activity areas
+        [15.9775, 45.8131, 1.0], [15.9770, 45.8135, 0.9], [15.9780, 45.8128, 0.85], // Ban Jelačić
+        [15.9690, 45.8155, 0.7], [15.9700, 45.8150, 0.6], [15.9685, 45.8160, 0.5], // Ilica
+        [15.9830, 45.8115, 0.95], [15.9835, 45.8117, 0.8], [15.9825, 45.8112, 0.7], // ASG HQ
+        [15.9620, 45.8048, 0.6], [15.9630, 45.8045, 0.5], // Savska
+        [15.9930, 45.8100, 0.4], [15.9940, 45.8095, 0.35], // Maksimir
+        [15.9710, 45.8000, 0.75], [15.9720, 45.7995, 0.65], [15.9705, 45.8005, 0.55], // Main Station
+        [15.9810, 45.8070, 0.5], [15.9800, 45.8075, 0.4], // Safehouse area
+        [15.9555, 45.8195, 0.3], [15.9560, 45.8190, 0.25], // Črnomerec
+        [16.0010, 45.8060, 0.45], [16.0020, 45.8055, 0.35], // Dubrava
+        [15.9850, 45.8210, 0.55], [15.9845, 45.8215, 0.45], // Kaptol
+        [15.9760, 45.8142, 0.8], [15.9755, 45.8145, 0.7], // Covert ops area
+        [15.9780, 45.8090, 0.6], [15.9790, 45.8085, 0.5], // Mid city
+        [15.9650, 45.8155, 0.4], [15.9580, 45.8120, 0.3], // West Zagreb
+        [15.9900, 45.8050, 0.5], [15.9880, 45.8060, 0.4], [15.9910, 45.8040, 0.35], // East activity
+        [15.9740, 45.8080, 0.55], [15.9730, 45.8085, 0.45], // Central south
+        [15.9820, 45.8170, 0.65], [15.9815, 45.8175, 0.5], // North central
+    ];
+
+    // Network mock data — connections between entities in Zagreb
+    interface NetNode { id: string; type: 'person' | 'org' | 'device'; label: string; lat: number; lng: number; color: string; }
+    interface NetEdge { from: string; to: string; strength: number; type: 'financial' | 'family' | 'business' | 'criminal' | 'comms' | 'surveillance'; }
+    const netNodes: NetNode[] = [
+        { id: 'p1', type: 'person', label: 'Horvat', lat: 45.8150, lng: 15.9819, color: '#ef4444' },
+        { id: 'p2', type: 'person', label: 'Kovačević', lat: 45.8050, lng: 15.9670, color: '#f97316' },
+        { id: 'p3', type: 'person', label: 'Al-Rashid', lat: 45.7900, lng: 16.0100, color: '#ef4444' },
+        { id: 'p7', type: 'person', label: 'Hassan', lat: 45.8200, lng: 15.9900, color: '#f97316' },
+        { id: 'p9', type: 'person', label: 'Mendoza', lat: 45.7800, lng: 16.0000, color: '#ef4444' },
+        { id: 'p12', type: 'person', label: 'Babić', lat: 45.8080, lng: 15.9750, color: '#f97316' },
+        { id: 'o1', type: 'org', label: 'Alpha Security', lat: 45.8115, lng: 15.9830, color: '#3b82f6' },
+        { id: 'o2', type: 'org', label: 'Rashid Holdings', lat: 45.7950, lng: 15.9950, color: '#3b82f6' },
+        { id: 'o5', type: 'org', label: 'Falcon Trading', lat: 45.8180, lng: 15.9600, color: '#3b82f6' },
+        { id: 'o6', type: 'org', label: 'Mendoza IE', lat: 45.7850, lng: 16.0050, color: '#3b82f6' },
+        { id: 'd1', type: 'device', label: 'GPS-001', lat: 45.8138, lng: 15.9780, color: '#22c55e' },
+        { id: 'd2', type: 'device', label: 'GPS-002', lat: 45.8075, lng: 15.9850, color: '#22c55e' },
+        { id: 'd3', type: 'device', label: 'MIC-ALPHA', lat: 45.8133, lng: 15.9770, color: '#f59e0b' },
+        { id: 'd4', type: 'device', label: 'OP-HAWK-A', lat: 45.8142, lng: 15.9760, color: '#f59e0b' },
+        { id: 'd5', type: 'device', label: 'APP-LOC', lat: 45.8125, lng: 15.9795, color: '#06b6d4' },
+    ];
+    const netEdges: NetEdge[] = [
+        { from: 'p1', to: 'o1', strength: 0.95, type: 'business' },
+        { from: 'p12', to: 'o1', strength: 0.9, type: 'business' },
+        { from: 'p1', to: 'p12', strength: 0.85, type: 'criminal' },
+        { from: 'p3', to: 'o2', strength: 0.95, type: 'financial' },
+        { from: 'p7', to: 'o5', strength: 0.8, type: 'business' },
+        { from: 'p9', to: 'o6', strength: 0.9, type: 'criminal' },
+        { from: 'p3', to: 'p7', strength: 0.6, type: 'financial' },
+        { from: 'p1', to: 'p2', strength: 0.5, type: 'comms' },
+        { from: 'p9', to: 'p3', strength: 0.4, type: 'financial' },
+        { from: 'o1', to: 'o5', strength: 0.3, type: 'business' },
+        { from: 'o2', to: 'o6', strength: 0.35, type: 'financial' },
+        { from: 'p1', to: 'd1', strength: 0.9, type: 'surveillance' },
+        { from: 'p12', to: 'd2', strength: 0.85, type: 'surveillance' },
+        { from: 'p1', to: 'd3', strength: 0.8, type: 'surveillance' },
+        { from: 'p1', to: 'd4', strength: 0.75, type: 'surveillance' },
+        { from: 'p1', to: 'd5', strength: 0.9, type: 'surveillance' },
+        { from: 'p2', to: 'o1', strength: 0.45, type: 'comms' },
+        { from: 'p7', to: 'p9', strength: 0.35, type: 'criminal' },
+    ];
+    const edgeColors: Record<string, string> = { financial: '#f59e0b', family: '#ec4899', business: '#3b82f6', criminal: '#ef4444', comms: '#8b5cf6', surveillance: '#22c55e' };
+
     // Settings
     const [showMinimap, setShowMinimap] = useState(true);
     const [showCompass, setShowCompass] = useState(true);
@@ -576,6 +731,138 @@ export default function MapIndex() {
         return () => { markersRef.current.forEach(m => m.remove()); markersRef.current = []; };
     }, [selectedPersons, selectedOrgs, loaded]);
 
+    // Source markers on map
+    const sourceMarkersRef = useRef<any[]>([]);
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        sourceMarkersRef.current.forEach(m => m.remove());
+        sourceMarkersRef.current = [];
+        const ml = (window as any).maplibregl;
+        if (!ml) return;
+        activeSourceMarkers.forEach(sm => {
+            const st = sourceTypes.find(s => s.id === sm.sourceId);
+            if (!st) return;
+            const statusDot = sm.status === 'online' ? '#22c55e' : sm.status === 'degraded' ? '#f59e0b' : '#6b7280';
+            const el = document.createElement('div');
+            el.className = 'tmap-marker-source';
+            const borderRadius = st.shape === 'circle' ? '50%' : st.shape === 'diamond' ? '4px' : '4px';
+            const rotate = st.shape === 'diamond' ? 'transform:rotate(45deg);' : '';
+            const innerRotate = st.shape === 'diamond' ? 'transform:rotate(-45deg);' : '';
+            el.innerHTML = `<div class="tmap-marker-inner" style="width:26px;height:26px;border-radius:${borderRadius};border:2px solid ${st.color};background:rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.5);${rotate}"><span style="font-size:12px;line-height:1;${innerRotate}">${st.icon}</span></div><div class="tmap-marker-status" style="background:${statusDot}"></div>`;
+            const lngLat: [number, number] = [sm.lng, sm.lat];
+            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat).addTo(map);
+            el.addEventListener('click', (e: Event) => {
+                e.stopPropagation();
+                new ml.Popup({ offset: 16, maxWidth: '240px', className: 'tmap-popup' })
+                    .setLngLat(lngLat)
+                    .setHTML(`<div class="tmap-popup-card">
+                        <div class="tmap-popup-header" style="gap:8px">
+                            <span style="font-size:20px">${st.icon}</span>
+                            <div class="tmap-popup-hinfo">
+                                <div class="tmap-popup-name" style="font-size:12px">${sm.label}</div>
+                                <div class="tmap-popup-meta">
+                                    <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span>
+                                    <span class="tmap-popup-status"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusDot};margin-right:3px"></span>${sm.status}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="padding:8px 14px;font-size:10px;color:var(--ax-text-dim);line-height:1.5">${sm.detail}</div>
+                        <div class="tmap-popup-coords">${lngLat[1].toFixed(5)}, ${lngLat[0].toFixed(5)}</div>
+                    </div>`).addTo(map);
+            });
+            sourceMarkersRef.current.push(marker);
+        });
+        return () => { sourceMarkersRef.current.forEach(m => m.remove()); sourceMarkersRef.current = []; };
+    }, [activeSources, loaded]);
+
+    // Heatmap layer
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        try {
+            if (layerHeatmap) {
+                const geojson: any = { type: 'FeatureCollection', features: heatmapPoints.map((p, i) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p[0], p[1]] }, properties: { weight: p[2], id: i } })) };
+                if (map.getSource('heatmap-source')) {
+                    (map.getSource('heatmap-source') as any).setData(geojson);
+                } else {
+                    map.addSource('heatmap-source', { type: 'geojson', data: geojson });
+                    map.addLayer({
+                        id: 'heatmap-layer', type: 'heatmap', source: 'heatmap-source',
+                        paint: {
+                            'heatmap-weight': ['get', 'weight'],
+                            'heatmap-intensity': heatmapIntensity,
+                            'heatmap-radius': heatmapRadius,
+                            'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(0,0,0,0)', 0.2, 'rgba(59,130,246,0.3)', 0.4, 'rgba(34,197,94,0.5)', 0.6, 'rgba(245,158,11,0.7)', 0.8, 'rgba(239,68,68,0.85)', 1, 'rgba(255,255,255,1)'],
+                            'heatmap-opacity': 0.75,
+                        }
+                    }, map.getLayer('zones-fill') ? 'zones-fill' : undefined);
+                }
+                map.setPaintProperty('heatmap-layer', 'heatmap-intensity', heatmapIntensity);
+                map.setPaintProperty('heatmap-layer', 'heatmap-radius', heatmapRadius);
+            } else {
+                if (map.getLayer('heatmap-layer')) map.removeLayer('heatmap-layer');
+                if (map.getSource('heatmap-source')) map.removeSource('heatmap-source');
+            }
+        } catch {}
+    }, [layerHeatmap, heatmapIntensity, heatmapRadius, loaded]);
+
+    // Network layer
+    const networkMarkersRef = useRef<any[]>([]);
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        networkMarkersRef.current.forEach(m => m.remove());
+        networkMarkersRef.current = [];
+        try {
+            if (layerNetwork) {
+                const visibleNodes = netNodes.filter(n => (n.type === 'person' && networkShowPersons) || (n.type === 'org' && networkShowOrgs) || (n.type === 'device' && networkShowDevices));
+                const visibleIds = new Set(visibleNodes.map(n => n.id));
+                const visibleEdges = netEdges.filter(e => visibleIds.has(e.from) && visibleIds.has(e.to));
+                const edgeFeatures = visibleEdges.map(e => {
+                    const from = netNodes.find(n => n.id === e.from)!;
+                    const to = netNodes.find(n => n.id === e.to)!;
+                    return { type: 'Feature' as const, geometry: { type: 'LineString' as const, coordinates: [[from.lng, from.lat], [to.lng, to.lat]] }, properties: { color: edgeColors[e.type] || '#6b7280', width: 1 + e.strength * 3, type: e.type, opacity: 0.3 + e.strength * 0.5 } };
+                });
+                const geojson: any = { type: 'FeatureCollection', features: edgeFeatures };
+                if (map.getSource('network-source')) {
+                    (map.getSource('network-source') as any).setData(geojson);
+                } else {
+                    map.addSource('network-source', { type: 'geojson', data: geojson });
+                    map.addLayer({ id: 'network-lines', type: 'line', source: 'network-source', paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'width'], 'line-opacity': ['get', 'opacity'], 'line-dasharray': [3, 2] } });
+                }
+                // Node markers
+                const ml = (window as any).maplibregl;
+                if (ml) {
+                    visibleNodes.forEach(n => {
+                        const el = document.createElement('div');
+                        el.className = 'tmap-net-node';
+                        const icon = n.type === 'person' ? '👤' : n.type === 'org' ? '🏢' : '📡';
+                        const shape = n.type === 'org' ? 'border-radius:4px' : 'border-radius:50%';
+                        el.innerHTML = `<div style="width:20px;height:20px;${shape};border:2px solid ${n.color};background:rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.5);font-size:10px;cursor:pointer;" title="${n.label}">${icon}</div>`;
+                        const conns = visibleEdges.filter(e => e.from === n.id || e.to === n.id).length;
+                        const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([n.lng, n.lat]).addTo(map);
+                        el.addEventListener('click', (ev: Event) => {
+                            ev.stopPropagation();
+                            const connDetails = visibleEdges.filter(e => e.from === n.id || e.to === n.id).map(e => {
+                                const other = netNodes.find(nn => nn.id === (e.from === n.id ? e.to : e.from));
+                                return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0"><span style="width:8px;height:3px;border-radius:1px;background:${edgeColors[e.type]};flex-shrink:0"></span><span style="font-size:10px;color:var(--ax-text)">${other?.label || '?'}</span><span style="font-size:8px;padding:1px 4px;border-radius:2px;background:${edgeColors[e.type]}15;color:${edgeColors[e.type]};font-weight:600">${e.type}</span><span style="font-size:8px;color:var(--ax-text-dim)">${Math.round(e.strength * 100)}%</span></div>`;
+                            }).join('');
+                            new ml.Popup({ offset: 14, maxWidth: '220px', className: 'tmap-popup' })
+                                .setLngLat([n.lng, n.lat])
+                                .setHTML(`<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><span style="font-size:18px">${icon}</span><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${n.label}</div><div style="font-size:9px;color:var(--ax-text-dim)">${n.type.charAt(0).toUpperCase() + n.type.slice(1)} · ${conns} connection${conns !== 1 ? 's' : ''}</div></div></div><div style="padding:6px 14px">${connDetails}</div></div>`).addTo(map);
+                        });
+                        networkMarkersRef.current.push(marker);
+                    });
+                }
+            } else {
+                if (map.getLayer('network-lines')) map.removeLayer('network-lines');
+                if (map.getSource('network-source')) map.removeSource('network-source');
+            }
+        } catch {}
+        return () => { networkMarkersRef.current.forEach(m => m.remove()); networkMarkersRef.current = []; };
+    }, [layerNetwork, networkShowPersons, networkShowOrgs, networkShowDevices, loaded]);
+
     // Tiles
     type TileId = string;
     interface TileDef { id: TileId; name: string; category: '2D' | '3D'; preview: string; url?: string; style?: any; }
@@ -980,8 +1267,107 @@ export default function MapIndex() {
                         </div>
                     </Section>
 
-                    <Section title="Sources" icon={Ico.sources}><div className="tmap-empty">No source filters configured.</div></Section>
-                    <Section title="Layers" icon={Ico.layers}><div className="tmap-empty">No custom layers configured.</div></Section>
+                    <Section title="Sources" icon={Ico.sources} badge={activeSourceCount}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {['Camera', 'GPS', 'Audio', 'Mobile App'].map(group => {
+                                const items = sourceTypes.filter(s => s.group === group);
+                                const activeInGroup = items.filter(s => activeSources.has(s.id)).length;
+                                const allOn = activeInGroup === items.length;
+                                return <div key={group}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <span style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{group} {activeInGroup > 0 && <span style={{ color: theme.accent }}>({activeInGroup})</span>}</span>
+                                        <button onClick={() => toggleSourceGroup(group)} style={{ fontSize: 8, fontWeight: 600, color: allOn ? theme.danger : theme.accent, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>{allOn ? 'Off All' : 'On All'}</button>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        {items.map(s => {
+                                            const isOn = activeSources.has(s.id);
+                                            const markerCount = mockSourceMarkers.filter(m => m.sourceId === s.id).length;
+                                            const onlineCount = mockSourceMarkers.filter(m => m.sourceId === s.id && m.status === 'online').length;
+                                            return <button key={s.id} onClick={() => toggleSource(s.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 5, border: `1px solid ${isOn ? s.color + '40' : theme.border}`, background: isOn ? s.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, width: '100%', transition: 'all 0.1s' }} onMouseEnter={e => { if (!isOn) { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = s.color + '25'; } }} onMouseLeave={e => { if (!isOn) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; } }}>
+                                                <span style={{ fontSize: 12, width: 16, textAlign: 'center' as const, flexShrink: 0 }}>{s.icon}</span>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontSize: 10, fontWeight: 600, color: isOn ? s.color : theme.text, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</div>
+                                                </div>
+                                                <span style={{ fontSize: 8, color: theme.textDim, flexShrink: 0 }}>{onlineCount}/{markerCount}</span>
+                                                <div style={{ width: 8, height: 8, borderRadius: 2, border: `1.5px solid ${isOn ? s.color : theme.border}`, background: isOn ? s.color : 'transparent', flexShrink: 0, transition: 'all 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{isOn && <svg width="5" height="5" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>
+                                            </button>;
+                                        })}
+                                    </div>
+                                </div>;
+                            })}
+                            {activeSourceCount > 0 && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, borderTop: `1px solid ${theme.border}` }}>
+                                <span style={{ fontSize: 9, color: theme.textDim }}>{activeSourceMarkers.length} markers visible</span>
+                                <button onClick={() => setActiveSources(new Set())} style={{ fontSize: 8, fontWeight: 600, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Disable All</button>
+                            </div>}
+                        </div>
+                    </Section>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0)}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {/* Heatmap Layer */}
+                            <div style={{ border: `1px solid ${layerHeatmap ? '#f59e0b30' : theme.border}`, borderRadius: 6, padding: 8, background: layerHeatmap ? 'rgba(245,158,11,0.03)' : 'transparent' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: layerHeatmap ? 8 : 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 12 }}>🔥</span>
+                                        <span style={{ fontSize: 11, fontWeight: 600, color: layerHeatmap ? '#f59e0b' : theme.text }}>Activity Heatmap</span>
+                                    </div>
+                                    <button onClick={() => setLayerHeatmap(!layerHeatmap)} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerHeatmap ? '#f59e0b' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
+                                        <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerHeatmap ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                    </button>
+                                </div>
+                                {layerHeatmap && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{heatmapPoints.length} activity points · Density visualization of surveillance events</div>
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: theme.textDim, marginBottom: 2 }}><span>Intensity</span><span style={{ color: '#f59e0b', fontWeight: 700 }}>{(heatmapIntensity * 100).toFixed(0)}%</span></div>
+                                        <input type="range" min="10" max="100" step="5" value={heatmapIntensity * 100} onChange={e => setHeatmapIntensity(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#f59e0b', height: 3 }} />
+                                    </div>
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: theme.textDim, marginBottom: 2 }}><span>Radius</span><span style={{ color: '#f59e0b', fontWeight: 700 }}>{heatmapRadius}px</span></div>
+                                        <input type="range" min="10" max="60" step="5" value={heatmapRadius} onChange={e => setHeatmapRadius(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f59e0b', height: 3 }} />
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                                        {[['🔵', 'Low'], ['🟢', 'Medium'], ['🟡', 'High'], ['🔴', 'Critical'], ['⚪', 'Peak']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 8, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}>{ico} {lbl}</span>)}
+                                    </div>
+                                </div>}
+                            </div>
+
+                            {/* Network Layer */}
+                            <div style={{ border: `1px solid ${layerNetwork ? '#8b5cf630' : theme.border}`, borderRadius: 6, padding: 8, background: layerNetwork ? 'rgba(139,92,246,0.03)' : 'transparent' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: layerNetwork ? 8 : 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 12 }}>🕸️</span>
+                                        <span style={{ fontSize: 11, fontWeight: 600, color: layerNetwork ? '#8b5cf6' : theme.text }}>Network Graph</span>
+                                    </div>
+                                    <button onClick={() => setLayerNetwork(!layerNetwork)} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerNetwork ? '#8b5cf6' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
+                                        <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerNetwork ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                    </button>
+                                </div>
+                                {layerNetwork && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{netNodes.length} nodes · {netEdges.length} connections</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Show</span>
+                                        {[
+                                            { label: 'Persons', icon: '👤', enabled: networkShowPersons, toggle: setNetworkShowPersons, count: netNodes.filter(n => n.type === 'person').length, color: '#ef4444' },
+                                            { label: 'Organizations', icon: '🏢', enabled: networkShowOrgs, toggle: setNetworkShowOrgs, count: netNodes.filter(n => n.type === 'org').length, color: '#3b82f6' },
+                                            { label: 'Devices', icon: '📡', enabled: networkShowDevices, toggle: setNetworkShowDevices, count: netNodes.filter(n => n.type === 'device').length, color: '#22c55e' },
+                                        ].map(f => (
+                                            <button key={f.label} onClick={() => f.toggle(!f.enabled)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', borderRadius: 4, border: `1px solid ${f.enabled ? f.color + '40' : theme.border}`, background: f.enabled ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}>
+                                                <span style={{ fontSize: 10 }}>{f.icon}</span>
+                                                <span style={{ flex: 1, fontSize: 10, fontWeight: 600, color: f.enabled ? f.color : theme.textDim }}>{f.label}</span>
+                                                <span style={{ fontSize: 8, color: theme.textDim }}>{f.count}</span>
+                                                <div style={{ width: 8, height: 8, borderRadius: 2, border: `1.5px solid ${f.enabled ? f.color : theme.border}`, background: f.enabled ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{f.enabled && <svg width="5" height="5" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                        <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Connection Types</span>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                            {Object.entries(edgeColors).map(([type, color]) => <span key={type} style={{ fontSize: 8, display: 'flex', alignItems: 'center', gap: 3, color: theme.textDim }}><span style={{ width: 10, height: 3, borderRadius: 1, background: color }} />{type}</span>)}
+                                        </div>
+                                    </div>
+                                </div>}
+                            </div>
+                        </div>
+                    </Section>
                     <Section title="Tiles" icon={Ico.tiles}  badge={active3D ? 1 : 0}>
                         <div>
                             <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>2D Base Maps</div>

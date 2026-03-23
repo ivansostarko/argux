@@ -64,9 +64,14 @@
 
 /* Map markers */
 .tmap-marker-person, .tmap-marker-org { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.tmap-marker-source { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
+.tmap-marker-status { position: absolute; bottom: -1px; right: -1px; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid rgba(13,18,32,0.9); pointer-events: none; }
 .tmap-marker-inner { transition: transform 0.15s ease, box-shadow 0.15s ease; pointer-events: auto; }
 .tmap-marker-person:hover .tmap-marker-inner,
 .tmap-marker-org:hover .tmap-marker-inner { transform: scale(1.25); box-shadow: 0 4px 16px rgba(0,0,0,0.7) !important; z-index: 100; }
+.tmap-marker-source:hover > .tmap-marker-inner { box-shadow: 0 4px 16px rgba(0,0,0,0.7) !important; }
+.tmap-net-node { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.tmap-net-node:hover > div { box-shadow: 0 4px 12px rgba(0,0,0,0.7) !important; transform: scale(1.2); transition: transform 0.15s ease; }
 
 /* Marker popups */
 .tmap-popup .maplibregl-popup-content { background: rgba(13,18,32,0.97) !important; border: 1px solid var(--ax-border) !important; border-radius: 10px !important; padding: 0 !important; box-shadow: 0 12px 40px rgba(0,0,0,0.6) !important; backdrop-filter: blur(10px); min-width: 240px; }
