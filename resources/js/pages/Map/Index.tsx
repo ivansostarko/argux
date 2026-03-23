@@ -58,6 +58,7 @@ const Ico = {
     objects: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="2"/></svg>,
     places: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 6.5l-4 8-4-8a4 4 0 118 0z"/></svg>,
     settings: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>,
+    workspaces: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M2 4l2-2h4l2 2"/><line x1="6" y1="8" x2="10" y2="8"/><line x1="6" y1="11" x2="9" y2="11"/></svg>,
 };
 
 const personOpts = mockPersons.map(p => ({ id: p.id.toString(), label: `${p.firstName} ${p.lastName}`, sub: `${p.nationality} · ${p.risk}`, img: p.avatar || undefined }));
@@ -435,6 +436,68 @@ export default function MapIndex() {
     const [liveFeedPinned, setLiveFeedPinned] = useState<Set<string>>(new Set());
     const [liveFeedMuted, setLiveFeedMuted] = useState(false);
     const liveFeedIdRef = useRef(0);
+
+    // ═══ WORKSPACES ═══
+    interface MapWorkspace { id: string; name: string; description: string; createdAt: string; updatedAt: string; thumbnail: string; tags: string[]; isAutoSave: boolean; state: WorkspaceState; }
+    interface WorkspaceState { viewport: { center: [number, number]; zoom: number; pitch: number; bearing: number }; dateFrom: string; dateTo: string; selectedPersons: string[]; selectedOrgs: string[]; activeSources: string[]; layerHeatmap: boolean; layerNetwork: boolean; layerLPR: boolean; layerFace: boolean; activeTile: string; active3D: string | null; showZones: boolean; showObjects: boolean; showMinimap: boolean; showCompass: boolean; showControls: boolean; showLabels: boolean; showCoords: boolean; showFps: boolean; showLiveFeed: boolean; showSearch: boolean; showLocalization: boolean; }
+    const [workspaces, setWorkspaces] = useState<MapWorkspace[]>([
+        { id: 'ws-1', name: 'Morning Surveillance', description: 'Active monitoring of Horvat and Al-Rashid movements with LPR + Face layers', createdAt: '2026-03-23 06:00', updatedAt: '2026-03-23 08:30', thumbnail: '', tags: ['surveillance', 'active', 'priority'], isAutoSave: false, state: { viewport: { center: [15.9775, 45.8131], zoom: 14, pitch: 0, bearing: 0 }, dateFrom: '2026-03-23', dateTo: '2026-03-23', selectedPersons: ['1', '3'], selectedOrgs: [], activeSources: [], layerHeatmap: false, layerNetwork: false, layerLPR: true, layerFace: true, activeTile: 'dark', active3D: null, showZones: true, showObjects: false, showMinimap: true, showCompass: true, showControls: true, showLabels: true, showCoords: true, showFps: false, showLiveFeed: true, showSearch: true, showLocalization: false } },
+        { id: 'ws-2', name: 'Zone Perimeter Check', description: 'All zones + heatmap overlay for overnight activity analysis', createdAt: '2026-03-22 22:00', updatedAt: '2026-03-22 23:15', thumbnail: '', tags: ['zones', 'heatmap', 'nightly'], isAutoSave: false, state: { viewport: { center: [15.975, 45.812], zoom: 13, pitch: 0, bearing: 0 }, dateFrom: '2026-03-22', dateTo: '2026-03-23', selectedPersons: [], selectedOrgs: [], activeSources: [], layerHeatmap: true, layerNetwork: false, layerLPR: false, layerFace: false, activeTile: 'dark', active3D: null, showZones: true, showObjects: true, showMinimap: true, showCompass: true, showControls: true, showLabels: false, showCoords: false, showFps: false, showLiveFeed: false, showSearch: true, showLocalization: false } },
+        { id: 'ws-3', name: '3D City Overview', description: 'Full 3D buildings mode with network graph for connection analysis', createdAt: '2026-03-21 14:00', updatedAt: '2026-03-21 16:30', thumbnail: '', tags: ['3d', 'network', 'analysis'], isAutoSave: false, state: { viewport: { center: [15.98, 45.813], zoom: 15, pitch: 55, bearing: -20 }, dateFrom: '2026-02-23', dateTo: '2026-03-23', selectedPersons: [], selectedOrgs: [], activeSources: [], layerHeatmap: false, layerNetwork: true, layerLPR: false, layerFace: false, activeTile: 'dark', active3D: '3d-buildings', showZones: false, showObjects: false, showMinimap: true, showCompass: true, showControls: true, showLabels: true, showCoords: true, showFps: true, showLiveFeed: false, showSearch: true, showLocalization: false } },
+        { id: 'ws-4', name: 'Operation HAWK', description: 'Full deployment view — all sources, all persons, all layers active', createdAt: '2026-03-20 08:00', updatedAt: '2026-03-23 07:00', thumbnail: '', tags: ['operation', 'full', 'hawk'], isAutoSave: false, state: { viewport: { center: [15.977, 45.813], zoom: 14, pitch: 0, bearing: 0 }, dateFrom: '2026-03-20', dateTo: '2026-03-23', selectedPersons: ['1', '3', '7', '9', '12'], selectedOrgs: ['1', '2'], activeSources: [], layerHeatmap: true, layerNetwork: true, layerLPR: true, layerFace: true, activeTile: 'dark', active3D: null, showZones: true, showObjects: true, showMinimap: true, showCompass: true, showControls: true, showLabels: true, showCoords: true, showFps: false, showLiveFeed: true, showSearch: true, showLocalization: false } },
+    ]);
+    const [wsSearch, setWsSearch] = useState('');
+    const [wsModal, setWsModal] = useState<{ mode: 'save' | 'edit'; ws?: MapWorkspace } | null>(null);
+    const [wsForm, setWsForm] = useState({ name: '', description: '', tags: '' });
+    const [wsDeleteConfirm, setWsDeleteConfirm] = useState<string | null>(null);
+    const [wsActiveId, setWsActiveId] = useState<string | null>(null);
+
+    const captureWorkspaceState = (): WorkspaceState => {
+        const map = mapRef.current;
+        const c = map ? map.getCenter() : { lng: 15.977, lat: 45.813 };
+        return {
+            viewport: { center: [c.lng, c.lat], zoom: map?.getZoom() || 13, pitch: map?.getPitch() || 0, bearing: map?.getBearing() || 0 },
+            dateFrom, dateTo, selectedPersons, selectedOrgs,
+            activeSources: Array.from(activeSources),
+            layerHeatmap, layerNetwork, layerLPR, layerFace,
+            activeTile, active3D: active3D || null,
+            showZones, showObjects, showMinimap, showCompass, showControls, showLabels, showCoords, showFps, showLiveFeed, showSearch, showLocalization,
+        };
+    };
+
+    const saveWorkspace = () => {
+        if (!wsForm.name.trim()) return;
+        const now = new Date();
+        const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        if (wsModal?.mode === 'edit' && wsModal.ws) {
+            setWorkspaces(prev => prev.map(w => w.id === wsModal.ws!.id ? { ...w, name: wsForm.name, description: wsForm.description, tags: wsForm.tags.split(',').map(t => t.trim()).filter(Boolean), updatedAt: ts, state: captureWorkspaceState() } : w));
+            setWsActiveId(wsModal.ws.id);
+        } else {
+            const id = `ws-${Date.now()}`;
+            setWorkspaces(prev => [{ id, name: wsForm.name, description: wsForm.description, createdAt: ts, updatedAt: ts, thumbnail: '', tags: wsForm.tags.split(',').map(t => t.trim()).filter(Boolean), isAutoSave: false, state: captureWorkspaceState() }, ...prev]);
+            setWsActiveId(id);
+        }
+        setWsModal(null);
+    };
+
+    const loadWorkspace = (ws: MapWorkspace) => {
+        const s = ws.state;
+        setDateFrom(s.dateFrom); setDateTo(s.dateTo);
+        setSelectedPersons(s.selectedPersons); setSelectedOrgs(s.selectedOrgs);
+        setActiveSources(new Set(s.activeSources as any));
+        setLayerHeatmap(s.layerHeatmap); setLayerNetwork(s.layerNetwork); setLayerLPR(s.layerLPR); setLayerFace(s.layerFace);
+        setActiveTile(s.activeTile as any); setActive3D(s.active3D as any);
+        setShowZones(s.showZones); setShowObjects(s.showObjects); setShowMinimap(s.showMinimap); setShowCompass(s.showCompass); setShowControls(s.showControls); setShowLabels(s.showLabels); setShowCoords(s.showCoords); setShowFps(s.showFps); setShowLiveFeed(s.showLiveFeed); setShowSearch(s.showSearch); setShowLocalization(s.showLocalization);
+        setWsActiveId(ws.id);
+        // Fly to saved viewport
+        const map = mapRef.current;
+        if (map) setTimeout(() => { map.flyTo({ center: s.viewport.center, zoom: s.viewport.zoom, pitch: s.viewport.pitch, bearing: s.viewport.bearing, duration: 1200 }); }, 100);
+    };
+
+    const deleteWorkspace = (id: string) => { setWorkspaces(prev => prev.filter(w => w.id !== id)); if (wsActiveId === id) setWsActiveId(null); setWsDeleteConfirm(null); };
+    const openSaveWs = () => { setWsForm({ name: '', description: '', tags: '' }); setWsModal({ mode: 'save' }); };
+    const openEditWs = (ws: MapWorkspace) => { setWsForm({ name: ws.name, description: ws.description, tags: ws.tags.join(', ') }); setWsModal({ mode: 'edit', ws }); };
+    const updateWsState = (ws: MapWorkspace) => { const now = new Date(); const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; setWorkspaces(prev => prev.map(w => w.id === ws.id ? { ...w, state: captureWorkspaceState(), updatedAt: ts } : w)); };
     const liveFeedMarkerRef = useRef<any>(null);
     const liveFeedPopupRef = useRef<any>(null);
     const showLiveFeedMarker = (evt: any) => {
@@ -2612,6 +2675,109 @@ export default function MapIndex() {
                     </Section>
 
                     {/* SETTINGS */}
+                    <Section title="Workspaces" icon={Ico.workspaces} badge={workspaces.length}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {/* Active indicator */}
+                            {wsActiveId && <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 2 }}>
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
+                                <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{workspaces.find(w => w.id === wsActiveId)?.name || 'Active'}</span>
+                                <button onClick={() => { const ws = workspaces.find(w => w.id === wsActiveId); if (ws) updateWsState(ws); }} title="Update with current state" style={{ fontSize: 7, padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(59,130,246,0.25)', background: 'rgba(59,130,246,0.06)', color: theme.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>💾 Update</button>
+                            </div>}
+                            {/* Actions */}
+                            <div style={{ display: 'flex', gap: 4 }}>
+                                <button onClick={openSaveWs} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px', borderRadius: 5, border: `1px solid ${theme.accent}30`, background: `${theme.accent}08`, color: theme.accent, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>💾 Save Current</button>
+                            </div>
+                            {/* Search */}
+                            <input value={wsSearch} onChange={e => setWsSearch(e.target.value)} placeholder="Search workspaces..." style={{ padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${wsSearch ? theme.accent + '50' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
+                            {/* Workspace list */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto', scrollbarWidth: 'thin' }}>
+                                {workspaces.filter(ws => { if (!wsSearch.trim()) return true; const q = wsSearch.toLowerCase(); return ws.name.toLowerCase().includes(q) || ws.description.toLowerCase().includes(q) || ws.tags.some(t => t.toLowerCase().includes(q)); }).map(ws => {
+                                    const isActive = wsActiveId === ws.id;
+                                    const isDeleting = wsDeleteConfirm === ws.id;
+                                    return <div key={ws.id} style={{ padding: '6px 8px', borderRadius: 6, border: `1px solid ${isActive ? '#22c55e25' : isDeleting ? theme.danger + '25' : theme.border}`, background: isActive ? 'rgba(34,197,94,0.04)' : isDeleting ? 'rgba(239,68,68,0.04)' : 'transparent', transition: 'all 0.15s' }}>
+                                        {/* Header */}
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 3 }}>
+                                            <div style={{ width: 24, height: 24, borderRadius: 5, background: isActive ? 'rgba(34,197,94,0.12)' : `${theme.accent}08`, border: `1px solid ${isActive ? '#22c55e30' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flexShrink: 0 }}>{isActive ? '✅' : '📋'}</div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: 10, fontWeight: 700, color: isActive ? '#22c55e' : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ws.name}</div>
+                                                <div style={{ fontSize: 8, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginTop: 1 }}>{ws.description}</div>
+                                            </div>
+                                        </div>
+                                        {/* Tags */}
+                                        {ws.tags.length > 0 && <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginBottom: 4 }}>
+                                            {ws.tags.map(t => <span key={t} style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${theme.accent}08`, color: theme.accent, border: `1px solid ${theme.accent}15` }}>{t}</span>)}
+                                        </div>}
+                                        {/* Meta */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 7, color: theme.textDim, marginBottom: 4 }}>
+                                            <span>📅 {ws.updatedAt.split(' ')[0]}</span>
+                                            <span>🕐 {ws.updatedAt.split(' ')[1]}</span>
+                                            <span>👤 {ws.state.selectedPersons.length}p</span>
+                                            <span>{ws.state.layerLPR ? '🚗' : ''}{ws.state.layerFace ? '🧑‍🦲' : ''}{ws.state.layerHeatmap ? '🔥' : ''}{ws.state.layerNetwork ? '🕸️' : ''}{ws.state.showZones ? '🛡️' : ''}</span>
+                                        </div>
+                                        {/* Delete confirmation */}
+                                        {isDeleting ? <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                            <span style={{ fontSize: 8, color: theme.danger, flex: 1 }}>Delete this workspace?</span>
+                                            <button onClick={() => deleteWorkspace(ws.id)} style={{ padding: '3px 8px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: theme.danger, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Yes</button>
+                                            <button onClick={() => setWsDeleteConfirm(null)} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>No</button>
+                                        </div> : <div style={{ display: 'flex', gap: 3 }}>
+                                            <button onClick={() => loadWorkspace(ws)} style={{ flex: 1, padding: '4px', borderRadius: 4, border: `1px solid ${isActive ? '#22c55e25' : theme.accent + '25'}`, background: isActive ? 'rgba(34,197,94,0.06)' : `${theme.accent}06`, color: isActive ? '#22c55e' : theme.accent, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>{isActive ? '🔄 Reload' : '📂 Load'}</button>
+                                            <button onClick={() => openEditWs(ws)} style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>✏️</button>
+                                            <button onClick={() => { updateWsState(ws); }} title="Overwrite with current map state" style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>💾</button>
+                                            <button onClick={() => setWsDeleteConfirm(ws.id)} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.04)', color: theme.danger, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>🗑️</button>
+                                        </div>}
+                                    </div>;
+                                })}
+                                {workspaces.filter(ws => { if (!wsSearch.trim()) return true; const q = wsSearch.toLowerCase(); return ws.name.toLowerCase().includes(q) || ws.description.toLowerCase().includes(q) || ws.tags.some(t => t.toLowerCase().includes(q)); }).length === 0 && <div style={{ padding: 12, textAlign: 'center', fontSize: 10, color: theme.textDim }}>{wsSearch ? 'No workspaces match your search.' : 'No saved workspaces yet.'}</div>}
+                            </div>
+                        </div>
+                    </Section>
+
+                    {/* Save/Edit Workspace Modal */}
+                    {wsModal && <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setWsModal(null)}>
+                        <div onClick={e => e.stopPropagation()} style={{ background: '#0d1220', border: `1px solid ${theme.border}`, borderRadius: 14, width: '100%', maxWidth: 400, padding: 0, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', animation: 'argux-fadeIn 0.2s ease-out', overflow: 'hidden' }}>
+                            <div style={{ padding: '14px 18px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 16 }}>{wsModal.mode === 'save' ? '💾' : '✏️'}</span>
+                                <div>
+                                    <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>{wsModal.mode === 'save' ? 'Save Workspace' : 'Edit Workspace'}</div>
+                                    <div style={{ fontSize: 10, color: theme.textDim }}>{wsModal.mode === 'save' ? 'Save the current map configuration for later use' : 'Update workspace details'}</div>
+                                </div>
+                            </div>
+                            <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <div>
+                                    <label style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Name *</label>
+                                    <input value={wsForm.name} onChange={e => setWsForm({ ...wsForm, name: e.target.value })} placeholder="e.g. Morning Surveillance" autoFocus style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Description</label>
+                                    <textarea value={wsForm.description} onChange={e => setWsForm({ ...wsForm, description: e.target.value })} placeholder="What is this workspace for?" rows={2} style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', resize: 'vertical' }} />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Tags <span style={{ fontWeight: 400, color: theme.textDim }}>(comma separated)</span></label>
+                                    <input value={wsForm.tags} onChange={e => setWsForm({ ...wsForm, tags: e.target.value })} placeholder="surveillance, active, priority" style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
+                                </div>
+                                {wsModal.mode === 'save' && <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.12)', fontSize: 9, color: theme.textDim }}>
+                                    <div style={{ fontWeight: 700, color: theme.accent, marginBottom: 4 }}>State to be saved:</div>
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                        <span>📍 Viewport</span>
+                                        <span>📅 Period: {dateFrom} → {dateTo}</span>
+                                        <span>👤 {selectedPersons.length} persons</span>
+                                        <span>🏢 {selectedOrgs.length} orgs</span>
+                                        {layerLPR && <span>🚗 LPR</span>}
+                                        {layerFace && <span>🧑‍🦲 Face</span>}
+                                        {layerHeatmap && <span>🔥 Heatmap</span>}
+                                        {layerNetwork && <span>🕸️ Network</span>}
+                                        {showZones && <span>🛡️ Zones</span>}
+                                        {active3D && <span>🏢 3D</span>}
+                                    </div>
+                                </div>}
+                            </div>
+                            <div style={{ padding: '12px 18px', borderTop: `1px solid ${theme.border}`, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                <button onClick={() => setWsModal(null)} style={{ padding: '8px 16px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textSecondary, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Cancel</button>
+                                <button onClick={saveWorkspace} disabled={!wsForm.name.trim()} style={{ padding: '8px 20px', borderRadius: 6, border: 'none', background: wsForm.name.trim() ? theme.accent : theme.border, color: wsForm.name.trim() ? '#fff' : theme.textDim, fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: wsForm.name.trim() ? 'pointer' : 'not-allowed', opacity: wsForm.name.trim() ? 1 : 0.5 }}>{wsModal.mode === 'save' ? '💾 Save Workspace' : '✏️ Update'}</button>
+                            </div>
+                        </div>
+                    </div>}
+
                     <Section title="Settings" icon={Ico.settings} >
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <Toggle label="World Minimap" description="Satellite overview map in top-right" enabled={showMinimap} onChange={setShowMinimap} />
