@@ -571,12 +571,13 @@ export default function MapIndex() {
         const geojson: any = { type: 'FeatureCollection', features: [] };
         zones.forEach(z => {
             if (hiddenZones.has(z.id)) return; // skip hidden zones
+            const zHeight = z.type === 'restricted' ? 100 : z.type === 'exclusion' ? 90 : z.type === 'operations' ? 70 : z.type === 'surveillance' ? 60 : z.type === 'monitored' ? 50 : z.type === 'quarantine' ? 80 : z.type === 'buffer' ? 30 : 40;
             if (z.shape === 'circle' && z.radius) {
-                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [circleToPolygon(z.lat, z.lng, z.radius)] }, properties: { id: z.id, color: z.color, name: z.name } });
+                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [circleToPolygon(z.lat, z.lng, z.radius)] }, properties: { id: z.id, color: z.color, name: z.name, height: zHeight } });
             } else if (z.shape === 'polygon' && z.points && z.points.length >= 3) {
                 const coords = z.points.map(p => [p.lng, p.lat]);
                 coords.push(coords[0]); // close polygon
-                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] }, properties: { id: z.id, color: z.color, name: z.name } });
+                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] }, properties: { id: z.id, color: z.color, name: z.name, height: zHeight } });
             }
         });
         // Drawing preview
@@ -633,7 +634,8 @@ export default function MapIndex() {
         const map = mapRef.current;
         if (!map || !loaded) return;
         const ctxHandler = (e: any) => {
-            const features = map.queryRenderedFeatures(e.point, { layers: ['zones-fill'] });
+            const zFillLayers = ['zones-fill', 'zones-fill-3d'].filter(l => map.getLayer(l));
+            const features = map.queryRenderedFeatures(e.point, { layers: zFillLayers });
             if (features && features.length > 0) {
                 e.preventDefault();
                 const fid = features[0].properties?.id;
@@ -843,7 +845,7 @@ export default function MapIndex() {
                             'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(0,0,0,0)', 0.2, 'rgba(59,130,246,0.3)', 0.4, 'rgba(34,197,94,0.5)', 0.6, 'rgba(245,158,11,0.7)', 0.8, 'rgba(239,68,68,0.85)', 1, 'rgba(255,255,255,1)'],
                             'heatmap-opacity': 0.75,
                         }
-                    }, map.getLayer('zones-fill') ? 'zones-fill' : undefined);
+                    }, map.getLayer('zones-fill') ? 'zones-fill' : map.getLayer('zones-fill-3d') ? 'zones-fill-3d' : undefined);
                 }
                 map.setPaintProperty('heatmap-layer', 'heatmap-intensity', heatmapIntensity);
                 map.setPaintProperty('heatmap-layer', 'heatmap-radius', heatmapRadius);
@@ -968,11 +970,11 @@ export default function MapIndex() {
                 geojson.features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: o.coords }, properties: { color: o.color, width: o.type === 'freehand' ? 2 : 3, id: o.id } });
             } else if (['rectangle', 'polygon'].includes(o.type) && o.coords.length >= 3) {
                 const closed = [...o.coords, o.coords[0]];
-                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [closed] }, properties: { color: o.color, id: o.id } });
+                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [closed] }, properties: { color: o.color, id: o.id, height: o.type === 'rectangle' ? 45 : 35 } });
             } else if (o.type === 'circle' && o.coords.length >= 1) {
                 const [lng, lat] = o.coords[0]; const r = 150;
                 const circ: [number, number][] = []; for (let i = 0; i <= 64; i++) { const a = (i / 64) * 2 * Math.PI; const dLat = (r / 6371000) * (180 / Math.PI); const dLng = dLat / Math.cos(lat * Math.PI / 180); circ.push([lng + dLng * Math.cos(a), lat + dLat * Math.sin(a)]); }
-                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [circ] }, properties: { color: o.color, id: o.id } });
+                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [circ] }, properties: { color: o.color, id: o.id, height: 55 } });
             }
         });
         // Drawing preview
@@ -998,10 +1000,10 @@ export default function MapIndex() {
         if (!map || !loaded) return;
         const handler = (e: any) => {
             // Check zones first
-            const zoneFeatures = map.queryRenderedFeatures(e.point, { layers: map.getLayer('zones-fill') ? ['zones-fill'] : [] });
+            const zoneFeatures = map.queryRenderedFeatures(e.point, { layers: ['zones-fill', 'zones-fill-3d'].filter(l => map.getLayer(l)) });
             if (zoneFeatures && zoneFeatures.length > 0) return;
             // Check objects
-            const objLayers = ['objects-fill', 'objects-outline', 'objects-line'].filter(l => map.getLayer(l));
+            const objLayers = ['objects-fill', 'objects-fill-3d', 'objects-outline', 'objects-line'].filter(l => map.getLayer(l));
             if (objLayers.length > 0) {
                 const objFeatures = map.queryRenderedFeatures(e.point, { layers: objLayers });
                 if (objFeatures && objFeatures.length > 0) {
@@ -1159,6 +1161,7 @@ export default function MapIndex() {
         if (!map || !loaded) return;
         const vis = showZones ? 'visible' : 'none';
         try { if (map.getLayer('zones-fill')) map.setLayoutProperty('zones-fill', 'visibility', vis); } catch {}
+        try { if (map.getLayer('zones-fill-3d')) map.setLayoutProperty('zones-fill-3d', 'visibility', vis); } catch {}
         try { if (map.getLayer('zones-outline')) map.setLayoutProperty('zones-outline', 'visibility', vis); } catch {}
         try { if (map.getLayer('zones-drawing-line')) map.setLayoutProperty('zones-drawing-line', 'visibility', vis); } catch {}
     }, [showZones, loaded]);
@@ -1227,6 +1230,66 @@ export default function MapIndex() {
             if (map._isGlobe) { rebuildMapForFlat(); }
             else { try { map.easeTo({ pitch: 0, duration: 500 }); } catch {} }
         }
+    }, [active3D, loaded]);
+
+    // 3D mode: swap flat fill → fill-extrusion for zones and objects, elevate markers
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        const is3D = !!active3D;
+        const container = mapContainer.current?.parentElement;
+        if (container) { is3D ? container.classList.add('tmap-3d-active') : container.classList.remove('tmap-3d-active'); }
+
+        try {
+            // ZONES: swap fill → fill-extrusion or back
+            if (map.getSource('zones-source')) {
+                if (is3D) {
+                    if (map.getLayer('zones-fill')) map.removeLayer('zones-fill');
+                    if (!map.getLayer('zones-fill-3d')) {
+                        map.addLayer({ id: 'zones-fill-3d', type: 'fill-extrusion', source: 'zones-source', filter: ['==', '$type', 'Polygon'], paint: {
+                            'fill-extrusion-color': ['get', 'color'],
+                            'fill-extrusion-height': ['coalesce', ['get', 'height'], 50],
+                            'fill-extrusion-base': 0,
+                            'fill-extrusion-opacity': 0.35,
+                        }});
+                    }
+                    if (map.getLayer('zones-outline')) map.setPaintProperty('zones-outline', 'line-width', 3);
+                } else {
+                    if (map.getLayer('zones-fill-3d')) map.removeLayer('zones-fill-3d');
+                    if (!map.getLayer('zones-fill')) {
+                        map.addLayer({ id: 'zones-fill', type: 'fill', source: 'zones-source', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.12 } });
+                    }
+                    if (map.getLayer('zones-outline')) map.setPaintProperty('zones-outline', 'line-width', 2);
+                }
+            }
+            // OBJECTS: swap fill → fill-extrusion or back
+            if (map.getSource('objects-source')) {
+                if (is3D) {
+                    if (map.getLayer('objects-fill')) map.removeLayer('objects-fill');
+                    if (!map.getLayer('objects-fill-3d')) {
+                        map.addLayer({ id: 'objects-fill-3d', type: 'fill-extrusion', source: 'objects-source', filter: ['==', '$type', 'Polygon'], paint: {
+                            'fill-extrusion-color': ['get', 'color'],
+                            'fill-extrusion-height': ['coalesce', ['get', 'height'], 35],
+                            'fill-extrusion-base': 0,
+                            'fill-extrusion-opacity': 0.4,
+                        }});
+                    }
+                    if (map.getLayer('objects-outline')) map.setPaintProperty('objects-outline', 'line-width', 3);
+                    if (map.getLayer('objects-line')) map.setPaintProperty('objects-line', 'line-width', 4);
+                } else {
+                    if (map.getLayer('objects-fill-3d')) map.removeLayer('objects-fill-3d');
+                    if (!map.getLayer('objects-fill')) {
+                        map.addLayer({ id: 'objects-fill', type: 'fill', source: 'objects-source', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.15 } });
+                    }
+                    if (map.getLayer('objects-outline')) map.setPaintProperty('objects-outline', 'line-width', 2);
+                    if (map.getLayer('objects-line')) map.setPaintProperty('objects-line', 'line-width', ['coalesce', ['get', 'width'], 3]);
+                }
+            }
+            // HEATMAP: boost in 3D
+            if (map.getLayer('heatmap-layer')) {
+                map.setPaintProperty('heatmap-layer', 'heatmap-opacity', is3D ? 0.9 : 0.75);
+            }
+        } catch (e) { console.warn('3D layer swap:', e); }
     }, [active3D, loaded]);
 
     // Load MapLibre + map create/rebuild helpers

@@ -77,6 +77,17 @@
 .tmap-ctxmenu-sub-wrap:hover > button { background: rgba(255,255,255,0.05); }
 .tmap-ctxmenu-sub-wrap:hover > .tmap-ctxmenu-sub { display: block !important; }
 
+/* 3D mode marker elevation */
+.tmap-3d-active .tmap-marker-person .tmap-marker-inner,
+.tmap-3d-active .tmap-marker-org .tmap-marker-inner { box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08) !important; }
+.tmap-3d-active .tmap-marker-person,
+.tmap-3d-active .tmap-marker-org { filter: drop-shadow(0 12px 8px rgba(0,0,0,0.4)); }
+.tmap-3d-active .tmap-marker-person::after,
+.tmap-3d-active .tmap-marker-org::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); width: 18px; height: 6px; background: radial-gradient(ellipse, rgba(0,0,0,0.35), transparent 70%); border-radius: 50%; pointer-events: none; }
+.tmap-3d-active .tmap-marker-source { filter: drop-shadow(0 8px 6px rgba(0,0,0,0.35)); }
+.tmap-3d-active .tmap-marker-source::after { content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 14px; height: 4px; background: radial-gradient(ellipse, rgba(0,0,0,0.3), transparent 70%); border-radius: 50%; pointer-events: none; }
+.tmap-3d-active .tmap-net-node { filter: drop-shadow(0 6px 5px rgba(0,0,0,0.3)); }
+
 /* Marker popups */
 .tmap-popup .maplibregl-popup-content { background: rgba(13,18,32,0.97) !important; border: 1px solid var(--ax-border) !important; border-radius: 10px !important; padding: 0 !important; box-shadow: 0 12px 40px rgba(0,0,0,0.6) !important; backdrop-filter: blur(10px); min-width: 240px; }
 .tmap-popup .maplibregl-popup-tip { border-top-color: rgba(13,18,32,0.97) !important; }
