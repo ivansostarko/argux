@@ -1,9 +1,11 @@
 import PageMeta from '../../components/layout/PageMeta';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
+import { mockVehicles } from '../../mock/vehicles';
 
 // All subjects placed in Croatia for mockup — spread across Croatian cities
 const cityCoords: Record<string, [number, number]> = {
@@ -356,6 +358,12 @@ export default function MapIndex() {
     const tlEventMarkersRef = useRef<any[]>([]);
     const tlTrackLineRef = useRef<boolean>(false);
     const timelineActive = timelineOpen && timelineCursor < 100;
+    const [tlLightbox, setTlLightbox] = useState<string | null>(null);
+    const [tlMarkerCtx, setTlMarkerCtx] = useState<{ x: number; y: number; ev: any } | null>(null);
+    const [tlHiddenIds, setTlHiddenIds] = useState<Set<string>>(new Set());
+    const timeAgo = (ts: string) => { const d = Date.now() - new Date(ts.replace(' ', 'T')).getTime(); const m = Math.floor(d / 60000); if (m < 60) return `${m}m ago`; const h = Math.floor(m / 60); if (h < 24) return `${h}h ${m % 60}m ago`; return `${Math.floor(h / 24)}d ago`; };
+    const mockAddress = (lat: number, lng: number) => { const streets = ['Ilica', 'Jurišićeva', 'Savska cesta', 'Vukovarska', 'Maksimirska', 'Zvonimirova', 'Draškovićeva', 'Vlaška', 'Hebrangova', 'Preradovićeva']; const num = Math.floor(((lat * 1000 + lng * 1000) % 50) + 1); const idx = Math.floor(((lat * 10000 + lng * 10000) % streets.length)); return `${streets[idx]} ${num}, Zagreb`; };
+    const tlOccurrences = (ev: any) => { if (ev.type === 'face' && ev.personId) return allTLEvents.filter((e: any) => e.type === 'face' && e.personId === ev.personId).length; if (ev.type === 'lpr' && ev.plate) return allTLEvents.filter((e: any) => e.type === 'lpr' && e.plate === ev.plate).length; return 1; };
 
     // Objects
     type ObjType = 'marker' | 'line' | 'rectangle' | 'polygon' | 'freehand' | 'circle';
@@ -558,11 +566,11 @@ export default function MapIndex() {
     const zoneColors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
     // ═══ TIMELINE COMPUTED (depends on zones) ═══
-    interface TLEvent { id: string; type: string; icon: string; title: string; sub: string; ts: string; lat: number; lng: number; sev: string; color: string; personId?: number; orgId?: number; personName?: string; photoUrl?: string; }
+    interface TLEvent { id: string; type: string; icon: string; title: string; sub: string; ts: string; lat: number; lng: number; sev: string; color: string; personId?: number; orgId?: number; personName?: string; photoUrl?: string; orgName?: string; cameraId?: string; cameraName?: string; confidence?: number; risk?: string; plate?: string; speed?: number; direction?: string; vehicleId?: number; vehicleMake?: string; vehicleModel?: string; vehicleType?: string; emotion?: string; wearing?: string; }
     const allTLEvents = useMemo<TLEvent[]>(() => {
         const evts: TLEvent[] = [
-            ...mockLPR.map(l => ({ id: l.id, type: 'lpr', icon: '🚗', title: `LPR: ${l.plate}`, sub: `${l.personName} · ${l.cameraName} · ${l.speed}km/h ${l.direction}`, ts: l.timestamp, lat: l.lat, lng: l.lng, sev: l.confidence >= 95 ? 'high' : 'medium', color: '#10b981', personId: l.personId, orgId: l.orgId, personName: l.personName, photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg' })),
-            ...mockFaces.map(f => ({ id: f.id, type: 'face', icon: '🧑‍🦲', title: `Face: ${f.personName}`, sub: `${f.confidence}% · ${f.cameraName} · ${f.emotion}`, ts: f.timestamp, lat: f.lat, lng: f.lng, sev: f.risk === 'Critical' ? 'critical' : f.risk === 'High' ? 'high' : 'medium', color: '#ec4899', personId: f.personId, personName: f.personName, photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg' })),
+            ...mockLPR.map(l => { const v = mockVehicles.find(vv => vv.id === l.vehicleId); return { id: l.id, type: 'lpr', icon: '🚗', title: `LPR: ${l.plate}`, sub: `${l.personName} · ${l.cameraName} · ${l.speed}km/h ${l.direction}`, ts: l.timestamp, lat: l.lat, lng: l.lng, sev: l.confidence >= 95 ? 'high' : 'medium', color: '#10b981', personId: l.personId, orgId: l.orgId, personName: l.personName, orgName: l.orgName, photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg', cameraId: l.cameraId, cameraName: l.cameraName, confidence: l.confidence, plate: l.plate, speed: l.speed, direction: l.direction, vehicleId: l.vehicleId, vehicleMake: v?.make, vehicleModel: v?.model, vehicleType: v?.type, risk: v?.risk }; }),
+            ...mockFaces.map(f => ({ id: f.id, type: 'face', icon: '🧑‍🦲', title: `Face: ${f.personName}`, sub: `${f.confidence}% · ${f.cameraName} · ${f.emotion}`, ts: f.timestamp, lat: f.lat, lng: f.lng, sev: f.risk === 'Critical' ? 'critical' : f.risk === 'High' ? 'high' : 'medium', color: '#ec4899', personId: f.personId, personName: f.personName, photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', cameraId: f.cameraId, cameraName: f.cameraName, confidence: f.confidence, risk: f.risk, emotion: f.emotion, wearing: f.wearing })),
             ...zones.flatMap(z => { const s = z.id.charCodeAt(z.id.length - 1); const pids = [1, 12, 0]; return [0, 1, 2].map(i => { const h = (s * 3 + i * 7) % 24; const m = (s * 11 + i * 17) % 60; const labels = ['Entry', 'Exit', 'Breach']; const names = ['Marko Horvat', 'Ivan Babić', 'Unknown']; return { id: `ze-${z.id}-${i}`, type: 'zone', icon: '🛡️', title: `Zone ${labels[i]}: ${z.name}`, sub: `${names[i]} · ${z.type}`, ts: `2026-03-23 ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, lat: z.lat, lng: z.lng, sev: z.type === 'restricted' ? 'critical' : 'info', color: z.color, personId: pids[i], personName: names[i] }; }); }),
             { id: 'se1', type: 'source', icon: '📹', title: 'Camera: Motion Detected', sub: 'Ban Jelačić Cam · Zone A perimeter', ts: '2026-03-23 07:42', lat: 45.8131, lng: 15.9775, sev: 'info', color: '#3b82f6' },
             { id: 'se2', type: 'source', icon: '🎙️', title: 'Audio: Keyword Detected', sub: 'MIC-ALPHA · "delivery" ×3', ts: '2026-03-23 09:15', lat: 45.8133, lng: 15.977, sev: 'high', color: '#f59e0b', personId: 1, personName: 'Marko Horvat' },
@@ -598,7 +606,7 @@ export default function MapIndex() {
     const tlCursorMs = tlStart + (timelineCursor / 100) * tlRange;
     const fmtTlTime = (ms: number) => { const d = new Date(ms); return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 
-    const visibleTLEvents = filteredTLEvents.filter(e => new Date(e.ts.replace(' ', 'T')).getTime() <= tlCursorMs);
+    const visibleTLEvents = filteredTLEvents.filter(e => new Date(e.ts.replace(' ', 'T')).getTime() <= tlCursorMs && !tlHiddenIds.has(e.id));
 
     // Density bars
     const tlDensity = useMemo(() => {
@@ -710,64 +718,55 @@ export default function MapIndex() {
             const isFace = ev.type === 'face';
             const isLPR = ev.type === 'lpr';
             const hasPhoto = isFace || isLPR;
-
             if (hasPhoto) {
-                // Photo-based marker (face or LPR)
                 const borderRadius = isFace ? '50%' : '5px';
                 const size = isFace ? 30 : 28;
                 inner.style.cssText = `width:${size}px;height:${size}px;border-radius:${borderRadius};border:2.5px solid ${ev.color};background:url(${ev.photoUrl}) center/cover;box-shadow:0 0 10px ${ev.color}60,0 2px 8px rgba(0,0,0,0.5);position:relative;overflow:visible;`;
-                // Type badge (bottom-right)
                 const badge = document.createElement('div');
                 badge.style.cssText = `position:absolute;bottom:-3px;right:-3px;width:14px;height:14px;border-radius:${isFace ? '50%' : '3px'};background:${ev.color};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;font-size:7px;pointer-events:none;`;
                 badge.textContent = isFace ? '👤' : '🚗';
                 inner.appendChild(badge);
-                // Severity indicator (top-left)
                 const sevDot = document.createElement('div');
                 sevDot.style.cssText = `position:absolute;top:-2px;left:-2px;width:8px;height:8px;border-radius:50%;background:${sevColor};border:1.5px solid rgba(13,18,32,0.9);pointer-events:none;`;
                 inner.appendChild(sevDot);
             } else {
-                // Icon-based marker (source, zone, object)
                 inner.style.cssText = `width:26px;height:26px;border-radius:6px;border:2px solid ${ev.color};background:rgba(13,18,32,0.92);box-shadow:0 0 8px ${ev.color}50,0 2px 6px rgba(0,0,0,0.4);position:relative;overflow:visible;display:flex;align-items:center;justify-content:center;font-size:13px;`;
                 inner.textContent = ev.icon;
-                // Severity dot
                 const sevDot = document.createElement('div');
                 sevDot.style.cssText = `position:absolute;top:-2px;right:-2px;width:7px;height:7px;border-radius:50%;background:${sevColor};border:1.5px solid rgba(13,18,32,0.9);pointer-events:none;`;
                 inner.appendChild(sevDot);
             }
-
-            // Pulse ring for last 5 events
             if (i >= visibleTLEvents.length - 5) {
                 const pulse = document.createElement('div');
                 pulse.className = 'tmap-tl-pulse';
-                const pSize = hasPhoto ? (isFace ? 38 : 36) : 34;
-                pulse.style.cssText = `position:absolute;inset:-${(pSize - (hasPhoto ? (isFace ? 30 : 28) : 26)) / 2 + 2}px;border-radius:${isFace ? '50%' : '8px'};border:1.5px solid ${ev.color};opacity:0;pointer-events:none;`;
+                pulse.style.cssText = `position:absolute;inset:-6px;border-radius:${isFace ? '50%' : '8px'};border:1.5px solid ${ev.color};opacity:0;pointer-events:none;`;
                 inner.appendChild(pulse);
             }
-
             wrapper.appendChild(inner);
             const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([ev.lng, ev.lat]).addTo(map);
             wrapper.addEventListener('click', (e: Event) => {
                 e.stopPropagation();
-                const photoHtml = ev.photoUrl ? `<div style="padding:0;border-bottom:1px solid var(--ax-border)"><img src="${ev.photoUrl}" style="width:100%;height:90px;object-fit:cover;display:block;" /></div>` : '';
-                new ml.Popup({ offset: hasPhoto ? 18 : 14, maxWidth: '280px', className: 'tmap-popup' }).setLngLat([ev.lng, ev.lat]).setHTML(`<div class="tmap-popup-card">
-                    ${photoHtml}
-                    <div class="tmap-popup-header" style="gap:8px">
-                        <div style="width:28px;height:28px;border-radius:${isFace ? '50%' : '6px'};background:${ev.color}15;border:1.5px solid ${ev.color}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${ev.icon}</div>
-                        <div class="tmap-popup-hinfo">
-                            <div class="tmap-popup-name" style="font-size:12px">${ev.title}</div>
-                            <div class="tmap-popup-meta">
-                                <span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${sevColor}15;color:${sevColor};border:1px solid ${sevColor}30">${ev.sev.toUpperCase()}</span>
-                                <span style="font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;background:${ev.color}15;color:${ev.color};border:1px solid ${ev.color}30">${ev.type.toUpperCase()}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tmap-popup-grid">
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">📋 Details</span><span class="tmap-popup-val">${ev.sub}</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${ev.ts}</span></div>
-                        ${ev.personName ? `<div class="tmap-popup-row"><span class="tmap-popup-label">👤 Person</span><span class="tmap-popup-val" style="color:var(--ax-accent)">${ev.personName}</span></div>` : ''}
-                    </div>
-                    <div class="tmap-popup-coords">${ev.lat.toFixed(5)}, ${ev.lng.toFixed(5)}</div>
-                </div>`).addTo(map);
+                const addr = mockAddress(ev.lat, ev.lng);
+                const ago = timeAgo(ev.ts);
+                const occ = tlOccurrences(ev);
+                const riskColor = ev.risk === 'Critical' ? '#ef4444' : ev.risk === 'High' ? '#f97316' : ev.risk === 'Medium' ? '#f59e0b' : '#6b7280';
+                const confColor = (ev.confidence || 0) >= 90 ? '#22c55e' : (ev.confidence || 0) >= 75 ? '#f59e0b' : '#ef4444';
+                let popupHtml = '';
+                if (isFace) {
+                    popupHtml = `<div class="tmap-popup-card"><div style="position:relative;border-bottom:1px solid var(--ax-border)"><img src="${ev.photoUrl}" class="tmap-popup-photo" data-lightbox="${ev.photoUrl}" style="width:100%;height:100px;object-fit:cover;display:block;cursor:zoom-in;" /><div style="position:absolute;top:6px;right:6px;display:flex;gap:3px"><span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:${riskColor};backdrop-filter:blur(4px)">${ev.risk || 'Unknown'}</span><span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:${confColor};backdrop-filter:blur(4px)">${ev.confidence || 0}%</span></div></div><div class="tmap-popup-header" style="gap:8px"><div style="width:28px;height:28px;border-radius:50%;background:#ec489915;border:1.5px solid #ec489940;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🧑‍🦲</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${ev.personId && ev.personId > 0 ? `<a href="/persons/${ev.personId}" style="color:var(--ax-accent);text-decoration:none">${ev.personName}</a>` : ev.personName || 'Unknown'}</div><div class="tmap-popup-meta"><span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${sevColor}15;color:${sevColor};border:1px solid ${sevColor}30">${ev.sev.toUpperCase()}</span><span style="font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;background:#ec489915;color:#ec4899;border:1px solid #ec489930">FACE</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${ev.ts} <span style="color:var(--ax-text-dim);font-size:9px">(${ago})</span></span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🎯 Confidence</span><span class="tmap-popup-val" style="color:${confColor};font-weight:700">${ev.confidence}%</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚠️ Risk</span><span class="tmap-popup-val" style="color:${riskColor};font-weight:600">${ev.risk || 'Unknown'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📊 Occurrences</span><span class="tmap-popup-val">${occ} sightings</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">😐 Emotion</span><span class="tmap-popup-val">${ev.emotion || '—'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">👕 Wearing</span><span class="tmap-popup-val">${ev.wearing || '—'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val"><a href="/devices/${ev.cameraId}" style="color:var(--ax-accent);text-decoration:none">${ev.cameraName}</a></span></div></div><div class="tmap-popup-coords">${ev.lat.toFixed(5)}, ${ev.lng.toFixed(5)}</div></div>`;
+                } else if (isLPR) {
+                    popupHtml = `<div class="tmap-popup-card"><div style="position:relative;border-bottom:1px solid var(--ax-border)"><img src="${ev.photoUrl}" class="tmap-popup-photo" data-lightbox="${ev.photoUrl}" style="width:100%;height:80px;object-fit:cover;display:block;cursor:zoom-in;" /><div style="position:absolute;bottom:6px;left:6px;font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.8);letter-spacing:0.06em">${ev.plate || ''}</div><div style="position:absolute;top:6px;right:6px;display:flex;gap:3px"><span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:#10b981;backdrop-filter:blur(4px)">${ev.confidence || 0}%</span></div></div><div class="tmap-popup-header" style="gap:8px"><div style="width:28px;height:28px;border-radius:5px;background:#10b98115;border:1.5px solid #10b98140;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🚗</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px;font-family:'JetBrains Mono',monospace;letter-spacing:0.04em">${ev.plate || ''}</div><div class="tmap-popup-meta"><span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${sevColor}15;color:${sevColor};border:1px solid ${sevColor}30">${ev.sev.toUpperCase()}</span><span style="font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;background:#10b98115;color:#10b981;border:1px solid #10b98130">LPR</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">👤 Owner</span><span class="tmap-popup-val">${ev.personId && ev.personId > 0 ? `<a href="/persons/${ev.personId}" style="color:var(--ax-accent);text-decoration:none">${ev.personName}</a>` : ev.personName || 'Unknown'}${ev.orgName ? ` · <a href="/organizations/${ev.orgId}" style="color:var(--ax-accent);text-decoration:none">${ev.orgName}</a>` : ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${ev.ts} <span style="color:var(--ax-text-dim);font-size:9px">(${ago})</span></span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚠️ Risk</span><span class="tmap-popup-val" style="color:${riskColor};font-weight:600">${ev.risk || 'Unknown'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📊 Occurrences</span><span class="tmap-popup-val">${occ} sightings</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Speed</span><span class="tmap-popup-val">${ev.direction || '—'} at ${ev.speed || 0} km/h</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🚙 Vehicle</span><span class="tmap-popup-val">${ev.vehicleType || '—'} · ${ev.vehicleMake || ''} ${ev.vehicleModel || ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val"><a href="/devices/${ev.cameraId}" style="color:var(--ax-accent);text-decoration:none">${ev.cameraName}</a></span></div></div><div class="tmap-popup-coords">${ev.lat.toFixed(5)}, ${ev.lng.toFixed(5)}</div></div>`;
+                } else {
+                    popupHtml = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:28px;height:28px;border-radius:6px;background:${ev.color}15;border:1.5px solid ${ev.color}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${ev.icon}</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${ev.title}</div><div class="tmap-popup-meta"><span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${sevColor}15;color:${sevColor};border:1px solid ${sevColor}30">${ev.sev.toUpperCase()}</span><span style="font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;background:${ev.color}15;color:${ev.color};border:1px solid ${ev.color}30">${ev.type.toUpperCase()}</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📋 Details</span><span class="tmap-popup-val">${ev.sub}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${ev.ts} <span style="color:var(--ax-text-dim);font-size:9px">(${ago})</span></span></div>${ev.personName ? `<div class="tmap-popup-row"><span class="tmap-popup-label">👤 Person</span><span class="tmap-popup-val" style="color:var(--ax-accent)">${ev.personName}</span></div>` : ''}</div><div class="tmap-popup-coords">${ev.lat.toFixed(5)}, ${ev.lng.toFixed(5)}</div></div>`;
+                }
+                const popup = new ml.Popup({ offset: hasPhoto ? 18 : 14, maxWidth: '300px', className: 'tmap-popup' }).setLngLat([ev.lng, ev.lat]).setHTML(popupHtml).addTo(map);
+                setTimeout(() => { popup.getElement()?.querySelectorAll('.tmap-popup-photo').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setTlLightbox(img.getAttribute('data-lightbox')); }); }); }, 50);
+            });
+            wrapper.addEventListener('contextmenu', (e: Event) => {
+                e.preventDefault(); e.stopPropagation();
+                const me = e as MouseEvent;
+                const rect = mapContainer.current?.getBoundingClientRect();
+                if (rect) setTlMarkerCtx({ x: me.clientX - rect.left, y: me.clientY - rect.top, ev });
             });
             tlEventMarkersRef.current.push(marker);
         });
@@ -2508,7 +2507,8 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>👤 {tlStats.uniquePersons} persons</span>
                         <span style={{ fontSize: 8, color: theme.textDim }}>⚡ {tlStats.rate}/hr</span>
                         <div style={{ flex: 1 }} />
-                        <button onClick={() => { /* mock export */ const el = document.createElement('a'); el.href = 'data:text/csv,' + encodeURIComponent('id,type,title,time,lat,lng,severity,person\n' + visibleTLEvents.map(e => `${e.id},${e.type},"${e.title}",${e.ts},${e.lat},${e.lng},${e.sev},${e.personName || ''}`).join('\n')); el.download = 'argux-timeline-export.csv'; el.click(); }} style={{ padding: '2px 7px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 7, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>📥 Export CSV</button>
+                        <button onClick={() => { /* mock export */ const el = document.createElement('a'); el.href = 'data:text/csv,' + encodeURIComponent('id,type,title,time,lat,lng,severity,person\n' + visibleTLEvents.map(e => `${e.id},${e.type},"${e.title}",${e.ts},${e.lat},${e.lng},${e.sev},${e.personName || ''}`).join('\n')); el.download = 'argux-timeline-export.csv'; el.click(); }} style={{ padding: '2px 7px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 7, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>📥 Export</button>
+                        {tlHiddenIds.size > 0 && <button onClick={() => setTlHiddenIds(new Set())} style={{ padding: '2px 7px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 7, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>👁️ {tlHiddenIds.size} hidden · Show all</button>}
                     </div>
 
                     {/* Severity heatstrip */}
@@ -2592,6 +2592,33 @@ export default function MapIndex() {
                         </div>
                     </div>
                 </div>}
+
+                {/* Timeline Lightbox */}
+                {tlLightbox && <div onClick={() => setTlLightbox(null)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out', backdropFilter: 'blur(8px)' }}>
+                    <img src={tlLightbox} style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8, boxShadow: '0 20px 60px rgba(0,0,0,0.8)' }} />
+                    <button onClick={() => setTlLightbox(null)} style={{ position: 'absolute', top: 20, right: 20, width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                </div>}
+
+                {/* Timeline Marker Context Menu */}
+                {tlMarkerCtx && <div onClick={() => setTlMarkerCtx(null)} style={{ position: 'fixed', inset: 0, zIndex: 100 }}><div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: tlMarkerCtx.x + (mapContainer.current?.getBoundingClientRect().left || 0), top: tlMarkerCtx.y + (mapContainer.current?.getBoundingClientRect().top || 0), zIndex: 101, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 180 }}>
+                    <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {tlMarkerCtx.ev.photoUrl ? <img src={tlMarkerCtx.ev.photoUrl} style={{ width: 22, height: 22, borderRadius: tlMarkerCtx.ev.type === 'face' ? '50%' : 4, objectFit: 'cover', border: `2px solid ${tlMarkerCtx.ev.color}` }} /> : <span style={{ fontSize: 14 }}>{tlMarkerCtx.ev.icon}</span>}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tlMarkerCtx.ev.title}</div>
+                            <div style={{ fontSize: 8, color: theme.textDim }}>{tlMarkerCtx.ev.ts}</div>
+                        </div>
+                    </div>
+                    <div style={{ padding: '2px 0' }}>
+                        {tlMarkerCtx.ev.type === 'face' && tlMarkerCtx.ev.personId && tlMarkerCtx.ev.personId > 0 && <button onClick={() => { router.visit(`/persons/${tlMarkerCtx.ev.personId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.accent, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👤 Person Details</button>}
+                        {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.vehicleId && tlMarkerCtx.ev.vehicleId > 0 && <button onClick={() => { router.visit(`/vehicles/${tlMarkerCtx.ev.vehicleId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.accent, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🚗 Vehicle Details</button>}
+                        {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.personId && tlMarkerCtx.ev.personId > 0 && <button onClick={() => { router.visit(`/persons/${tlMarkerCtx.ev.personId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👤 Owner Profile</button>}
+                        {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.orgId && <button onClick={() => { router.visit(`/organizations/${tlMarkerCtx.ev.orgId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🏢 Organization</button>}
+                        {tlMarkerCtx.ev.cameraId && <button onClick={() => { router.visit(`/devices/${tlMarkerCtx.ev.cameraId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>📹 Camera Details</button>}
+                        {tlMarkerCtx.ev.photoUrl && <button onClick={() => { setTlLightbox(tlMarkerCtx.ev.photoUrl!); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🔍 View Photo</button>}
+                        <div style={{ height: 1, background: theme.border, margin: '2px 8px' }} />
+                        <button onClick={() => { setTlHiddenIds(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👁️‍🗨️ Hide from Map</button>
+                    </div>
+                </div></div>}
 
                 {/* Coordinates */}
                 {showCoords && loaded && <div className="tmap-coords" style={{ bottom: timelineOpen ? 282 : 8, transition: 'bottom 0.3s ease', zIndex: 15 }}><span>LAT {coords.lat.toFixed(5)}</span><span>LNG {coords.lng.toFixed(5)}</span><span>Z {zoom}</span><span>BRG {Math.round(bearing)}°</span></div>}
