@@ -16,10 +16,13 @@
 .tmap-sidebar { width: 300px; background: var(--ax-sidebar-bg); border-right: 1px solid var(--ax-border); display: flex; flex-direction: column; flex-shrink: 0; z-index: 10; overflow: hidden; }
 .tmap-sidebar-header { padding: 12px 14px; border-bottom: 1px solid var(--ax-border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
 .tmap-sidebar-brand { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ax-accent); }
-.tmap-sidebar-body { flex: 1; overflow-y: auto; padding: 8px 0; scrollbar-width: thin; }
+.tmap-sidebar-body { flex: 1; overflow-y: auto; padding: 8px 0; scrollbar-width: thin; display: flex; flex-direction: column; }
 
 /* Sidebar section */
 .tmap-section { border-bottom: 1px solid var(--ax-border); }
+.tmap-section-wrap { transition: opacity 0.15s; }
+.tmap-section-wrap.dragging { opacity: 0.4; }
+.tmap-section-wrap.drag-over { box-shadow: inset 0 -2px 0 var(--ax-accent); }
 .tmap-section-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; transition: background 0.1s; user-select: none; }
 .tmap-section-header:hover { background: rgba(255,255,255,0.02); }
 .tmap-section-title { font-size: 10px; font-weight: 700; color: var(--ax-text-dim); letter-spacing: 0.1em; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }

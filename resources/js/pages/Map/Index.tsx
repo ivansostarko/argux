@@ -33,9 +33,9 @@ function SidebarMS({ selected, onChange, options, placeholder, showSelectAll }: 
 }
 
 /* ═══ COLLAPSIBLE SECTION ═══ */
-function Section({ title, icon, children, defaultOpen = false, badge }: { title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; badge?: number }) {
+function Section({ title, icon, children, defaultOpen = false, badge, dragHandle }: { title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; badge?: number; dragHandle?: React.ReactNode }) {
     const [open, setOpen] = useState(defaultOpen);
-    return (<div className="tmap-section"><div className="tmap-section-header" onClick={() => setOpen(!open)}><div className="tmap-section-title">{icon}{title}{badge !== undefined && badge > 0 && <span style={{ fontSize: 8, fontWeight: 700, padding: '0 4px', borderRadius: 6, background: theme.accent, color: '#fff', lineHeight: '14px' }}>{badge}</span>}</div><svg className={`tmap-section-chevron ${open ? 'open' : ''}`} width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2,3 5,7 8,3" /></svg></div>{open && <div className="tmap-section-content">{children}</div>}</div>);
+    return (<div className="tmap-section"><div className="tmap-section-header" onClick={() => setOpen(!open)}>{dragHandle}<div className="tmap-section-title">{icon}{title}{badge !== undefined && badge > 0 && <span style={{ fontSize: 8, fontWeight: 700, padding: '0 4px', borderRadius: 6, background: theme.accent, color: '#fff', lineHeight: '14px' }}>{badge}</span>}</div><svg className={`tmap-section-chevron ${open ? 'open' : ''}`} width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2,3 5,7 8,3" /></svg></div>{open && <div className="tmap-section-content">{children}</div>}</div>);
 }
 
 /* ═══ TOGGLE SWITCH ═══ */
@@ -451,6 +451,36 @@ export default function MapIndex() {
     const [wsForm, setWsForm] = useState({ name: '', description: '', tags: '' });
     const [wsDeleteConfirm, setWsDeleteConfirm] = useState<string | null>(null);
     const [wsActiveId, setWsActiveId] = useState<string | null>(null);
+
+    // ═══ SECTION ORDER (drag & drop) ═══
+    const defaultSectionOrder = ['period', 'subjects', 'sources', 'layers', 'tiles', 'tools', 'intelligence', 'objects', 'places', 'workspaces', 'settings'] as const;
+    type SectionId = typeof defaultSectionOrder[number];
+    const [sectionOrder, setSectionOrder] = useState<SectionId[]>(() => {
+        try { const saved = localStorage.getItem('argux_section_order'); if (saved) { const parsed = JSON.parse(saved); if (Array.isArray(parsed) && parsed.length === defaultSectionOrder.length) return parsed; } } catch {} return [...defaultSectionOrder];
+    });
+    const [dragSectionId, setDragSectionId] = useState<SectionId | null>(null);
+    const [dragOverId, setDragOverId] = useState<SectionId | null>(null);
+    const [sectionReorderMode, setSectionReorderMode] = useState(false);
+
+    const handleSectionDragStart = (id: SectionId) => { setDragSectionId(id); };
+    const handleSectionDragOver = (e: React.DragEvent, id: SectionId) => { e.preventDefault(); if (dragSectionId && id !== dragSectionId) setDragOverId(id); };
+    const handleSectionDrop = (id: SectionId) => {
+        if (!dragSectionId || dragSectionId === id) { setDragSectionId(null); setDragOverId(null); return; }
+        setSectionOrder(prev => {
+            const newOrder = [...prev];
+            const fromIdx = newOrder.indexOf(dragSectionId);
+            const toIdx = newOrder.indexOf(id);
+            if (fromIdx === -1 || toIdx === -1) return prev;
+            newOrder.splice(fromIdx, 1);
+            newOrder.splice(toIdx, 0, dragSectionId);
+            try { localStorage.setItem('argux_section_order', JSON.stringify(newOrder)); } catch {}
+            return newOrder;
+        });
+        setDragSectionId(null); setDragOverId(null);
+    };
+    const handleSectionDragEnd = () => { setDragSectionId(null); setDragOverId(null); };
+    const resetSectionOrder = () => { const o = [...defaultSectionOrder]; setSectionOrder(o); try { localStorage.setItem('argux_section_order', JSON.stringify(o)); } catch {} };
+    const dragHandleEl = (id: SectionId) => sectionReorderMode ? <div draggable onDragStart={() => handleSectionDragStart(id)} onDragEnd={handleSectionDragEnd} onClick={e => e.stopPropagation()} style={{ cursor: 'grab', padding: '2px 4px 2px 0', display: 'flex', alignItems: 'center', color: theme.textDim, flexShrink: 0 }} title="Drag to reorder"><svg width="8" height="10" viewBox="0 0 8 12" fill="currentColor"><circle cx="2" cy="2" r="1"/><circle cx="6" cy="2" r="1"/><circle cx="2" cy="6" r="1"/><circle cx="6" cy="6" r="1"/><circle cx="2" cy="10" r="1"/><circle cx="6" cy="10" r="1"/></svg></div> : undefined;
 
     const captureWorkspaceState = (): WorkspaceState => {
         const map = mapRef.current;
@@ -2219,8 +2249,18 @@ export default function MapIndex() {
                     <button onClick={handleRecenter} style={{ width: 26, height: 26, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Recenter" onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/></svg></button>
                 </div>
                 <div className="tmap-sidebar-body">
+                    {/* Section reorder control */}
+                    <div style={{ padding: '4px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${theme.border}30`, flexShrink: 0 }}>
+                        <button onClick={() => setSectionReorderMode(!sectionReorderMode)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 4, border: `1px solid ${sectionReorderMode ? theme.accent + '40' : 'transparent'}`, background: sectionReorderMode ? `${theme.accent}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 600, color: sectionReorderMode ? theme.accent : theme.textDim }}>
+                            <svg width="8" height="10" viewBox="0 0 8 12" fill="currentColor"><circle cx="2" cy="2" r="1"/><circle cx="6" cy="2" r="1"/><circle cx="2" cy="6" r="1"/><circle cx="6" cy="6" r="1"/><circle cx="2" cy="10" r="1"/><circle cx="6" cy="10" r="1"/></svg>
+                            {sectionReorderMode ? 'Done' : 'Reorder'}
+                        </button>
+                        {sectionReorderMode && <button onClick={resetSectionOrder} style={{ fontSize: 8, padding: '3px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, color: theme.textDim }}>Reset order</button>}
+                    </div>
+
                     {/* PERIOD */}
-                    <Section title="Period" icon={Ico.period} >
+                    <div className={`tmap-section-wrap${dragSectionId === 'period' ? ' dragging' : ''}${dragOverId === 'period' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('period') }} onDragOver={e => handleSectionDragOver(e, 'period')} onDrop={() => handleSectionDrop('period')}>
+                    <Section title="Period" icon={Ico.period} dragHandle={dragHandleEl('period')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>From</div><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={dateInputStyle} /></div>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>To</div><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={dateInputStyle} /></div>
@@ -2234,16 +2274,20 @@ export default function MapIndex() {
                             </div>}
                         </div>
                     </Section>
+                    </div>
 
                     {/* SUBJECTS */}
-                    <Section title="Subjects" icon={Ico.subjects} badge={selectedPersons.length + selectedOrgs.length}>
+                    <div className={`tmap-section-wrap${dragSectionId === 'subjects' ? ' dragging' : ''}${dragOverId === 'subjects' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('subjects') }} onDragOver={e => handleSectionDragOver(e, 'subjects')} onDrop={() => handleSectionDrop('subjects')}>
+                    <Section title="Subjects" icon={Ico.subjects} badge={selectedPersons.length + selectedOrgs.length} dragHandle={dragHandleEl('subjects')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Persons ({selectedPersons.length}/{mockPersons.length})</div><SidebarMS selected={selectedPersons} onChange={setSelectedPersons} options={personOpts} placeholder="Select persons to track..." showSelectAll /></div>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Organizations ({selectedOrgs.length}/{mockOrganizations.length})</div><SidebarMS selected={selectedOrgs} onChange={setSelectedOrgs} options={orgOpts} placeholder="Select organizations..." showSelectAll /></div>
                         </div>
                     </Section>
+                    </div>
 
-                    <Section title="Sources" icon={Ico.sources} badge={activeSourceCount}>
+                    <div className={`tmap-section-wrap${dragSectionId === 'sources' ? ' dragging' : ''}${dragOverId === 'sources' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('sources') }} onDragOver={e => handleSectionDragOver(e, 'sources')} onDrop={() => handleSectionDrop('sources')}>
+                    <Section title="Sources" icon={Ico.sources} badge={activeSourceCount} dragHandle={dragHandleEl('sources')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {['Camera', 'GPS', 'Audio', 'Mobile App'].map(group => {
                                 const items = sourceTypes.filter(s => s.group === group);
@@ -2277,7 +2321,9 @@ export default function MapIndex() {
                             </div>}
                         </div>
                     </Section>
-                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0)}>
+                    </div>
+                    <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {/* Heatmap Layer */}
                             <div style={{ border: `1px solid ${layerHeatmap ? '#f59e0b30' : theme.border}`, borderRadius: 6, padding: 8, background: layerHeatmap ? 'rgba(245,158,11,0.03)' : 'transparent' }}>
@@ -2453,7 +2499,9 @@ export default function MapIndex() {
                             </div>
                         </div>
                     </Section>
-                    <Section title="Tiles" icon={Ico.tiles} badge={active3D ? 1 : 0}>
+                    </div>
+                    <div className={`tmap-section-wrap${dragSectionId === 'tiles' ? ' dragging' : ''}${dragOverId === 'tiles' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('tiles') }} onDragOver={e => handleSectionDragOver(e, 'tiles')} onDrop={() => handleSectionDrop('tiles')}>
+                    <Section title="Tiles" icon={Ico.tiles} badge={active3D ? 1 : 0} dragHandle={dragHandleEl('tiles')}>
                         <div>
                             <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>2D Base Maps</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 12 }}>
@@ -2476,7 +2524,9 @@ export default function MapIndex() {
                             {active3D && <div style={{ marginTop: 8, padding: '5px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', fontSize: 9, color: 'rgba(139,92,246,0.7)' }}>3D mode active: {tiles3D.find(t => t.id === active3D)?.name}. Click again to disable.</div>}
                         </div>
                     </Section>
-                    <Section title="Tools" icon={Ico.tools} badge={(rulerActive ? 1 : 0) + (zoneDrawing ? 1 : 0)}>
+                    </div>
+                    <div className={`tmap-section-wrap${dragSectionId === 'tools' ? ' dragging' : ''}${dragOverId === 'tools' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('tools') }} onDragOver={e => handleSectionDragOver(e, 'tools')} onDrop={() => handleSectionDrop('tools')}>
+                    <Section title="Tools" icon={Ico.tools} badge={(rulerActive ? 1 : 0) + (zoneDrawing ? 1 : 0)} dragHandle={dragHandleEl('tools')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {/* Ruler */}
                             <div style={{ border: `1px solid ${rulerActive ? '#f59e0b30' : theme.border}`, borderRadius: 6, padding: 8, background: rulerActive ? 'rgba(245,158,11,0.03)' : 'transparent' }}>
@@ -2575,8 +2625,12 @@ export default function MapIndex() {
                             </div>
                         </div>
                     </Section>
-                    <Section title="Intelligence" icon={Ico.intel}><div className="tmap-empty">Intelligence analysis panels coming soon.</div></Section>
-                    <Section title="Objects" icon={Ico.objects} badge={mapObjects.length}>
+                    </div>
+                    <div className={`tmap-section-wrap${dragSectionId === 'intelligence' ? ' dragging' : ''}${dragOverId === 'intelligence' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('intelligence') }} onDragOver={e => handleSectionDragOver(e, 'intelligence')} onDrop={() => handleSectionDrop('intelligence')}>
+                    <Section title="Intelligence" icon={Ico.intel} dragHandle={dragHandleEl('intelligence')}><div className="tmap-empty">Intelligence analysis panels coming soon.</div></Section>
+                    </div>
+                    <div className={`tmap-section-wrap${dragSectionId === 'objects' ? ' dragging' : ''}${dragOverId === 'objects' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('objects') }} onDragOver={e => handleSectionDragOver(e, 'objects')} onDrop={() => handleSectionDrop('objects')}>
+                    <Section title="Objects" icon={Ico.objects} badge={mapObjects.length} dragHandle={dragHandleEl('objects')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {/* Draw buttons */}
                             {!objDrawing && !placingMarker && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 3 }}>
@@ -2608,7 +2662,9 @@ export default function MapIndex() {
                             </div>
                         </div>
                     </Section>
-                    <Section title="Saved Places" icon={Ico.places}  badge={savedPlaces.length}>
+                    </div>
+                    <div className={`tmap-section-wrap${dragSectionId === 'places' ? ' dragging' : ''}${dragOverId === 'places' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('places') }} onDragOver={e => handleSectionDragOver(e, 'places')} onDrop={() => handleSectionDrop('places')}>
+                    <Section title="Saved Places" icon={Ico.places}  badge={savedPlaces.length} dragHandle={dragHandleEl('places')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {/* Search + Add */}
                             <div style={{ display: 'flex', gap: 4 }}>
@@ -2673,9 +2729,11 @@ export default function MapIndex() {
                             </div>}
                         </div>
                     </Section>
+                    </div>
 
                     {/* SETTINGS */}
-                    <Section title="Workspaces" icon={Ico.workspaces} badge={workspaces.length}>
+                    <div className={`tmap-section-wrap${dragSectionId === 'workspaces' ? ' dragging' : ''}${dragOverId === 'workspaces' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('workspaces') }} onDragOver={e => handleSectionDragOver(e, 'workspaces')} onDrop={() => handleSectionDrop('workspaces')}>
+                    <Section title="Workspaces" icon={Ico.workspaces} badge={workspaces.length} dragHandle={dragHandleEl('workspaces')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {/* Active indicator */}
                             {wsActiveId && <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 2 }}>
@@ -2731,6 +2789,7 @@ export default function MapIndex() {
                             </div>
                         </div>
                     </Section>
+                    </div>
 
                     {/* Save/Edit Workspace Modal */}
                     {wsModal && <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setWsModal(null)}>
@@ -2778,7 +2837,8 @@ export default function MapIndex() {
                         </div>
                     </div>}
 
-                    <Section title="Settings" icon={Ico.settings} >
+                    <div className={`tmap-section-wrap${dragSectionId === 'settings' ? ' dragging' : ''}${dragOverId === 'settings' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('settings') }} onDragOver={e => handleSectionDragOver(e, 'settings')} onDrop={() => handleSectionDrop('settings')}>
+                    <Section title="Settings" icon={Ico.settings}  dragHandle={dragHandleEl('settings')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <Toggle label="World Minimap" description="Satellite overview map in top-right" enabled={showMinimap} onChange={setShowMinimap} />
                             <Toggle label="Compass" description="Bearing indicator in bottom-left" enabled={showCompass} onChange={setShowCompass} />
@@ -2793,6 +2853,7 @@ export default function MapIndex() {
                             <Toggle label="Live Feed" description="Real-time event feed widget" enabled={showLiveFeed} onChange={v => { setShowLiveFeed(v); if (v) setLiveFeedRunning(true); }} />
                         </div>
                     </Section>
+                    </div>
                 </div>
             </div>
 
