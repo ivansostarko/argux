@@ -146,8 +146,8 @@ export default function MapIndex() {
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Sidebar
-    const [dateFrom, setDateFrom] = useState('');
-    const [dateTo, setDateTo] = useState('');
+    const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10); });
+    const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
     const [selectedPersons, setSelectedPersons] = useState<string[]>([]);
     const [selectedOrgs, setSelectedOrgs] = useState<string[]>([]);
 
@@ -346,6 +346,8 @@ export default function MapIndex() {
     const [tlPersonIds, setTlPersonIds] = useState<Set<number>>(new Set()); // filter by persons
     const [tlOrgIds, setTlOrgIds] = useState<Set<number>>(new Set()); // filter by orgs
     const [tlAutoMarkers, setTlAutoMarkers] = useState(true); // show markers for visible events
+    const [tlLoop, setTlLoop] = useState(false); // loop playback
+    const [tlAutoFollow, setTlAutoFollow] = useState(false); // auto-center on latest event
     const [tlTrackingPerson, setTlTrackingPerson] = useState<number | null>(null); // person being tracked
     const [tlTracking3D, setTlTracking3D] = useState(false); // 3D tracking mode
     const [tlTrackStep, setTlTrackStep] = useState(-1); // current step in tracking animation
@@ -406,7 +408,7 @@ export default function MapIndex() {
     const [showCompass, setShowCompass] = useState(true);
     const [showControls, setShowControls] = useState(true);
     const [showLocalization, setShowLocalization] = useState(false);
-    const [showCoords, setShowCoords] = useState(true);
+    const [showCoords, setShowCoords] = useState(false);
     const [showSearch, setShowSearch] = useState(true);
     const [showLabels, setShowLabels] = useState(true);
     const [showZones, setShowZones] = useState(true);
@@ -556,11 +558,11 @@ export default function MapIndex() {
     const zoneColors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
     // ═══ TIMELINE COMPUTED (depends on zones) ═══
-    interface TLEvent { id: string; type: string; icon: string; title: string; sub: string; ts: string; lat: number; lng: number; sev: string; color: string; personId?: number; orgId?: number; personName?: string; }
+    interface TLEvent { id: string; type: string; icon: string; title: string; sub: string; ts: string; lat: number; lng: number; sev: string; color: string; personId?: number; orgId?: number; personName?: string; photoUrl?: string; }
     const allTLEvents = useMemo<TLEvent[]>(() => {
         const evts: TLEvent[] = [
-            ...mockLPR.map(l => ({ id: l.id, type: 'lpr', icon: '🚗', title: `LPR: ${l.plate}`, sub: `${l.personName} · ${l.cameraName} · ${l.speed}km/h ${l.direction}`, ts: l.timestamp, lat: l.lat, lng: l.lng, sev: l.confidence >= 95 ? 'high' : 'medium', color: '#10b981', personId: l.personId, orgId: l.orgId, personName: l.personName })),
-            ...mockFaces.map(f => ({ id: f.id, type: 'face', icon: '🧑‍🦲', title: `Face: ${f.personName}`, sub: `${f.confidence}% · ${f.cameraName} · ${f.emotion}`, ts: f.timestamp, lat: f.lat, lng: f.lng, sev: f.risk === 'Critical' ? 'critical' : f.risk === 'High' ? 'high' : 'medium', color: '#ec4899', personId: f.personId, personName: f.personName })),
+            ...mockLPR.map(l => ({ id: l.id, type: 'lpr', icon: '🚗', title: `LPR: ${l.plate}`, sub: `${l.personName} · ${l.cameraName} · ${l.speed}km/h ${l.direction}`, ts: l.timestamp, lat: l.lat, lng: l.lng, sev: l.confidence >= 95 ? 'high' : 'medium', color: '#10b981', personId: l.personId, orgId: l.orgId, personName: l.personName, photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg' })),
+            ...mockFaces.map(f => ({ id: f.id, type: 'face', icon: '🧑‍🦲', title: `Face: ${f.personName}`, sub: `${f.confidence}% · ${f.cameraName} · ${f.emotion}`, ts: f.timestamp, lat: f.lat, lng: f.lng, sev: f.risk === 'Critical' ? 'critical' : f.risk === 'High' ? 'high' : 'medium', color: '#ec4899', personId: f.personId, personName: f.personName, photoUrl: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg' })),
             ...zones.flatMap(z => { const s = z.id.charCodeAt(z.id.length - 1); const pids = [1, 12, 0]; return [0, 1, 2].map(i => { const h = (s * 3 + i * 7) % 24; const m = (s * 11 + i * 17) % 60; const labels = ['Entry', 'Exit', 'Breach']; const names = ['Marko Horvat', 'Ivan Babić', 'Unknown']; return { id: `ze-${z.id}-${i}`, type: 'zone', icon: '🛡️', title: `Zone ${labels[i]}: ${z.name}`, sub: `${names[i]} · ${z.type}`, ts: `2026-03-23 ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, lat: z.lat, lng: z.lng, sev: z.type === 'restricted' ? 'critical' : 'info', color: z.color, personId: pids[i], personName: names[i] }; }); }),
             { id: 'se1', type: 'source', icon: '📹', title: 'Camera: Motion Detected', sub: 'Ban Jelačić Cam · Zone A perimeter', ts: '2026-03-23 07:42', lat: 45.8131, lng: 15.9775, sev: 'info', color: '#3b82f6' },
             { id: 'se2', type: 'source', icon: '🎙️', title: 'Audio: Keyword Detected', sub: 'MIC-ALPHA · "delivery" ×3', ts: '2026-03-23 09:15', lat: 45.8133, lng: 15.977, sev: 'high', color: '#f59e0b', personId: 1, personName: 'Marko Horvat' },
@@ -627,13 +629,69 @@ export default function MapIndex() {
     useEffect(() => {
         if (!timelinePlaying) { if (timelinePlayRef.current) clearInterval(timelinePlayRef.current); timelinePlayRef.current = null; return; }
         timelinePlayRef.current = window.setInterval(() => {
-            setTimelineCursor(prev => { const n = prev + 0.15 * timelineSpeed; if (n >= 100) { setTimelinePlaying(false); return 100; } return n; });
+            setTimelineCursor(prev => {
+                const n = prev + 0.15 * timelineSpeed;
+                if (n >= 100) { if (tlLoop) return 0; setTimelinePlaying(false); return 100; }
+                return n;
+            });
         }, 50);
         return () => { if (timelinePlayRef.current) clearInterval(timelinePlayRef.current); };
-    }, [timelinePlaying, timelineSpeed]);
+    }, [timelinePlaying, timelineSpeed, tlLoop]);
 
     const toggleTlFilter = (t: string) => setTlFilterTypes(p => { const n = new Set(p); n.has(t) ? n.delete(t) : n.add(t); return n; });
     const toggleTlPerson = (id: number) => setTlPersonIds(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+    // Timeline stats
+    const tlStats = useMemo(() => {
+        const visible = visibleTLEvents;
+        const total = filteredTLEvents.length;
+        const bySev = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+        const byType: Record<string, number> = {};
+        const uniquePersons = new Set<number>();
+        visible.forEach(e => {
+            bySev[e.sev as keyof typeof bySev] = (bySev[e.sev as keyof typeof bySev] || 0) + 1;
+            byType[e.type] = (byType[e.type] || 0) + 1;
+            if (e.personId && e.personId > 0) uniquePersons.add(e.personId);
+        });
+        // Events per hour rate
+        const visMs = visible.length >= 2 ? new Date(visible[visible.length - 1].ts.replace(' ', 'T')).getTime() - new Date(visible[0].ts.replace(' ', 'T')).getTime() : 3600000;
+        const rate = visible.length > 0 ? (visible.length / (visMs / 3600000)).toFixed(1) : '0';
+        return { total, shown: visible.length, bySev, byType, uniquePersons: uniquePersons.size, rate };
+    }, [visibleTLEvents, filteredTLEvents]);
+
+    // Auto-follow: center map on latest visible event during playback
+    useEffect(() => {
+        if (!tlAutoFollow || !timelinePlaying || visibleTLEvents.length === 0) return;
+        const last = visibleTLEvents[visibleTLEvents.length - 1];
+        const map = mapRef.current;
+        if (map) map.easeTo({ center: [last.lng, last.lat], duration: 300 });
+    }, [visibleTLEvents.length, tlAutoFollow, timelinePlaying]);
+
+    // Zoom to fit all visible events
+    const tlZoomToFit = () => {
+        const map = mapRef.current;
+        const ml = (window as any).maplibregl;
+        if (!map || !ml || visibleTLEvents.length === 0) return;
+        if (visibleTLEvents.length === 1) { map.flyTo({ center: [visibleTLEvents[0].lng, visibleTLEvents[0].lat], zoom: 15, duration: 600 }); return; }
+        const bounds = new ml.LngLatBounds();
+        visibleTLEvents.forEach(e => bounds.extend([e.lng, e.lat]));
+        map.fitBounds(bounds, { padding: 60, duration: 800 });
+    };
+
+    // Jump to next critical event from cursor
+    const tlJumpToCritical = () => {
+        const next = filteredTLEvents.find(e => {
+            const t = new Date(e.ts.replace(' ', 'T')).getTime();
+            return t > tlCursorMs && e.sev === 'critical';
+        });
+        if (next) {
+            const pct = Math.min(100, ((new Date(next.ts.replace(' ', 'T')).getTime() - tlStart) / tlRange) * 100);
+            setTimelineCursor(pct);
+            setTimelinePlaying(false);
+            const map = mapRef.current;
+            if (map) map.flyTo({ center: [next.lng, next.lat], zoom: 16, duration: 800 });
+        }
+    };
 
     // Timeline event markers on map
     useEffect(() => {
@@ -643,21 +701,73 @@ export default function MapIndex() {
         const ml = (window as any).maplibregl;
         if (!map || !ml || !loaded || !timelineOpen || !tlAutoMarkers) return;
         visibleTLEvents.forEach((ev, i) => {
-            const el = document.createElement('div');
-            el.style.cssText = `width:14px;height:14px;border-radius:50%;background:${ev.color};border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 8px ${ev.color}80,0 2px 6px rgba(0,0,0,0.4);cursor:pointer;transition:transform 0.15s;position:relative;`;
-            // Pulse ring for recent events (last 5)
-            if (i >= visibleTLEvents.length - 5) {
-                const ring = document.createElement('div');
-                ring.style.cssText = `position:absolute;inset:-4px;border-radius:50%;border:1.5px solid ${ev.color};animation:tmap3d-pulse 2s ease-in-out infinite;pointer-events:none;`;
-                el.appendChild(ring);
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tmap-marker-source';
+            wrapper.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:visible;';
+            const inner = document.createElement('div');
+            inner.className = 'tmap-marker-inner tmap-tl-event-dot';
+            const sevColor = ev.sev === 'critical' ? '#ef4444' : ev.sev === 'high' ? '#f97316' : ev.sev === 'medium' ? '#f59e0b' : ev.sev === 'low' ? '#6b7280' : '#3b82f6';
+            const isFace = ev.type === 'face';
+            const isLPR = ev.type === 'lpr';
+            const hasPhoto = isFace || isLPR;
+
+            if (hasPhoto) {
+                // Photo-based marker (face or LPR)
+                const borderRadius = isFace ? '50%' : '5px';
+                const size = isFace ? 30 : 28;
+                inner.style.cssText = `width:${size}px;height:${size}px;border-radius:${borderRadius};border:2.5px solid ${ev.color};background:url(${ev.photoUrl}) center/cover;box-shadow:0 0 10px ${ev.color}60,0 2px 8px rgba(0,0,0,0.5);position:relative;overflow:visible;`;
+                // Type badge (bottom-right)
+                const badge = document.createElement('div');
+                badge.style.cssText = `position:absolute;bottom:-3px;right:-3px;width:14px;height:14px;border-radius:${isFace ? '50%' : '3px'};background:${ev.color};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;font-size:7px;pointer-events:none;`;
+                badge.textContent = isFace ? '👤' : '🚗';
+                inner.appendChild(badge);
+                // Severity indicator (top-left)
+                const sevDot = document.createElement('div');
+                sevDot.style.cssText = `position:absolute;top:-2px;left:-2px;width:8px;height:8px;border-radius:50%;background:${sevColor};border:1.5px solid rgba(13,18,32,0.9);pointer-events:none;`;
+                inner.appendChild(sevDot);
+            } else {
+                // Icon-based marker (source, zone, object)
+                inner.style.cssText = `width:26px;height:26px;border-radius:6px;border:2px solid ${ev.color};background:rgba(13,18,32,0.92);box-shadow:0 0 8px ${ev.color}50,0 2px 6px rgba(0,0,0,0.4);position:relative;overflow:visible;display:flex;align-items:center;justify-content:center;font-size:13px;`;
+                inner.textContent = ev.icon;
+                // Severity dot
+                const sevDot = document.createElement('div');
+                sevDot.style.cssText = `position:absolute;top:-2px;right:-2px;width:7px;height:7px;border-radius:50%;background:${sevColor};border:1.5px solid rgba(13,18,32,0.9);pointer-events:none;`;
+                inner.appendChild(sevDot);
             }
-            el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.5)'; });
-            el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; });
-            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([ev.lng, ev.lat]).addTo(map);
-            el.addEventListener('click', (e: Event) => {
+
+            // Pulse ring for last 5 events
+            if (i >= visibleTLEvents.length - 5) {
+                const pulse = document.createElement('div');
+                pulse.className = 'tmap-tl-pulse';
+                const pSize = hasPhoto ? (isFace ? 38 : 36) : 34;
+                pulse.style.cssText = `position:absolute;inset:-${(pSize - (hasPhoto ? (isFace ? 30 : 28) : 26)) / 2 + 2}px;border-radius:${isFace ? '50%' : '8px'};border:1.5px solid ${ev.color};opacity:0;pointer-events:none;`;
+                inner.appendChild(pulse);
+            }
+
+            wrapper.appendChild(inner);
+            const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([ev.lng, ev.lat]).addTo(map);
+            wrapper.addEventListener('click', (e: Event) => {
                 e.stopPropagation();
-                const sevColor = ev.sev === 'critical' ? '#ef4444' : ev.sev === 'high' ? '#f97316' : ev.sev === 'medium' ? '#f59e0b' : '#3b82f6';
-                new ml.Popup({ offset: 10, maxWidth: '240px', className: 'tmap-popup' }).setLngLat([ev.lng, ev.lat]).setHTML(`<div class="tmap-popup-card"><div class="tmap-popup-header"><span style="font-size:18px">${ev.icon}</span><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${ev.title}</div><div class="tmap-popup-meta"><span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${sevColor}15;color:${sevColor};border:1px solid ${sevColor}30">${ev.sev}</span><span style="font-size:8px;color:var(--ax-text-dim)">${ev.ts}</span></div></div></div><div style="padding:6px 14px 8px;font-size:10px;color:var(--ax-text-sec)">${ev.sub}${ev.personName ? `<br/><span style="color:var(--ax-accent)">👤 ${ev.personName}</span>` : ''}</div></div>`).addTo(map);
+                const photoHtml = ev.photoUrl ? `<div style="padding:0;border-bottom:1px solid var(--ax-border)"><img src="${ev.photoUrl}" style="width:100%;height:90px;object-fit:cover;display:block;" /></div>` : '';
+                new ml.Popup({ offset: hasPhoto ? 18 : 14, maxWidth: '280px', className: 'tmap-popup' }).setLngLat([ev.lng, ev.lat]).setHTML(`<div class="tmap-popup-card">
+                    ${photoHtml}
+                    <div class="tmap-popup-header" style="gap:8px">
+                        <div style="width:28px;height:28px;border-radius:${isFace ? '50%' : '6px'};background:${ev.color}15;border:1.5px solid ${ev.color}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${ev.icon}</div>
+                        <div class="tmap-popup-hinfo">
+                            <div class="tmap-popup-name" style="font-size:12px">${ev.title}</div>
+                            <div class="tmap-popup-meta">
+                                <span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${sevColor}15;color:${sevColor};border:1px solid ${sevColor}30">${ev.sev.toUpperCase()}</span>
+                                <span style="font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;background:${ev.color}15;color:${ev.color};border:1px solid ${ev.color}30">${ev.type.toUpperCase()}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tmap-popup-grid">
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📋 Details</span><span class="tmap-popup-val">${ev.sub}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${ev.ts}</span></div>
+                        ${ev.personName ? `<div class="tmap-popup-row"><span class="tmap-popup-label">👤 Person</span><span class="tmap-popup-val" style="color:var(--ax-accent)">${ev.personName}</span></div>` : ''}
+                    </div>
+                    <div class="tmap-popup-coords">${ev.lat.toFixed(5)}, ${ev.lng.toFixed(5)}</div>
+                </div>`).addTo(map);
             });
             tlEventMarkersRef.current.push(marker);
         });
@@ -2356,6 +2466,11 @@ export default function MapIndex() {
                         <button onClick={() => setTimelineCursor(Math.max(0, timelineCursor - 2))} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, flexShrink: 0, padding: 0 }}><svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><polygon points="10,2 4,8 10,14"/></svg></button>
                         <button onClick={() => setTimelineCursor(Math.min(100, timelineCursor + 2))} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, flexShrink: 0, padding: 0 }}><svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><polygon points="6,2 12,8 6,14"/></svg></button>
                         <div style={{ display: 'flex', gap: 2 }}>{[0.5, 1, 2, 4].map(s => <button key={s} onClick={() => setTimelineSpeed(s)} style={{ padding: '2px 5px', borderRadius: 3, border: `1px solid ${timelineSpeed === s ? '#3b82f640' : theme.border}`, background: timelineSpeed === s ? 'rgba(59,130,246,0.1)' : 'transparent', color: timelineSpeed === s ? '#3b82f6' : theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}>{s}×</button>)}</div>
+                        <button onClick={() => setTlLoop(!tlLoop)} title="Loop playback" style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${tlLoop ? '#8b5cf640' : theme.border}`, background: tlLoop ? 'rgba(139,92,246,0.1)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: tlLoop ? '#8b5cf6' : theme.textDim, flexShrink: 0, padding: 0, fontSize: 10 }}>🔁</button>
+                        <button onClick={() => { const last = visibleTLEvents[visibleTLEvents.length - 1]; if (last && mapRef.current) mapRef.current.flyTo({ center: [last.lng, last.lat], zoom: 15, duration: 600 }); }} title="Center on latest event" style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, flexShrink: 0, padding: 0, fontSize: 10 }}>🎯</button>
+                        <button onClick={tlZoomToFit} title="Zoom to fit all visible events" style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, flexShrink: 0, padding: 0, fontSize: 10 }}>🔎</button>
+                        <button onClick={tlJumpToCritical} title="Jump to next critical event" style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${tlStats.bySev.critical > 0 ? '#ef444440' : theme.border}`, background: tlStats.bySev.critical > 0 ? 'rgba(239,68,68,0.06)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: tlStats.bySev.critical > 0 ? '#ef4444' : theme.textDim, flexShrink: 0, padding: 0, fontSize: 10 }}>⚠️</button>
+                        <button onClick={() => setTlAutoFollow(!tlAutoFollow)} title="Auto-follow latest event during playback" style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${tlAutoFollow ? '#06b6d440' : theme.border}`, background: tlAutoFollow ? 'rgba(6,182,212,0.1)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: tlAutoFollow ? '#06b6d4' : theme.textDim, flexShrink: 0, padding: 0, fontSize: 10 }}>📡</button>
                         <div style={{ width: 1, height: 16, background: theme.border, flexShrink: 0 }} />
                         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, color: timelineActive ? '#3b82f6' : theme.text, letterSpacing: '0.03em', flexShrink: 0 }}>{fmtTlTime(tlCursorMs)}</div>
                         <span style={{ fontSize: 8, color: theme.textDim, flexShrink: 0 }}>{visibleTLEvents.length}/{filteredTLEvents.length}</span>
@@ -2379,6 +2494,32 @@ export default function MapIndex() {
                         <button onClick={() => { if (tlTrackStep < tlTrackEvents.length - 1) setTlTrackStep(s => s + 1); }} style={{ padding: '1px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, cursor: 'pointer', fontFamily: 'inherit' }}>Next ▶</button>
                         <button onClick={stopTracking} style={{ padding: '1px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>Stop</button>
                     </div>}
+
+                    {/* Stats bar */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 12px', borderBottom: `1px solid ${theme.border}15`, flexWrap: 'wrap' }}>
+                        {[{ label: 'Critical', count: tlStats.bySev.critical, color: '#ef4444' }, { label: 'High', count: tlStats.bySev.high, color: '#f97316' }, { label: 'Medium', count: tlStats.bySev.medium, color: '#f59e0b' }, { label: 'Low', count: tlStats.bySev.low, color: '#6b7280' }, { label: 'Info', count: tlStats.bySev.info, color: '#3b82f6' }].map(s => (
+                            <span key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 8 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: 2, background: s.color, flexShrink: 0 }} />
+                                <span style={{ color: s.count > 0 ? s.color : theme.textDim, fontWeight: 700 }}>{s.count}</span>
+                                <span style={{ color: theme.textDim }}>{s.label}</span>
+                            </span>
+                        ))}
+                        <span style={{ width: 1, height: 10, background: theme.border, flexShrink: 0 }} />
+                        <span style={{ fontSize: 8, color: theme.textDim }}>👤 {tlStats.uniquePersons} persons</span>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>⚡ {tlStats.rate}/hr</span>
+                        <div style={{ flex: 1 }} />
+                        <button onClick={() => { /* mock export */ const el = document.createElement('a'); el.href = 'data:text/csv,' + encodeURIComponent('id,type,title,time,lat,lng,severity,person\n' + visibleTLEvents.map(e => `${e.id},${e.type},"${e.title}",${e.ts},${e.lat},${e.lng},${e.sev},${e.personName || ''}`).join('\n')); el.download = 'argux-timeline-export.csv'; el.click(); }} style={{ padding: '2px 7px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 7, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>📥 Export CSV</button>
+                    </div>
+
+                    {/* Severity heatstrip */}
+                    <div style={{ display: 'flex', height: 3, margin: '0 12px', borderRadius: 2, overflow: 'hidden' }}>
+                        {filteredTLEvents.map((ev, i) => {
+                            const sevC = ev.sev === 'critical' ? '#ef4444' : ev.sev === 'high' ? '#f97316' : ev.sev === 'medium' ? '#f59e0b' : ev.sev === 'low' ? '#6b7280' : '#3b82f6';
+                            const evPct = ((new Date(ev.ts.replace(' ', 'T')).getTime() - tlStart) / tlRange) * 100;
+                            const isPast = evPct <= timelineCursor;
+                            return <div key={ev.id + i} style={{ flex: 1, background: isPast ? sevC : sevC + '25' }} />;
+                        })}
+                    </div>
 
                     {/* Scrubber */}
                     <div style={{ padding: '4px 12px 2px' }}>
@@ -2433,11 +2574,15 @@ export default function MapIndex() {
                             {[...visibleTLEvents].reverse().slice(0, 60).map((ev, idx) => {
                                 const sevColor = ev.sev === 'critical' ? '#ef4444' : ev.sev === 'high' ? '#f97316' : ev.sev === 'medium' ? '#f59e0b' : ev.sev === 'low' ? '#6b7280' : '#3b82f6';
                                 const isTrackEv = tlTrackingPerson && ev.personId === tlTrackingPerson;
-                                return <div key={ev.id + idx} onClick={() => { const map = mapRef.current; if (map) map.flyTo({ center: [ev.lng, ev.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 }); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', cursor: 'pointer', borderBottom: `1px solid ${theme.border}10`, transition: 'background 0.1s', background: isTrackEv ? 'rgba(34,197,94,0.04)' : 'transparent' }} onMouseEnter={e => (e.currentTarget.style.background = isTrackEv ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.02)')} onMouseLeave={e => (e.currentTarget.style.background = isTrackEv ? 'rgba(34,197,94,0.04)' : 'transparent')}>
-                                    <div style={{ width: 3, height: 20, borderRadius: 2, background: sevColor, flexShrink: 0 }} />
-                                    <span style={{ fontSize: 12, flexShrink: 0 }}>{ev.icon}</span>
+                                const hasThumb = ev.type === 'face' || ev.type === 'lpr';
+                                return <div key={ev.id + idx} onClick={() => { const map = mapRef.current; if (map) map.flyTo({ center: [ev.lng, ev.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 }); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', cursor: 'pointer', borderBottom: `1px solid ${theme.border}10`, transition: 'background 0.1s', background: isTrackEv ? 'rgba(34,197,94,0.04)' : 'transparent' }} onMouseEnter={e => (e.currentTarget.style.background = isTrackEv ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.02)')} onMouseLeave={e => (e.currentTarget.style.background = isTrackEv ? 'rgba(34,197,94,0.04)' : 'transparent')}>
+                                    <div style={{ width: 3, height: hasThumb ? 28 : 20, borderRadius: 2, background: sevColor, flexShrink: 0 }} />
+                                    {hasThumb ? <div style={{ width: 24, height: 24, borderRadius: ev.type === 'face' ? '50%' : 4, overflow: 'hidden', border: `1.5px solid ${ev.color}`, flexShrink: 0 }}><img src={ev.photoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /></div> : <span style={{ fontSize: 12, flexShrink: 0, width: 24, textAlign: 'center' }}>{ev.icon}</span>}
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 9, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</div>
+                                        <div style={{ fontSize: 9, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            {ev.title}
+                                            <span style={{ fontSize: 7, fontWeight: 700, padding: '0 3px', borderRadius: 2, background: `${sevColor}15`, color: sevColor, border: `1px solid ${sevColor}25`, flexShrink: 0 }}>{ev.sev === 'critical' ? '!!!' : ev.sev === 'high' ? '!!' : ev.sev === 'medium' ? '!' : ''}</span>
+                                        </div>
                                         <div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.sub}</div>
                                     </div>
                                     {ev.personName && <span style={{ fontSize: 7, color: '#ec4899', flexShrink: 0, maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.personName}</span>}
