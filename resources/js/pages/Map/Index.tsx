@@ -305,6 +305,52 @@ export default function MapIndex() {
     ];
     const edgeColors: Record<string, string> = { financial: '#f59e0b', family: '#ec4899', business: '#3b82f6', criminal: '#ef4444', comms: '#8b5cf6', surveillance: '#22c55e' };
 
+    // Objects
+    type ObjType = 'marker' | 'line' | 'rectangle' | 'polygon' | 'freehand' | 'circle';
+    interface MapObject { id: string; type: ObjType; name: string; color: string; coords: [number, number][]; visible: boolean; assignedTo?: { type: 'person' | 'org'; id: string; name: string } | null; createdAt: string; }
+    const objTypeLabels: Record<ObjType, { icon: string; label: string }> = { marker: { icon: '📌', label: 'Marker' }, line: { icon: '📏', label: 'Line' }, rectangle: { icon: '⬜', label: 'Rectangle' }, polygon: { icon: '⬡', label: 'Polygon' }, freehand: { icon: '✏️', label: 'Freehand' }, circle: { icon: '⭕', label: 'Circle' } };
+    const objColors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+    const defaultObjects: MapObject[] = [
+        { id: 'obj-1', type: 'marker', name: 'Observation Point Alpha', color: '#ef4444', coords: [[15.9790, 45.8140]], visible: true, assignedTo: { type: 'person', id: '1', name: 'Marko Horvat' }, createdAt: '2026-03-20 14:30' },
+        { id: 'obj-2', type: 'line', name: 'Suspect Route A', color: '#f59e0b', coords: [[15.9750, 45.8130], [15.9800, 45.8110], [15.9850, 45.8125]], visible: true, assignedTo: { type: 'person', id: '12', name: 'Ivan Babić' }, createdAt: '2026-03-19 09:15' },
+        { id: 'obj-3', type: 'rectangle', name: 'Surveillance Area B', color: '#3b82f6', coords: [[15.9700, 45.8070], [15.9750, 45.8070], [15.9750, 45.8090], [15.9700, 45.8090]], visible: true, assignedTo: { type: 'org', id: '1', name: 'Alpha Security Group' }, createdAt: '2026-03-18 16:45' },
+        { id: 'obj-4', type: 'circle', name: 'Dead Drop Radius', color: '#22c55e', coords: [[15.9820, 45.8170]], visible: true, assignedTo: null, createdAt: '2026-03-17 11:00' },
+        { id: 'obj-5', type: 'polygon', name: 'Parking Lot Perimeter', color: '#8b5cf6', coords: [[15.9600, 45.8155], [15.9630, 45.8165], [15.9645, 45.8150], [15.9625, 45.8138], [15.9605, 45.8142]], visible: true, assignedTo: null, createdAt: '2026-03-16 08:20' },
+    ];
+    const [mapObjects, setMapObjects] = useState<MapObject[]>(defaultObjects);
+    const [objSearch, setObjSearch] = useState('');
+    const [objDrawing, setObjDrawing] = useState<{ type: ObjType; points: [number, number][] } | null>(null);
+    const [objModal, setObjModal] = useState<{ mode: 'add' | 'edit'; obj?: MapObject } | null>(null);
+    const [objForm, setObjForm] = useState({ name: '', color: '#3b82f6', assignType: '' as '' | 'person' | 'org', assignId: '' });
+    const [objDeleteConfirm, setObjDeleteConfirm] = useState<MapObject | null>(null);
+    const [mapCtxMenu, setMapCtxMenu] = useState<{ x: number; y: number; lngLat: [number, number] } | null>(null);
+    const [objCtxMenu, setObjCtxMenu] = useState<{ x: number; y: number; obj: MapObject } | null>(null);
+    const [placingMarker, setPlacingMarker] = useState(false);
+
+    const filteredObjects = mapObjects.filter(o => !objSearch || o.name.toLowerCase().includes(objSearch.toLowerCase()) || o.type.includes(objSearch.toLowerCase()));
+    const toggleObjVisibility = (id: string) => setMapObjects(prev => prev.map(o => o.id === id ? { ...o, visible: !o.visible } : o));
+    const deleteObj = () => { if (objDeleteConfirm) { setMapObjects(prev => prev.filter(o => o.id !== objDeleteConfirm.id)); setObjDeleteConfirm(null); } };
+    const openEditObj = (o: MapObject) => { setObjForm({ name: o.name, color: o.color, assignType: o.assignedTo?.type || '', assignId: o.assignedTo?.id || '' }); setObjModal({ mode: 'edit', obj: o }); };
+    const startObjDraw = (type: ObjType) => { setObjDrawing({ type, points: [] }); setMapCtxMenu(null); setObjCtxMenu(null); setRulerActive(false); setZoneDrawing(null); setPlacingMarker(false); };
+    const startPlacingMarker = () => { setPlacingMarker(true); setMapCtxMenu(null); setObjCtxMenu(null); setObjDrawing(null); setRulerActive(false); setZoneDrawing(null); };
+    const placeMarkerAt = (lngLat: [number, number]) => {
+        setPlacingMarker(false);
+        setObjForm({ name: '', color: '#ef4444', assignType: '', assignId: '' });
+        const obj: MapObject = { id: `obj-${Date.now()}`, type: 'marker', name: '', color: '#ef4444', coords: [lngLat], visible: true, assignedTo: null, createdAt: new Date().toISOString().slice(0, 16).replace('T', ' ') };
+        setObjModal({ mode: 'add', obj });
+    };
+    const saveObj = () => {
+        if (!objForm.name.trim()) return;
+        const assignedTo = objForm.assignType && objForm.assignId ? { type: objForm.assignType as 'person' | 'org', id: objForm.assignId, name: (objForm.assignType === 'person' ? personOpts : orgOpts).find(o => o.id === objForm.assignId)?.label || '?' } : null;
+        if (objModal?.mode === 'edit' && objModal.obj) {
+            setMapObjects(prev => prev.map(o => o.id === objModal.obj!.id ? { ...o, name: objForm.name.trim(), color: objForm.color, assignedTo } : o));
+        } else if (objModal?.obj) {
+            setMapObjects(prev => [...prev, { ...objModal.obj!, name: objForm.name.trim(), color: objForm.color, assignedTo }]);
+        }
+        setObjModal(null);
+    };
+    const goToObj = (o: MapObject) => { if (o.coords.length > 0) mapRef.current?.flyTo({ center: o.coords[0], zoom: 16, duration: 1200 }); };
+
     // Settings
     const [showMinimap, setShowMinimap] = useState(true);
     const [showCompass, setShowCompass] = useState(true);
@@ -594,7 +640,7 @@ export default function MapIndex() {
                 if (zone) { setZoneCtxMenu({ x: e.point.x, y: e.point.y, zone }); setMarkerCtxMenu(null); }
             }
         };
-        const closeCtx = () => { setZoneCtxMenu(null); setMarkerCtxMenu(null); };
+        const closeCtx = () => { setZoneCtxMenu(null); setMarkerCtxMenu(null); setMapCtxMenu(null); setObjCtxMenu(null); };
         map.on('contextmenu', ctxHandler);
         map.on('click', closeCtx);
         map.on('movestart', closeCtx);
@@ -602,7 +648,7 @@ export default function MapIndex() {
     }, [zones, loaded]);
 
     // Close zone ctx menu on outside click
-    useEffect(() => { const h = () => { setZoneCtxMenu(null); setMarkerCtxMenu(null); }; window.addEventListener('click', h); return () => window.removeEventListener('click', h); }, []);
+    useEffect(() => { const h = () => { setZoneCtxMenu(null); setMarkerCtxMenu(null); setMapCtxMenu(null); setObjCtxMenu(null); }; window.addEventListener('click', h); return () => window.removeEventListener('click', h); }, []);
 
     // Subject markers on map (persons + organizations)
     const markersRef = useRef<any[]>([]);
@@ -862,6 +908,124 @@ export default function MapIndex() {
         } catch {}
         return () => { networkMarkersRef.current.forEach(m => m.remove()); networkMarkersRef.current = []; };
     }, [layerNetwork, networkShowPersons, networkShowOrgs, networkShowDevices, loaded]);
+
+    // Object drawing click handler
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded || !objDrawing) return;
+        const isFreeDraw = objDrawing.type === 'freehand';
+        let isMouseDown = false;
+        const addPoint = (e: any) => { setObjDrawing(prev => prev ? { ...prev, points: [...prev.points, [e.lngLat.lng, e.lngLat.lat]] } : null); };
+        const handleClick = (e: any) => { if (!isFreeDraw) addPoint(e); };
+        const handleMouseDown = (e: any) => { if (isFreeDraw) { isMouseDown = true; addPoint(e); map.dragPan.disable(); } };
+        const handleMouseMove = (e: any) => { if (isFreeDraw && isMouseDown) addPoint(e); };
+        const handleMouseUp = () => { if (isFreeDraw && isMouseDown) { isMouseDown = false; map.dragPan.enable(); finishDrawing(); } };
+        const handleDblClick = (e: any) => { e.preventDefault(); if (!isFreeDraw) finishDrawing(); };
+        const finishDrawing = () => {
+            setObjDrawing(prev => {
+                if (!prev || prev.points.length < 1) return null;
+                let coords = prev.points as [number, number][];
+                if (prev.type === 'rectangle' && coords.length >= 2) {
+                    const [a, b] = [coords[0], coords[coords.length - 1]];
+                    coords = [[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]]];
+                }
+                const obj: MapObject = { id: `obj-${Date.now()}`, type: prev.type, name: '', color: '#3b82f6', coords, visible: true, assignedTo: null, createdAt: new Date().toISOString().slice(0, 16).replace('T', ' ') };
+                setObjForm({ name: '', color: '#3b82f6', assignType: '', assignId: '' });
+                setObjModal({ mode: 'add', obj });
+                return null;
+            });
+        };
+        map.on('click', handleClick);
+        map.on('dblclick', handleDblClick);
+        if (isFreeDraw) { map.on('mousedown', handleMouseDown); map.on('mousemove', handleMouseMove); map.on('mouseup', handleMouseUp); }
+        map.getCanvas().style.cursor = 'crosshair';
+        return () => { map.off('click', handleClick); map.off('dblclick', handleDblClick); map.off('mousedown', handleMouseDown); map.off('mousemove', handleMouseMove); map.off('mouseup', handleMouseUp); if (mapRef.current) { mapRef.current.getCanvas().style.cursor = ''; mapRef.current.dragPan.enable(); } };
+    }, [objDrawing, loaded]);
+
+    // Render objects on map
+    const objMarkersRef = useRef<any[]>([]);
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        objMarkersRef.current.forEach(m => m.remove());
+        objMarkersRef.current = [];
+        const geojson: any = { type: 'FeatureCollection', features: [] };
+        const ml = (window as any).maplibregl;
+        mapObjects.forEach(o => {
+            if (!o.visible) return;
+            if (o.type === 'marker' && o.coords.length >= 1) {
+                if (ml) {
+                    const el = document.createElement('div');
+                    el.className = 'tmap-marker-source';
+                    el.innerHTML = `<div class="tmap-marker-inner" style="width:24px;height:24px;border-radius:50%;border:2px solid ${o.color};background:rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.5);font-size:11px;">📌</div>`;
+                    el.title = o.name || 'Marker';
+                    const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat(o.coords[0]).addTo(map);
+                    el.addEventListener('click', (e: Event) => { e.stopPropagation(); new ml.Popup({ offset: 14, maxWidth: '200px', className: 'tmap-popup' }).setLngLat(o.coords[0]).setHTML(`<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><span style="font-size:16px">📌</span><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">${o.name}</div><div style="font-size:9px;color:var(--ax-text-dim)">${o.assignedTo ? `${o.assignedTo.type === 'person' ? '👤' : '🏢'} ${o.assignedTo.name}` : 'Unassigned'} · ${o.createdAt}</div></div></div></div>`).addTo(map); });
+                    objMarkersRef.current.push(marker);
+                }
+            } else if (o.type === 'line' || o.type === 'freehand') {
+                geojson.features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: o.coords }, properties: { color: o.color, width: o.type === 'freehand' ? 2 : 3, id: o.id } });
+            } else if (['rectangle', 'polygon'].includes(o.type) && o.coords.length >= 3) {
+                const closed = [...o.coords, o.coords[0]];
+                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [closed] }, properties: { color: o.color, id: o.id } });
+            } else if (o.type === 'circle' && o.coords.length >= 1) {
+                const [lng, lat] = o.coords[0]; const r = 150;
+                const circ: [number, number][] = []; for (let i = 0; i <= 64; i++) { const a = (i / 64) * 2 * Math.PI; const dLat = (r / 6371000) * (180 / Math.PI); const dLng = dLat / Math.cos(lat * Math.PI / 180); circ.push([lng + dLng * Math.cos(a), lat + dLat * Math.sin(a)]); }
+                geojson.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [circ] }, properties: { color: o.color, id: o.id } });
+            }
+        });
+        // Drawing preview
+        if (objDrawing && objDrawing.points.length >= 1) {
+            const coords = objDrawing.points as [number, number][];
+            if (coords.length >= 2) geojson.features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: { color: '#ffffff', width: 2, id: 'obj-drawing' } });
+        }
+        try {
+            if (map.getSource('objects-source')) { (map.getSource('objects-source') as any).setData(geojson); }
+            else {
+                map.addSource('objects-source', { type: 'geojson', data: geojson });
+                map.addLayer({ id: 'objects-fill', type: 'fill', source: 'objects-source', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.15 } });
+                map.addLayer({ id: 'objects-outline', type: 'line', source: 'objects-source', filter: ['==', '$type', 'Polygon'], paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.7 } });
+                map.addLayer({ id: 'objects-line', type: 'line', source: 'objects-source', filter: ['==', '$type', 'LineString'], paint: { 'line-color': ['get', 'color'], 'line-width': ['coalesce', ['get', 'width'], 3], 'line-opacity': 0.8 } });
+            }
+        } catch {}
+        return () => { objMarkersRef.current.forEach(m => m.remove()); objMarkersRef.current = []; };
+    }, [mapObjects, objDrawing, loaded]);
+
+    // Map right-click context menu (when not on zone/marker)
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        const handler = (e: any) => {
+            // Check zones first
+            const zoneFeatures = map.queryRenderedFeatures(e.point, { layers: map.getLayer('zones-fill') ? ['zones-fill'] : [] });
+            if (zoneFeatures && zoneFeatures.length > 0) return;
+            // Check objects
+            const objLayers = ['objects-fill', 'objects-outline', 'objects-line'].filter(l => map.getLayer(l));
+            if (objLayers.length > 0) {
+                const objFeatures = map.queryRenderedFeatures(e.point, { layers: objLayers });
+                if (objFeatures && objFeatures.length > 0) {
+                    const fid = objFeatures[0].properties?.id;
+                    const obj = mapObjects.find(o => o.id === fid);
+                    if (obj) { setObjCtxMenu({ x: e.point.x, y: e.point.y, obj }); setMapCtxMenu(null); setZoneCtxMenu(null); setMarkerCtxMenu(null); e.preventDefault(); return; }
+                }
+            }
+            setMapCtxMenu({ x: e.point.x, y: e.point.y, lngLat: [e.lngLat.lng, e.lngLat.lat] });
+            setZoneCtxMenu(null); setMarkerCtxMenu(null); setObjCtxMenu(null);
+            e.preventDefault();
+        };
+        map.on('contextmenu', handler);
+        return () => { map.off('contextmenu', handler); };
+    }, [mapObjects, loaded]);
+
+    // Placing marker mode — click on map to place
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded || !placingMarker) return;
+        map.getCanvas().style.cursor = 'crosshair';
+        const handler = (e: any) => { placeMarkerAt([e.lngLat.lng, e.lngLat.lat]); };
+        map.on('click', handler);
+        return () => { map.off('click', handler); if (mapRef.current) mapRef.current.getCanvas().style.cursor = ''; };
+    }, [placingMarker, loaded]);
 
     // Tiles
     type TileId = string;
@@ -1491,7 +1655,38 @@ export default function MapIndex() {
                         </div>
                     </Section>
                     <Section title="Intelligence" icon={Ico.intel}><div className="tmap-empty">Intelligence analysis panels coming soon.</div></Section>
-                    <Section title="Custom Objects" icon={Ico.objects}><div className="tmap-empty">No custom objects placed.</div></Section>
+                    <Section title="Objects" icon={Ico.objects} badge={mapObjects.length}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {/* Draw buttons */}
+                            {!objDrawing && !placingMarker && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 3 }}>
+                                {(['marker', 'line', 'rectangle', 'polygon', 'freehand', 'circle'] as ObjType[]).map(t => <button key={t} onClick={() => t === 'marker' ? startPlacingMarker() : startObjDraw(t)} style={{ padding: '5px 2px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'center' as const, lineHeight: 1.3 }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + '50'; e.currentTarget.style.color = theme.accent; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}><div style={{ fontSize: 12, marginBottom: 1 }}>{objTypeLabels[t].icon}</div>{objTypeLabels[t].label}</button>)}
+                            </div>}
+                            {objDrawing && <div style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)', fontSize: 9, color: theme.accent, fontWeight: 600 }}>Drawing {objTypeLabels[objDrawing.type].label} — {objDrawing.points.length} pts <button onClick={() => setObjDrawing(null)} style={{ marginLeft: 6, fontSize: 8, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Cancel</button></div>}
+                            {placingMarker && <div style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', fontSize: 9, color: '#ef4444', fontWeight: 600 }}>📌 Click on map to place marker <button onClick={() => setPlacingMarker(false)} style={{ marginLeft: 6, fontSize: 8, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Cancel</button></div>}
+                            {/* Search */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, padding: '0 7px' }}>
+                                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                                <input value={objSearch} onChange={e => setObjSearch(e.target.value)} placeholder="Search objects..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '4px 0', color: theme.text, fontSize: 10, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
+                                {objSearch && <button onClick={() => setObjSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 0, display: 'flex' }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
+                            </div>
+                            {/* Object list */}
+                            {filteredObjects.length === 0 && <div className="tmap-empty">{objSearch ? 'No matching objects.' : 'No objects placed. Draw or add a marker.'}</div>}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 200, overflowY: 'auto' }}>
+                                {filteredObjects.map(o => {
+                                    const hidden = !o.visible;
+                                    return <div key={o.id} onClick={() => goToObj(o)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 6px', borderRadius: 5, border: `1px solid ${theme.border}`, cursor: 'pointer', opacity: hidden ? 0.4 : 1, transition: 'all 0.1s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = o.color + '40'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; }}>
+                                        <button onClick={e => { e.stopPropagation(); toggleObjVisibility(o.id); }} style={{ background: 'none', border: 'none', color: hidden ? theme.textDim : o.color, cursor: 'pointer', padding: 1, display: 'flex', flexShrink: 0, fontSize: 10 }} title={hidden ? 'Show' : 'Hide'}>{hidden ? <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/><line x1="3" y1="13" x2="13" y2="3"/></svg> : <span>{objTypeLabels[o.type].icon}</span>}</button>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 10, fontWeight: 600, color: hidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, textDecoration: hidden ? 'line-through' : 'none' }}>{o.name || 'Untitled'}</div>
+                                            <div style={{ fontSize: 8, color: theme.textDim }}>{objTypeLabels[o.type].label}{o.assignedTo ? ` · ${o.assignedTo.type === 'person' ? '👤' : '🏢'} ${o.assignedTo.name}` : ''}</div>
+                                        </div>
+                                        <button onClick={e => { e.stopPropagation(); openEditObj(o); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg></button>
+                                        <button onClick={e => { e.stopPropagation(); setObjDeleteConfirm(o); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                                    </div>;
+                                })}
+                            </div>
+                        </div>
+                    </Section>
                     <Section title="Saved Places" icon={Ico.places}  badge={savedPlaces.length}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {/* Search + Add */}
@@ -1868,6 +2063,114 @@ export default function MapIndex() {
                         </div>
                     </div>;
                 })()}
+
+                {/* Map Right-Click Context Menu */}
+                {mapCtxMenu && <div onClick={e => e.stopPropagation()} className="tmap-ctxmenu" style={{ position: 'absolute', left: mapCtxMenu.x, top: mapCtxMenu.y, zIndex: 55, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'visible', minWidth: 170 }}>
+                    <div style={{ padding: '6px 12px', borderBottom: `1px solid ${theme.border}`, fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{mapCtxMenu.lngLat[1].toFixed(5)}, {mapCtxMenu.lngLat[0].toFixed(5)}</div>
+                    <div style={{ padding: '2px 0' }}>
+                        <button onClick={() => { placeMarkerAt(mapCtxMenu.lngLat); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>📌 Add Marker</button>
+                        <div className="tmap-ctxmenu-sub-wrap" style={{ position: 'relative' }}>
+                            <button style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>🖊️ Add Object</span><svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3,2 7,5 3,8"/></svg>
+                            </button>
+                            <div className="tmap-ctxmenu-sub" style={{ position: 'absolute', left: '100%', top: -2, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 150, display: 'none' }}>
+                                {(['line', 'rectangle', 'polygon', 'freehand', 'circle'] as ObjType[]).map(t => <button key={t} onClick={() => startObjDraw(t)} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{objTypeLabels[t].icon} Draw {objTypeLabels[t].label}</button>)}
+                            </div>
+                        </div>
+                    </div>
+                </div>}
+
+                {/* Object Right-Click Context Menu */}
+                {objCtxMenu && <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: objCtxMenu.x, top: objCtxMenu.y, zIndex: 55, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 170 }}>
+                    <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12 }}>{objTypeLabels[objCtxMenu.obj.type].icon}</span>
+                        <div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: theme.text }}>{objCtxMenu.obj.name || 'Untitled'}</div>
+                            <div style={{ fontSize: 8, color: theme.textDim }}>{objTypeLabels[objCtxMenu.obj.type].label}{objCtxMenu.obj.assignedTo ? ` · ${objCtxMenu.obj.assignedTo.name}` : ''}</div>
+                        </div>
+                    </div>
+                    <div style={{ padding: '2px 0' }}>
+                        <button onClick={() => { goToObj(objCtxMenu.obj); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5"/></svg>Zoom to Object</button>
+                        <button onClick={() => { openEditObj(objCtxMenu.obj); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg>Edit Object</button>
+                        <button onClick={() => { toggleObjVisibility(objCtxMenu.obj.id); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{objCtxMenu.obj.visible ? <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/><line x1="3" y1="13" x2="13" y2="3"/></svg>Hide Object</> : <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>Show Object</>}</button>
+                        <div style={{ height: 1, background: theme.border, margin: '2px 8px' }} />
+                        <button onClick={() => { setObjDeleteConfirm(objCtxMenu.obj); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M6 4V3h4v1M5 4v8.5a.5.5 0 00.5.5h5a.5.5 0 00.5-.5V4"/></svg>Remove Object</button>
+                    </div>
+                </div>}
+
+                {/* Placing Marker Instruction Bar */}
+                {placingMarker && <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 30, background: 'rgba(13,18,32,0.95)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 12, maxWidth: '90%' }}>
+                    <span style={{ fontSize: 18 }}>📌</span>
+                    <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444' }}>Place Marker</div>
+                        <div style={{ fontSize: 10, color: theme.textDim }}>Click anywhere on the map to place your marker.</div>
+                    </div>
+                    <button onClick={() => setPlacingMarker(false)} style={{ padding: '5px 12px', borderRadius: 5, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>Cancel</button>
+                </div>}
+
+                {/* Object Drawing Instruction Bar */}
+                {objDrawing && <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 30, background: 'rgba(13,18,32,0.95)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 10, padding: '10px 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 12, maxWidth: '90%' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: theme.accent, boxShadow: `0 0 8px ${theme.accent}` }} />
+                    <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.accent }}>Drawing {objTypeLabels[objDrawing.type].label}</div>
+                        <div style={{ fontSize: 10, color: theme.textDim }}>{objDrawing.type === 'freehand' ? 'Click and drag to draw. Release to finish.' : objDrawing.type === 'circle' ? 'Click center point. Double-click to finish.' : objDrawing.type === 'rectangle' ? 'Click two corners. Double-click to finish.' : `Click to add points (${objDrawing.points.length}). Double-click to finish.`}</div>
+                    </div>
+                    <span style={{ fontSize: 20, fontWeight: 800, color: theme.accent, fontFamily: "'JetBrains Mono', monospace", minWidth: 24, textAlign: 'center' as const }}>{objDrawing.points.length}</span>
+                    <button onClick={() => setObjDrawing(null)} style={{ padding: '5px 12px', borderRadius: 5, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' as const }}>Cancel</button>
+                </div>}
+
+                {/* Object Add/Edit Modal (right side) */}
+                {objModal && <div style={{ position: 'absolute', top: 10, right: showMinimap ? 160 : 10, bottom: 50, zIndex: 35, width: 300, maxWidth: '80%', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ flex: 1, background: 'rgba(13,18,32,0.97)', border: `1px solid ${theme.accent}30`, borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', padding: 14, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: theme.accent, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{objModal.mode === 'add' ? `New ${objModal.obj ? objTypeLabels[objModal.obj.type].icon + ' ' + objTypeLabels[objModal.obj.type].label : 'Object'}` : 'Edit Object'}</span>
+                            <button onClick={() => setObjModal(null)} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                        </div>
+                        <input value={objForm.name} onChange={e => setObjForm(f => ({ ...f, name: e.target.value }))} placeholder="Object name *" autoFocus style={{ width: '100%', padding: '7px 10px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, color: theme.text, fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' as const }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span style={{ fontSize: 9, color: theme.textDim }}>Color</span>
+                            {objColors.map(c => <button key={c} onClick={() => setObjForm(f => ({ ...f, color: c }))} style={{ width: 16, height: 16, borderRadius: 3, background: c, border: objForm.color === c ? '2px solid #fff' : '2px solid transparent', cursor: 'pointer', padding: 0, boxShadow: objForm.color === c ? `0 0 6px ${c}60` : 'none' }} />)}
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Assign To</div>
+                            <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                                {[{ v: '', l: 'None' }, { v: 'person', l: '👤 Person' }, { v: 'org', l: '🏢 Org' }].map(opt => <button key={opt.v} onClick={() => setObjForm(f => ({ ...f, assignType: opt.v as any, assignId: '' }))} style={{ flex: 1, padding: '4px 0', borderRadius: 4, border: `1px solid ${objForm.assignType === opt.v ? theme.accent + '60' : theme.border}`, background: objForm.assignType === opt.v ? theme.accentDim : 'transparent', color: objForm.assignType === opt.v ? theme.accent : theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>{opt.l}</button>)}
+                            </div>
+                            {objForm.assignType && <select value={objForm.assignId} onChange={e => setObjForm(f => ({ ...f, assignId: e.target.value }))} style={{ width: '100%', padding: '6px 8px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, color: theme.text, fontSize: 10, fontFamily: 'inherit', outline: 'none' }}>
+                                <option value="">Select {objForm.assignType === 'person' ? 'person' : 'organization'}...</option>
+                                {(objForm.assignType === 'person' ? personOpts : orgOpts).map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                            </select>}
+                        </div>
+                        {objModal.obj && <div style={{ padding: '6px 8px', borderRadius: 5, background: `${objForm.color}10`, border: `1px solid ${objForm.color}20`, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 14 }}>{objTypeLabels[objModal.obj.type].icon}</span>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 10, fontWeight: 600, color: theme.text }}>{objForm.name || 'Untitled'}</div>
+                                <div style={{ fontSize: 8, color: theme.textDim }}>{objTypeLabels[objModal.obj.type].label} · {objModal.obj.coords.length} point{objModal.obj.coords.length !== 1 ? 's' : ''}</div>
+                            </div>
+                        </div>}
+                        <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                            <button onClick={saveObj} disabled={!objForm.name.trim()} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: 'none', background: !objForm.name.trim() ? theme.border : theme.accent, color: '#fff', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: !objForm.name.trim() ? 'not-allowed' : 'pointer', opacity: !objForm.name.trim() ? 0.4 : 1 }}>{objModal.mode === 'add' ? 'Create' : 'Update'}</button>
+                            <button onClick={() => setObjModal(null)} style={{ padding: '8px 14px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                    </div>
+                </div>}
+
+                {/* Object Delete Confirm */}
+                {objDeleteConfirm && <div style={{ position: 'absolute', inset: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div onClick={() => setObjDeleteConfirm(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} />
+                    <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: 320, maxWidth: '90%', background: 'rgba(13,18,32,0.98)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', padding: 20 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={theme.danger} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="9"/><circle cx="8" cy="11.5" r="0.5" fill={theme.danger}/></svg>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: theme.danger }}>Delete Object</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: theme.text, marginBottom: 4 }}>Delete <strong style={{ color: objDeleteConfirm.color }}>{objDeleteConfirm.name || 'Untitled'}</strong>?</div>
+                        <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 14 }}>{objTypeLabels[objDeleteConfirm.type].icon} {objTypeLabels[objDeleteConfirm.type].label} · This action cannot be undone.</div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button onClick={deleteObj} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: 'none', background: theme.danger, color: '#fff', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>Delete</button>
+                            <button onClick={() => setObjDeleteConfirm(null)} style={{ padding: '8px 16px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                    </div>
+                </div>}
             </div>
         </div>
     );
