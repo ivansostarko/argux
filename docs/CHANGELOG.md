@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.22.1 - 2026-03-24
+
+### Fixed — Map Page WebGL Error Handling
+- **Fixed uncaught WebGL context creation error** that crashed the page when GPU acceleration is disabled, browser is sandboxed, or hardware doesn't support WebGL.
+- Added **global error handlers** (`window.addEventListener('error')` + `webglcontextcreationerror`) that catch WebGL failures that escape the MapLibre try/catch initialization block.
+- Added **WebGL Fallback UI** when WebGL is unavailable: error icon, explanation message, Retry button (page reload), Dashboard link, troubleshooting steps (hardware acceleration, chrome://gpu, driver updates, browser alternatives), and quick navigation links to /activity, /persons, /operations, /vision.
+- **Conditional map container rendering**: the `<div ref={mapContainer}>` is no longer rendered when `webglFailed === true`, preventing any secondary WebGL initialization attempts.
+- **Minimap gated** on `!webglFailed` to prevent the minimap's separate MapLibre instance from also crashing.
+- **Global handler cleanup** added to useEffect return to properly remove event listeners on unmount.
+
 ## 0.22.0 - 2026-03-24
 
 ### Added — Web Scraper Page (/web-scraper)

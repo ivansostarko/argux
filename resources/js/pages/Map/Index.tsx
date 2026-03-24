@@ -93,6 +93,7 @@ function Minimap({ center, zoom: mainZoom, onNavigate }: { center: { lat: number
     useEffect(() => {
         if (!ref.current || !(window as any).maplibregl) return;
         const ml = (window as any).maplibregl;
+        try {
         const mm = new ml.Map({
             container: ref.current,
             style: { version: 8, sources: { 'esri-world': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 } }, layers: [{ id: 'bg', type: 'raster', source: 'esri-world' }] },
@@ -102,6 +103,7 @@ function Minimap({ center, zoom: mainZoom, onNavigate }: { center: { lat: number
         });
         mmRef.current = mm;
         return () => { mm.remove(); mmRef.current = null; };
+        } catch { /* WebGL not available */ }
     }, []);
 
     useEffect(() => {
@@ -143,6 +145,7 @@ export default function MapIndex() {
     const mapVersionRef = useRef(0);
     const tileInitRef = useRef(true); // skip first run of tile/loc effects
     const [loaded, setLoaded] = useState(false);
+    const [webglFailed, setWebglFailed] = useState(false);
     const [topLoader, setTopLoader] = useState(0); // 0 = hidden, 1-99 = progress, 100 = done
     const topLoaderTimer = useRef<number | null>(null);
     const triggerTopLoader = useCallback(() => {
@@ -3152,6 +3155,7 @@ export default function MapIndex() {
     }, []);
 
     const rebuildMapForGlobe = useCallback(() => {
+        if (webglFailed) return;
         if (!mapContainer.current || !(window as any).maplibregl) return;
         const ml = (window as any).maplibregl;
         if (mapRef.current) {
@@ -3164,6 +3168,7 @@ export default function MapIndex() {
         mapVersionRef.current++;
         setLoaded(false);
         // Official MapLibre v5 globe pattern — projection inside style object
+        try {
         const map = new ml.Map({
             container: mapContainer.current,
             zoom: 1.5,
@@ -3218,9 +3223,11 @@ export default function MapIndex() {
             map.on('wheel', stopSpin);
         });
         mapRef.current = map;
+        } catch (e) { console.warn('MapLibre WebGL globe init failed:', e); setWebglFailed(true); setLoaded(true); }
     }, [attachMapEvents]);
 
     const rebuildMapForFlat = useCallback(() => {
+        if (webglFailed) return;
         if (!mapContainer.current || !(window as any).maplibregl) return;
         const ml = (window as any).maplibregl;
         if (mapRef.current) {
@@ -3235,6 +3242,7 @@ export default function MapIndex() {
         setLoaded(false);
         const tile = tiles2D.find(t => t.id === activeTile);
         const tileUrl = tile?.url || 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png';
+        try {
         const map = new ml.Map({
             container: mapContainer.current,
             style: {
@@ -3258,6 +3266,7 @@ export default function MapIndex() {
         attachMapEvents(map);
         map.on('load', () => { setLoaded(true); setZoom(Math.round(map.getZoom() * 10) / 10); });
         mapRef.current = map;
+        } catch (e) { console.warn('MapLibre WebGL flat init failed:', e); setWebglFailed(true); setLoaded(true); }
     }, [attachMapEvents, activeTile]);
 
     useEffect(() => {
@@ -3265,9 +3274,48 @@ export default function MapIndex() {
         const maplibreJS = 'https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.js';
         if (!document.querySelector(`link[href="${maplibreCSS}"]`)) { const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = maplibreCSS; document.head.appendChild(link); }
 
+        // Global error handler to catch uncaught WebGL context creation errors
+        const globalWebGLErrorHandler = (event: ErrorEvent) => {
+            if (event.message?.includes('WebGL') || event.message?.includes('webgl') || event.message?.includes('webglcontextcreationerror') || event.message?.includes('Failed to initialize WebGL')) {
+                event.preventDefault();
+                event.stopPropagation();
+                console.warn('ARGUX: Global WebGL error caught:', event.message);
+                setWebglFailed(true);
+                setLoaded(true);
+            }
+        };
+        const globalWebGLCtxHandler = (event: Event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            console.warn('ARGUX: Global webglcontextcreationerror caught');
+            setWebglFailed(true);
+            setLoaded(true);
+        };
+        window.addEventListener('error', globalWebGLErrorHandler);
+        window.addEventListener('webglcontextcreationerror', globalWebGLCtxHandler, true);
+        document.addEventListener('webglcontextcreationerror', globalWebGLCtxHandler, true);
+
+        // Pre-check WebGL availability before attempting MapLibre init
+        const checkWebGL = (): boolean => {
+            try {
+                const c = document.createElement('canvas');
+                const gl = c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl');
+                if (!gl) return false;
+                // Also check if it's a real context (not a disabled stub)
+                const dbg = (gl as any).getExtension?.('WEBGL_debug_renderer_info');
+                if (dbg) { const renderer = (gl as any).getParameter?.(dbg.UNMASKED_RENDERER_WEBGL) || ''; if (renderer === 'Disabled' || renderer === 'SwiftShader') return false; }
+                return true;
+            } catch { return false; }
+        };
+
         const initMap = () => {
             if (!mapContainer.current || !(window as any).maplibregl) return;
+            if (!checkWebGL()) { console.warn('WebGL not available — map will show fallback UI'); setWebglFailed(true); setLoaded(true); return; }
             const ml = (window as any).maplibregl;
+            try {
+            // Listen for WebGL context errors on the container before map creation
+            const onCtxError = (ev: Event) => { ev.preventDefault(); ev.stopPropagation(); console.warn('WebGL context creation error caught:', ev); setWebglFailed(true); setLoaded(true); };
+            mapContainer.current.addEventListener('webglcontextcreationerror', onCtxError, true);
             const map = new ml.Map({
                 container: mapContainer.current,
                 style: {
@@ -3283,6 +3331,7 @@ export default function MapIndex() {
                 },
                 center: [15.9819, 45.8150], zoom: 13, attributionControl: false,
             });
+            map.on('error', (e: any) => { if (e?.error?.message?.includes('WebGL') || e?.error?.message?.includes('webgl')) { console.warn('MapLibre runtime WebGL error:', e); setWebglFailed(true); setLoaded(true); } });
             (map as any)._isGlobe = false;
             attachMapEvents(map);
             map.on('load', () => {
@@ -3292,9 +3341,10 @@ export default function MapIndex() {
                 setTimeout(() => { tileInitRef.current = false; }, 100);
             });
             mapRef.current = map;
+            } catch (e: any) { console.warn('MapLibre WebGL init failed:', e?.message || e); setWebglFailed(true); setLoaded(true); }
         };
         if ((window as any).maplibregl) initMap(); else { const s = document.createElement('script'); s.src = maplibreJS; s.onload = () => setTimeout(initMap, 50); document.head.appendChild(s); }
-        return () => { if (mapRef.current) { if ((mapRef.current as any)._spinFrame) cancelAnimationFrame((mapRef.current as any)._spinFrame); mapRef.current.remove(); mapRef.current = null; } };
+        return () => { window.removeEventListener('error', globalWebGLErrorHandler); window.removeEventListener('webglcontextcreationerror', globalWebGLCtxHandler, true); document.removeEventListener('webglcontextcreationerror', globalWebGLCtxHandler, true); if (mapRef.current) { if ((mapRef.current as any)._spinFrame) cancelAnimationFrame((mapRef.current as any)._spinFrame); mapRef.current.remove(); mapRef.current = null; } };
     }, []);
 
     const handleRecenter = useCallback(() => { mapRef.current?.flyTo({ center: [15.9819, 45.8150], zoom: 13, bearing: 0, duration: 1000 }); }, []);
@@ -3749,7 +3799,31 @@ export default function MapIndex() {
 
             {/* Map */}
             <div className="tmap-container" ref={mapContainerRef}>
-                <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
+                {!webglFailed && <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />}
+
+                {/* WebGL Fallback UI */}
+                {webglFailed && <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', background: '#0a0e16', zIndex: 25 }}>
+                    <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(239,68,68,0.08)', border: '2px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: theme.text, marginBottom: 6 }}>WebGL Unavailable</div>
+                    <div style={{ fontSize: 11, color: theme.textSecondary, maxWidth: 380, textAlign: 'center' as const, lineHeight: 1.6, marginBottom: 16 }}>The tactical map requires WebGL (hardware-accelerated graphics) which is not available in this browser environment. This can happen when GPU acceleration is disabled, the browser is sandboxed, or hardware does not support WebGL.</div>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+                        <button onClick={() => window.location.reload()} style={{ padding: '8px 16px', borderRadius: 6, border: `1px solid ${theme.accent}40`, background: `${theme.accent}10`, color: theme.accent, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>↻ Retry</button>
+                        <a href="/dashboard" style={{ padding: '8px 16px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 10, textDecoration: 'none', display: 'flex', alignItems: 'center' }}>← Dashboard</a>
+                    </div>
+                    <div style={{ padding: '12px 16px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'rgba(255,255,255,0.02)', maxWidth: 380 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, marginBottom: 6 }}>Troubleshooting</div>
+                        <div style={{ fontSize: 8, color: theme.textDim, lineHeight: 1.6 }}>
+                            • Enable hardware acceleration in browser settings<br/>
+                            • Check chrome://gpu for WebGL status<br/>
+                            • Update GPU drivers<br/>
+                            • Try a different browser (Chrome, Firefox, Edge)<br/>
+                            • Ensure the browser is not running in a sandboxed or headless mode
+                        </div>
+                    </div>
+                    <div style={{ marginTop: 16, display: 'flex', gap: 6 }}>
+                        {[{ l: '📊 Activity', h: '/activity' }, { l: '🧑 Persons', h: '/persons' }, { l: '🎯 Operations', h: '/operations' }, { l: '📹 Vision', h: '/vision' }].map(lk => <a key={lk.h} href={lk.h} style={{ padding: '5px 10px', borderRadius: 4, border: `1px solid ${theme.border}`, color: theme.textDim, textDecoration: 'none', fontSize: 8 }}>{lk.l}</a>)}
+                    </div>
+                </div>}
 
                 {/* Top Loader Bar */}
                 {topLoader > 0 && <div style={{ position: 'absolute' as const, top: 0, left: 0, right: 0, height: 3, zIndex: 60, overflow: 'hidden', background: 'transparent' }}>
@@ -3870,7 +3944,7 @@ export default function MapIndex() {
                 </div>}
 
                 {/* TOP-RIGHT: Minimap */}
-                {showMinimap && loaded && <div style={{ position: 'absolute' as const, top: 10, right: 10, zIndex: 5 }}><Minimap center={coords} zoom={zoom} onNavigate={handleMinimapNav} /></div>}
+                {showMinimap && loaded && !webglFailed && <div style={{ position: 'absolute' as const, top: 10, right: 10, zIndex: 5 }}><Minimap center={coords} zoom={zoom} onNavigate={handleMinimapNav} /></div>}
 
                 {/* BOTTOM-LEFT: Compass */}
                 {showCompass && loaded && <div style={{ position: 'absolute' as const, bottom: 60, left: 12, zIndex: 5 }}><Compass bearing={bearing} /></div>}
