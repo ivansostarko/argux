@@ -423,8 +423,15 @@ export default function MapIndex() {
     const [mapCtxMenu, setMapCtxMenu] = useState<{ x: number; y: number; lngLat: [number, number] } | null>(null);
     const [objCtxMenu, setObjCtxMenu] = useState<{ x: number; y: number; obj: MapObject } | null>(null);
     const [placingMarker, setPlacingMarker] = useState(false);
+    const [showObjectsPanel, setShowObjectsPanel] = useState(false);
+    const [objPanelTab, setObjPanelTab] = useState<'all' | 'markers' | 'shapes'>('all');
 
-    const filteredObjects = mapObjects.filter(o => !objSearch || o.name.toLowerCase().includes(objSearch.toLowerCase()) || o.type.includes(objSearch.toLowerCase()));
+    const filteredObjects = mapObjects.filter(o => {
+        if (objSearch && !o.name.toLowerCase().includes(objSearch.toLowerCase()) && !o.type.includes(objSearch.toLowerCase())) return false;
+        if (objPanelTab === 'markers' && o.type !== 'marker') return false;
+        if (objPanelTab === 'shapes' && o.type === 'marker') return false;
+        return true;
+    });
     const toggleObjVisibility = (id: string) => setMapObjects(prev => prev.map(o => o.id === id ? { ...o, visible: !o.visible } : o));
     const deleteObj = () => { if (objDeleteConfirm) { setMapObjects(prev => prev.filter(o => o.id !== objDeleteConfirm.id)); setObjDeleteConfirm(null); } };
     const openEditObj = (o: MapObject) => { setObjForm({ name: o.name, color: o.color, assignType: o.assignedTo?.type || '', assignId: o.assignedTo?.id || '' }); setObjModal({ mode: 'edit', obj: o }); };
@@ -2232,12 +2239,13 @@ export default function MapIndex() {
                 if (placingMarker) { setPlacingMarker(false); return; }
                 if (timelineOpen) { setTimelineOpen(false); setTimelinePlaying(false); return; }
                 if (showLiveTracker) { setShowLiveTracker(false); return; }
+                if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (sidebarOpen) { setSidebarOpen(false); return; }
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, sidebarOpen]);
+    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showObjectsPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -3152,28 +3160,21 @@ export default function MapIndex() {
                             </div>}
                             {objDrawing && <div style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)', fontSize: 9, color: theme.accent, fontWeight: 600 }}>Drawing {objTypeLabels[objDrawing.type].label} — {objDrawing.points.length} pts <button onClick={() => setObjDrawing(null)} style={{ marginLeft: 6, fontSize: 8, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Cancel</button></div>}
                             {placingMarker && <div style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', fontSize: 9, color: '#ef4444', fontWeight: 600 }}>📌 Click on map to place marker <button onClick={() => setPlacingMarker(false)} style={{ marginLeft: 6, fontSize: 8, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Cancel</button></div>}
-                            {/* Search */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, padding: '0 7px' }}>
-                                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
-                                <input value={objSearch} onChange={e => setObjSearch(e.target.value)} placeholder="Search objects..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '4px 0', color: theme.text, fontSize: 10, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
-                                {objSearch && <button onClick={() => setObjSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 0, display: 'flex' }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
-                            </div>
-                            {/* Object list */}
-                            {filteredObjects.length === 0 && <div className="tmap-empty">{objSearch ? 'No matching objects.' : 'No objects placed. Draw or add a marker.'}</div>}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 200, overflowY: 'auto' }}>
-                                {filteredObjects.map(o => {
-                                    const hidden = !o.visible;
-                                    return <div key={o.id} onClick={() => goToObj(o)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 6px', borderRadius: 5, border: `1px solid ${theme.border}`, cursor: 'pointer', opacity: hidden ? 0.4 : 1, transition: 'all 0.1s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = o.color + '40'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; }}>
-                                        <button onClick={e => { e.stopPropagation(); toggleObjVisibility(o.id); }} style={{ background: 'none', border: 'none', color: hidden ? theme.textDim : o.color, cursor: 'pointer', padding: 1, display: 'flex', flexShrink: 0, fontSize: 10 }} title={hidden ? 'Show' : 'Hide'}>{hidden ? <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/><line x1="3" y1="13" x2="13" y2="3"/></svg> : <span>{objTypeLabels[o.type].icon}</span>}</button>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontSize: 10, fontWeight: 600, color: hidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, textDecoration: hidden ? 'line-through' : 'none' }}>{o.name || 'Untitled'}</div>
-                                            <div style={{ fontSize: 8, color: theme.textDim }}>{objTypeLabels[o.type].label}{o.assignedTo ? ` · ${o.assignedTo.type === 'person' ? '👤' : '🏢'} ${o.assignedTo.name}` : ''}</div>
-                                        </div>
-                                        <button onClick={e => { e.stopPropagation(); openEditObj(o); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg></button>
-                                        <button onClick={e => { e.stopPropagation(); setObjDeleteConfirm(o); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
-                                    </div>;
-                                })}
-                            </div>
+                            {/* Open Objects Panel button */}
+                            <button onClick={() => { setShowObjectsPanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${mapObjects.length > 0 ? theme.accent + '25' : theme.border}`, background: mapObjects.length > 0 ? `${theme.accent}04` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = `${theme.accent}08`; e.currentTarget.style.borderColor = theme.accent + '40'; }} onMouseLeave={e => { e.currentTarget.style.background = mapObjects.length > 0 ? `${theme.accent}04` : 'transparent'; e.currentTarget.style.borderColor = mapObjects.length > 0 ? theme.accent + '25' : theme.border; }}>
+                                <div style={{ width: 24, height: 24, borderRadius: 5, background: `${theme.accent}08`, border: `1px solid ${theme.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>📋</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: theme.text }}>Objects List</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>{mapObjects.length} objects · {mapObjects.filter(o => o.type === 'marker').length} markers · {mapObjects.filter(o => o.type !== 'marker').length} shapes</div>
+                                </div>
+                                {mapObjects.length > 0 && <span style={{ fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: `${theme.accent}12`, color: theme.accent, border: `1px solid ${theme.accent}20` }}>{mapObjects.length}</span>}
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+                            {/* Quick visible count */}
+                            {mapObjects.length > 0 && <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                                {Object.entries(objTypeLabels).map(([type, info]) => { const count = mapObjects.filter(o => o.type === type).length; return count > 0 ? <span key={type} style={{ fontSize: 7, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${theme.accent}06`, color: theme.textDim, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 2 }}>{info.icon} {count}</span> : null; })}
+                                {mapObjects.some(o => !o.visible) && <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: 'rgba(239,68,68,0.06)', color: theme.danger, border: '1px solid rgba(239,68,68,0.15)' }}>👁️ {mapObjects.filter(o => !o.visible).length} hidden</span>}
+                            </div>}
                         </div>
                     </Section>
                     </div>
@@ -3734,6 +3735,79 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>{trackablePersons.filter(t => t.status === 'online').length}/{trackablePersons.length} online</span>
                         <div style={{ flex: 1 }} />
                         <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveTrackSessions.length > 0 ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6002</span></span>
+                    </div>
+                </div>}
+
+                {/* Objects Panel */}
+                {showObjectsPanel && loaded && <div style={{ position: 'absolute', bottom: timelineOpen ? 290 : 16, left: 10, width: 'min(380px, calc(100vw - 20px))', maxHeight: timelineOpen ? 'calc(100% - 310px)' : 'calc(100% - 32px)', zIndex: 16, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${theme.accent}15`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out', transition: 'bottom 0.3s ease, max-height 0.3s ease' }}>
+                    {/* Header */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 7, background: `${theme.accent}08`, border: `1px solid ${theme.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📋</div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Map Objects</div>
+                            <div style={{ fontSize: 8, color: theme.textDim }}>{mapObjects.length} objects · {mapObjects.filter(o => o.visible).length} visible · {mapObjects.filter(o => !o.visible).length} hidden</div>
+                        </div>
+                        {mapObjects.some(o => !o.visible) && <button onClick={() => setMapObjects(prev => prev.map(o => ({ ...o, visible: true })))} style={{ fontSize: 7, padding: '3px 6px', borderRadius: 3, border: '1px solid #22c55e25', background: '#22c55e08', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>Show All</button>}
+                        <button onClick={() => setShowObjectsPanel(false)} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
+                    </div>
+
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}20`, flexShrink: 0 }}>
+                        {[{ id: 'all' as const, label: 'All', count: mapObjects.length }, { id: 'markers' as const, label: 'Markers', count: mapObjects.filter(o => o.type === 'marker').length }, { id: 'shapes' as const, label: 'Shapes', count: mapObjects.filter(o => o.type !== 'marker').length }].map(t => <button key={t.id} onClick={() => setObjPanelTab(t.id)} style={{ flex: 1, padding: '7px 0', background: 'transparent', border: 'none', borderBottom: `2px solid ${objPanelTab === t.id ? theme.accent : 'transparent'}`, color: objPanelTab === t.id ? theme.accent : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>{t.label}{t.count > 0 && <span style={{ fontSize: 7, fontWeight: 800, padding: '0 3px', borderRadius: 3, background: objPanelTab === t.id ? `${theme.accent}15` : theme.border, color: objPanelTab === t.id ? theme.accent : theme.textDim }}>{t.count}</span>}</button>)}
+                    </div>
+
+                    {/* Search */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${objSearch ? theme.accent + '50' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                            <input value={objSearch} onChange={e => setObjSearch(e.target.value)} placeholder="Search objects by name or type..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '7px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
+                            {objSearch && <button onClick={() => setObjSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }}><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
+                        </div>
+                    </div>
+
+                    {/* Object list */}
+                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                        {filteredObjects.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}>
+                            <div style={{ fontSize: 28, marginBottom: 8 }}>{objPanelTab === 'markers' ? '📌' : objPanelTab === 'shapes' ? '⬡' : '📋'}</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>{objSearch ? 'No Matches' : 'No Objects'}</div>
+                            <div style={{ fontSize: 10, color: theme.textDim }}>{objSearch ? 'Try a different search term.' : 'Use the draw tools in the sidebar to create objects on the map.'}</div>
+                        </div>}
+                        {filteredObjects.map(o => {
+                            const hidden = !o.visible;
+                            const typeInfo = objTypeLabels[o.type];
+                            const coordStr = o.coords.length > 0 ? `${o.coords[0][1].toFixed(4)}, ${o.coords[0][0].toFixed(4)}` : '—';
+                            return <div key={o.id} style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}08`, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: hidden ? 0.45 : 1, transition: 'all 0.15s, background 0.1s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.background = `${o.color}06`; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }} onClick={() => goToObj(o)}>
+                                {/* Color dot + icon */}
+                                <div style={{ width: 30, height: 30, borderRadius: o.type === 'marker' ? '50%' : 6, background: `${o.color}12`, border: `1.5px solid ${o.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, position: 'relative' }}>{typeInfo.icon}
+                                    {hidden && <div style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', background: 'rgba(13,18,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/></svg></div>}
+                                </div>
+                                {/* Info */}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: hidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, textDecoration: hidden ? 'line-through' : 'none' }}>{o.name || 'Untitled'}</div>
+                                    <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}>
+                                        <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${o.color}12`, color: o.color, border: `1px solid ${o.color}20` }}>{typeInfo.label}</span>
+                                        {o.assignedTo && <span style={{ fontSize: 7, color: theme.textDim }}>{o.assignedTo.type === 'person' ? '👤' : '🏢'} {o.assignedTo.name}</span>}
+                                        <span style={{ fontSize: 7, color: theme.textDim }}>{o.coords.length} pts</span>
+                                    </div>
+                                </div>
+                                {/* Coords */}
+                                <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{coordStr}</span>
+                                {/* Actions */}
+                                <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                                    <button onClick={e => { e.stopPropagation(); toggleObjVisibility(o.id); triggerTopLoader(); }} title={hidden ? 'Show' : 'Hide'} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${hidden ? theme.danger + '20' : theme.border}`, background: hidden ? 'rgba(239,68,68,0.04)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontSize: 9, color: hidden ? theme.danger : theme.textDim }}>{hidden ? '👁️‍🗨️' : '👁️'}</button>
+                                    <button onClick={e => { e.stopPropagation(); openEditObj(o); }} title="Edit" style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: theme.textDim }} onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg></button>
+                                    <button onClick={e => { e.stopPropagation(); setObjDeleteConfirm(o); }} title="Delete" style={{ width: 22, height: 22, borderRadius: 4, border: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.03)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: theme.textDim }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                                </div>
+                            </div>;
+                        })}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{filteredObjects.length} of {mapObjects.length} shown</span>
+                        <div style={{ flex: 1 }} />
+                        {mapObjects.length > 0 && <button onClick={() => { setMapObjects(prev => prev.map(o => ({ ...o, visible: true }))); triggerTopLoader(); }} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: '1px solid #22c55e20', background: '#22c55e06', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>👁️ Show All</button>}
+                        {mapObjects.length > 0 && <button onClick={() => { setMapObjects(prev => prev.map(o => ({ ...o, visible: false }))); triggerTopLoader(); }} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🚫 Hide All</button>}
                     </div>
                 </div>}
 
