@@ -29,7 +29,7 @@ function SidebarMS({ selected, onChange, options, placeholder, showSelectAll }: 
     const toggle = (id: string) => onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
     const allSelected = selected.length === options.length;
     const has = selected.length > 0;
-    return (<div ref={ref} style={{ position: 'relative' }}><button className="tmap-ms-trigger" onClick={() => { setOpen(!open); setQ(''); }} style={{ color: has ? theme.text : theme.textDim, borderColor: has ? theme.accent + '40' : theme.border }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{has ? `${selected.length} of ${options.length} selected` : placeholder}</span><svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2,4 5,7 8,4" /></svg></button>{open && <div className="tmap-ms-panel"><div className="tmap-ms-search"><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search..." autoFocus />{has && <button onClick={() => onChange([])} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: theme.danger, fontSize: 9, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, padding: '2px 6px', borderRadius: 3, flexShrink: 0 }}>Clear</button>}</div>{showSelectAll && !q && <div className="tmap-ms-item" onClick={() => onChange(allSelected ? [] : options.map(o => o.id))} style={{ color: allSelected ? theme.accent : theme.textSecondary, borderBottom: `1px solid ${theme.border}`, fontWeight: 700, fontSize: 10 }}><div className={`tmap-ms-check ${allSelected ? 'on' : ''}`}>{allSelected && <svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>Select All</div>}<div className="tmap-ms-list">{filtered.map(o => { const c = selected.includes(o.id); return <div key={o.id} className="tmap-ms-item" onClick={() => toggle(o.id)} style={{ color: c ? theme.accent : theme.text }}><div className={`tmap-ms-check ${c ? 'on' : ''}`}>{c && <svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>{o.img && <img src={o.img} style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover', border: `1px solid ${theme.border}`, flexShrink: 0 }} />}<div><div>{o.label}</div>{o.sub && <div style={{ fontSize: 9, color: theme.textDim }}>{o.sub}</div>}</div></div>; })}{filtered.length === 0 && <div style={{ padding: 12, fontSize: 10, color: theme.textDim, textAlign: 'center' }}>No results</div>}</div></div>}{has && <div className="tmap-tags">{selected.slice(0, 6).map(id => { const o = options.find(x => x.id === id); return o ? <span key={id} className="tmap-tag">{o.label.split(' ')[0]}<button onClick={e => { e.stopPropagation(); toggle(id); }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button></span> : null; })}{selected.length > 6 && <span className="tmap-tag" style={{ opacity: 0.6 }}>+{selected.length - 6}</span>}</div>}</div>);
+    return (<div ref={ref} style={{ position: 'relative' as const }}><button className="tmap-ms-trigger" onClick={() => { setOpen(!open); setQ(''); }} style={{ color: has ? theme.text : theme.textDim, borderColor: has ? theme.accent + '40' : theme.border }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{has ? `${selected.length} of ${options.length} selected` : placeholder}</span><svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2,4 5,7 8,4" /></svg></button>{open && <div className="tmap-ms-panel"><div className="tmap-ms-search"><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search..." autoFocus />{has && <button onClick={() => onChange([])} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: theme.danger, fontSize: 9, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, padding: '2px 6px', borderRadius: 3, flexShrink: 0 }}>Clear</button>}</div>{showSelectAll && !q && <div className="tmap-ms-item" onClick={() => onChange(allSelected ? [] : options.map(o => o.id))} style={{ color: allSelected ? theme.accent : theme.textSecondary, borderBottom: `1px solid ${theme.border}`, fontWeight: 700, fontSize: 10 }}><div className={`tmap-ms-check ${allSelected ? 'on' : ''}`}>{allSelected && <svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>Select All</div>}<div className="tmap-ms-list">{filtered.map(o => { const c = selected.includes(o.id); return <div key={o.id} className="tmap-ms-item" onClick={() => toggle(o.id)} style={{ color: c ? theme.accent : theme.text }}><div className={`tmap-ms-check ${c ? 'on' : ''}`}>{c && <svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>{o.img && <img src={o.img} style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover', border: `1px solid ${theme.border}`, flexShrink: 0 }} />}<div><div>{o.label}</div>{o.sub && <div style={{ fontSize: 9, color: theme.textDim }}>{o.sub}</div>}</div></div>; })}{filtered.length === 0 && <div style={{ padding: 12, fontSize: 10, color: theme.textDim, textAlign: 'center' as const }}>No results</div>}</div></div>}{has && <div className="tmap-tags">{selected.slice(0, 6).map(id => { const o = options.find(x => x.id === id); return o ? <span key={id} className="tmap-tag">{o.label.split(' ')[0]}<button onClick={e => { e.stopPropagation(); toggle(id); }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button></span> : null; })}{selected.length > 6 && <span className="tmap-tag" style={{ opacity: 0.6 }}>+{selected.length - 6}</span>}</div>}</div>);
 }
 
 /* ═══ COLLAPSIBLE SECTION ═══ */
@@ -42,7 +42,7 @@ function Section({ title, icon, children, defaultOpen = false, badge, dragHandle
 function Toggle({ label, enabled, onChange, description }: { label: string; enabled: boolean; onChange: (v: boolean) => void; description?: string }) {
     return (<div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, padding: '6px 0' }}>
         <div><div style={{ fontSize: 11, fontWeight: 600, color: enabled ? theme.text : theme.textSecondary }}>{label}</div>{description && <div style={{ fontSize: 9, color: theme.textDim, marginTop: 1 }}>{description}</div>}</div>
-        <button onClick={() => onChange(!enabled)} style={{ width: 34, height: 18, borderRadius: 9, border: 'none', background: enabled ? theme.accent : theme.border, cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}><div style={{ width: 14, height: 14, borderRadius: 7, background: '#fff', position: 'absolute', top: 2, left: enabled ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></button>
+        <button onClick={() => onChange(!enabled)} style={{ width: 34, height: 18, borderRadius: 9, border: 'none', background: enabled ? theme.accent : theme.border, cursor: 'pointer', position: 'relative' as const, flexShrink: 0, transition: 'background 0.2s' }}><div style={{ width: 14, height: 14, borderRadius: 7, background: '#fff', position: 'absolute' as const, top: 2, left: enabled ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></button>
     </div>);
 }
 
@@ -66,7 +66,7 @@ const orgOpts = mockOrganizations.map(o => ({ id: o.id.toString(), label: o.name
 
 /* ═══ COMPASS WIDGET ═══ */
 function Compass({ bearing }: { bearing: number }) {
-    return (<div style={{ width: 60, height: 60, position: 'relative' }}>
+    return (<div style={{ width: 60, height: 60, position: 'relative' as const }}>
         <svg width="60" height="60" viewBox="0 0 60 60" style={{ transform: `rotate(${-bearing}deg)`, transition: 'transform 0.3s ease-out' }}>
             <circle cx="30" cy="30" r="28" fill="rgba(10,14,22,0.85)" stroke={theme.border} strokeWidth="1.5"/>
             <circle cx="30" cy="30" r="22" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="0.5"/>
@@ -79,7 +79,7 @@ function Compass({ bearing }: { bearing: number }) {
             <text x="4" y="32" textAnchor="middle" fontSize="5" fontWeight="700" fill="rgba(255,255,255,0.3)" fontFamily="system-ui">W</text>
             <text x="56" y="32" textAnchor="middle" fontSize="5" fontWeight="700" fill="rgba(255,255,255,0.3)" fontFamily="system-ui">E</text>
         </svg>
-        <div style={{ position: 'absolute', bottom: -14, left: '50%', transform: 'translateX(-50%)', fontSize: 8, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", whiteSpace: 'nowrap' as const }}>{Math.round(bearing)}°</div>
+        <div style={{ position: 'absolute' as const, bottom: -14, left: '50%', transform: 'translateX(-50%)', fontSize: 8, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", whiteSpace: 'nowrap' as const }}>{Math.round(bearing)}°</div>
     </div>);
 }
 
@@ -117,13 +117,13 @@ function Minimap({ center, zoom: mainZoom, onNavigate }: { center: { lat: number
         onNavigate(lngLat.lat, lngLat.lng);
     };
 
-    return (<div onClick={handleClick} style={{ width: 140, height: 100, borderRadius: 8, overflow: 'hidden', border: `1.5px solid ${theme.border}`, boxShadow: '0 4px 16px rgba(0,0,0,0.5)', position: 'relative', cursor: 'crosshair' }}>
+    return (<div onClick={handleClick} style={{ width: 140, height: 100, borderRadius: 8, overflow: 'hidden', border: `1.5px solid ${theme.border}`, boxShadow: '0 4px 16px rgba(0,0,0,0.5)', position: 'relative' as const, cursor: 'crosshair' }}>
         <div ref={ref} style={{ width: '100%', height: '100%', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round" opacity="0.8"><line x1="8" y1="2" x2="8" y2="6"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="2" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="14" y2="8"/></svg>
         </div>
-        <div style={{ position: 'absolute', top: 3, left: 5, fontSize: 7, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", opacity: 0.7, pointerEvents: 'none' }}>OVERVIEW</div>
-        <div style={{ position: 'absolute', bottom: 2, right: 4, fontSize: 6, color: 'rgba(255,255,255,0.35)', fontFamily: "'JetBrains Mono', monospace", pointerEvents: 'none' }}>Click to navigate</div>
+        <div style={{ position: 'absolute' as const, top: 3, left: 5, fontSize: 7, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", opacity: 0.7, pointerEvents: 'none' }}>OVERVIEW</div>
+        <div style={{ position: 'absolute' as const, bottom: 2, right: 4, fontSize: 6, color: 'rgba(255,255,255,0.35)', fontFamily: "'JetBrains Mono', monospace", pointerEvents: 'none' }}>Click to navigate</div>
     </div>);
 }
 
@@ -686,9 +686,9 @@ export default function MapIndex() {
     const mapContainerRef = useRef<HTMLDivElement>(null);
 
     const panelStyle = (id: PanelId, width: string, color: string): React.CSSProperties => {
-        if (isPanelMax(id)) return { position: 'absolute', top: 4, left: 4, right: 4, bottom: timelineOpen ? 280 : 4, width: 'auto', maxHeight: 'none', zIndex: 18, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.98)', border: `1px solid ${color}25`, borderRadius: 10, boxShadow: '0 12px 48px rgba(0,0,0,0.6)', backdropFilter: 'blur(14px)', overflow: 'hidden', animation: 'argux-fadeIn 0.15s ease-out', transition: 'all 0.2s ease' };
+        if (isPanelMax(id)) return { position: 'absolute' as const, top: 4, left: 4, right: 4, bottom: timelineOpen ? 280 : 4, width: 'auto', maxHeight: 'none', zIndex: 18, display: 'flex', flexDirection: 'column' as const, background: 'rgba(10,14,22,0.98)', border: `1px solid ${color}25`, borderRadius: 10, boxShadow: '0 12px 48px rgba(0,0,0,0.6)', backdropFilter: 'blur(14px)', overflow: 'hidden', animation: 'argux-fadeIn 0.15s ease-out', transition: 'all 0.2s ease' };
         const pos = getPanelPos(id);
-        return { position: 'absolute', top: pos.y, left: pos.x, width: `min(${width}, calc(100vw - 20px))`, maxHeight: isPanelMin(id) ? 'none' : `calc(100% - ${pos.y + 10}px)`, zIndex: 16, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${color}20`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.15s ease-out' };
+        return { position: 'absolute' as const, top: pos.y, left: pos.x, width: `min(${width}, calc(100vw - 20px))`, maxHeight: isPanelMin(id) ? 'none' : `calc(100% - ${pos.y + 10}px)`, zIndex: 16, display: 'flex', flexDirection: 'column' as const, background: 'rgba(10,14,22,0.97)', border: `1px solid ${color}20`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.15s ease-out' };
     };
 
     const PanelHeader = ({ id, icon, title, subtitle, color, onClose, extra }: { id: PanelId; icon: string; title: string; subtitle: string; color: string; onClose: () => void; extra?: React.ReactNode }) => (
@@ -2962,7 +2962,7 @@ export default function MapIndex() {
         <PageMeta title="Tactical Map" description="Real-time geospatial surveillance and entity tracking" section="map" />
         <div className="tmap-page">
             <button className="tmap-mobile-toggle tmap-overlay-btn" onClick={() => setSidebarOpen(!sidebarOpen)}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
-            {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 99 }} />}
+            {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 99 }} />}
 
             {/* Sidebar */}
             <div className={`tmap-sidebar ${sidebarOpen ? 'open' : ''}`}>
@@ -2983,7 +2983,7 @@ export default function MapIndex() {
                     {/* PERIOD */}
                     <div className={`tmap-section-wrap${dragSectionId === 'period' ? ' dragging' : ''}${dragOverId === 'period' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('period') }} onDragOver={e => handleSectionDragOver(e, 'period')} onDrop={() => handleSectionDrop('period')}>
                     <Section title="Period" icon={Ico.period} dragHandle={dragHandleEl('period')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>From</div><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={dateInputStyle} /></div>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>To</div><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={dateInputStyle} /></div>
                             <div style={{ display: 'flex', gap: 6 }}>
@@ -3001,7 +3001,7 @@ export default function MapIndex() {
                     {/* SUBJECTS */}
                     <div className={`tmap-section-wrap${dragSectionId === 'subjects' ? ' dragging' : ''}${dragOverId === 'subjects' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('subjects') }} onDragOver={e => handleSectionDragOver(e, 'subjects')} onDrop={() => handleSectionDrop('subjects')}>
                     <Section title="Subjects" icon={Ico.subjects} badge={selectedPersons.length + selectedOrgs.length} dragHandle={dragHandleEl('subjects')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Persons ({selectedPersons.length}/{mockPersons.length})</div><SidebarMS selected={selectedPersons} onChange={v => { setSelectedPersons(v); triggerTopLoader(); }} options={personOpts} placeholder="Select persons to track..." showSelectAll /></div>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Organizations ({selectedOrgs.length}/{mockOrganizations.length})</div><SidebarMS selected={selectedOrgs} onChange={v => { setSelectedOrgs(v); triggerTopLoader(); }} options={orgOpts} placeholder="Select organizations..." showSelectAll /></div>
                         </div>
@@ -3010,7 +3010,7 @@ export default function MapIndex() {
 
                     <div className={`tmap-section-wrap${dragSectionId === 'sources' ? ' dragging' : ''}${dragOverId === 'sources' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('sources') }} onDragOver={e => handleSectionDragOver(e, 'sources')} onDrop={() => handleSectionDrop('sources')}>
                     <Section title="Sources" icon={Ico.sources} badge={activeSourceCount} dragHandle={dragHandleEl('sources')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                             {['Camera', 'GPS', 'Audio', 'Mobile App'].map(group => {
                                 const items = sourceTypes.filter(s => s.group === group);
                                 const activeInGroup = items.filter(s => activeSources.has(s.id)).length;
@@ -3020,7 +3020,7 @@ export default function MapIndex() {
                                         <span style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>{group} {activeInGroup > 0 && <span style={{ color: theme.accent }}>({activeInGroup})</span>}</span>
                                         <button onClick={() => toggleSourceGroup(group)} style={{ fontSize: 8, fontWeight: 600, color: allOn ? theme.danger : theme.accent, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>{allOn ? 'Off All' : 'On All'}</button>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
                                         {items.map(s => {
                                             const isOn = activeSources.has(s.id);
                                             const markerCount = mockSourceMarkers.filter(m => m.sourceId === s.id).length;
@@ -3046,7 +3046,7 @@ export default function MapIndex() {
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
                     <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Layer buttons */}
                             {[
                                 { key: 'heatmap', icon: '🔥', label: 'Activity Heatmap', color: '#f59e0b', active: layerHeatmap, toggle: () => { setLayerHeatmap(!layerHeatmap); triggerTopLoader(); }, panel: showHeatmapPanel, openPanel: () => { setShowHeatmapPanel(true); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); triggerTopLoader(); }, desc: layerHeatmap ? `${heatmapPoints.length} points · ${(heatmapIntensity * 100).toFixed(0)}% intensity` : 'Surveillance activity density' },
@@ -3055,8 +3055,8 @@ export default function MapIndex() {
                                 { key: 'face', icon: '🧑‍🦲', label: 'Face Recognition', color: '#ec4899', active: layerFace, toggle: () => { setLayerFace(!layerFace); triggerTopLoader(); }, panel: showFacePanel, openPanel: () => { setShowFacePanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); triggerTopLoader(); }, desc: layerFace ? `${mockFaces.filter(f => !faceHidden.has(f.id) && (faceSelected.size === 0 || faceSelected.has(f.id))).length} visible · ${faceHidden.size} hidden` : 'Facial recognition captures' },
                             ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {/* Toggle switch */}
-                                <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
-                                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: l.active ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
+                                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute' as const, top: 2, left: l.active ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                                 </button>
                                 {/* Panel open button */}
                                 <button onClick={l.openPanel} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, border: `1px solid ${l.active ? l.color + '25' : l.panel ? l.color + '40' : theme.border}`, background: l.panel ? `${l.color}06` : l.active ? `${l.color}03` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.12s' }} onMouseEnter={e => { e.currentTarget.style.background = `${l.color}08`; e.currentTarget.style.borderColor = l.color + '40'; }} onMouseLeave={e => { e.currentTarget.style.background = l.panel ? `${l.color}06` : l.active ? `${l.color}03` : 'transparent'; e.currentTarget.style.borderColor = l.active ? l.color + '25' : l.panel ? l.color + '40' : theme.border; }}>
@@ -3077,18 +3077,18 @@ export default function MapIndex() {
                             <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>2D Base Maps</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 12 }}>
                                 {tiles2D.map(t => { const isActive = activeTile === t.id; return (
-                                    <button key={t.id} onClick={() => { setActiveTile(t.id); triggerTopLoader(); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 2px', borderRadius: 6, border: `1.5px solid ${isActive ? theme.accent : theme.border}`, background: isActive ? theme.accentDim : 'transparent', cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'inherit' }} onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')} onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}>
+                                    <button key={t.id} onClick={() => { setActiveTile(t.id); triggerTopLoader(); }} style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3, padding: '6px 2px', borderRadius: 6, border: `1.5px solid ${isActive ? theme.accent : theme.border}`, background: isActive ? theme.accentDim : 'transparent', cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'inherit' }} onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')} onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}>
                                         <span style={{ fontSize: 16 }}>{t.preview}</span>
-                                        <span style={{ fontSize: 8, fontWeight: 600, color: isActive ? theme.accent : theme.textDim, lineHeight: 1.1, textAlign: 'center' }}>{t.name}</span>
+                                        <span style={{ fontSize: 8, fontWeight: 600, color: isActive ? theme.accent : theme.textDim, lineHeight: 1.1, textAlign: 'center' as const }}>{t.name}</span>
                                     </button>
                                 ); })}
                             </div>
                             <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>3D Modes</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
                                 {tiles3D.map(t => { const isActive = active3D === t.id; return (
-                                    <button key={t.id} onClick={() => { setActive3D(isActive ? null : t.id); triggerTopLoader(); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 2px', borderRadius: 6, border: `1.5px solid ${isActive ? '#8b5cf6' : theme.border}`, background: isActive ? 'rgba(139,92,246,0.08)' : 'transparent', cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'inherit' }} onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')} onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}>
+                                    <button key={t.id} onClick={() => { setActive3D(isActive ? null : t.id); triggerTopLoader(); }} style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3, padding: '8px 2px', borderRadius: 6, border: `1.5px solid ${isActive ? '#8b5cf6' : theme.border}`, background: isActive ? 'rgba(139,92,246,0.08)' : 'transparent', cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'inherit' }} onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')} onMouseLeave={e => !isActive && (e.currentTarget.style.background = 'transparent')}>
                                         <span style={{ fontSize: 18 }}>{t.preview}</span>
-                                        <span style={{ fontSize: 8, fontWeight: 600, color: isActive ? '#8b5cf6' : theme.textDim, lineHeight: 1.1, textAlign: 'center' }}>{t.name}</span>
+                                        <span style={{ fontSize: 8, fontWeight: 600, color: isActive ? '#8b5cf6' : theme.textDim, lineHeight: 1.1, textAlign: 'center' as const }}>{t.name}</span>
                                     </button>
                                 ); })}
                             </div>
@@ -3098,11 +3098,11 @@ export default function MapIndex() {
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'tools' ? ' dragging' : ''}${dragOverId === 'tools' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('tools') }} onDragOver={e => handleSectionDragOver(e, 'tools')} onDrop={() => handleSectionDrop('tools')}>
                     <Section title="Tools" icon={Ico.tools} badge={(rulerActive ? 1 : 0) + (zoneDrawing ? 1 : 0)} dragHandle={dragHandleEl('tools')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Ruler button */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); triggerTopLoader(); setZoneDrawing(null); } }} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: rulerActive ? '#f59e0b' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
-                                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: rulerActive ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                <button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); triggerTopLoader(); setZoneDrawing(null); } }} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: rulerActive ? '#f59e0b' : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
+                                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute' as const, top: 2, left: rulerActive ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                                 </button>
                                 <button onClick={() => { setShowRulerPanel(true); setShowZonePanel(false); triggerTopLoader(); }} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, border: `1px solid ${rulerActive ? '#f59e0b25' : showRulerPanel ? '#f59e0b40' : theme.border}`, background: showRulerPanel ? 'rgba(245,158,11,0.06)' : rulerActive ? 'rgba(245,158,11,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.12s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showRulerPanel ? 'rgba(245,158,11,0.06)' : rulerActive ? 'rgba(245,158,11,0.03)' : 'transparent'; }}>
                                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={rulerActive ? '#f59e0b' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 14L14 2"/><path d="M5 14L2 14L2 11"/><path d="M11 2L14 2L14 5"/></svg>
@@ -3116,8 +3116,8 @@ export default function MapIndex() {
                             </div>
                             {/* Zone Editor button */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <button onClick={() => { if (zoneDrawing) { setZoneDrawing(null); } else { openAddZone(); } }} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: zoneDrawing ? '#8b5cf6' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
-                                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: zoneDrawing ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                <button onClick={() => { if (zoneDrawing) { setZoneDrawing(null); } else { openAddZone(); } }} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: zoneDrawing ? '#8b5cf6' : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
+                                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute' as const, top: 2, left: zoneDrawing ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                                 </button>
                                 <button onClick={() => { setShowZonePanel(true); setShowRulerPanel(false); triggerTopLoader(); }} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, border: `1px solid ${zoneDrawing ? '#8b5cf625' : showZonePanel ? '#8b5cf640' : theme.border}`, background: showZonePanel ? 'rgba(139,92,246,0.06)' : zoneDrawing ? 'rgba(139,92,246,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.12s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showZonePanel ? 'rgba(139,92,246,0.06)' : zoneDrawing ? 'rgba(139,92,246,0.03)' : 'transparent'; }}>
                                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={zoneDrawing ? '#8b5cf6' : theme.textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>
@@ -3136,10 +3136,10 @@ export default function MapIndex() {
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'intelligence' ? ' dragging' : ''}${dragOverId === 'intelligence' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('intelligence') }} onDragOver={e => handleSectionDragOver(e, 'intelligence')} onDrop={() => handleSectionDrop('intelligence')}>
                     <Section title="Intelligence" icon={Ico.intel} badge={liveTrackSessions.length + (corrResults ? corrResults.length : 0) + (anomalyResults ? anomalyResults.length : 0) + (predResults ? predResults.length : 0) + (patternResults ? patternResults.length : 0)} dragHandle={dragHandleEl('intelligence')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Live Tracker button */}
                             <button onClick={() => { setShowLiveTracker(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e30' : theme.border}`, background: liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.06)'; e.currentTarget.style.borderColor = '#22c55e40'; }} onMouseLeave={e => { e.currentTarget.style.background = liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent'; e.currentTarget.style.borderColor = liveTrackSessions.length > 0 ? '#22c55e30' : theme.border; }}>
-                                <div style={{ width: 28, height: 28, borderRadius: 6, background: liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.06)', border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e30' : '#22c55e15'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, position: 'relative' }}>🎯{liveTrackSessions.length > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', background: '#22c55e', border: '1.5px solid rgba(13,18,32,0.9)', animation: 'tmap-tl-ring 1.5s infinite' }} />}</div>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.06)', border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e30' : '#22c55e15'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, position: 'relative' as const }}>🎯{liveTrackSessions.length > 0 && <div style={{ position: 'absolute' as const, top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', background: '#22c55e', border: '1.5px solid rgba(13,18,32,0.9)', animation: 'tmap-tl-ring 1.5s infinite' }} />}</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: 11, fontWeight: 700, color: liveTrackSessions.length > 0 ? '#22c55e' : theme.text }}>Live Tracker</div>
                                     <div style={{ fontSize: 8, color: theme.textDim }}>{liveTrackSessions.length > 0 ? `${liveTrackSessions.filter(s => s.status === 'tracking').length} tracking · ${liveTrackSessions.filter(s => s.status === 'paused').length} paused` : 'Track persons via GPS or phone'}</div>
@@ -3210,7 +3210,7 @@ export default function MapIndex() {
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'objects' ? ' dragging' : ''}${dragOverId === 'objects' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('objects') }} onDragOver={e => handleSectionDragOver(e, 'objects')} onDrop={() => handleSectionDrop('objects')}>
                     <Section title="Objects" icon={Ico.objects} badge={mapObjects.length} dragHandle={dragHandleEl('objects')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                             {/* Draw buttons */}
                             {!objDrawing && !placingMarker && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 3 }}>
                                 {(['marker', 'line', 'rectangle', 'polygon', 'freehand', 'circle'] as ObjType[]).map(t => <button key={t} onClick={() => t === 'marker' ? startPlacingMarker() : startObjDraw(t)} style={{ padding: '5px 2px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'center' as const, lineHeight: 1.3 }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + '50'; e.currentTarget.style.color = theme.accent; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}><div style={{ fontSize: 12, marginBottom: 1 }}>{objTypeLabels[t].icon}</div>{objTypeLabels[t].label}</button>)}
@@ -3237,7 +3237,7 @@ export default function MapIndex() {
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'places' ? ' dragging' : ''}${dragOverId === 'places' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('places') }} onDragOver={e => handleSectionDragOver(e, 'places')} onDrop={() => handleSectionDrop('places')}>
                     <Section title="Saved Places" icon={Ico.places} badge={savedPlaces.length} dragHandle={dragHandleEl('places')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             <button onClick={() => { setShowPlacesPanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${savedPlaces.length > 0 ? theme.accent + '25' : theme.border}`, background: showPlacesPanel ? `${theme.accent}06` : savedPlaces.length > 0 ? `${theme.accent}03` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = `${theme.accent}08`; }} onMouseLeave={e => { e.currentTarget.style.background = showPlacesPanel ? `${theme.accent}06` : savedPlaces.length > 0 ? `${theme.accent}03` : 'transparent'; }}>
                                 <div style={{ width: 24, height: 24, borderRadius: 5, background: `${theme.accent}08`, border: `1px solid ${theme.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>📍</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -3259,7 +3259,7 @@ export default function MapIndex() {
                     {/* SETTINGS */}
                     <div className={`tmap-section-wrap${dragSectionId === 'workspaces' ? ' dragging' : ''}${dragOverId === 'workspaces' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('workspaces') }} onDragOver={e => handleSectionDragOver(e, 'workspaces')} onDrop={() => handleSectionDrop('workspaces')}>
                     <Section title="Workspaces" icon={Ico.workspaces} badge={workspaces.length} dragHandle={dragHandleEl('workspaces')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Active workspace indicator */}
                             {wsActiveId && <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
                                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
@@ -3283,7 +3283,7 @@ export default function MapIndex() {
                     </div>
 
                     {/* Save/Edit Workspace Modal */}
-                    {wsModal && <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setWsModal(null)}>
+                    {wsModal && <div style={{ position: 'fixed' as const, inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setWsModal(null)}>
                         <div onClick={e => e.stopPropagation()} style={{ background: '#0d1220', border: `1px solid ${theme.border}`, borderRadius: 14, width: '100%', maxWidth: 400, padding: 0, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', animation: 'argux-fadeIn 0.2s ease-out', overflow: 'hidden' }}>
                             <div style={{ padding: '14px 18px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <span style={{ fontSize: 16 }}>{wsModal.mode === 'save' ? '💾' : '✏️'}</span>
@@ -3292,14 +3292,14 @@ export default function MapIndex() {
                                     <div style={{ fontSize: 10, color: theme.textDim }}>{wsModal.mode === 'save' ? 'Save the current map configuration for later use' : 'Update workspace details'}</div>
                                 </div>
                             </div>
-                            <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
                                 <div>
                                     <label style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Name *</label>
                                     <input value={wsForm.name} onChange={e => setWsForm({ ...wsForm, name: e.target.value })} placeholder="e.g. Morning Surveillance" autoFocus style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
                                 </div>
                                 <div>
                                     <label style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Description</label>
-                                    <textarea value={wsForm.description} onChange={e => setWsForm({ ...wsForm, description: e.target.value })} placeholder="What is this workspace for?" rows={2} style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', resize: 'vertical' }} />
+                                    <textarea value={wsForm.description} onChange={e => setWsForm({ ...wsForm, description: e.target.value })} placeholder="What is this workspace for?" rows={2} style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', resize: 'vertical' as const }} />
                                 </div>
                                 <div>
                                     <label style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Tags <span style={{ fontWeight: 400, color: theme.textDim }}>(comma separated)</span></label>
@@ -3330,7 +3330,7 @@ export default function MapIndex() {
 
                     <div className={`tmap-section-wrap${dragSectionId === 'settings' ? ' dragging' : ''}${dragOverId === 'settings' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('settings') }} onDragOver={e => handleSectionDragOver(e, 'settings')} onDrop={() => handleSectionDrop('settings')}>
                     <Section title="Settings" icon={Ico.settings}  dragHandle={dragHandleEl('settings')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
                             <Toggle label="World Minimap" description="Satellite overview map in top-right" enabled={showMinimap} onChange={v => { setShowMinimap(v); triggerTopLoader(); }} />
                             <Toggle label="Compass" description="Bearing indicator in bottom-left" enabled={showCompass} onChange={v => { setShowCompass(v); triggerTopLoader(); }} />
                             <Toggle label="Map Controls" description="Zoom, fullscreen, rotation buttons" enabled={showControls} onChange={v => { setShowControls(v); triggerTopLoader(); }} />
@@ -3353,30 +3353,30 @@ export default function MapIndex() {
                 <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
                 {/* Top Loader Bar */}
-                {topLoader > 0 && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, zIndex: 60, overflow: 'hidden', background: 'transparent' }}>
+                {topLoader > 0 && <div style={{ position: 'absolute' as const, top: 0, left: 0, right: 0, height: 3, zIndex: 60, overflow: 'hidden', background: 'transparent' }}>
                     <div style={{ height: '100%', width: `${topLoader}%`, background: `linear-gradient(90deg, ${theme.accent}, #8b5cf6, #ec4899)`, borderRadius: '0 2px 2px 0', transition: topLoader === 100 ? 'width 0.2s ease-out, opacity 0.4s ease-out' : 'width 0.3s ease-out', opacity: topLoader === 100 ? 0 : 1, boxShadow: `0 0 10px ${theme.accent}60, 0 0 4px ${theme.accent}40` }}>
-                        <div style={{ position: 'absolute', right: 0, top: 0, width: 60, height: '100%', background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.3))`, animation: 'tmap-loader-shimmer 0.8s ease-in-out infinite' }} />
+                        <div style={{ position: 'absolute' as const, right: 0, top: 0, width: 60, height: '100%', background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.3))`, animation: 'tmap-loader-shimmer 0.8s ease-in-out infinite' }} />
                     </div>
                 </div>}
 
                 {/* Loading */}
-                {!loaded && <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0e16', zIndex: 20 }}>
+                {!loaded && <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', background: '#0a0e16', zIndex: 20 }}>
                     {/* Animated rings */}
-                    <div style={{ position: 'relative', width: 120, height: 120, marginBottom: 20 }}>
-                        <svg width="120" height="120" viewBox="0 0 120 120" style={{ position: 'absolute', inset: 0, animation: 'argux-spin 3s linear infinite' }}>
+                    <div style={{ position: 'relative' as const, width: 120, height: 120, marginBottom: 20 }}>
+                        <svg width="120" height="120" viewBox="0 0 120 120" style={{ position: 'absolute' as const, inset: 0, animation: 'argux-spin 3s linear infinite' }}>
                             <circle cx="60" cy="60" r="54" fill="none" stroke={theme.border} strokeWidth="1" />
                             <circle cx="60" cy="60" r="54" fill="none" stroke={theme.accent} strokeWidth="2" strokeDasharray="40 300" strokeLinecap="round" />
                         </svg>
-                        <svg width="120" height="120" viewBox="0 0 120 120" style={{ position: 'absolute', inset: 0, animation: 'argux-spin 2s linear infinite reverse' }}>
+                        <svg width="120" height="120" viewBox="0 0 120 120" style={{ position: 'absolute' as const, inset: 0, animation: 'argux-spin 2s linear infinite reverse' }}>
                             <circle cx="60" cy="60" r="44" fill="none" stroke={theme.border} strokeWidth="0.5" />
                             <circle cx="60" cy="60" r="44" fill="none" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" strokeDasharray="25 250" strokeLinecap="round" />
                         </svg>
-                        <svg width="120" height="120" viewBox="0 0 120 120" style={{ position: 'absolute', inset: 0, animation: 'argux-spin 5s linear infinite' }}>
+                        <svg width="120" height="120" viewBox="0 0 120 120" style={{ position: 'absolute' as const, inset: 0, animation: 'argux-spin 5s linear infinite' }}>
                             <circle cx="60" cy="60" r="34" fill="none" stroke={theme.border} strokeWidth="0.5" />
                             <circle cx="60" cy="60" r="34" fill="none" stroke="rgba(34,197,94,0.5)" strokeWidth="1" strokeDasharray="15 200" strokeLinecap="round" />
                         </svg>
                         {/* Center crosshair */}
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round" opacity="0.8">
                                 <circle cx="14" cy="14" r="4" /><line x1="14" y1="2" x2="14" y2="8" /><line x1="14" y1="20" x2="14" y2="26" /><line x1="2" y1="14" x2="8" y2="14" /><line x1="20" y1="14" x2="26" y2="14" />
                             </svg>
@@ -3385,7 +3385,7 @@ export default function MapIndex() {
                     <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, letterSpacing: '0.1em', marginBottom: 6 }}>TACTICAL MAP</div>
                     <div style={{ fontSize: 11, color: theme.textSecondary, marginBottom: 16 }}>Initializing MapLibre GL JS</div>
                     {/* Progress steps */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6, alignItems: 'flex-start' }}>
                         {['Loading map engine', 'Fetching tile sources', 'Configuring overlays'].map((step, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, animation: `argux-fadeIn 0.4s ease-out ${i * 0.3}s both` }}>
                                 <div style={{ width: 8, height: 8, borderRadius: '50%', border: `1.5px solid ${theme.accent}`, background: theme.accentDim, animation: 'argux-spin 1.5s linear infinite', animationDelay: `${i * 0.2}s` }} />
@@ -3396,7 +3396,7 @@ export default function MapIndex() {
                 </div>}
 
                 {/* TOP-LEFT: Place Search */}
-                {showSearch && loaded && <div ref={searchRef} style={{ position: 'absolute', top: 10, left: 10, zIndex: 15, width: 300 }}>
+                {showSearch && loaded && <div ref={searchRef} style={{ position: 'absolute' as const, top: 10, left: 10, zIndex: 15, width: 300 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(13,18,32,0.92)', border: `1px solid ${searchFocused ? theme.accent + '60' : theme.border}`, borderRadius: 8, padding: '0 10px', backdropFilter: 'blur(8px)', transition: 'border-color 0.15s' }}>
                         {searchLoading ? <div style={{ width: 13, height: 13, border: `2px solid ${theme.border}`, borderTop: `2px solid ${theme.accent}`, borderRadius: '50%', animation: 'argux-spin 0.6s linear infinite', flexShrink: 0 }} /> : <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={searchFocused ? theme.accent : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="14" y2="14"/></svg>}
                         <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} placeholder="Search any place worldwide..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '9px 0', color: theme.text, fontSize: 12, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
@@ -3413,20 +3413,20 @@ export default function MapIndex() {
                                 <span style={{ fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{r.lat.toFixed(2)}, {r.lng.toFixed(2)}</span>
                             </div>
                         ))}
-                        <div style={{ padding: '4px 12px 5px', borderTop: `1px solid ${theme.border}`, fontSize: 8, color: theme.textDim, textAlign: 'center' }}>Powered by OpenStreetMap Nominatim</div>
+                        <div style={{ padding: '4px 12px 5px', borderTop: `1px solid ${theme.border}`, fontSize: 8, color: theme.textDim, textAlign: 'center' as const }}>Powered by OpenStreetMap Nominatim</div>
                     </div>}
-                    {searchFocused && !searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && <div style={{ marginTop: 4, background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '12px 14px', textAlign: 'center', fontSize: 11, color: theme.textDim, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>No places found for "{searchQuery}"</div>}
-                    {searchFocused && searchLoading && searchResults.length === 0 && <div style={{ marginTop: 4, background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '12px 14px', textAlign: 'center', fontSize: 11, color: theme.textDim, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>Searching...</div>}
+                    {searchFocused && !searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && <div style={{ marginTop: 4, background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '12px 14px', textAlign: 'center' as const, fontSize: 11, color: theme.textDim, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>No places found for "{searchQuery}"</div>}
+                    {searchFocused && searchLoading && searchResults.length === 0 && <div style={{ marginTop: 4, background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '12px 14px', textAlign: 'center' as const, fontSize: 11, color: theme.textDim, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>Searching...</div>}
                 </div>}
 
                 {/* TOP-RIGHT: Minimap */}
-                {showMinimap && loaded && <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 5 }}><Minimap center={coords} zoom={zoom} onNavigate={handleMinimapNav} /></div>}
+                {showMinimap && loaded && <div style={{ position: 'absolute' as const, top: 10, right: 10, zIndex: 5 }}><Minimap center={coords} zoom={zoom} onNavigate={handleMinimapNav} /></div>}
 
                 {/* BOTTOM-LEFT: Compass */}
-                {showCompass && loaded && <div style={{ position: 'absolute', bottom: 60, left: 12, zIndex: 5 }}><Compass bearing={bearing} /></div>}
+                {showCompass && loaded && <div style={{ position: 'absolute' as const, bottom: 60, left: 12, zIndex: 5 }}><Compass bearing={bearing} /></div>}
 
                 {/* BOTTOM-RIGHT: Map Controls */}
-                {showControls && loaded && <div style={{ position: 'absolute', bottom: 30, right: 12, zIndex: 5, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {showControls && loaded && <div style={{ position: 'absolute' as const, bottom: 30, right: 12, zIndex: 5, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                     <MapBtn onClick={handleZoomIn} title="Zoom In"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="4" x2="8" y2="12"/><line x1="4" y1="8" x2="12" y2="8"/></svg></MapBtn>
                     <MapBtn onClick={handleZoomOut} title="Zoom Out"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="8" x2="12" y2="8"/></svg></MapBtn>
                     <div style={{ height: 1, background: theme.border, margin: '2px 4px' }} />
@@ -3438,7 +3438,7 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Timeline Toggle */}
-                {loaded && <button onClick={() => { setTimelineOpen(!timelineOpen); if (!timelineOpen) { setTimelineCursor(100); setTlTrackingPerson(null); setTlTrackStep(-1); } setTimelinePlaying(false); }} style={{ position: 'absolute', bottom: timelineOpen ? 282 : (showCoords ? 36 : 10), left: '50%', transform: 'translateX(-50%)', zIndex: 15, background: timelineOpen ? 'rgba(59,130,246,0.15)' : 'rgba(13,18,32,0.9)', border: `1px solid ${timelineOpen ? '#3b82f650' : theme.border}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 6, transition: 'bottom 0.3s ease, background 0.2s', fontFamily: 'inherit' }}>
+                {loaded && <button onClick={() => { setTimelineOpen(!timelineOpen); if (!timelineOpen) { setTimelineCursor(100); setTlTrackingPerson(null); setTlTrackStep(-1); } setTimelinePlaying(false); }} style={{ position: 'absolute' as const, bottom: timelineOpen ? 282 : (showCoords ? 36 : 10), left: '50%', transform: 'translateX(-50%)', zIndex: 15, background: timelineOpen ? 'rgba(59,130,246,0.15)' : 'rgba(13,18,32,0.9)', border: `1px solid ${timelineOpen ? '#3b82f650' : theme.border}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 6, transition: 'bottom 0.3s ease, background 0.2s', fontFamily: 'inherit' }}>
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={timelineOpen ? '#3b82f6' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><polyline points="8,5 8,8 11,8"/></svg>
                     <span style={{ fontSize: 10, fontWeight: 700, color: timelineOpen ? '#3b82f6' : theme.textDim }}>Timeline</span>
                     {timelineActive && <span style={{ fontSize: 8, fontWeight: 800, padding: '1px 4px', borderRadius: 3, background: '#3b82f620', color: '#3b82f6', border: '1px solid #3b82f630' }}>ACTIVE</span>}
@@ -3447,7 +3447,7 @@ export default function MapIndex() {
                 </button>}
 
                 {/* Timeline Panel */}
-                {timelineOpen && loaded && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 12, background: 'rgba(10,14,22,0.96)', borderTop: `1px solid ${theme.border}`, backdropFilter: 'blur(12px)' }}>
+                {timelineOpen && loaded && <div style={{ position: 'absolute' as const, bottom: 0, left: 0, right: 0, zIndex: 12, background: 'rgba(10,14,22,0.96)', borderTop: `1px solid ${theme.border}`, backdropFilter: 'blur(12px)' }}>
                     {/* Row 1: Transport + time + stats + tracking */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderBottom: `1px solid ${theme.border}20`, flexWrap: 'wrap' }}>
                         <button onClick={() => { if (timelineCursor >= 100) setTimelineCursor(0); setTimelinePlaying(!timelinePlaying); }} style={{ width: 26, height: 26, borderRadius: 5, border: `1px solid ${timelinePlaying ? '#3b82f650' : theme.border}`, background: timelinePlaying ? 'rgba(59,130,246,0.12)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: timelinePlaying ? '#3b82f6' : theme.textDim, flexShrink: 0 }}>
@@ -3524,21 +3524,21 @@ export default function MapIndex() {
                     {/* Bottom: filters + person panel + event feed */}
                     <div style={{ display: 'flex', height: tlShowPersonPanel ? 140 : 100, borderTop: `1px solid ${theme.border}20`, marginTop: 2 }}>
                         {/* Type filters */}
-                        <div style={{ width: 110, borderRight: `1px solid ${theme.border}20`, padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0, overflowY: 'auto' }}>
-                            <div style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 1 }}>Types</div>
+                        <div style={{ width: 110, borderRight: `1px solid ${theme.border}20`, padding: '4px 8px', display: 'flex', flexDirection: 'column' as const, gap: 2, flexShrink: 0, overflowY: 'auto' }}>
+                            <div style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 1 }}>Types</div>
                             {[{ id: 'lpr', icon: '🚗', label: 'LPR', color: '#10b981' }, { id: 'face', icon: '🧑‍🦲', label: 'Face', color: '#ec4899' }, { id: 'source', icon: '📡', label: 'Sources', color: '#3b82f6' }, { id: 'zone', icon: '🛡️', label: 'Zones', color: '#f59e0b' }, { id: 'object', icon: '📌', label: 'Objects', color: '#8b5cf6' }].map(f => {
                                 const on = tlFilterTypes.has(f.id); const count = periodFilteredEvents.filter(e => e.type === f.id).length;
-                                return <button key={f.id} onClick={() => toggleTlFilter(f.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 5px', borderRadius: 3, border: `1px solid ${on ? f.color + '40' : theme.border}`, background: on ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' }}><span style={{ fontSize: 9 }}>{f.icon}</span><span style={{ fontSize: 8, fontWeight: 600, color: on ? f.color : theme.textDim, flex: 1 }}>{f.label}</span><span style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{count}</span></button>;
+                                return <button key={f.id} onClick={() => toggleTlFilter(f.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 5px', borderRadius: 3, border: `1px solid ${on ? f.color + '40' : theme.border}`, background: on ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}><span style={{ fontSize: 9 }}>{f.icon}</span><span style={{ fontSize: 8, fontWeight: 600, color: on ? f.color : theme.textDim, flex: 1 }}>{f.label}</span><span style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{count}</span></button>;
                             })}
                             {tlPersonIds.size > 0 && <div style={{ marginTop: 4, paddingTop: 4, borderTop: `1px solid ${theme.border}20` }}>
-                                <div style={{ fontSize: 7, fontWeight: 700, color: '#ec4899', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Persons</div>
+                                <div style={{ fontSize: 7, fontWeight: 700, color: '#ec4899', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 2 }}>Persons</div>
                                 {Array.from(tlPersonIds).map(pid => { const p = tlPersonOptions.find(x => x.id === pid); return p ? <div key={pid} style={{ fontSize: 7, color: theme.textSecondary, display: 'flex', alignItems: 'center', gap: 3, marginBottom: 1 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ec4899', flexShrink: 0 }} />{p.name}<button onClick={() => toggleTlPerson(pid)} style={{ background: 'none', border: 'none', color: theme.danger, cursor: 'pointer', fontSize: 8, padding: 0, marginLeft: 'auto' }}>×</button></div> : null; })}
                             </div>}
                         </div>
 
                         {/* Person panel (toggleable) */}
                         {tlShowPersonPanel && <div style={{ width: 160, borderRight: `1px solid ${theme.border}20`, padding: '4px 8px', overflowY: 'auto', flexShrink: 0 }}>
-                            <div style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Filter / Track Person</div>
+                            <div style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Filter / Track Person</div>
                             {tlPersonOptions.map(p => {
                                 const isFiltered = tlPersonIds.has(p.id);
                                 const isTracking = tlTrackingPerson === p.id;
@@ -3547,7 +3547,7 @@ export default function MapIndex() {
                                 return <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 4px', borderRadius: 4, marginBottom: 2, background: isTracking ? 'rgba(34,197,94,0.08)' : isFiltered ? 'rgba(236,72,153,0.06)' : 'transparent', border: `1px solid ${isTracking ? '#22c55e30' : isFiltered ? '#ec489920' : 'transparent'}` }}>
                                     <div style={{ width: 16, height: 16, borderRadius: '50%', background: avatar ? `url(${avatar}) center/cover` : 'rgba(59,130,246,0.15)', border: `1.5px solid ${isFiltered ? '#ec4899' : theme.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7 }}>{avatar ? '' : '👤'}</div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 8, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                                        <div style={{ fontSize: 8, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{p.name}</div>
                                         <div style={{ fontSize: 7, color: theme.textDim }}>{evtCount} events</div>
                                     </div>
                                     <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
@@ -3561,23 +3561,23 @@ export default function MapIndex() {
 
                         {/* Event feed */}
                         <div style={{ flex: 1, overflowY: 'auto', padding: '2px 0', scrollbarWidth: 'thin' }}>
-                            {visibleTLEvents.length === 0 && <div style={{ padding: 16, textAlign: 'center', fontSize: 10, color: theme.textDim }}>No events at this time position.{timelineCursor >= 100 ? ' Use the slider or press Play.' : ' Drag slider forward.'}</div>}
+                            {visibleTLEvents.length === 0 && <div style={{ padding: 16, textAlign: 'center' as const, fontSize: 10, color: theme.textDim }}>No events at this time position.{timelineCursor >= 100 ? ' Use the slider or press Play.' : ' Drag slider forward.'}</div>}
                             {[...visibleTLEvents].reverse().slice(0, 60).map((ev, idx) => {
                                 const sevColor = ev.sev === 'critical' ? '#ef4444' : ev.sev === 'high' ? '#f97316' : ev.sev === 'medium' ? '#f59e0b' : ev.sev === 'low' ? '#6b7280' : '#3b82f6';
                                 const isTrackEv = tlTrackingPerson && ev.personId === tlTrackingPerson;
                                 const hasThumb = ev.type === 'face' || ev.type === 'lpr';
                                 return <div key={ev.id + idx} onClick={() => { const map = mapRef.current; if (map) map.flyTo({ center: [ev.lng, ev.lat], zoom: Math.max(map.getZoom(), 15), duration: 600 }); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', cursor: 'pointer', borderBottom: `1px solid ${theme.border}10`, transition: 'background 0.1s', background: isTrackEv ? 'rgba(34,197,94,0.04)' : 'transparent' }} onMouseEnter={e => (e.currentTarget.style.background = isTrackEv ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.02)')} onMouseLeave={e => (e.currentTarget.style.background = isTrackEv ? 'rgba(34,197,94,0.04)' : 'transparent')}>
                                     <div style={{ width: 3, height: hasThumb ? 28 : 20, borderRadius: 2, background: sevColor, flexShrink: 0 }} />
-                                    {hasThumb ? <div style={{ width: 24, height: 24, borderRadius: ev.type === 'face' ? '50%' : 4, overflow: 'hidden', border: `1.5px solid ${ev.color}`, flexShrink: 0 }}><img src={ev.photoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /></div> : <span style={{ fontSize: 12, flexShrink: 0, width: 24, textAlign: 'center' }}>{ev.icon}</span>}
+                                    {hasThumb ? <div style={{ width: 24, height: 24, borderRadius: ev.type === 'face' ? '50%' : 4, overflow: 'hidden', border: `1.5px solid ${ev.color}`, flexShrink: 0 }}><img src={ev.photoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /></div> : <span style={{ fontSize: 12, flexShrink: 0, width: 24, textAlign: 'center' as const }}>{ev.icon}</span>}
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 9, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <div style={{ fontSize: 9, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, display: 'flex', alignItems: 'center', gap: 4 }}>
                                             {ev.title}
                                             <span style={{ fontSize: 7, fontWeight: 700, padding: '0 3px', borderRadius: 2, background: `${sevColor}15`, color: sevColor, border: `1px solid ${sevColor}25`, flexShrink: 0 }}>{ev.sev === 'critical' ? '!!!' : ev.sev === 'high' ? '!!' : ev.sev === 'medium' ? '!' : ''}</span>
                                         </div>
-                                        <div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.sub}</div>
+                                        <div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ev.sub}</div>
                                     </div>
-                                    {ev.personName && <span style={{ fontSize: 7, color: '#ec4899', flexShrink: 0, maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.personName}</span>}
-                                    <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, whiteSpace: 'nowrap' }}>{ev.ts.split(' ')[1]}</span>
+                                    {ev.personName && <span style={{ fontSize: 7, color: '#ec4899', flexShrink: 0, maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ev.personName}</span>}
+                                    <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, whiteSpace: 'nowrap' as const }}>{ev.ts.split(' ')[1]}</span>
                                 </div>;
                             })}
                         </div>
@@ -3606,7 +3606,7 @@ export default function MapIndex() {
 
                         {/* Sessions tab */}
                         {liveTrackTab === 'sessions' && <>
-                            {liveTrackSessions.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}>
+                            {liveTrackSessions.length === 0 && <div style={{ padding: 30, textAlign: 'center' as const }}>
                                 <div style={{ fontSize: 28, marginBottom: 8 }}>🎯</div>
                                 <div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Active Sessions</div>
                                 <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 12 }}>Go to Targets tab to start tracking a person via GPS or phone locator.</div>
@@ -3665,7 +3665,7 @@ export default function MapIndex() {
                         {/* Targets tab */}
                         {liveTrackTab === 'targets' && <div style={{ padding: '8px 14px' }}>
                             <input value={liveTrackSearch} onChange={e => setLiveTrackSearch(e.target.value)} placeholder="Search persons..." style={{ padding: '6px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${liveTrackSearch ? '#22c55e50' : theme.border}`, borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: '100%', marginBottom: 8 }} />
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                                 {trackablePersons.filter(tp => { if (liveTrackSearch.trim()) { const q = liveTrackSearch.toLowerCase(); return tp.personName.toLowerCase().includes(q) || tp.personLastName.toLowerCase().includes(q) || tp.personNickname.toLowerCase().includes(q); } return true; }).map(tp => {
                                     const isActive = liveTrackSessions.some(s => s.personId === tp.personId && s.sourceType === tp.sourceType);
                                     const riskColor = tp.risk === 'Critical' ? '#ef4444' : tp.risk === 'High' ? '#f97316' : '#f59e0b';
@@ -3688,7 +3688,7 @@ export default function MapIndex() {
                         </div>}
 
                         {/* History tab */}
-                        {liveTrackTab === 'history' && <div style={{ padding: 30, textAlign: 'center' }}>
+                        {liveTrackTab === 'history' && <div style={{ padding: 30, textAlign: 'center' as const }}>
                             <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
                             <div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Tracking History</div>
                             <div style={{ fontSize: 10, color: theme.textDim }}>Past tracking sessions will appear here. Export routes and analysis reports.</div>
@@ -3713,7 +3713,7 @@ export default function MapIndex() {
 
                     {!isPanelMin('correlation') && <>
                     {/* Config section */}
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                         {/* Subject selectors */}
                         <div style={{ display: 'flex', gap: 6 }}>
                             <div style={{ flex: 1 }}>
@@ -3764,7 +3764,7 @@ export default function MapIndex() {
                                 { label: 'Pairs', value: String(corrStats!.uniquePairs), color: '#3b82f6' },
                                 { label: 'Avg Dist', value: `${corrStats!.avgDist}m`, color: '#22c55e' },
                                 { label: 'Avg Dur', value: `${corrStats!.avgDur}m`, color: '#8b5cf6' },
-                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' }}>
+                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' as const }}>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
                                 <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
                             </div>)}
@@ -3792,7 +3792,7 @@ export default function MapIndex() {
 
                         {/* Event list */}
                         <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
-                            {corrResults.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Co-locations Found</div><div style={{ fontSize: 10, color: theme.textDim }}>Try increasing the radius or broadening the time window.</div></div>}
+                            {corrResults.length === 0 && <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Co-locations Found</div><div style={{ fontSize: 10, color: theme.textDim }}>Try increasing the radius or broadening the time window.</div></div>}
                             {corrResults.map(ev => {
                                 const sevColor = ev.severity === 'critical' ? '#ef4444' : ev.severity === 'high' ? '#f97316' : ev.severity === 'medium' ? '#f59e0b' : '#6b7280';
                                 const confColor = ev.confidence >= 90 ? '#22c55e' : ev.confidence >= 75 ? '#f59e0b' : '#ef4444';
@@ -3812,7 +3812,7 @@ export default function MapIndex() {
                                                 <span style={{ fontSize: 7, color: theme.textDim }}>{ev.source}</span>
                                             </div>
                                         </div>
-                                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                        <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
                                             <div style={{ fontSize: 8, color: theme.textDim }}>{ev.timeAgo}</div>
                                         </div>
                                     </div>
@@ -3840,14 +3840,14 @@ export default function MapIndex() {
                     </>}
 
                     {/* Empty state before first run */}
-                    {!corrResults && !corrRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' }}>
+                    {!corrResults && !corrRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' as const }}>
                         <div style={{ fontSize: 36, marginBottom: 8 }}>🔗</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Co-location Analysis</div>
                         <div style={{ fontSize: 10, color: theme.textDim, maxWidth: 240, lineHeight: 1.5 }}>Configure subjects and thresholds above, then run the analysis to find co-location events between persons of interest.</div>
                     </div>}
 
                     {/* Loading state */}
-                    {corrRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
+                    {corrRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 30 }}>
                         <div style={{ width: 32, height: 32, border: '3px solid rgba(245,158,11,0.2)', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite', marginBottom: 12 }} />
                         <div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>Analyzing Events</div>
                         <div style={{ fontSize: 9, color: theme.textDim }}>Cross-referencing position data across {corrPersonOptions.length} subjects...</div>
@@ -3861,7 +3861,7 @@ export default function MapIndex() {
 
                     {!isPanelMin('anomaly') && <>
                     {/* Config */}
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                         {/* Subject + Type */}
                         <div style={{ display: 'flex', gap: 6 }}>
                             <div style={{ flex: 1 }}>
@@ -3899,7 +3899,7 @@ export default function MapIndex() {
                                 { label: 'Subjects', value: String(anomalyStats!.subjects), color: '#3b82f6' },
                                 { label: 'Avg Conf', value: `${anomalyStats!.avgConf}%`, color: '#22c55e' },
                                 { label: 'Avg Dev', value: `${anomalyStats!.avgDev}%`, color: '#f59e0b' },
-                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' }}>
+                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' as const }}>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
                                 <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
                             </div>)}
@@ -3918,7 +3918,7 @@ export default function MapIndex() {
 
                         {/* Anomaly list */}
                         <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
-                            {anomalyResults.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>✅</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Anomalies Detected</div><div style={{ fontSize: 10, color: theme.textDim }}>All movement patterns within expected baselines. Try increasing sensitivity.</div></div>}
+                            {anomalyResults.length === 0 && <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, marginBottom: 8 }}>✅</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Anomalies Detected</div><div style={{ fontSize: 10, color: theme.textDim }}>All movement patterns within expected baselines. Try increasing sensitivity.</div></div>}
                             {anomalyResults.map(an => {
                                 const sevColor = an.severity === 'critical' ? '#ef4444' : an.severity === 'high' ? '#f97316' : an.severity === 'medium' ? '#f59e0b' : '#6b7280';
                                 const typeInfo = anomalyTypes.find(t => t.id === an.type);
@@ -3937,7 +3937,7 @@ export default function MapIndex() {
                                                 <span style={{ fontSize: 7, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{an.confidence}%</span>
                                             </div>
                                         </div>
-                                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                        <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
                                             <div style={{ fontSize: 8, color: theme.textDim }}>{an.timeAgo}</div>
                                             <div style={{ fontSize: 8, color: theme.textDim }}>{an.personName.split(' ')[1]}</div>
                                         </div>
@@ -3946,10 +3946,10 @@ export default function MapIndex() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: isExpanded ? 6 : 0 }}>
                                         <span style={{ fontSize: 7, color: theme.textDim, width: 50, flexShrink: 0 }}>Deviation</span>
                                         <div style={{ flex: 1, height: 4, borderRadius: 2, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${an.deviation}%`, height: '100%', borderRadius: 2, background: an.deviation >= 85 ? '#ef4444' : an.deviation >= 70 ? '#f59e0b' : '#22c55e', transition: 'width 0.5s' }} /></div>
-                                        <span style={{ fontSize: 8, fontWeight: 700, color: an.deviation >= 85 ? '#ef4444' : an.deviation >= 70 ? '#f59e0b' : '#22c55e', fontFamily: "'JetBrains Mono', monospace", width: 30, textAlign: 'right', flexShrink: 0 }}>{an.deviation}%</span>
+                                        <span style={{ fontSize: 8, fontWeight: 700, color: an.deviation >= 85 ? '#ef4444' : an.deviation >= 70 ? '#f59e0b' : '#22c55e', fontFamily: "'JetBrains Mono', monospace", width: 30, textAlign: 'right' as const, flexShrink: 0 }}>{an.deviation}%</span>
                                     </div>
                                     {/* Expanded */}
-                                    {isExpanded && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    {isExpanded && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                                         {/* Description */}
                                         <div style={{ fontSize: 9, color: theme.text, lineHeight: 1.5, padding: '8px', borderRadius: 5, background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.1)' }}>{an.description}</div>
                                         {/* Baseline vs Observed */}
@@ -3987,7 +3987,7 @@ export default function MapIndex() {
                     </>}
 
                     {/* Empty state */}
-                    {!anomalyResults && !anomalyRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' }}>
+                    {!anomalyResults && !anomalyRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' as const }}>
                         <div style={{ fontSize: 36, marginBottom: 8 }}>🧠</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>AI Anomaly Detection</div>
                         <div style={{ fontSize: 10, color: theme.textDim, maxWidth: 260, lineHeight: 1.5, marginBottom: 12 }}>Uses on-premise AI to analyze movement patterns, temporal behaviors, and communication changes to identify deviations from established baselines.</div>
@@ -3995,10 +3995,10 @@ export default function MapIndex() {
                     </div>}
 
                     {/* Loading */}
-                    {anomalyRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
+                    {anomalyRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 30 }}>
                         <div style={{ width: 32, height: 32, border: '3px solid rgba(139,92,246,0.2)', borderTopColor: '#8b5cf6', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite', marginBottom: 12 }} />
                         <div style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', marginBottom: 4 }}>Analyzing Patterns</div>
-                        <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center', lineHeight: 1.5 }}>Running behavioral analysis on {anomalySubject ? '1 subject' : `${corrPersonOptions.length} subjects`}...<br/>Comparing against 30-day baseline profiles.</div>
+                        <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' as const, lineHeight: 1.5 }}>Running behavioral analysis on {anomalySubject ? '1 subject' : `${corrPersonOptions.length} subjects`}...<br/>Comparing against 30-day baseline profiles.</div>
                     </div>}
                     </>}
                 </div>}
@@ -4009,7 +4009,7 @@ export default function MapIndex() {
 
                     {!isPanelMin('predictive') && <>
                     {/* Config */}
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                         <div>
                             <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Prediction Horizon</div>
                             <div style={{ display: 'flex', gap: 3 }}>
@@ -4029,7 +4029,7 @@ export default function MapIndex() {
                                 { label: 'Avg Score', value: String(predStats!.avgScore), color: predStats!.avgScore >= 80 ? '#ef4444' : '#f59e0b' },
                                 { label: 'Escalating', value: String(predStats!.escalating), color: '#ef4444' },
                                 { label: 'Actions', value: String(predStats!.totalActions), color: '#3b82f6' },
-                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' }}>
+                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' as const }}>
                                 <div style={{ fontSize: 16, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
                                 <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
                             </div>)}
@@ -4045,8 +4045,8 @@ export default function MapIndex() {
                                 return <div key={pr.id} onClick={() => { setPredSelectedId(isExp ? null : pr.id); mapRef.current?.flyTo({ center: [pr.predictedLng, pr.predictedLat], zoom: 15, duration: 800 }); triggerTopLoader(); }} style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}08`, cursor: 'pointer', background: isExp ? '#ef444406' : 'transparent', transition: 'background 0.15s', borderLeft: `3px solid ${riskColor}` }} onMouseEnter={e => { if (!isExp) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isExp) e.currentTarget.style.background = 'transparent'; }}>
                                     {/* Person header */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                                        <div style={{ width: 32, height: 32, borderRadius: '50%', border: `2.5px solid ${riskColor}`, background: `url(${pr.personAvatar}) center/cover`, flexShrink: 0, position: 'relative' }}>
-                                            {escalating && <div style={{ position: 'absolute', top: -3, right: -3, width: 12, height: 12, borderRadius: '50%', background: '#ef4444', border: '1.5px solid rgba(13,18,32,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: '#fff', fontWeight: 900 }}>↑</div>}
+                                        <div style={{ width: 32, height: 32, borderRadius: '50%', border: `2.5px solid ${riskColor}`, background: `url(${pr.personAvatar}) center/cover`, flexShrink: 0, position: 'relative' as const }}>
+                                            {escalating && <div style={{ position: 'absolute' as const, top: -3, right: -3, width: 12, height: 12, borderRadius: '50%', background: '#ef4444', border: '1.5px solid rgba(13,18,32,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: '#fff', fontWeight: 900 }}>↑</div>}
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>{pr.personName}</div>
@@ -4058,7 +4058,7 @@ export default function MapIndex() {
                                             </div>
                                         </div>
                                         {/* Risk score gauge */}
-                                        <div style={{ width: 40, height: 40, borderRadius: '50%', border: `3px solid ${riskColor}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative', background: `conic-gradient(${riskColor} ${pr.riskScore * 3.6}deg, ${theme.border} ${pr.riskScore * 3.6}deg)` }}>
+                                        <div style={{ width: 40, height: 40, borderRadius: '50%', border: `3px solid ${riskColor}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' as const, background: `conic-gradient(${riskColor} ${pr.riskScore * 3.6}deg, ${theme.border} ${pr.riskScore * 3.6}deg)` }}>
                                             <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(10,14,22,0.97)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 11, fontWeight: 900, color: riskColor, fontFamily: "'JetBrains Mono', monospace" }}>{pr.riskScore}</span></div>
                                         </div>
                                     </div>
@@ -4070,7 +4070,7 @@ export default function MapIndex() {
                                     </div>
 
                                     {/* Expanded details */}
-                                    {isExp && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    {isExp && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                                         {/* Risk factors */}
                                         <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(239,68,68,0.03)', border: '1px solid rgba(239,68,68,0.08)' }}>
                                             <div style={{ fontSize: 8, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>Risk Factors</div>
@@ -4079,7 +4079,7 @@ export default function MapIndex() {
                                                 <span style={{ fontSize: 9, color: theme.text, flex: 1 }}>{f.label}</span>
                                                 <span style={{ fontSize: 8, color: f.trend === 'up' ? '#ef4444' : f.trend === 'down' ? '#22c55e' : '#f59e0b' }}>{f.trend === 'up' ? '↑' : f.trend === 'down' ? '↓' : '→'}</span>
                                                 <div style={{ width: 60, height: 4, borderRadius: 2, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${f.weight}%`, height: '100%', borderRadius: 2, background: f.weight >= 85 ? '#ef4444' : f.weight >= 70 ? '#f59e0b' : '#3b82f6' }} /></div>
-                                                <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", width: 26, textAlign: 'right' }}>{f.weight}%</span>
+                                                <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", width: 26, textAlign: 'right' as const }}>{f.weight}%</span>
                                             </div>)}
                                         </div>
                                         {/* Next predicted locations */}
@@ -4118,7 +4118,7 @@ export default function MapIndex() {
                     </>}
 
                     {/* Empty state */}
-                    {!predResults && !predRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' }}>
+                    {!predResults && !predRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' as const }}>
                         <div style={{ fontSize: 36, marginBottom: 8 }}>📈</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Predictive Risk Analysis</div>
                         <div style={{ fontSize: 10, color: theme.textDim, maxWidth: 260, lineHeight: 1.5, marginBottom: 12 }}>Uses on-premise ML models to predict risk trajectories, probable next locations, and threat assessments for persons of interest.</div>
@@ -4128,10 +4128,10 @@ export default function MapIndex() {
                     </div>}
 
                     {/* Loading */}
-                    {predRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
+                    {predRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 30 }}>
                         <div style={{ width: 32, height: 32, border: '3px solid rgba(239,68,68,0.2)', borderTopColor: '#ef4444', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite', marginBottom: 12 }} />
                         <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>Generating Predictions</div>
-                        <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center', lineHeight: 1.5 }}>Analyzing {predTimeHorizon} horizon across {corrPersonOptions.length} subjects...<br/>Processing behavioral data, network graphs, and location history.</div>
+                        <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' as const, lineHeight: 1.5 }}>Analyzing {predTimeHorizon} horizon across {corrPersonOptions.length} subjects...<br/>Processing behavioral data, network graphs, and location history.</div>
                     </div>}
                     </>}
                 </div>}
@@ -4142,7 +4142,7 @@ export default function MapIndex() {
 
                     {!isPanelMin('pattern') && <>
                     {/* Config */}
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                         <div style={{ display: 'flex', gap: 6 }}>
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Subject</div>
@@ -4172,7 +4172,7 @@ export default function MapIndex() {
                                 { label: 'Subjects', value: String(patternStats!.subjects), color: '#3b82f6' },
                                 { label: 'Avg Reg', value: `${patternStats!.avgReg}%`, color: '#f59e0b' },
                                 { label: 'Events', value: String(patternStats!.totalOcc), color: '#22c55e' },
-                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' }}>
+                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' as const }}>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
                                 <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
                             </div>)}
@@ -4187,7 +4187,7 @@ export default function MapIndex() {
 
                         {/* Pattern list */}
                         <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
-                            {patternResults.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>✅</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Patterns Detected</div><div style={{ fontSize: 10, color: theme.textDim }}>No recurring behavioral patterns found for the selected filters.</div></div>}
+                            {patternResults.length === 0 && <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, marginBottom: 8 }}>✅</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Patterns Detected</div><div style={{ fontSize: 10, color: theme.textDim }}>No recurring behavioral patterns found for the selected filters.</div></div>}
                             {patternResults.map(pt => {
                                 const sevColor = pt.severity === 'critical' ? '#ef4444' : pt.severity === 'high' ? '#f97316' : '#f59e0b';
                                 const catInfo = patternCategories.find(c => c.id === pt.category);
@@ -4205,14 +4205,14 @@ export default function MapIndex() {
                                                 <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${catColor}10`, color: catColor, border: `1px solid ${catColor}15` }}>{catInfo?.icon} {catInfo?.label}</span>
                                             </div>
                                         </div>
-                                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                        <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
                                             <div style={{ fontSize: 8, color: theme.textDim }}>{pt.personName.split(' ')[1]}</div>
                                             <div style={{ fontSize: 8, fontWeight: 700, color: '#06b6d4', fontFamily: "'JetBrains Mono', monospace" }}>{pt.occurrences}×</div>
                                         </div>
                                     </div>
                                     {/* Weekly heatmap bar */}
                                     <div style={{ display: 'flex', gap: 2, marginBottom: 4 }}>
-                                        {pt.heatmap.map((v: number, i: number) => <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                                        {pt.heatmap.map((v: number, i: number) => <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 1 }}>
                                             <div style={{ width: '100%', height: 6, borderRadius: 1, background: v > 0 ? `rgba(6,182,212,${0.15 + (v / maxHeat) * 0.7})` : `${theme.border}40` }} />
                                             <span style={{ fontSize: 5, color: v > 0 ? '#06b6d4' : theme.textDim, fontWeight: 600 }}>{dayLabels[i]}</span>
                                         </div>)}
@@ -4226,7 +4226,7 @@ export default function MapIndex() {
                                     </div>
 
                                     {/* Expanded */}
-                                    {isExp && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    {isExp && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                                         {/* Description */}
                                         <div style={{ fontSize: 9, color: theme.text, lineHeight: 1.5, padding: '8px', borderRadius: 5, background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.1)' }}>{pt.description}</div>
                                         {/* Details grid */}
@@ -4245,7 +4245,7 @@ export default function MapIndex() {
                                         <div style={{ padding: '6px 8px', borderRadius: 5, background: 'rgba(6,182,212,0.03)', border: '1px solid rgba(6,182,212,0.08)' }}>
                                             <div style={{ fontSize: 7, fontWeight: 700, color: '#06b6d4', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>📊 Weekly Activity Heatmap</div>
                                             <div style={{ display: 'flex', gap: 3 }}>
-                                                {pt.heatmap.map((v: number, i: number) => <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                                                {pt.heatmap.map((v: number, i: number) => <div key={i} style={{ flex: 1, textAlign: 'center' as const }}>
                                                     <div style={{ height: 28, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}><div style={{ width: '80%', height: `${v > 0 ? Math.max(20, (v / maxHeat) * 100) : 4}%`, borderRadius: '2px 2px 0 0', background: v > 0 ? `rgba(6,182,212,${0.3 + (v / maxHeat) * 0.6})` : `${theme.border}30`, transition: 'height 0.3s' }} /></div>
                                                     <div style={{ fontSize: 7, color: v > 0 ? '#06b6d4' : theme.textDim, fontWeight: 700, marginTop: 2 }}>{dayLabels[i]}</div>
                                                     <div style={{ fontSize: 7, color: v > 0 ? '#06b6d4' : theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{v}</div>
@@ -4271,7 +4271,7 @@ export default function MapIndex() {
                     </>}
 
                     {/* Empty state */}
-                    {!patternResults && !patternRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' }}>
+                    {!patternResults && !patternRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' as const }}>
                         <div style={{ fontSize: 36, marginBottom: 8 }}>🔄</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Pattern Detection</div>
                         <div style={{ fontSize: 10, color: theme.textDim, maxWidth: 260, lineHeight: 1.5, marginBottom: 12 }}>Analyzes recurring behavioral patterns including meeting schedules, movement routes, communication timing, and location frequency across all monitored subjects.</div>
@@ -4279,10 +4279,10 @@ export default function MapIndex() {
                     </div>}
 
                     {/* Loading */}
-                    {patternRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
+                    {patternRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 30 }}>
                         <div style={{ width: 32, height: 32, border: '3px solid rgba(6,182,212,0.2)', borderTopColor: '#06b6d4', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite', marginBottom: 12 }} />
                         <div style={{ fontSize: 12, fontWeight: 700, color: '#06b6d4', marginBottom: 4 }}>Scanning Patterns</div>
-                        <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center', lineHeight: 1.5 }}>Analyzing {patternSubject ? '1 subject' : `${corrPersonOptions.length} subjects`} across 30-day history...<br/>Processing {patternCategory === 'all' ? 'all categories' : patternCategories.find(c => c.id === patternCategory)?.label}.</div>
+                        <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' as const, lineHeight: 1.5 }}>Analyzing {patternSubject ? '1 subject' : `${corrPersonOptions.length} subjects`} across 30-day history...<br/>Processing {patternCategory === 'all' ? 'all categories' : patternCategories.find(c => c.id === patternCategory)?.label}.</div>
                     </div>}
                     </>}
                 </div>}
@@ -4306,7 +4306,7 @@ export default function MapIndex() {
                     </div>
                     {/* Workspace list */}
                     <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
-                        {workspaces.filter(ws => { if (!wsSearch.trim()) return true; const q = wsSearch.toLowerCase(); return ws.name.toLowerCase().includes(q) || ws.description.toLowerCase().includes(q) || ws.tags.some(t => t.toLowerCase().includes(q)); }).length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>📋</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>{wsSearch ? 'No Matches' : 'No Workspaces'}</div><div style={{ fontSize: 10, color: theme.textDim }}>{wsSearch ? 'Try a different search.' : 'Save your current map state as a workspace.'}</div></div>}
+                        {workspaces.filter(ws => { if (!wsSearch.trim()) return true; const q = wsSearch.toLowerCase(); return ws.name.toLowerCase().includes(q) || ws.description.toLowerCase().includes(q) || ws.tags.some(t => t.toLowerCase().includes(q)); }).length === 0 && <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, marginBottom: 8 }}>📋</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>{wsSearch ? 'No Matches' : 'No Workspaces'}</div><div style={{ fontSize: 10, color: theme.textDim }}>{wsSearch ? 'Try a different search.' : 'Save your current map state as a workspace.'}</div></div>}
                         {workspaces.filter(ws => { if (!wsSearch.trim()) return true; const q = wsSearch.toLowerCase(); return ws.name.toLowerCase().includes(q) || ws.description.toLowerCase().includes(q) || ws.tags.some(t => t.toLowerCase().includes(q)); }).map(ws => {
                             const isActive = wsActiveId === ws.id;
                             const isDeleting = wsDeleteConfirm === ws.id;
@@ -4371,10 +4371,10 @@ export default function MapIndex() {
                     </div>
                     {/* Place list */}
                     <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
-                        {filteredPlaces.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>📍</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>{placesSearch ? 'No Matches' : 'No Saved Places'}</div><div style={{ fontSize: 10, color: theme.textDim }}>{placesSearch ? 'Try a different search.' : 'Save locations for quick navigation.'}</div></div>}
+                        {filteredPlaces.length === 0 && <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, marginBottom: 8 }}>📍</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>{placesSearch ? 'No Matches' : 'No Saved Places'}</div><div style={{ fontSize: 10, color: theme.textDim }}>{placesSearch ? 'Try a different search.' : 'Save locations for quick navigation.'}</div></div>}
                         {filteredPlaces.map(p => (
                             <div key={p.id} onClick={() => goToPlace(p)} style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}08`, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.1s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.background = `${p.color}08`; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${p.color}15`, border: `1.5px solid ${p.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${p.color}15`, border: `1.5px solid ${p.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' as const }}>
                                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, boxShadow: `0 0 6px ${p.color}50` }} />
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -4395,7 +4395,7 @@ export default function MapIndex() {
                     {/* Add/Edit form */}
                     {placeModal && <div style={{ padding: '10px 14px', borderTop: `1px solid ${theme.accent}20`, flexShrink: 0, background: 'rgba(29,111,239,0.02)' }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: theme.accent, marginBottom: 6 }}>{placeModal.mode === 'add' ? '+ New Place' : '✎ Edit Place'}</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                             <input value={placeForm.name} onChange={e => setPlaceForm(f => ({ ...f, name: e.target.value }))} placeholder="Place name *" style={{ width: '100%', padding: '7px 10px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, color: theme.text, fontSize: 11, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' as const }} />
                             <div style={{ display: 'flex', gap: 6 }}>
                                 <input value={placeForm.lat} onChange={e => setPlaceForm(f => ({ ...f, lat: e.target.value }))} placeholder="Latitude *" style={{ flex: 1, padding: '7px 10px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, color: theme.text, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', minWidth: 0 }} />
@@ -4434,10 +4434,10 @@ export default function MapIndex() {
                         {/* Total distance card */}
                         {rulerPoints.length >= 2 && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 10 }}>
                             <div><div style={{ fontSize: 8, color: theme.textDim, marginBottom: 1 }}>Total Distance</div><div style={{ fontSize: 16, fontWeight: 800, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace" }}>{formatDist(calcDistance(rulerPoints))}</div></div>
-                            <div style={{ textAlign: 'right' }}><div style={{ fontSize: 8, color: theme.textDim }}>{rulerPoints.length} pts · {rulerPoints.length - 1} seg</div></div>
+                            <div style={{ textAlign: 'right' as const }}><div style={{ fontSize: 8, color: theme.textDim }}>{rulerPoints.length} pts · {rulerPoints.length - 1} seg</div></div>
                         </div>}
                         {/* Points list */}
-                        {rulerPoints.length > 0 ? <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {rulerPoints.length > 0 ? <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
                             {rulerPoints.map((pt, i) => {
                                 const segDist = i > 0 ? calcDistance([rulerPoints[i - 1], pt]) : 0;
                                 return <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 5, background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.08)' }}>
@@ -4446,7 +4446,7 @@ export default function MapIndex() {
                                     {i > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>+{formatDist(segDist)}</span>}
                                 </div>;
                             })}
-                        </div> : <div style={{ padding: 20, textAlign: 'center' }}><div style={{ fontSize: 24, marginBottom: 6 }}>📏</div><div style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary }}>{rulerActive ? 'Click on the map to add points' : 'Start the ruler to begin measuring'}</div></div>}
+                        </div> : <div style={{ padding: 20, textAlign: 'center' as const }}><div style={{ fontSize: 24, marginBottom: 6 }}>📏</div><div style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary }}>{rulerActive ? 'Click on the map to add points' : 'Start the ruler to begin measuring'}</div></div>}
                     </div>
                     {rulerPoints.length > 0 && <div style={{ padding: '8px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', gap: 4, flexShrink: 0 }}>
                         <button onClick={undoRulerPoint} style={{ flex: 1, padding: '6px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>↩ Undo</button>
@@ -4474,12 +4474,12 @@ export default function MapIndex() {
                     </div>
                     {/* Zone list */}
                     <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
-                        {filteredZones.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>🛡️</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>{zoneSearch ? 'No Matches' : 'No Zones'}</div><div style={{ fontSize: 10, color: theme.textDim }}>{zoneSearch ? 'Try a different search.' : 'Draw a circle or polygon on the map.'}</div></div>}
+                        {filteredZones.length === 0 && <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, marginBottom: 8 }}>🛡️</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>{zoneSearch ? 'No Matches' : 'No Zones'}</div><div style={{ fontSize: 10, color: theme.textDim }}>{zoneSearch ? 'Try a different search.' : 'Draw a circle or polygon on the map.'}</div></div>}
                         {filteredZones.map(z => {
                             const isHidden = hiddenZones.has(z.id);
                             const zt = zoneTypes.find(t => t.id === z.type);
                             return <div key={z.id} onClick={() => goToZone(z)} style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}08`, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: isHidden ? 0.45 : 1, transition: 'all 0.15s, background 0.1s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.background = `${z.color}06`; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                                <div style={{ width: 28, height: 28, borderRadius: z.shape === 'circle' ? '50%' : 5, background: `${z.color}12`, border: `1.5px solid ${z.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0, position: 'relative' }}>{zt?.icon || '🛡️'}{isHidden && <div style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', background: 'rgba(13,18,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/></svg></div>}</div>
+                                <div style={{ width: 28, height: 28, borderRadius: z.shape === 'circle' ? '50%' : 5, background: `${z.color}12`, border: `1.5px solid ${z.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0, position: 'relative' as const }}>{zt?.icon || '🛡️'}{isHidden && <div style={{ position: 'absolute' as const, inset: 0, borderRadius: 'inherit', background: 'rgba(13,18,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/></svg></div>}</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: 11, fontWeight: 700, color: isHidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, textDecoration: isHidden ? 'line-through' : 'none' }}>{z.name}</div>
                                     <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}><span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${z.color}12`, color: z.color, border: `1px solid ${z.color}20` }}>{zt?.label || z.type}</span><span style={{ fontSize: 7, color: theme.textDim }}>{z.shape === 'circle' ? `${z.radius}m radius` : `${z.points?.length || 0} vertices`}</span></div>
@@ -4503,12 +4503,12 @@ export default function MapIndex() {
                 {/* ═══ LAYER PANELS ═══ */}
                 {/* Only one layer panel open at a time — positioned bottom-right */}
                 {activeLayerPanel && loaded && <div style={panelStyle('layers', '340px', activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899')}>
-                    <PanelHeader id="layers" icon={activeLayerPanel === 'heatmap' ? '🔥' : activeLayerPanel === 'network' ? '🕸️' : activeLayerPanel === 'lpr' ? '🚗' : '🧑‍🦲'} title={activeLayerPanel === 'heatmap' ? 'Activity Heatmap' : activeLayerPanel === 'network' ? 'Network Graph' : activeLayerPanel === 'lpr' ? 'Plate Recognition' : 'Face Recognition'} subtitle={activeLayerPanel === 'heatmap' ? `${heatmapPoints.length} points · ${layerHeatmap ? 'Active' : 'Inactive'}` : activeLayerPanel === 'network' ? `${netNodes.length} nodes · ${netFilteredEdges.length} connections` : activeLayerPanel === 'lpr' ? `${mockLPR.length} sightings · ${new Set(mockLPR.map(l => l.plate)).size} plates` : `${mockFaces.length} captures · ${mockFaces.filter(f => f.personId > 0).length} matched`} color={activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899'} onClose={() => { setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); }} extra={<button onClick={() => { if (activeLayerPanel === 'heatmap') setLayerHeatmap(!layerHeatmap); else if (activeLayerPanel === 'network') setLayerNetwork(!layerNetwork); else if (activeLayerPanel === 'lpr') setLayerLPR(!layerLPR); else setLayerFace(!layerFace); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? (activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899') : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute', top: 2, left: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? 16 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></button>} />
+                    <PanelHeader id="layers" icon={activeLayerPanel === 'heatmap' ? '🔥' : activeLayerPanel === 'network' ? '🕸️' : activeLayerPanel === 'lpr' ? '🚗' : '🧑‍🦲'} title={activeLayerPanel === 'heatmap' ? 'Activity Heatmap' : activeLayerPanel === 'network' ? 'Network Graph' : activeLayerPanel === 'lpr' ? 'Plate Recognition' : 'Face Recognition'} subtitle={activeLayerPanel === 'heatmap' ? `${heatmapPoints.length} points · ${layerHeatmap ? 'Active' : 'Inactive'}` : activeLayerPanel === 'network' ? `${netNodes.length} nodes · ${netFilteredEdges.length} connections` : activeLayerPanel === 'lpr' ? `${mockLPR.length} sightings · ${new Set(mockLPR.map(l => l.plate)).size} plates` : `${mockFaces.length} captures · ${mockFaces.filter(f => f.personId > 0).length} matched`} color={activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899'} onClose={() => { setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); }} extra={<button onClick={() => { if (activeLayerPanel === 'heatmap') setLayerHeatmap(!layerHeatmap); else if (activeLayerPanel === 'network') setLayerNetwork(!layerNetwork); else if (activeLayerPanel === 'lpr') setLayerLPR(!layerLPR); else setLayerFace(!layerFace); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? (activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899') : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? 16 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></button>} />
 
                     {!isPanelMin('layers') && <><div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
 
                         {/* ── HEATMAP PANEL ── */}
-                        {activeLayerPanel === 'heatmap' && <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {activeLayerPanel === 'heatmap' && <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
                             <div style={{ fontSize: 10, color: theme.textDim }}>{heatmapPoints.length} activity points plotted. Density visualization shows areas of high surveillance activity concentration.</div>
                             <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: theme.textDim, marginBottom: 4 }}><span>Intensity</span><span style={{ color: '#f59e0b', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{(heatmapIntensity * 100).toFixed(0)}%</span></div>
@@ -4522,7 +4522,7 @@ export default function MapIndex() {
                         </div>}
 
                         {/* ── NETWORK PANEL ── */}
-                        {activeLayerPanel === 'network' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {activeLayerPanel === 'network' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                             {/* Isolation indicator */}
                             {(netIsolatedEdge || netFocusNode) && <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderRadius: 5, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
                                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', flexShrink: 0 }} />
@@ -4542,7 +4542,7 @@ export default function MapIndex() {
                                 <input type="range" min={0} max={100} value={netStrengthMin * 100} onChange={e => setNetStrengthMin(parseInt(e.target.value) / 100)} style={{ width: '100%', height: 4, accentColor: '#8b5cf6' }} />
                             </div>
                             {/* Connection list */}
-                            <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Connections · click to isolate</div><div style={{ maxHeight: 150, overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column', gap: 1 }}>{netFilteredEdges.map(e => { const from = netNodes.find(n => n.id === e.from); const to = netNodes.find(n => n.id === e.to); const isIso = netIsolatedEdge === edgeKey(e); return <button key={edgeKey(e)} onClick={() => { setNetIsolatedEdge(prev => prev === edgeKey(e) ? null : edgeKey(e)); setNetFocusNode(null); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', borderRadius: 4, border: `1px solid ${isIso ? '#8b5cf630' : 'transparent'}`, background: isIso ? 'rgba(139,92,246,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}><span style={{ width: 8, height: 3, borderRadius: 1, background: edgeColors[e.type], flexShrink: 0 }} /><span style={{ fontSize: 9, fontWeight: 600, color: isIso ? '#8b5cf6' : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{from?.label} ↔ {to?.label}</span><span style={{ fontSize: 7, color: edgeColors[e.type], fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{Math.round(e.strength * 100)}%</span>{isIso && <span style={{ fontSize: 7, color: '#8b5cf6' }}>🎯</span>}</button>; })}</div></div>
+                            <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Connections · click to isolate</div><div style={{ maxHeight: 150, overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column' as const, gap: 1 }}>{netFilteredEdges.map(e => { const from = netNodes.find(n => n.id === e.from); const to = netNodes.find(n => n.id === e.to); const isIso = netIsolatedEdge === edgeKey(e); return <button key={edgeKey(e)} onClick={() => { setNetIsolatedEdge(prev => prev === edgeKey(e) ? null : edgeKey(e)); setNetFocusNode(null); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', borderRadius: 4, border: `1px solid ${isIso ? '#8b5cf630' : 'transparent'}`, background: isIso ? 'rgba(139,92,246,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}><span style={{ width: 8, height: 3, borderRadius: 1, background: edgeColors[e.type], flexShrink: 0 }} /><span style={{ fontSize: 9, fontWeight: 600, color: isIso ? '#8b5cf6' : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{from?.label} ↔ {to?.label}</span><span style={{ fontSize: 7, color: edgeColors[e.type], fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{Math.round(e.strength * 100)}%</span>{isIso && <span style={{ fontSize: 7, color: '#8b5cf6' }}>🎯</span>}</button>; })}</div></div>
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                 <button onClick={() => { setNetShowLabels(!netShowLabels); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${netShowLabels ? '#8b5cf630' : theme.border}`, background: netShowLabels ? '#8b5cf608' : 'transparent', color: netShowLabels ? '#8b5cf6' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🏷️ Labels</button>
                                 <button onClick={() => { setNetIsolatedEdge(null); setNetFocusNode(null); setNetStrengthMin(0); setNetEdgeFilters(new Set(['financial', 'family', 'business', 'criminal', 'comms', 'surveillance'])); setNetSearch(''); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🔄 Reset</button>
@@ -4551,10 +4551,10 @@ export default function MapIndex() {
                         </div>}
 
                         {/* ── LPR PANEL ── */}
-                        {activeLayerPanel === 'lpr' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {activeLayerPanel === 'lpr' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                             <div style={{ fontSize: 9, color: theme.textDim }}>{mockLPR.length} sightings · {new Set(mockLPR.map(l => l.plate)).size} plates{lprHidden.size > 0 ? ` · ${lprHidden.size} hidden` : ''}</div>
                             <input value={lprSearch} onChange={e => setLprSearch(e.target.value)} placeholder="Search plates, persons..." style={{ padding: '6px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${lprSearch ? '#10b98150' : theme.border}`, borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
-                            <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3, scrollbarWidth: 'thin' }}>
+                            <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column' as const, gap: 3, scrollbarWidth: 'thin' }}>
                                 {mockLPR.filter(l => { if (lprSearch.trim()) { const q = lprSearch.toLowerCase(); return l.plate.toLowerCase().includes(q) || l.personName.toLowerCase().includes(q) || l.cameraName.toLowerCase().includes(q) || (l.orgName || '').toLowerCase().includes(q); } return true; }).map(lpr => { const confColor = lpr.confidence >= 95 ? '#22c55e' : lpr.confidence >= 85 ? '#f59e0b' : '#ef4444'; const v = mockVehicles.find(vv => vv.id === lpr.vehicleId); const isSelected = lprSelected.size === 0 || lprSelected.has(lpr.id); const isHidden = lprHidden.has(lpr.id); return <div key={lpr.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 5, background: isHidden ? 'rgba(107,114,128,0.04)' : isSelected && lprSelected.size > 0 ? 'rgba(16,185,129,0.04)' : 'transparent', border: `1px solid ${isHidden ? theme.border + '50' : isSelected && lprSelected.size > 0 ? '#10b98120' : theme.border}`, opacity: isHidden ? 0.5 : 1 }}>
                                     <button onClick={() => { setLprSelected(prev => { const n = new Set(prev); if (prev.size === 0) { mockLPR.forEach(l => { if (l.id !== lpr.id) n.add(l.id); }); } else if (n.has(lpr.id)) { n.delete(lpr.id); if (n.size === 0) return new Set(); } else { n.add(lpr.id); } return n; }); }} style={{ width: 12, height: 12, borderRadius: 2, border: `1.5px solid ${isSelected ? '#10b981' : theme.border}`, background: isSelected && lprSelected.size > 0 ? '#10b981' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>{isSelected && lprSelected.size > 0 && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</button>
                                     <div style={{ width: 26, height: 18, borderRadius: 3, border: '1.5px solid #10b981', background: 'url(https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg) center/cover', flexShrink: 0, cursor: 'pointer' }} onClick={() => setTlLightbox('https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg')} />
@@ -4570,10 +4570,10 @@ export default function MapIndex() {
                         </div>}
 
                         {/* ── FACE PANEL ── */}
-                        {activeLayerPanel === 'face' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {activeLayerPanel === 'face' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                             <div style={{ fontSize: 9, color: theme.textDim }}>{mockFaces.length} captures · {mockFaces.filter(f => f.personId > 0).length} matched · {mockFaces.filter(f => f.personId === 0).length} unidentified{faceHidden.size > 0 ? ` · ${faceHidden.size} hidden` : ''}</div>
                             <input value={faceSearch} onChange={e => setFaceSearch(e.target.value)} placeholder="Search captures..." style={{ padding: '6px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${faceSearch ? '#ec489950' : theme.border}`, borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
-                            <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3, scrollbarWidth: 'thin' }}>
+                            <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column' as const, gap: 3, scrollbarWidth: 'thin' }}>
                                 {mockFaces.filter(fr => { if (faceSearch.trim()) { const q = faceSearch.toLowerCase(); return fr.personName.toLowerCase().includes(q) || fr.cameraName.toLowerCase().includes(q) || fr.emotion.toLowerCase().includes(q); } return true; }).map(fr => { const riskColor = fr.risk === 'Critical' ? '#ef4444' : fr.risk === 'High' ? '#f97316' : '#f59e0b'; const confColor = fr.confidence >= 90 ? '#22c55e' : fr.confidence >= 75 ? '#f59e0b' : '#ef4444'; const isSelected = faceSelected.size === 0 || faceSelected.has(fr.id); const isHidden = faceHidden.has(fr.id); return <div key={fr.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 5, background: isHidden ? 'rgba(107,114,128,0.04)' : isSelected && faceSelected.size > 0 ? 'rgba(236,72,153,0.04)' : 'transparent', border: `1px solid ${isHidden ? theme.border + '50' : isSelected && faceSelected.size > 0 ? '#ec489920' : theme.border}`, opacity: isHidden ? 0.5 : 1 }}>
                                     <button onClick={() => { setFaceSelected(prev => { const n = new Set(prev); if (prev.size === 0) { mockFaces.forEach(f => { if (f.id !== fr.id) n.add(f.id); }); } else if (n.has(fr.id)) { n.delete(fr.id); if (n.size === 0) return new Set(); } else { n.add(fr.id); } return n; }); }} style={{ width: 12, height: 12, borderRadius: 2, border: `1.5px solid ${isSelected ? '#ec4899' : theme.border}`, background: isSelected && faceSelected.size > 0 ? '#ec4899' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>{isSelected && faceSelected.size > 0 && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</button>
                                     <div style={{ width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${riskColor}`, background: 'url(https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg) center/cover', flexShrink: 0, cursor: 'pointer' }} onClick={() => setTlLightbox('https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg')} />
@@ -4613,7 +4613,7 @@ export default function MapIndex() {
 
                     {/* Object list */}
                     <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
-                        {filteredObjects.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}>
+                        {filteredObjects.length === 0 && <div style={{ padding: 30, textAlign: 'center' as const }}>
                             <div style={{ fontSize: 28, marginBottom: 8 }}>{objPanelTab === 'markers' ? '📌' : objPanelTab === 'shapes' ? '⬡' : '📋'}</div>
                             <div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>{objSearch ? 'No Matches' : 'No Objects'}</div>
                             <div style={{ fontSize: 10, color: theme.textDim }}>{objSearch ? 'Try a different search term.' : 'Use the draw tools in the sidebar to create objects on the map.'}</div>
@@ -4624,8 +4624,8 @@ export default function MapIndex() {
                             const coordStr = o.coords.length > 0 ? `${o.coords[0][1].toFixed(4)}, ${o.coords[0][0].toFixed(4)}` : '—';
                             return <div key={o.id} style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}08`, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: hidden ? 0.45 : 1, transition: 'all 0.15s, background 0.1s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.background = `${o.color}06`; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }} onClick={() => goToObj(o)}>
                                 {/* Color dot + icon */}
-                                <div style={{ width: 30, height: 30, borderRadius: o.type === 'marker' ? '50%' : 6, background: `${o.color}12`, border: `1.5px solid ${o.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, position: 'relative' }}>{typeInfo.icon}
-                                    {hidden && <div style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', background: 'rgba(13,18,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/></svg></div>}
+                                <div style={{ width: 30, height: 30, borderRadius: o.type === 'marker' ? '50%' : 6, background: `${o.color}12`, border: `1.5px solid ${o.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, position: 'relative' as const }}>{typeInfo.icon}
+                                    {hidden && <div style={{ position: 'absolute' as const, inset: 0, borderRadius: 'inherit', background: 'rgba(13,18,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/></svg></div>}
                                 </div>
                                 {/* Info */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -4659,29 +4659,29 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Timeline Lightbox */}
-                {tlLightbox && <div onClick={() => setTlLightbox(null)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out', backdropFilter: 'blur(8px)' }}>
+                {tlLightbox && <div onClick={() => setTlLightbox(null)} style={{ position: 'fixed' as const, inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out', backdropFilter: 'blur(8px)' }}>
                     <img src={tlLightbox} style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8, boxShadow: '0 20px 60px rgba(0,0,0,0.8)' }} />
-                    <button onClick={() => setTlLightbox(null)} style={{ position: 'absolute', top: 20, right: 20, width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                    <button onClick={() => setTlLightbox(null)} style={{ position: 'absolute' as const, top: 20, right: 20, width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                 </div>}
 
                 {/* Timeline Marker Context Menu */}
-                {tlMarkerCtx && <div onClick={() => setTlMarkerCtx(null)} style={{ position: 'fixed', inset: 0, zIndex: 100 }}><div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: Math.min(tlMarkerCtx.x + (mapContainer.current?.getBoundingClientRect().left || 0), window.innerWidth - 200), top: Math.min(tlMarkerCtx.y + (mapContainer.current?.getBoundingClientRect().top || 0), window.innerHeight - 220), zIndex: 101, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 180 }}>
+                {tlMarkerCtx && <div onClick={() => setTlMarkerCtx(null)} style={{ position: 'fixed' as const, inset: 0, zIndex: 100 }}><div onClick={e => e.stopPropagation()} style={{ position: 'absolute' as const, left: Math.min(tlMarkerCtx.x + (mapContainer.current?.getBoundingClientRect().left || 0), window.innerWidth - 200), top: Math.min(tlMarkerCtx.y + (mapContainer.current?.getBoundingClientRect().top || 0), window.innerHeight - 220), zIndex: 101, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 180 }}>
                     <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
                         {tlMarkerCtx.ev.photoUrl ? <img src={tlMarkerCtx.ev.photoUrl} style={{ width: 22, height: 22, borderRadius: tlMarkerCtx.ev.type === 'face' ? '50%' : 4, objectFit: 'cover', border: `2px solid ${tlMarkerCtx.ev.color}` }} /> : <span style={{ fontSize: 14 }}>{tlMarkerCtx.ev.icon}</span>}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tlMarkerCtx.ev.title}</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{tlMarkerCtx.ev.title}</div>
                             <div style={{ fontSize: 8, color: theme.textDim }}>{tlMarkerCtx.ev.ts}</div>
                         </div>
                     </div>
                     <div style={{ padding: '2px 0' }}>
-                        {tlMarkerCtx.ev.type === 'face' && tlMarkerCtx.ev.personId && tlMarkerCtx.ev.personId > 0 && <button onClick={() => { router.visit(`/persons/${tlMarkerCtx.ev.personId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.accent, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👤 Person Details</button>}
-                        {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.vehicleId && tlMarkerCtx.ev.vehicleId > 0 && <button onClick={() => { router.visit(`/vehicles/${tlMarkerCtx.ev.vehicleId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.accent, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🚗 Vehicle Details</button>}
-                        {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.personId && tlMarkerCtx.ev.personId > 0 && <button onClick={() => { router.visit(`/persons/${tlMarkerCtx.ev.personId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👤 Person Details</button>}
-                        {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.orgId && <button onClick={() => { router.visit(`/organizations/${tlMarkerCtx.ev.orgId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🏢 Organization</button>}
-                        {tlMarkerCtx.ev.cameraId && <button onClick={() => { router.visit(`/devices/${tlMarkerCtx.ev.cameraId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>📡 Device</button>}
-                        {tlMarkerCtx.ev.photoUrl && <button onClick={() => { setTlLightbox(tlMarkerCtx.ev.photoUrl!); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🔍 View Photo</button>}
+                        {tlMarkerCtx.ev.type === 'face' && tlMarkerCtx.ev.personId && tlMarkerCtx.ev.personId > 0 && <button onClick={() => { router.visit(`/persons/${tlMarkerCtx.ev.personId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.accent, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👤 Person Details</button>}
+                        {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.vehicleId && tlMarkerCtx.ev.vehicleId > 0 && <button onClick={() => { router.visit(`/vehicles/${tlMarkerCtx.ev.vehicleId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.accent, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🚗 Vehicle Details</button>}
+                        {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.personId && tlMarkerCtx.ev.personId > 0 && <button onClick={() => { router.visit(`/persons/${tlMarkerCtx.ev.personId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👤 Person Details</button>}
+                        {tlMarkerCtx.ev.type === 'lpr' && tlMarkerCtx.ev.orgId && <button onClick={() => { router.visit(`/organizations/${tlMarkerCtx.ev.orgId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🏢 Organization</button>}
+                        {tlMarkerCtx.ev.cameraId && <button onClick={() => { router.visit(`/devices/${tlMarkerCtx.ev.cameraId}`); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>📡 Device</button>}
+                        {tlMarkerCtx.ev.photoUrl && <button onClick={() => { setTlLightbox(tlMarkerCtx.ev.photoUrl!); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.textSecondary, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>🔍 View Photo</button>}
                         <div style={{ height: 1, background: theme.border, margin: '2px 8px' }} />
-                        <button onClick={() => { if (tlMarkerCtx.ev.type === 'face') setFaceHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); if (tlMarkerCtx.ev.type === 'lpr') setLprHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); const sid = tlMarkerCtx.ev.id; if (/^(ml|mp|mv|ma|mc|sc|sh|sp|sg|sa)\d/.test(sid)) setHiddenSources(prev => new Set([...prev, sid])); setTlHiddenIds(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👁️‍🗨️ Hide from Map</button>
+                        <button onClick={() => { if (tlMarkerCtx.ev.type === 'face') setFaceHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); if (tlMarkerCtx.ev.type === 'lpr') setLprHidden(prev => new Set([...prev, tlMarkerCtx.ev.id])); const sid = tlMarkerCtx.ev.id; if (/^(ml|mp|mv|ma|mc|sc|sh|sp|sg|sa)\d/.test(sid)) setHiddenSources(prev => new Set([...prev, sid])); setTlHiddenIds(prev => new Set([...prev, tlMarkerCtx.ev.id])); setTlMarkerCtx(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>👁️‍🗨️ Hide from Map</button>
                     </div>
                 </div></div>}
 
@@ -4689,7 +4689,7 @@ export default function MapIndex() {
                 {showCoords && loaded && <div className="tmap-coords" style={{ bottom: timelineOpen ? 282 : 8, transition: 'bottom 0.3s ease', zIndex: 15 }}><span>LAT {coords.lat.toFixed(5)}</span><span>LNG {coords.lng.toFixed(5)}</span><span>Z {zoom}</span><span>BRG {Math.round(bearing)}°</span></div>}
 
                 {/* Status Bar (bottom-left) */}
-                {loaded && <div style={{ position: 'absolute', bottom: timelineOpen ? 282 : 8, left: 8, zIndex: 5, display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 220, transition: 'bottom 0.3s ease' }}>
+                {loaded && <div style={{ position: 'absolute' as const, bottom: timelineOpen ? 282 : 8, left: 8, zIndex: 5, display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 220, transition: 'bottom 0.3s ease' }}>
                     {activeSources.size > 0 && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(6,182,212,0.1)', color: '#06b6d4', border: '1px solid rgba(6,182,212,0.2)', backdropFilter: 'blur(6px)' }}>📡 {activeSources.size} sources</span>}
                     {layerHeatmap && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)', backdropFilter: 'blur(6px)' }}>🔥 Heatmap</span>}
                     {layerNetwork && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.2)', backdropFilter: 'blur(6px)' }}>🕸️ Network</span>}
@@ -4703,13 +4703,13 @@ export default function MapIndex() {
                 </div>}
 
                 {/* FPS Counter */}
-                {showFps && loaded && <div style={{ position: 'absolute', top: showMinimap ? 118 : 10, right: 10, zIndex: 5, background: fps >= 50 ? 'rgba(34,197,94,0.12)' : fps >= 30 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${fps >= 50 ? '#22c55e30' : fps >= 30 ? '#f59e0b30' : '#ef444430'}`, borderRadius: 6, padding: '4px 10px', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {showFps && loaded && <div style={{ position: 'absolute' as const, top: showMinimap ? 118 : 10, right: 10, zIndex: 5, background: fps >= 50 ? 'rgba(34,197,94,0.12)' : fps >= 30 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${fps >= 50 ? '#22c55e30' : fps >= 30 ? '#f59e0b30' : '#ef444430'}`, borderRadius: 6, padding: '4px 10px', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 6, height: 6, borderRadius: 3, background: fps >= 50 ? '#22c55e' : fps >= 30 ? '#f59e0b' : '#ef4444' }} />
                     <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: fps >= 50 ? '#22c55e' : fps >= 30 ? '#f59e0b' : '#ef4444' }}>{fps} FPS</span>
                 </div>}
 
                 {/* Live Feed Toggle Button */}
-                {loaded && !showLiveFeed && <button onClick={() => { setShowLiveFeed(true); setLiveFeedRunning(true); }} style={{ position: 'absolute', top: showMinimap ? 118 : 10, right: showFps ? 85 : 10, zIndex: 6, background: 'rgba(13,18,32,0.9)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => (e.currentTarget.style.borderColor = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.borderColor = theme.border)}>
+                {loaded && !showLiveFeed && <button onClick={() => { setShowLiveFeed(true); setLiveFeedRunning(true); }} style={{ position: 'absolute' as const, top: showMinimap ? 118 : 10, right: showFps ? 85 : 10, zIndex: 6, background: 'rgba(13,18,32,0.9)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => (e.currentTarget.style.borderColor = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.borderColor = theme.border)}>
                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', animation: 'tmap-tl-ring 1.5s infinite' }} />
                     <span style={{ fontSize: 9, fontWeight: 700, color: theme.textDim }}>LIVE</span>
                 </button>}
@@ -4743,23 +4743,23 @@ export default function MapIndex() {
 
                     {/* Event list */}
                     <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
-                        {liveFeedEvents.filter(e => liveFeedFilter.has(e.type)).length === 0 && <div style={{ padding: 30, textAlign: 'center', color: theme.textDim, fontSize: 11 }}>{liveFeedRunning ? 'Waiting for events...' : 'Feed paused'}<br /><span style={{ fontSize: 9, marginTop: 4, display: 'inline-block' }}>{liveFeedRunning ? 'Events will appear here in real-time' : 'Press Resume to continue receiving events'}</span></div>}
+                        {liveFeedEvents.filter(e => liveFeedFilter.has(e.type)).length === 0 && <div style={{ padding: 30, textAlign: 'center' as const, color: theme.textDim, fontSize: 11 }}>{liveFeedRunning ? 'Waiting for events...' : 'Feed paused'}<br /><span style={{ fontSize: 9, marginTop: 4, display: 'inline-block' }}>{liveFeedRunning ? 'Events will appear here in real-time' : 'Press Resume to continue receiving events'}</span></div>}
                         {liveFeedEvents.filter(e => liveFeedFilter.has(e.type)).map(evt => {
                             const sevColor = evt.sev === 'critical' ? '#ef4444' : evt.sev === 'high' ? '#f97316' : evt.sev === 'medium' ? '#f59e0b' : evt.sev === 'low' ? '#6b7280' : '#3b82f6';
                             const isPinned = liveFeedPinned.has(evt.id);
                             return <div key={evt.id} onClick={() => showLiveFeedMarker(evt)} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 12px', cursor: 'pointer', borderBottom: `1px solid ${theme.border}10`, transition: 'background 0.15s, opacity 0.3s', background: evt.isNew ? `${evt.color}08` : isPinned ? 'rgba(139,92,246,0.04)' : 'transparent', animation: evt.isNew ? 'argux-fadeIn 0.3s ease-out' : 'none' }} onMouseEnter={e => (e.currentTarget.style.background = `${evt.color}08`)} onMouseLeave={e => (e.currentTarget.style.background = evt.isNew ? `${evt.color}08` : isPinned ? 'rgba(139,92,246,0.04)' : 'transparent')}>
                                 {/* Severity strip + icon */}
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0, paddingTop: 1 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, paddingTop: 1 }}>
                                     <div style={{ width: 3, height: 16, borderRadius: 2, background: sevColor }} />
                                     <span style={{ fontSize: 13 }}>{evt.icon}</span>
                                 </div>
                                 {/* Content */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 1 }}>
-                                        <span style={{ fontSize: 10, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{evt.title}</span>
+                                        <span style={{ fontSize: 10, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{evt.title}</span>
                                         {evt.isNew && <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: '#ef444420', color: '#ef4444', border: '1px solid #ef444430', flexShrink: 0, animation: 'tmap-tl-ring 1s infinite' }}>NEW</span>}
                                     </div>
-                                    <div style={{ fontSize: 8, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
+                                    <div style={{ fontSize: 8, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginBottom: 2 }}>
                                         {evt.person && <span style={{ color: '#ec4899', fontWeight: 600 }}>{evt.person}</span>}
                                         {evt.person && evt.camera ? ' · ' : ''}
                                         {evt.camera && <span>{evt.camera}</span>}
@@ -4790,7 +4790,7 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Zone Context Menu (right-click on zone) */}
-                {zoneCtxMenu && <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: zoneCtxMenu.x, top: zoneCtxMenu.y, zIndex: 50, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 180 }}>
+                {zoneCtxMenu && <div onClick={e => e.stopPropagation()} style={{ position: 'absolute' as const, left: zoneCtxMenu.x, top: zoneCtxMenu.y, zIndex: 50, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 180 }}>
                     <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div style={{ width: 8, height: 8, borderRadius: zoneCtxMenu.zone.shape === 'circle' ? '50%' : 2, background: zoneCtxMenu.zone.color }} />
                         <div>
@@ -4809,10 +4809,10 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Marker Context Menu (right-click on person/org marker) */}
-                {markerCtxMenu && <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: markerCtxMenu.x, top: markerCtxMenu.y, zIndex: 55, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 190 }}>
+                {markerCtxMenu && <div onClick={e => e.stopPropagation()} style={{ position: 'absolute' as const, left: markerCtxMenu.x, top: markerCtxMenu.y, zIndex: 55, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 190 }}>
                     <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <img src={markerCtxMenu.img} style={{ width: 22, height: 22, borderRadius: markerCtxMenu.type === 'person' ? '50%' : 4, objectFit: 'cover', border: `2px solid ${markerCtxMenu.riskColor}` }} />
-                        <span style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{markerCtxMenu.name}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{markerCtxMenu.name}</span>
                     </div>
                     <div style={{ padding: '2px 0' }}>
                         {(markerCtxMenu.type === 'person' ? [
@@ -4830,15 +4830,15 @@ export default function MapIndex() {
                             { label: 'AI Assistant', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="10" rx="2"/><path d="M5 7h6M5 9h3"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=ai` },
                             { label: 'Notes', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=notes` },
                         ]).map((item, i) => (
-                            <a key={i} href={item.href} onClick={() => setMarkerCtxMenu(null)} style={{ display: 'flex', width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left', textDecoration: 'none', alignItems: 'center', gap: 8, boxSizing: 'border-box' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{item.icon}{item.label}</a>
+                            <a key={i} href={item.href} onClick={() => setMarkerCtxMenu(null)} style={{ display: 'flex', width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, textDecoration: 'none', alignItems: 'center', gap: 8, boxSizing: 'border-box' as const }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{item.icon}{item.label}</a>
                         ))}
                     </div>
                 </div>}
 
                 {/* Zone Add: Method Picker Overlay */}
-                {zoneAddStep === 'pick' && <div style={{ position: 'absolute', inset: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div onClick={() => setZoneAddStep(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} />
-                    <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: 420, maxWidth: '92%', background: 'rgba(13,18,32,0.98)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,0.7)', padding: 24 }}>
+                {zoneAddStep === 'pick' && <div style={{ position: 'absolute' as const, inset: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div onClick={() => setZoneAddStep(null)} style={{ position: 'absolute' as const, inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} />
+                    <div onClick={e => e.stopPropagation()} style={{ position: 'relative' as const, width: 420, maxWidth: '92%', background: 'rgba(13,18,32,0.98)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,0.7)', padding: 24 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinejoin="round"><polygon points="3,2 13,2 15,8 10,14 6,14 1,8"/></svg>
@@ -4849,35 +4849,35 @@ export default function MapIndex() {
                         <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 16 }}>Choose how to create your zone — draw directly on the map or enter coordinates manually.</div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
                             {/* Draw Circle */}
-                            <button onClick={() => startDrawAndClose('circle')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'rgba(139,92,246,0.03)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf680'; e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'rgba(139,92,246,0.03)'; }}>
+                            <button onClick={() => startDrawAndClose('circle')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'rgba(139,92,246,0.03)', cursor: 'pointer', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf680'; e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'rgba(139,92,246,0.03)'; }}>
                                 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#8b5cf6" strokeWidth="1.5"><circle cx="16" cy="16" r="12" strokeDasharray="4 2"/><circle cx="16" cy="16" r="2" fill="#8b5cf6"/><line x1="16" y1="16" x2="28" y2="16" strokeDasharray="2 2" opacity="0.5"/></svg>
                                 <span style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>Draw Circle</span>
-                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' }}>Click center then edge to set radius</span>
+                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' as const }}>Click center then edge to set radius</span>
                             </button>
                             {/* Draw Polygon */}
-                            <button onClick={() => startDrawAndClose('polygon')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'rgba(139,92,246,0.03)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf680'; e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'rgba(139,92,246,0.03)'; }}>
+                            <button onClick={() => startDrawAndClose('polygon')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'rgba(139,92,246,0.03)', cursor: 'pointer', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf680'; e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'rgba(139,92,246,0.03)'; }}>
                                 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="#8b5cf6" strokeWidth="1.5"><polygon points="6,24 16,4 26,24" strokeDasharray="4 2"/><circle cx="6" cy="24" r="2" fill="#8b5cf6"/><circle cx="16" cy="4" r="2" fill="#8b5cf6"/><circle cx="26" cy="24" r="2" fill="#8b5cf6"/></svg>
                                 <span style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>Draw Polygon</span>
-                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' }}>Click vertices, double-click to close</span>
+                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' as const }}>Click vertices, double-click to close</span>
                             </button>
                             {/* Manual Circle */}
-                            <button onClick={() => openAddZoneManual('circle')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + '80'; e.currentTarget.style.background = 'rgba(59,130,246,0.05)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'transparent'; }}>
+                            <button onClick={() => openAddZoneManual('circle')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + '80'; e.currentTarget.style.background = 'rgba(59,130,246,0.05)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'transparent'; }}>
                                 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke={theme.accent} strokeWidth="1.5"><circle cx="16" cy="16" r="12"/><text x="16" y="20" textAnchor="middle" fontSize="10" fill={theme.accent} stroke="none" fontFamily="JetBrains Mono, monospace">123</text></svg>
                                 <span style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>Manual Circle</span>
-                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' }}>Enter coordinates and radius</span>
+                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' as const }}>Enter coordinates and radius</span>
                             </button>
                             {/* Manual Polygon */}
-                            <button onClick={() => openAddZoneManual('polygon')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + '80'; e.currentTarget.style.background = 'rgba(59,130,246,0.05)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'transparent'; }}>
+                            <button onClick={() => openAddZoneManual('polygon')} style={{ padding: '16px 12px', borderRadius: 10, border: `1.5px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8, fontFamily: 'inherit', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + '80'; e.currentTarget.style.background = 'rgba(59,130,246,0.05)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'transparent'; }}>
                                 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke={theme.accent} strokeWidth="1.5"><polygon points="6,24 16,4 26,24"/><text x="16" y="20" textAnchor="middle" fontSize="10" fill={theme.accent} stroke="none" fontFamily="JetBrains Mono, monospace">123</text></svg>
                                 <span style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>Manual Polygon</span>
-                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' }}>Enter center coordinates</span>
+                                <span style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' as const }}>Enter center coordinates</span>
                             </button>
                         </div>
                     </div>
                 </div>}
 
                 {/* Zone Drawing Instruction Bar (top-center) */}
-                {zoneDrawing && <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 30, background: 'rgba(13,18,32,0.95)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 10, padding: '10px 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 12, maxWidth: '90%' }}>
+                {zoneDrawing && <div style={{ position: 'absolute' as const, top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 30, background: 'rgba(13,18,32,0.95)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 10, padding: '10px 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 12, maxWidth: '90%' }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6', animation: 'argux-spin 1s linear infinite', boxShadow: '0 0 8px #8b5cf6' }} />
                     <div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6' }}>Drawing {zoneDrawing.shape === 'circle' ? 'Circle Zone' : 'Polygon Zone'}</div>
@@ -4888,8 +4888,8 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Zone Add/Edit Form Panel (right side) */}
-                {zoneModal && <div style={{ position: 'absolute', top: 10, right: showMinimap ? 160 : 10, bottom: 50, zIndex: 35, width: 320, maxWidth: '80%', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ flex: 1, background: 'rgba(13,18,32,0.97)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', padding: 16, display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
+                {zoneModal && <div style={{ position: 'absolute' as const, top: 10, right: showMinimap ? 160 : 10, bottom: 50, zIndex: 35, width: 320, maxWidth: '80%', display: 'flex', flexDirection: 'column' as const }}>
+                    <div style={{ flex: 1, background: 'rgba(13,18,32,0.97)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', padding: 16, display: 'flex', flexDirection: 'column' as const, gap: 10, overflowY: 'auto' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinejoin="round"><polygon points="3,2 13,2 15,8 10,14 6,14 1,8"/></svg>
@@ -4935,9 +4935,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Zone Delete Confirm Overlay */}
-                {zoneDeleteConfirm && <div style={{ position: 'absolute', inset: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div onClick={() => setZoneDeleteConfirm(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} />
-                    <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: 340, maxWidth: '90%', background: 'rgba(13,18,32,0.98)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', padding: 20 }}>
+                {zoneDeleteConfirm && <div style={{ position: 'absolute' as const, inset: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div onClick={() => setZoneDeleteConfirm(null)} style={{ position: 'absolute' as const, inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} />
+                    <div onClick={e => e.stopPropagation()} style={{ position: 'relative' as const, width: 340, maxWidth: '90%', background: 'rgba(13,18,32,0.98)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', padding: 20 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                             <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke={theme.danger} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="9"/><circle cx="8" cy="11.5" r="0.5" fill={theme.danger}/></svg>
                             <span style={{ fontSize: 14, fontWeight: 700, color: theme.danger }}>Delete Zone</span>
@@ -4956,7 +4956,7 @@ export default function MapIndex() {
                 {zoneEventsPanel && (() => {
                     const events = getZoneEvents(zoneEventsPanel);
                     const sevColors = { critical: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
-                    return <div style={{ position: 'absolute', bottom: 50, left: 10, zIndex: 35, width: 360, maxWidth: '80%', maxHeight: 380, background: 'rgba(13,18,32,0.97)', border: `1px solid ${zoneEventsPanel.color}30`, borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    return <div style={{ position: 'absolute' as const, bottom: 50, left: 10, zIndex: 35, width: 360, maxWidth: '80%', maxHeight: 380, background: 'rgba(13,18,32,0.97)', border: `1px solid ${zoneEventsPanel.color}30`, borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
                         {/* Header */}
                         <div style={{ padding: '12px 14px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -4993,15 +4993,15 @@ export default function MapIndex() {
                 })()}
 
                 {/* Map Right-Click Context Menu */}
-                {mapCtxMenu && <div onClick={e => e.stopPropagation()} className="tmap-ctxmenu" style={{ position: 'absolute', left: mapCtxMenu.x, top: mapCtxMenu.y, zIndex: 55, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'visible', minWidth: 170 }}>
+                {mapCtxMenu && <div onClick={e => e.stopPropagation()} className="tmap-ctxmenu" style={{ position: 'absolute' as const, left: mapCtxMenu.x, top: mapCtxMenu.y, zIndex: 55, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'visible', minWidth: 170 }}>
                     <div style={{ padding: '6px 12px', borderBottom: `1px solid ${theme.border}`, fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{mapCtxMenu.lngLat[1].toFixed(5)}, {mapCtxMenu.lngLat[0].toFixed(5)}</div>
                     <div style={{ padding: '2px 0' }}>
                         <button onClick={() => { placeMarkerAt(mapCtxMenu.lngLat); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>📌 Add Marker</button>
-                        <div className="tmap-ctxmenu-sub-wrap" style={{ position: 'relative' }}>
+                        <div className="tmap-ctxmenu-sub-wrap" style={{ position: 'relative' as const }}>
                             <button style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>🖊️ Add Object</span><svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3,2 7,5 3,8"/></svg>
                             </button>
-                            <div className="tmap-ctxmenu-sub" style={{ position: 'absolute', left: '100%', top: -2, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 150, display: 'none' }}>
+                            <div className="tmap-ctxmenu-sub" style={{ position: 'absolute' as const, left: '100%', top: -2, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 150, display: 'none' }}>
                                 {(['line', 'rectangle', 'polygon', 'freehand', 'circle'] as ObjType[]).map(t => <button key={t} onClick={() => startObjDraw(t)} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{objTypeLabels[t].icon} Draw {objTypeLabels[t].label}</button>)}
                             </div>
                         </div>
@@ -5009,7 +5009,7 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Object Right-Click Context Menu */}
-                {objCtxMenu && <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: objCtxMenu.x, top: objCtxMenu.y, zIndex: 55, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 170 }}>
+                {objCtxMenu && <div onClick={e => e.stopPropagation()} style={{ position: 'absolute' as const, left: objCtxMenu.x, top: objCtxMenu.y, zIndex: 55, background: 'rgba(13,18,32,0.96)', border: `1px solid ${theme.border}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden', minWidth: 170 }}>
                     <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 12 }}>{objTypeLabels[objCtxMenu.obj.type].icon}</span>
                         <div>
@@ -5027,7 +5027,7 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Placing Marker Instruction Bar */}
-                {placingMarker && <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 30, background: 'rgba(13,18,32,0.95)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 12, maxWidth: '90%' }}>
+                {placingMarker && <div style={{ position: 'absolute' as const, top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 30, background: 'rgba(13,18,32,0.95)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 12, maxWidth: '90%' }}>
                     <span style={{ fontSize: 18 }}>📌</span>
                     <div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444' }}>Place Marker</div>
@@ -5037,7 +5037,7 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Object Drawing Instruction Bar */}
-                {objDrawing && <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 30, background: 'rgba(13,18,32,0.95)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 10, padding: '10px 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 12, maxWidth: '90%' }}>
+                {objDrawing && <div style={{ position: 'absolute' as const, top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 30, background: 'rgba(13,18,32,0.95)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 10, padding: '10px 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: 12, maxWidth: '90%' }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: theme.accent, boxShadow: `0 0 8px ${theme.accent}` }} />
                     <div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: theme.accent }}>Drawing {objTypeLabels[objDrawing.type].label}</div>
@@ -5048,8 +5048,8 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Object Add/Edit Modal (right side) */}
-                {objModal && <div style={{ position: 'absolute', top: 10, right: showMinimap ? 160 : 10, bottom: 50, zIndex: 35, width: 300, maxWidth: '80%', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ flex: 1, background: 'rgba(13,18,32,0.97)', border: `1px solid ${theme.accent}30`, borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', padding: 14, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
+                {objModal && <div style={{ position: 'absolute' as const, top: 10, right: showMinimap ? 160 : 10, bottom: 50, zIndex: 35, width: 300, maxWidth: '80%', display: 'flex', flexDirection: 'column' as const }}>
+                    <div style={{ flex: 1, background: 'rgba(13,18,32,0.97)', border: `1px solid ${theme.accent}30`, borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', padding: 14, display: 'flex', flexDirection: 'column' as const, gap: 8, overflowY: 'auto' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: 12, fontWeight: 700, color: theme.accent, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{objModal.mode === 'add' ? `New ${objModal.obj ? objTypeLabels[objModal.obj.type].icon + ' ' + objTypeLabels[objModal.obj.type].label : 'Object'}` : 'Edit Object'}</span>
                             <button onClick={() => setObjModal(null)} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
@@ -5084,9 +5084,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Object Delete Confirm */}
-                {objDeleteConfirm && <div style={{ position: 'absolute', inset: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div onClick={() => setObjDeleteConfirm(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} />
-                    <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: 320, maxWidth: '90%', background: 'rgba(13,18,32,0.98)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', padding: 20 }}>
+                {objDeleteConfirm && <div style={{ position: 'absolute' as const, inset: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div onClick={() => setObjDeleteConfirm(null)} style={{ position: 'absolute' as const, inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} />
+                    <div onClick={e => e.stopPropagation()} style={{ position: 'relative' as const, width: 320, maxWidth: '90%', background: 'rgba(13,18,32,0.98)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', padding: 20 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={theme.danger} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="9"/><circle cx="8" cy="11.5" r="0.5" fill={theme.danger}/></svg>
                             <span style={{ fontSize: 13, fontWeight: 700, color: theme.danger }}>Delete Object</span>

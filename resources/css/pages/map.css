@@ -191,3 +191,36 @@
 .tmap-popup-label { color: var(--ax-text-dim); flex-shrink: 0; width: 90px; font-size: 10px; }
 .tmap-popup-val { color: var(--ax-text); flex: 1; word-break: break-word; font-size: 10px; }
 .tmap-popup-coords { padding: 6px 14px; border-top: 1px solid var(--ax-border); font-size: 9px; color: var(--ax-text-dim); font-family: 'JetBrains Mono', monospace; text-align: center; }
+
+/* ═══ Panel Responsive ═══ */
+@media (max-width: 640px) {
+    .tmap-page { margin: -16px -16px -60px; height: calc(100vh - 48px); }
+}
+
+/* Touch-friendly panel header */
+@media (hover: none) and (pointer: coarse) {
+    .tmap-section-header { padding: 12px 14px; }
+    .tmap-section-content { padding: 0 12px 14px; }
+    .tmap-overlay-btn { padding: 10px; }
+}
+
+/* Landscape mobile */
+@media (max-height: 500px) {
+    .tmap-coords { bottom: 4px !important; padding: 2px 8px !important; font-size: 8px !important; }
+}
+
+/* Large screens */
+@media (min-width: 1600px) {
+    .tmap-sidebar { width: 320px; }
+    .tmap-popup .maplibregl-popup-content { min-width: 280px; }
+}
+@media (min-width: 2000px) {
+    .tmap-sidebar { width: 340px; }
+}
+
+/* Print */
+@media print {
+    .tmap-sidebar, .tmap-mobile-toggle, .tmap-coords, .tmap-overlay-btn { display: none !important; }
+    .tmap-container { flex: 1; }
+    .tmap-page { height: auto; margin: 0; }
+}
