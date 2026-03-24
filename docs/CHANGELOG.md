@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.2 - 2026-03-24
+
+### Fixed — Vision Page Complete Rewrite
+- **WebMediaPlayer limit fix**: Replaced 8-11 simultaneous `<video>` elements with a **single shared `<video>` element** + `<canvas>` per tile architecture. One hidden video plays the source, `requestAnimationFrame` loop paints frames to each camera's canvas. Zero WebMediaPlayer limit issues.
+- **Menu reorganized**: Moved all controls from top toolbar to a **collapsible left sidebar** with sections: Camera Groups, Grid Layout, Overlays, Global Controls, Panels. Collapsible via ◀/▶ toggle.
+- **Canvas-based rendering**: Each camera tile uses a canvas element registered via `useCallback` ref. The shared RAF loop iterates all registered canvases and draws the video frame with zoom transform and night vision composite.
+- All 12 features preserved: PTZ, Motion Zones, Camera Groups, Recording Timeline, Sync Playback, Face Queue, Map View, Bandwidth Monitor, Presets, Waveform, Popup Windows, Per-cam hover controls.
+
 ## 0.10.1 - 2026-03-24
 
 ### Fixed — Vision Video Playback
