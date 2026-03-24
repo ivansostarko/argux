@@ -425,6 +425,11 @@ export default function MapIndex() {
     const [placingMarker, setPlacingMarker] = useState(false);
     const [showObjectsPanel, setShowObjectsPanel] = useState(false);
     const [objPanelTab, setObjPanelTab] = useState<'all' | 'markers' | 'shapes'>('all');
+    const [showHeatmapPanel, setShowHeatmapPanel] = useState(false);
+    const [showNetworkPanel, setShowNetworkPanel] = useState(false);
+    const [showLPRPanel, setShowLPRPanel] = useState(false);
+    const [showFacePanel, setShowFacePanel] = useState(false);
+    const activeLayerPanel = showHeatmapPanel ? 'heatmap' : showNetworkPanel ? 'network' : showLPRPanel ? 'lpr' : showFacePanel ? 'face' : null;
 
     const filteredObjects = mapObjects.filter(o => {
         if (objSearch && !o.name.toLowerCase().includes(objSearch.toLowerCase()) && !o.type.includes(objSearch.toLowerCase())) return false;
@@ -2240,12 +2245,13 @@ export default function MapIndex() {
                 if (timelineOpen) { setTimelineOpen(false); setTimelinePlaying(false); return; }
                 if (showLiveTracker) { setShowLiveTracker(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
+                if (activeLayerPanel) { setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); return; }
                 if (sidebarOpen) { setSidebarOpen(false); return; }
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showObjectsPanel, sidebarOpen]);
+    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showObjectsPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -2758,230 +2764,28 @@ export default function MapIndex() {
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
                     <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {/* Heatmap Layer */}
-                            <div style={{ border: `1px solid ${layerHeatmap ? '#f59e0b30' : theme.border}`, borderRadius: 6, padding: 8, background: layerHeatmap ? 'rgba(245,158,11,0.03)' : 'transparent' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: layerHeatmap ? 8 : 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <span style={{ fontSize: 12 }}>🔥</span>
-                                        <span style={{ fontSize: 11, fontWeight: 600, color: layerHeatmap ? '#f59e0b' : theme.text }}>Activity Heatmap</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {/* Layer buttons */}
+                            {[
+                                { key: 'heatmap', icon: '🔥', label: 'Activity Heatmap', color: '#f59e0b', active: layerHeatmap, toggle: () => { setLayerHeatmap(!layerHeatmap); triggerTopLoader(); }, panel: showHeatmapPanel, openPanel: () => { setShowHeatmapPanel(true); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); triggerTopLoader(); }, desc: layerHeatmap ? `${heatmapPoints.length} points · ${(heatmapIntensity * 100).toFixed(0)}% intensity` : 'Surveillance activity density' },
+                                { key: 'network', icon: '🕸️', label: 'Network Graph', color: '#8b5cf6', active: layerNetwork, toggle: () => { setLayerNetwork(!layerNetwork); triggerTopLoader(); }, panel: showNetworkPanel, openPanel: () => { setShowNetworkPanel(true); setShowHeatmapPanel(false); setShowLPRPanel(false); setShowFacePanel(false); triggerTopLoader(); }, desc: layerNetwork ? `${netNodes.length} nodes · ${netFilteredEdges.length} connections${netIsolatedEdge ? ' · isolated' : ''}` : 'Entity connection analysis' },
+                                { key: 'lpr', icon: '🚗', label: 'Plate Recognition', color: '#10b981', active: layerLPR, toggle: () => { setLayerLPR(!layerLPR); triggerTopLoader(); }, panel: showLPRPanel, openPanel: () => { setShowLPRPanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowFacePanel(false); triggerTopLoader(); }, desc: layerLPR ? `${mockLPR.filter(l => !lprHidden.has(l.id) && (lprSelected.size === 0 || lprSelected.has(l.id))).length} visible · ${lprHidden.size} hidden` : 'License plate captures' },
+                                { key: 'face', icon: '🧑‍🦲', label: 'Face Recognition', color: '#ec4899', active: layerFace, toggle: () => { setLayerFace(!layerFace); triggerTopLoader(); }, panel: showFacePanel, openPanel: () => { setShowFacePanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); triggerTopLoader(); }, desc: layerFace ? `${mockFaces.filter(f => !faceHidden.has(f.id) && (faceSelected.size === 0 || faceSelected.has(f.id))).length} visible · ${faceHidden.size} hidden` : 'Facial recognition captures' },
+                            ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                {/* Toggle switch */}
+                                <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
+                                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: l.active ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                </button>
+                                {/* Panel open button */}
+                                <button onClick={l.openPanel} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, border: `1px solid ${l.active ? l.color + '25' : l.panel ? l.color + '40' : theme.border}`, background: l.panel ? `${l.color}06` : l.active ? `${l.color}03` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.12s' }} onMouseEnter={e => { e.currentTarget.style.background = `${l.color}08`; e.currentTarget.style.borderColor = l.color + '40'; }} onMouseLeave={e => { e.currentTarget.style.background = l.panel ? `${l.color}06` : l.active ? `${l.color}03` : 'transparent'; e.currentTarget.style.borderColor = l.active ? l.color + '25' : l.panel ? l.color + '40' : theme.border; }}>
+                                    <span style={{ fontSize: 13 }}>{l.icon}</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: l.active ? l.color : theme.text }}>{l.label}</div>
+                                        <div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{l.desc}</div>
                                     </div>
-                                    <button onClick={() => { setLayerHeatmap(!layerHeatmap); triggerTopLoader(); }} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerHeatmap ? '#f59e0b' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
-                                        <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerHeatmap ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
-                                    </button>
-                                </div>
-                                {layerHeatmap && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    <div style={{ fontSize: 9, color: theme.textDim }}>{heatmapPoints.length} activity points · Density visualization of surveillance events</div>
-                                    <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: theme.textDim, marginBottom: 2 }}><span>Intensity</span><span style={{ color: '#f59e0b', fontWeight: 700 }}>{(heatmapIntensity * 100).toFixed(0)}%</span></div>
-                                        <input type="range" min="10" max="100" step="5" value={heatmapIntensity * 100} onChange={e => setHeatmapIntensity(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#f59e0b', height: 3 }} />
-                                    </div>
-                                    <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: theme.textDim, marginBottom: 2 }}><span>Radius</span><span style={{ color: '#f59e0b', fontWeight: 700 }}>{heatmapRadius}px</span></div>
-                                        <input type="range" min="10" max="60" step="5" value={heatmapRadius} onChange={e => setHeatmapRadius(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f59e0b', height: 3 }} />
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                                        {[['🔵', 'Low'], ['🟢', 'Medium'], ['🟡', 'High'], ['🔴', 'Critical'], ['⚪', 'Peak']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 8, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}>{ico} {lbl}</span>)}
-                                    </div>
-                                </div>}
-                            </div>
-
-                            {/* Network Layer */}
-                            <div style={{ border: `1px solid ${layerNetwork ? '#8b5cf630' : theme.border}`, borderRadius: 6, padding: 8, background: layerNetwork ? 'rgba(139,92,246,0.03)' : 'transparent' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: layerNetwork ? 8 : 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <span style={{ fontSize: 12 }}>🕸️</span>
-                                        <span style={{ fontSize: 11, fontWeight: 600, color: layerNetwork ? '#8b5cf6' : theme.text }}>Network Graph</span>
-                                        {layerNetwork && <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: '#8b5cf610', color: '#8b5cf6', border: '1px solid #8b5cf620' }}>{netFilteredEdges.length}</span>}
-                                    </div>
-                                    <button onClick={() => { setLayerNetwork(!layerNetwork); triggerTopLoader(); }} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerNetwork ? '#8b5cf6' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
-                                        <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerNetwork ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
-                                    </button>
-                                </div>
-                                {layerNetwork && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    {/* Stats */}
-                                    <div style={{ fontSize: 9, color: theme.textDim }}>{netNodes.length} nodes · {netFilteredEdges.length}/{netEdges.length} connections{netIsolatedEdge ? ' · 1 isolated' : ''}{netFocusNode ? ` · focused: ${netNodes.find(n => n.id === netFocusNode)?.label}` : ''}</div>
-                                    {/* Isolation/Focus indicator */}
-                                    {(netIsolatedEdge || netFocusNode) && <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
-                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', flexShrink: 0 }} />
-                                        <span style={{ fontSize: 9, color: '#8b5cf6', fontWeight: 600, flex: 1 }}>
-                                            {netIsolatedEdge ? (() => { const e = netEdges.find(ee => edgeKey(ee) === netIsolatedEdge); if (!e) return 'Isolated edge'; const from = netNodes.find(n => n.id === e.from); const to = netNodes.find(n => n.id === e.to); return `${from?.label} ↔ ${to?.label} (${e.type})`; })() : `Focus: ${netNodes.find(n => n.id === netFocusNode)?.label}`}
-                                        </span>
-                                        <button onClick={() => { setNetIsolatedEdge(null); setNetFocusNode(null); }} style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(139,92,246,0.25)', background: 'transparent', color: '#8b5cf6', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>✕ Clear</button>
-                                    </div>}
-                                    {/* Search */}
-                                    <input value={netSearch} onChange={e => setNetSearch(e.target.value)} placeholder="Search nodes..." style={{ padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${netSearch ? '#8b5cf650' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
-                                    {/* Node type filters */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Nodes</span>
-                                        {[
-                                            { label: 'Persons', icon: '👤', enabled: networkShowPersons, toggle: setNetworkShowPersons, count: netNodes.filter(n => n.type === 'person').length, color: '#ef4444' },
-                                            { label: 'Organizations', icon: '🏢', enabled: networkShowOrgs, toggle: setNetworkShowOrgs, count: netNodes.filter(n => n.type === 'org').length, color: '#3b82f6' },
-                                            { label: 'Devices', icon: '📡', enabled: networkShowDevices, toggle: setNetworkShowDevices, count: netNodes.filter(n => n.type === 'device').length, color: '#22c55e' },
-                                        ].map(f => (
-                                            <button key={f.label} onClick={() => { f.toggle(!f.enabled); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', borderRadius: 4, border: `1px solid ${f.enabled ? f.color + '40' : theme.border}`, background: f.enabled ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}>
-                                                <span style={{ fontSize: 10 }}>{f.icon}</span>
-                                                <span style={{ flex: 1, fontSize: 10, fontWeight: 600, color: f.enabled ? f.color : theme.textDim }}>{f.label}</span>
-                                                <span style={{ fontSize: 8, color: theme.textDim }}>{f.count}</span>
-                                                <div style={{ width: 8, height: 8, borderRadius: 2, border: `1.5px solid ${f.enabled ? f.color : theme.border}`, background: f.enabled ? f.color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{f.enabled && <svg width="5" height="5" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                    {/* Edge type filters */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Connection Types</span>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                                            {Object.entries(edgeColors).map(([type, color]) => {
-                                                const on = netEdgeFilters.has(type);
-                                                const cnt = netEdges.filter(e => e.type === type).length;
-                                                return <button key={type} onClick={() => { setNetEdgeFilters(prev => { const n = new Set(prev); n.has(type) ? n.delete(type) : n.add(type); return n; }); triggerTopLoader(); }} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${on ? color + '40' : theme.border}`, background: on ? color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3, fontSize: 8, fontWeight: 600, color: on ? color : theme.textDim }}>
-                                                    <span style={{ width: 8, height: 3, borderRadius: 1, background: on ? color : theme.border }} />{type} <span style={{ fontSize: 7, opacity: 0.7 }}>{cnt}</span>
-                                                </button>;
-                                            })}
-                                        </div>
-                                    </div>
-                                    {/* Strength threshold */}
-                                    <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                                            <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Min Strength</span>
-                                            <span style={{ fontSize: 8, fontWeight: 700, color: '#8b5cf6', fontFamily: "'JetBrains Mono', monospace" }}>{Math.round(netStrengthMin * 100)}%</span>
-                                        </div>
-                                        <input type="range" min={0} max={100} value={netStrengthMin * 100} onChange={e => setNetStrengthMin(parseInt(e.target.value) / 100)} style={{ width: '100%', height: 4, appearance: 'none', background: `linear-gradient(to right, #8b5cf6 ${netStrengthMin * 100}%, ${theme.border} ${netStrengthMin * 100}%)`, borderRadius: 2, outline: 'none', cursor: 'pointer' }} />
-                                    </div>
-                                    {/* Connection list (clickable) */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                        <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Connections <span style={{ fontWeight: 400 }}>· click to isolate</span></span>
-                                        <div style={{ maxHeight: 120, overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                            {netFilteredEdges.map(e => {
-                                                const from = netNodes.find(n => n.id === e.from);
-                                                const to = netNodes.find(n => n.id === e.to);
-                                                const isIso = netIsolatedEdge === edgeKey(e);
-                                                return <button key={edgeKey(e)} onClick={() => { setNetIsolatedEdge(prev => prev === edgeKey(e) ? null : edgeKey(e)); setNetFocusNode(null); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 5px', borderRadius: 3, border: `1px solid ${isIso ? '#8b5cf630' : 'transparent'}`, background: isIso ? 'rgba(139,92,246,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}>
-                                                    <span style={{ width: 8, height: 3, borderRadius: 1, background: edgeColors[e.type], flexShrink: 0 }} />
-                                                    <span style={{ fontSize: 8, fontWeight: 600, color: isIso ? '#8b5cf6' : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{from?.label} ↔ {to?.label}</span>
-                                                    <span style={{ fontSize: 7, color: edgeColors[e.type], fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{Math.round(e.strength * 100)}%</span>
-                                                    {isIso && <span style={{ fontSize: 7, color: '#8b5cf6', fontWeight: 800 }}>🎯</span>}
-                                                </button>;
-                                            })}
-                                        </div>
-                                    </div>
-                                    {/* Options */}
-                                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                        <button onClick={() => { setNetShowLabels(!netShowLabels); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${netShowLabels ? '#8b5cf630' : theme.border}`, background: netShowLabels ? '#8b5cf608' : 'transparent', color: netShowLabels ? '#8b5cf6' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🏷️ Labels {netShowLabels ? 'On' : 'Off'}</button>
-                                        <button onClick={() => { setNetIsolatedEdge(null); setNetFocusNode(null); setNetStrengthMin(0); setNetEdgeFilters(new Set(['financial', 'family', 'business', 'criminal', 'comms', 'surveillance'])); setNetSearch(''); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🔄 Reset</button>
-                                        <button onClick={() => { triggerTopLoader(); const map = mapRef.current; if (!map) return; const lats = netNodes.map(n => n.lat); const lngs = netNodes.map(n => n.lng); map.fitBounds([[Math.min(...lngs) - 0.005, Math.min(...lats) - 0.005], [Math.max(...lngs) + 0.005, Math.max(...lats) + 0.005]], { padding: 40, duration: 800 }); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🔎 Fit All</button>
-                                    </div>
-                                </div>}
-                            </div>
-
-                            {/* LPR Layer */}
-                            <div style={{ border: `1px solid ${layerLPR ? '#10b98130' : theme.border}`, borderRadius: 6, padding: 8, background: layerLPR ? 'rgba(16,185,129,0.03)' : 'transparent' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: layerLPR ? 8 : 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <span style={{ fontSize: 12 }}>🚗</span>
-                                        <span style={{ fontSize: 11, fontWeight: 600, color: layerLPR ? '#10b981' : theme.text }}>Plate Recognition</span>
-                                        {layerLPR && <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: '#10b98110', color: '#10b981', border: '1px solid #10b98120' }}>{mockLPR.filter(l => !lprHidden.has(l.id) && (lprSelected.size === 0 || lprSelected.has(l.id))).length}</span>}
-                                    </div>
-                                    <button onClick={() => { setLayerLPR(!layerLPR); triggerTopLoader(); }} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerLPR ? '#10b981' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
-                                        <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerLPR ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
-                                    </button>
-                                </div>
-                                {layerLPR && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    <div style={{ fontSize: 9, color: theme.textDim }}>{mockLPR.length} sightings · {new Set(mockLPR.map(l => l.plate)).size} plates{lprHidden.size > 0 ? ` · ${lprHidden.size} hidden` : ''}</div>
-                                    {/* Search */}
-                                    <input value={lprSearch} onChange={e => setLprSearch(e.target.value)} placeholder="Search plates, persons..." style={{ padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${lprSearch ? '#10b98150' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
-                                    {/* Capture list */}
-                                    <div style={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, scrollbarWidth: 'thin' }}>
-                                        {mockLPR.filter(l => { if (lprSearch.trim()) { const q = lprSearch.toLowerCase(); return l.plate.toLowerCase().includes(q) || l.personName.toLowerCase().includes(q) || l.cameraName.toLowerCase().includes(q) || (l.orgName || '').toLowerCase().includes(q); } return true; }).map(lpr => {
-                                            const confColor = lpr.confidence >= 95 ? '#22c55e' : lpr.confidence >= 85 ? '#f59e0b' : '#ef4444';
-                                            const riskColor = lpr.personId === 0 ? '#6b7280' : (mockPersons.find(p => p.id === lpr.personId)?.risk === 'Critical' ? '#ef4444' : '#f97316');
-                                            const v = mockVehicles.find(vv => vv.id === lpr.vehicleId);
-                                            const isSelected = lprSelected.size === 0 || lprSelected.has(lpr.id);
-                                            const isHidden = lprHidden.has(lpr.id);
-                                            return <div key={lpr.id} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 4px', borderRadius: 4, background: isHidden ? 'rgba(107,114,128,0.06)' : isSelected && lprSelected.size > 0 ? 'rgba(16,185,129,0.06)' : 'transparent', border: `1px solid ${isHidden ? theme.border + '50' : isSelected && lprSelected.size > 0 ? '#10b98120' : 'transparent'}`, opacity: isHidden ? 0.5 : 1 }}>
-                                                <button onClick={() => { setLprSelected(prev => { const n = new Set(prev); if (prev.size === 0) { mockLPR.forEach(l => { if (l.id !== lpr.id) n.add(l.id); }); } else if (n.has(lpr.id)) { n.delete(lpr.id); if (n.size === 0) return new Set(); } else { n.add(lpr.id); } return n; }); }} style={{ width: 12, height: 12, borderRadius: 2, border: `1.5px solid ${isSelected ? '#10b981' : theme.border}`, background: isSelected && lprSelected.size > 0 ? '#10b981' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>{isSelected && lprSelected.size > 0 && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</button>
-                                                <div style={{ width: 26, height: 18, borderRadius: 3, border: `1.5px solid #10b981`, background: `url(https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg) center/cover`, flexShrink: 0, cursor: 'pointer' }} onClick={() => setTlLightbox('https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg')} />
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                                        <span style={{ fontSize: 9, fontWeight: 700, color: isHidden ? theme.textDim : theme.text, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.03em' }}>{lpr.plate}</span>
-                                                        <span style={{ fontSize: 7, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{lpr.confidence}%</span>
-                                                    </div>
-                                                    <div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                                                        {lpr.personName}{v ? ` · ${v.make} ${v.model}` : ''} · {lpr.speed}km/h {lpr.direction}
-                                                    </div>
-                                                </div>
-                                                <button onClick={() => setLprHidden(prev => { const n = new Set(prev); n.has(lpr.id) ? n.delete(lpr.id) : n.add(lpr.id); return n; })} title={isHidden ? 'Show on map' : 'Hide from map'} style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isHidden ? theme.danger + '30' : theme.border}`, background: isHidden ? 'rgba(239,68,68,0.06)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, fontSize: 8, color: isHidden ? theme.danger : theme.textDim }}>{isHidden ? '👁️‍🗨️' : '👁️'}</button>
-                                            </div>;
-                                        })}
-                                    </div>
-                                    {/* Bulk actions */}
-                                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                        <button onClick={() => { setLprSelected(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: lprSelected.size === 0 ? '#10b98108' : 'transparent', color: lprSelected.size === 0 ? '#10b981' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>All</button>
-                                        <button onClick={() => { setLprSelected(new Set(mockLPR.filter(l => l.personId > 0).map(l => l.id))); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Known</button>
-                                        <button onClick={() => { setLprSelected(new Set(mockLPR.filter(l => l.personId === 0).map(l => l.id))); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Unknown</button>
-                                        {lprHidden.size > 0 && <button onClick={() => { setLprHidden(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Show {lprHidden.size} hidden</button>}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                                        {[['🟢', '≥95%'], ['🟡', '85-94%'], ['🔴', '<85%']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 8, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}>{ico} {lbl}</span>)}
-                                    </div>
-                                </div>}
-                            </div>
-
-                            {/* Face Recognition Layer */}
-                            <div style={{ border: `1px solid ${layerFace ? '#ec489930' : theme.border}`, borderRadius: 6, padding: 8, background: layerFace ? 'rgba(236,72,153,0.03)' : 'transparent' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: layerFace ? 8 : 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <span style={{ fontSize: 12 }}>🧑‍🦲</span>
-                                        <span style={{ fontSize: 11, fontWeight: 600, color: layerFace ? '#ec4899' : theme.text }}>Face Recognition</span>
-                                        {layerFace && <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: '#ec489910', color: '#ec4899', border: '1px solid #ec489920' }}>{mockFaces.filter(f => !faceHidden.has(f.id) && (faceSelected.size === 0 || faceSelected.has(f.id))).length}</span>}
-                                    </div>
-                                    <button onClick={() => { setLayerFace(!layerFace); triggerTopLoader(); }} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: layerFace ? '#ec4899' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0 }}>
-                                        <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: layerFace ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
-                                    </button>
-                                </div>
-                                {layerFace && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    {/* Stats */}
-                                    <div style={{ fontSize: 9, color: theme.textDim }}>{mockFaces.length} captures · {mockFaces.filter(f => f.personId > 0).length} matched · {mockFaces.filter(f => f.personId === 0).length} unidentified{faceHidden.size > 0 ? ` · ${faceHidden.size} hidden` : ''}</div>
-                                    {/* Search */}
-                                    <input value={faceSearch} onChange={e => setFaceSearch(e.target.value)} placeholder="Search captures..." style={{ padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${faceSearch ? '#ec489950' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
-                                    {/* Capture list with multiselect + hide */}
-                                    <div style={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, scrollbarWidth: 'thin' }}>
-                                        {mockFaces.filter(fr => { if (faceSearch.trim()) { const q = faceSearch.toLowerCase(); return fr.personName.toLowerCase().includes(q) || fr.cameraName.toLowerCase().includes(q) || fr.emotion.toLowerCase().includes(q); } return true; }).map(fr => {
-                                            const riskColor = fr.risk === 'Critical' ? '#ef4444' : fr.risk === 'High' ? '#f97316' : fr.risk === 'Medium' ? '#f59e0b' : '#6b7280';
-                                            const confColor = fr.confidence >= 90 ? '#22c55e' : fr.confidence >= 75 ? '#f59e0b' : '#ef4444';
-                                            const isSelected = faceSelected.size === 0 || faceSelected.has(fr.id);
-                                            const isHidden = faceHidden.has(fr.id);
-                                            return <div key={fr.id} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 4px', borderRadius: 4, background: isHidden ? 'rgba(107,114,128,0.06)' : isSelected && faceSelected.size > 0 ? 'rgba(236,72,153,0.06)' : 'transparent', border: `1px solid ${isHidden ? theme.border + '50' : isSelected && faceSelected.size > 0 ? '#ec489920' : 'transparent'}`, opacity: isHidden ? 0.5 : 1 }}>
-                                                {/* Select checkbox */}
-                                                <button onClick={() => { setFaceSelected(prev => { const n = new Set(prev); if (prev.size === 0) { mockFaces.forEach(f => { if (f.id !== fr.id) n.add(f.id); }); } else if (n.has(fr.id)) { n.delete(fr.id); if (n.size === 0) return new Set(); } else { n.add(fr.id); } return n; }); }} style={{ width: 12, height: 12, borderRadius: 2, border: `1.5px solid ${isSelected ? '#ec4899' : theme.border}`, background: isSelected && faceSelected.size > 0 ? '#ec4899' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>{isSelected && faceSelected.size > 0 && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</button>
-                                                {/* Capture photo thumbnail */}
-                                                <div style={{ width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${riskColor}`, background: `url(https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg) center/cover`, flexShrink: 0, cursor: 'pointer' }} onClick={() => setTlLightbox('https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg')} />
-                                                {/* Info */}
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ fontSize: 9, fontWeight: 600, color: isHidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{fr.personName}</div>
-                                                    <div style={{ fontSize: 7, color: theme.textDim, display: 'flex', gap: 4, alignItems: 'center' }}>
-                                                        <span>{fr.cameraName}</span>
-                                                        <span style={{ color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{fr.confidence}%</span>
-                                                    </div>
-                                                </div>
-                                                {/* Hide/show toggle */}
-                                                <button onClick={() => setFaceHidden(prev => { const n = new Set(prev); n.has(fr.id) ? n.delete(fr.id) : n.add(fr.id); return n; })} title={isHidden ? 'Show on map' : 'Hide from map'} style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isHidden ? theme.danger + '30' : theme.border}`, background: isHidden ? 'rgba(239,68,68,0.06)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, fontSize: 8, color: isHidden ? theme.danger : theme.textDim }}>{isHidden ? '👁️‍🗨️' : '👁️'}</button>
-                                            </div>;
-                                        })}
-                                    </div>
-                                    {/* Bulk actions */}
-                                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                        <button onClick={() => { setFaceSelected(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: faceSelected.size === 0 ? '#ec489908' : 'transparent', color: faceSelected.size === 0 ? '#ec4899' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>All</button>
-                                        <button onClick={() => { setFaceSelected(new Set(mockFaces.filter(f => f.personId > 0).map(f => f.id))); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Matched</button>
-                                        <button onClick={() => { setFaceSelected(new Set(mockFaces.filter(f => f.personId === 0).map(f => f.id))); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Unknown</button>
-                                        {faceHidden.size > 0 && <button onClick={() => { setFaceHidden(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Show {faceHidden.size} hidden</button>}
-                                    </div>
-                                    {/* Legend */}
-                                    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                                        {[['🟢', '≥90%'], ['🟡', '75-89%'], ['🔴', '<75%'], ['⚫', 'Unknown']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 8, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}>{ico} {lbl}</span>)}
-                                    </div>
-                                </div>}
-                            </div>
+                                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={l.panel ? l.color : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                                </button>
+                            </div>)}
                         </div>
                     </Section>
                     </div>
@@ -3735,6 +3539,116 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>{trackablePersons.filter(t => t.status === 'online').length}/{trackablePersons.length} online</span>
                         <div style={{ flex: 1 }} />
                         <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveTrackSessions.length > 0 ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6002</span></span>
+                    </div>
+                </div>}
+
+                {/* ═══ LAYER PANELS ═══ */}
+                {/* Only one layer panel open at a time — positioned bottom-right */}
+                {activeLayerPanel && loaded && <div style={{ position: 'absolute', bottom: timelineOpen ? 290 : 16, right: 10, width: 'min(340px, calc(100vw - 20px))', maxHeight: timelineOpen ? 'calc(100% - 310px)' : 'calc(100% - 32px)', zIndex: 16, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899'}20`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out', transition: 'bottom 0.3s ease, max-height 0.3s ease' }}>
+                    {/* Panel Header */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <span style={{ fontSize: 16 }}>{activeLayerPanel === 'heatmap' ? '🔥' : activeLayerPanel === 'network' ? '🕸️' : activeLayerPanel === 'lpr' ? '🚗' : '🧑‍🦲'}</span>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>{activeLayerPanel === 'heatmap' ? 'Activity Heatmap' : activeLayerPanel === 'network' ? 'Network Graph' : activeLayerPanel === 'lpr' ? 'Plate Recognition' : 'Face Recognition'}</div>
+                            <div style={{ fontSize: 8, color: theme.textDim }}>
+                                {activeLayerPanel === 'heatmap' && `${heatmapPoints.length} points · ${layerHeatmap ? 'Active' : 'Inactive'}`}
+                                {activeLayerPanel === 'network' && `${netNodes.length} nodes · ${netFilteredEdges.length} connections`}
+                                {activeLayerPanel === 'lpr' && `${mockLPR.length} sightings · ${new Set(mockLPR.map(l => l.plate)).size} plates`}
+                                {activeLayerPanel === 'face' && `${mockFaces.length} captures · ${mockFaces.filter(f => f.personId > 0).length} matched`}
+                            </div>
+                        </div>
+                        {/* Layer toggle */}
+                        <button onClick={() => { if (activeLayerPanel === 'heatmap') { setLayerHeatmap(!layerHeatmap); } else if (activeLayerPanel === 'network') { setLayerNetwork(!layerNetwork); } else if (activeLayerPanel === 'lpr') { setLayerLPR(!layerLPR); } else { setLayerFace(!layerFace); } triggerTopLoader(); }} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? (activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899') : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
+                            <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                        </button>
+                        <button onClick={() => { setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); }} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
+                    </div>
+
+                    {/* Panel Content */}
+                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+
+                        {/* ── HEATMAP PANEL ── */}
+                        {activeLayerPanel === 'heatmap' && <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ fontSize: 10, color: theme.textDim }}>{heatmapPoints.length} activity points plotted. Density visualization shows areas of high surveillance activity concentration.</div>
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: theme.textDim, marginBottom: 4 }}><span>Intensity</span><span style={{ color: '#f59e0b', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{(heatmapIntensity * 100).toFixed(0)}%</span></div>
+                                <input type="range" min="10" max="100" step="5" value={heatmapIntensity * 100} onChange={e => setHeatmapIntensity(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#f59e0b', height: 4 }} />
+                            </div>
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: theme.textDim, marginBottom: 4 }}><span>Radius</span><span style={{ color: '#f59e0b', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{heatmapRadius}px</span></div>
+                                <input type="range" min="10" max="60" step="5" value={heatmapRadius} onChange={e => setHeatmapRadius(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#f59e0b', height: 4 }} />
+                            </div>
+                            <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 4 }}>Legend</div><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{[['🔵', 'Low'], ['🟢', 'Medium'], ['🟡', 'High'], ['🔴', 'Critical'], ['⚪', 'Peak']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 9, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 3 }}>{ico} {lbl}</span>)}</div></div>
+                        </div>}
+
+                        {/* ── NETWORK PANEL ── */}
+                        {activeLayerPanel === 'network' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {/* Isolation indicator */}
+                            {(netIsolatedEdge || netFocusNode) && <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderRadius: 5, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', flexShrink: 0 }} />
+                                <span style={{ fontSize: 9, color: '#8b5cf6', fontWeight: 600, flex: 1 }}>{netIsolatedEdge ? (() => { const e = netEdges.find(ee => edgeKey(ee) === netIsolatedEdge); if (!e) return 'Isolated'; const from = netNodes.find(n => n.id === e.from); const to = netNodes.find(n => n.id === e.to); return `${from?.label} ↔ ${to?.label}`; })() : `Focus: ${netNodes.find(n => n.id === netFocusNode)?.label}`}</span>
+                                <button onClick={() => { setNetIsolatedEdge(null); setNetFocusNode(null); }} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: '1px solid #8b5cf625', background: 'transparent', color: '#8b5cf6', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>✕</button>
+                            </div>}
+                            <input value={netSearch} onChange={e => setNetSearch(e.target.value)} placeholder="Search nodes..." style={{ padding: '6px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${netSearch ? '#8b5cf650' : theme.border}`, borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
+                            {/* Node filters */}
+                            <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Nodes</div>
+                                {[{ label: 'Persons', icon: '👤', enabled: networkShowPersons, toggle: setNetworkShowPersons, count: netNodes.filter(n => n.type === 'person').length, color: '#ef4444' }, { label: 'Organizations', icon: '🏢', enabled: networkShowOrgs, toggle: setNetworkShowOrgs, count: netNodes.filter(n => n.type === 'org').length, color: '#3b82f6' }, { label: 'Devices', icon: '📡', enabled: networkShowDevices, toggle: setNetworkShowDevices, count: netNodes.filter(n => n.type === 'device').length, color: '#22c55e' }].map(f => <button key={f.label} onClick={() => { f.toggle(!f.enabled); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 5, border: `1px solid ${f.enabled ? f.color + '40' : theme.border}`, background: f.enabled ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, marginBottom: 2 }}><span style={{ fontSize: 11 }}>{f.icon}</span><span style={{ flex: 1, fontSize: 10, fontWeight: 600, color: f.enabled ? f.color : theme.textDim }}>{f.label}</span><span style={{ fontSize: 8, color: theme.textDim }}>{f.count}</span><div style={{ width: 8, height: 8, borderRadius: 2, border: `1.5px solid ${f.enabled ? f.color : theme.border}`, background: f.enabled ? f.color : 'transparent' }}>{f.enabled && <svg width="5" height="5" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div></button>)}
+                            </div>
+                            {/* Edge type filters */}
+                            <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Connection Types</div><div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>{Object.entries(edgeColors).map(([type, color]) => { const on = netEdgeFilters.has(type); const cnt = netEdges.filter(e => e.type === type).length; return <button key={type} onClick={() => { setNetEdgeFilters(prev => { const n = new Set(prev); n.has(type) ? n.delete(type) : n.add(type); return n; }); triggerTopLoader(); }} style={{ padding: '3px 7px', borderRadius: 4, border: `1px solid ${on ? color + '40' : theme.border}`, background: on ? color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 600, color: on ? color : theme.textDim }}><span style={{ width: 8, height: 3, borderRadius: 1, background: on ? color : theme.border }} />{type} <span style={{ fontSize: 7, opacity: 0.7 }}>{cnt}</span></button>; })}</div></div>
+                            {/* Strength slider */}
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}><span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Min Strength</span><span style={{ fontSize: 9, fontWeight: 700, color: '#8b5cf6', fontFamily: "'JetBrains Mono', monospace" }}>{Math.round(netStrengthMin * 100)}%</span></div>
+                                <input type="range" min={0} max={100} value={netStrengthMin * 100} onChange={e => setNetStrengthMin(parseInt(e.target.value) / 100)} style={{ width: '100%', height: 4, accentColor: '#8b5cf6' }} />
+                            </div>
+                            {/* Connection list */}
+                            <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Connections · click to isolate</div><div style={{ maxHeight: 150, overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column', gap: 1 }}>{netFilteredEdges.map(e => { const from = netNodes.find(n => n.id === e.from); const to = netNodes.find(n => n.id === e.to); const isIso = netIsolatedEdge === edgeKey(e); return <button key={edgeKey(e)} onClick={() => { setNetIsolatedEdge(prev => prev === edgeKey(e) ? null : edgeKey(e)); setNetFocusNode(null); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', borderRadius: 4, border: `1px solid ${isIso ? '#8b5cf630' : 'transparent'}`, background: isIso ? 'rgba(139,92,246,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}><span style={{ width: 8, height: 3, borderRadius: 1, background: edgeColors[e.type], flexShrink: 0 }} /><span style={{ fontSize: 9, fontWeight: 600, color: isIso ? '#8b5cf6' : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{from?.label} ↔ {to?.label}</span><span style={{ fontSize: 7, color: edgeColors[e.type], fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{Math.round(e.strength * 100)}%</span>{isIso && <span style={{ fontSize: 7, color: '#8b5cf6' }}>🎯</span>}</button>; })}</div></div>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                <button onClick={() => { setNetShowLabels(!netShowLabels); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${netShowLabels ? '#8b5cf630' : theme.border}`, background: netShowLabels ? '#8b5cf608' : 'transparent', color: netShowLabels ? '#8b5cf6' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🏷️ Labels</button>
+                                <button onClick={() => { setNetIsolatedEdge(null); setNetFocusNode(null); setNetStrengthMin(0); setNetEdgeFilters(new Set(['financial', 'family', 'business', 'criminal', 'comms', 'surveillance'])); setNetSearch(''); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🔄 Reset</button>
+                                <button onClick={() => { triggerTopLoader(); const map = mapRef.current; if (!map) return; const lats = netNodes.map(n => n.lat); const lngs = netNodes.map(n => n.lng); map.fitBounds([[Math.min(...lngs) - 0.005, Math.min(...lats) - 0.005], [Math.max(...lngs) + 0.005, Math.max(...lats) + 0.005]], { padding: 40, duration: 800 }); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🔎 Fit All</button>
+                            </div>
+                        </div>}
+
+                        {/* ── LPR PANEL ── */}
+                        {activeLayerPanel === 'lpr' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ fontSize: 9, color: theme.textDim }}>{mockLPR.length} sightings · {new Set(mockLPR.map(l => l.plate)).size} plates{lprHidden.size > 0 ? ` · ${lprHidden.size} hidden` : ''}</div>
+                            <input value={lprSearch} onChange={e => setLprSearch(e.target.value)} placeholder="Search plates, persons..." style={{ padding: '6px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${lprSearch ? '#10b98150' : theme.border}`, borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
+                            <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3, scrollbarWidth: 'thin' }}>
+                                {mockLPR.filter(l => { if (lprSearch.trim()) { const q = lprSearch.toLowerCase(); return l.plate.toLowerCase().includes(q) || l.personName.toLowerCase().includes(q) || l.cameraName.toLowerCase().includes(q) || (l.orgName || '').toLowerCase().includes(q); } return true; }).map(lpr => { const confColor = lpr.confidence >= 95 ? '#22c55e' : lpr.confidence >= 85 ? '#f59e0b' : '#ef4444'; const v = mockVehicles.find(vv => vv.id === lpr.vehicleId); const isSelected = lprSelected.size === 0 || lprSelected.has(lpr.id); const isHidden = lprHidden.has(lpr.id); return <div key={lpr.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 5, background: isHidden ? 'rgba(107,114,128,0.04)' : isSelected && lprSelected.size > 0 ? 'rgba(16,185,129,0.04)' : 'transparent', border: `1px solid ${isHidden ? theme.border + '50' : isSelected && lprSelected.size > 0 ? '#10b98120' : theme.border}`, opacity: isHidden ? 0.5 : 1 }}>
+                                    <button onClick={() => { setLprSelected(prev => { const n = new Set(prev); if (prev.size === 0) { mockLPR.forEach(l => { if (l.id !== lpr.id) n.add(l.id); }); } else if (n.has(lpr.id)) { n.delete(lpr.id); if (n.size === 0) return new Set(); } else { n.add(lpr.id); } return n; }); }} style={{ width: 12, height: 12, borderRadius: 2, border: `1.5px solid ${isSelected ? '#10b981' : theme.border}`, background: isSelected && lprSelected.size > 0 ? '#10b981' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>{isSelected && lprSelected.size > 0 && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</button>
+                                    <div style={{ width: 26, height: 18, borderRadius: 3, border: '1.5px solid #10b981', background: 'url(https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg) center/cover', flexShrink: 0, cursor: 'pointer' }} onClick={() => setTlLightbox('https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg')} />
+                                    <div style={{ flex: 1, minWidth: 0 }}><div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10, fontWeight: 700, color: isHidden ? theme.textDim : theme.text, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.03em' }}>{lpr.plate}</span><span style={{ fontSize: 8, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{lpr.confidence}%</span></div><div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{lpr.personName}{v ? ` · ${v.make} ${v.model}` : ''}</div></div>
+                                    <button onClick={() => setLprHidden(prev => { const n = new Set(prev); n.has(lpr.id) ? n.delete(lpr.id) : n.add(lpr.id); return n; })} style={{ width: 18, height: 18, borderRadius: 3, border: `1px solid ${isHidden ? theme.danger + '30' : theme.border}`, background: isHidden ? 'rgba(239,68,68,0.04)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, fontSize: 8, color: isHidden ? theme.danger : theme.textDim }}>{isHidden ? '👁️‍🗨️' : '👁️'}</button>
+                                </div>; })}
+                            </div>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                <button onClick={() => { setLprSelected(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${theme.border}`, background: lprSelected.size === 0 ? '#10b98108' : 'transparent', color: lprSelected.size === 0 ? '#10b981' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>All</button>
+                                <button onClick={() => { setLprSelected(new Set(mockLPR.filter(l => l.personId > 0).map(l => l.id))); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Known</button>
+                                {lprHidden.size > 0 && <button onClick={() => { setLprHidden(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)', color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Show {lprHidden.size} hidden</button>}
+                            </div>
+                        </div>}
+
+                        {/* ── FACE PANEL ── */}
+                        {activeLayerPanel === 'face' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ fontSize: 9, color: theme.textDim }}>{mockFaces.length} captures · {mockFaces.filter(f => f.personId > 0).length} matched · {mockFaces.filter(f => f.personId === 0).length} unidentified{faceHidden.size > 0 ? ` · ${faceHidden.size} hidden` : ''}</div>
+                            <input value={faceSearch} onChange={e => setFaceSearch(e.target.value)} placeholder="Search captures..." style={{ padding: '6px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${faceSearch ? '#ec489950' : theme.border}`, borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
+                            <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3, scrollbarWidth: 'thin' }}>
+                                {mockFaces.filter(fr => { if (faceSearch.trim()) { const q = faceSearch.toLowerCase(); return fr.personName.toLowerCase().includes(q) || fr.cameraName.toLowerCase().includes(q) || fr.emotion.toLowerCase().includes(q); } return true; }).map(fr => { const riskColor = fr.risk === 'Critical' ? '#ef4444' : fr.risk === 'High' ? '#f97316' : '#f59e0b'; const confColor = fr.confidence >= 90 ? '#22c55e' : fr.confidence >= 75 ? '#f59e0b' : '#ef4444'; const isSelected = faceSelected.size === 0 || faceSelected.has(fr.id); const isHidden = faceHidden.has(fr.id); return <div key={fr.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 5, background: isHidden ? 'rgba(107,114,128,0.04)' : isSelected && faceSelected.size > 0 ? 'rgba(236,72,153,0.04)' : 'transparent', border: `1px solid ${isHidden ? theme.border + '50' : isSelected && faceSelected.size > 0 ? '#ec489920' : theme.border}`, opacity: isHidden ? 0.5 : 1 }}>
+                                    <button onClick={() => { setFaceSelected(prev => { const n = new Set(prev); if (prev.size === 0) { mockFaces.forEach(f => { if (f.id !== fr.id) n.add(f.id); }); } else if (n.has(fr.id)) { n.delete(fr.id); if (n.size === 0) return new Set(); } else { n.add(fr.id); } return n; }); }} style={{ width: 12, height: 12, borderRadius: 2, border: `1.5px solid ${isSelected ? '#ec4899' : theme.border}`, background: isSelected && faceSelected.size > 0 ? '#ec4899' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>{isSelected && faceSelected.size > 0 && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</button>
+                                    <div style={{ width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${riskColor}`, background: 'url(https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg) center/cover', flexShrink: 0, cursor: 'pointer' }} onClick={() => setTlLightbox('https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg')} />
+                                    <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 10, fontWeight: 600, color: isHidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{fr.personName}</div><div style={{ fontSize: 7, color: theme.textDim, display: 'flex', gap: 4, alignItems: 'center' }}><span>{fr.cameraName}</span><span style={{ color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{fr.confidence}%</span></div></div>
+                                    <button onClick={() => setFaceHidden(prev => { const n = new Set(prev); n.has(fr.id) ? n.delete(fr.id) : n.add(fr.id); return n; })} style={{ width: 18, height: 18, borderRadius: 3, border: `1px solid ${isHidden ? theme.danger + '30' : theme.border}`, background: isHidden ? 'rgba(239,68,68,0.04)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, fontSize: 8, color: isHidden ? theme.danger : theme.textDim }}>{isHidden ? '👁️‍🗨️' : '👁️'}</button>
+                                </div>; })}
+                            </div>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                <button onClick={() => { setFaceSelected(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${theme.border}`, background: faceSelected.size === 0 ? '#ec489908' : 'transparent', color: faceSelected.size === 0 ? '#ec4899' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>All</button>
+                                <button onClick={() => { setFaceSelected(new Set(mockFaces.filter(f => f.personId > 0).map(f => f.id))); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Matched</button>
+                                <button onClick={() => { setFaceSelected(new Set(mockFaces.filter(f => f.personId === 0).map(f => f.id))); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Unknown</button>
+                                {faceHidden.size > 0 && <button onClick={() => { setFaceHidden(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)', color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Show {faceHidden.size} hidden</button>}
+                            </div>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{[['🟢', '≥90%'], ['🟡', '75-89%'], ['🔴', '<75%'], ['⚫', 'Unknown']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 8, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}>{ico} {lbl}</span>)}</div>
+                        </div>}
                     </div>
                 </div>}
 
