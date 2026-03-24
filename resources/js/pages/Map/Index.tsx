@@ -2457,55 +2457,131 @@ export default function MapIndex() {
 
     // Place search
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<{ name: string; lat: number; lng: number; sub: string }[]>([]);
+    const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searchFocused, setSearchFocused] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
     useEffect(() => { const h = (e: MouseEvent) => { if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchFocused(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
 
     const searchTimerRef = useRef<any>(null);
     const [searchLoading, setSearchLoading] = useState(false);
+    const [searchCategory, setSearchCategory] = useState<'all' | 'entities' | 'places' | 'coords'>('all');
 
-    // Live geocoding via Nominatim (OpenStreetMap) — debounced 400ms
+    interface SearchResult { id: string; category: 'person' | 'org' | 'vehicle' | 'device' | 'place' | 'zone' | 'saved' | 'coord' | 'geo'; name: string; sub: string; icon: string; color: string; lat: number; lng: number; zoom: number; risk?: string; avatar?: string; type?: string; }
+
+    // Local entity search (instant, no API call)
+    const searchEntities = (q: string): SearchResult[] => {
+        const results: SearchResult[] = [];
+        const ql = q.toLowerCase();
+        // Persons
+        mockSourceMarkers.filter(m => m.personId && m.personName).forEach(m => {
+            if (results.some(r => r.id === `p-${m.personId}`)) return;
+            const name = `${m.personName} ${m.personLastName}`;
+            if (name.toLowerCase().includes(ql) || (m.personNickname || '').toLowerCase().includes(ql)) {
+                results.push({ id: `p-${m.personId}`, category: 'person', name, sub: `${m.personNickname || ''} · ${m.risk || 'Unknown'} risk`, icon: '👤', color: m.risk === 'Critical' ? '#ef4444' : m.risk === 'High' ? '#f97316' : '#f59e0b', lat: m.lat, lng: m.lng, zoom: 16, risk: m.risk, avatar: m.personAvatar });
+            }
+        });
+        // Organizations
+        mockSourceMarkers.filter(m => m.orgId && m.orgName).forEach(m => {
+            if (results.some(r => r.id === `o-${m.orgId}`)) return;
+            if (m.orgName!.toLowerCase().includes(ql)) {
+                results.push({ id: `o-${m.orgId}`, category: 'org', name: m.orgName!, sub: 'Organization', icon: '🏢', color: '#3b82f6', lat: m.lat, lng: m.lng, zoom: 15 });
+            }
+        });
+        // Vehicles (from mock data if available)
+        mockLPR.forEach(l => {
+            if (results.some(r => r.id === `v-${l.plate}`)) return;
+            if (l.plate.toLowerCase().includes(ql) || l.personName.toLowerCase().includes(ql)) {
+                const v = mockVehicles.find(vv => vv.id === l.vehicleId);
+                results.push({ id: `v-${l.plate}`, category: 'vehicle', name: l.plate, sub: v ? `${v.make} ${v.model} · ${l.personName}` : l.personName, icon: '🚗', color: '#10b981', lat: l.lat, lng: l.lng, zoom: 17 });
+            }
+        });
+        // Devices
+        mockSourceMarkers.forEach(m => {
+            if (m.label.toLowerCase().includes(ql) || (m.deviceId && String(m.deviceId).includes(ql))) {
+                results.push({ id: `d-${m.id}`, category: 'device', name: m.label, sub: `${sourceTypes.find((s: SourceType) => s.id === m.sourceId)?.label || m.sourceId} · ${m.status}`, icon: sourceTypes.find((s: SourceType) => s.id === m.sourceId)?.icon || '📡', color: sourceTypes.find((s: SourceType) => s.id === m.sourceId)?.color || '#22c55e', lat: m.lat, lng: m.lng, zoom: 17 });
+            }
+        });
+        // Saved places
+        savedPlaces.forEach(p => {
+            if (p.name.toLowerCase().includes(ql) || (p.note || '').toLowerCase().includes(ql)) {
+                results.push({ id: `sp-${p.id}`, category: 'saved', name: p.name, sub: p.note || `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`, icon: '⭐', color: p.color, lat: p.lat, lng: p.lng, zoom: p.zoom });
+            }
+        });
+        // Zones
+        zones.forEach(z => {
+            if (z.name.toLowerCase().includes(ql)) {
+                results.push({ id: `z-${z.id}`, category: 'zone', name: z.name, sub: `${zoneTypes.find(t => t.id === z.type)?.label || z.type} · ${z.shape}`, icon: '🛡️', color: z.color, lat: z.lat, lng: z.lng, zoom: 15 });
+            }
+        });
+        return results.slice(0, 8);
+    };
+
+    // Coordinate detection: "45.8131, 15.9775" or "45.8131 15.9775"
+    const parseCoordinates = (q: string): SearchResult | null => {
+        const match = q.match(/^\s*(-?\d+\.?\d*)\s*[,\s]\s*(-?\d+\.?\d*)\s*$/);
+        if (match) {
+            const lat = parseFloat(match[1]);
+            const lng = parseFloat(match[2]);
+            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                return { id: 'coord', category: 'coord', name: `${lat.toFixed(5)}, ${lng.toFixed(5)}`, sub: 'Navigate to coordinates', icon: '🎯', color: '#22c55e', lat, lng, zoom: 16 };
+            }
+        }
+        return null;
+    };
+
+    // Combined search: instant local + debounced geocoding
     useEffect(() => {
         if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
         if (!searchQuery.trim() || searchQuery.trim().length < 2) { setSearchResults([]); setSearchLoading(false); return; }
-        setSearchLoading(true);
-        searchTimerRef.current = setTimeout(async () => {
-            try {
-                const q = encodeURIComponent(searchQuery.trim());
-                const viewbox = mapRef.current ? (() => {
-                    const b = mapRef.current.getBounds();
-                    return `&viewbox=${b.getWest()},${b.getNorth()},${b.getEast()},${b.getSouth()}`;
-                })() : '';
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&addressdetails=1&limit=10&accept-language=en${viewbox}&bounded=0`);
-                if (!res.ok) throw new Error('Search failed');
-                const data = await res.json();
-                setSearchResults(data.map((r: any) => {
-                    const parts: string[] = [];
-                    if (r.address?.road) parts.push(r.address.road);
-                    if (r.address?.city || r.address?.town || r.address?.village) parts.push(r.address.city || r.address.town || r.address.village);
-                    if (r.address?.state) parts.push(r.address.state);
-                    if (r.address?.country) parts.push(r.address.country);
-                    const sub = parts.length > 0 ? parts.join(', ') : (r.display_name || '').split(',').slice(1, 4).join(',').trim();
-                    const typeLabel = (r.type || '').replace(/_/g, ' ');
-                    return { name: r.display_name?.split(',')[0] || r.name || 'Unknown', lat: parseFloat(r.lat), lng: parseFloat(r.lon), sub: sub || typeLabel, type: r.type || '', osm_type: r.osm_type || '' };
-                }));
-            } catch { setSearchResults([]); }
-            setSearchLoading(false);
-        }, 400);
-        return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-    }, [searchQuery]);
 
-    const handleSearchSelect = (place: { name: string; lat: number; lng: number; type?: string }) => {
-        const t = (place.type || '').toLowerCase();
-        const zoom = ['house','building','address','residential','apartments','hotel','restaurant','cafe','shop','bar'].includes(t) ? 18
-            : ['street','road','path','footway','cycleway','pedestrian','service'].includes(t) ? 17
-            : ['neighbourhood','suburb','quarter','park','cemetery','stadium','university'].includes(t) ? 15
-            : ['city','town'].includes(t) ? 13
-            : ['state','region','province','county'].includes(t) ? 9
-            : ['country'].includes(t) ? 6
-            : 14;
-        mapRef.current?.flyTo({ center: [place.lng, place.lat], zoom, duration: 1200 });
+        const q = searchQuery.trim();
+
+        // Instant: coordinates + local entities
+        const instant: SearchResult[] = [];
+        const coordResult = parseCoordinates(q);
+        if (coordResult) instant.push(coordResult);
+        const entityResults = searchEntities(q);
+        instant.push(...entityResults);
+        setSearchResults(instant);
+
+        // Debounced: geocoding (only if not pure coordinates and category allows)
+        if (!coordResult && searchCategory !== 'entities' && searchCategory !== 'coords') {
+            setSearchLoading(true);
+            searchTimerRef.current = setTimeout(async () => {
+                try {
+                    const eq = encodeURIComponent(q);
+                    const viewbox = mapRef.current ? (() => { const b = mapRef.current.getBounds(); return `&viewbox=${b.getWest()},${b.getNorth()},${b.getEast()},${b.getSouth()}`; })() : '';
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${eq}&format=json&addressdetails=1&limit=6&accept-language=en${viewbox}&bounded=0`);
+                    if (!res.ok) throw new Error('Search failed');
+                    const data = await res.json();
+                    const geoResults: SearchResult[] = data.map((r: any) => {
+                        const parts: string[] = [];
+                        if (r.address?.road) parts.push(r.address.road);
+                        if (r.address?.city || r.address?.town || r.address?.village) parts.push(r.address.city || r.address.town || r.address.village);
+                        if (r.address?.country) parts.push(r.address.country);
+                        const sub = parts.join(', ') || (r.display_name || '').split(',').slice(1, 3).join(',').trim();
+                        const t = (r.type || '').toLowerCase();
+                        const zoom = ['house', 'building', 'address', 'residential'].includes(t) ? 18 : ['street', 'road'].includes(t) ? 17 : ['neighbourhood', 'suburb', 'park'].includes(t) ? 15 : ['city', 'town'].includes(t) ? 13 : ['state', 'region'].includes(t) ? 9 : ['country'].includes(t) ? 6 : 14;
+                        return { id: `geo-${r.place_id}`, category: 'geo' as const, name: r.display_name?.split(',')[0] || 'Unknown', sub, icon: '📍', color: theme.accent, lat: parseFloat(r.lat), lng: parseFloat(r.lon), zoom, type: r.type };
+                    });
+                    // Merge: keep instant results on top, add geo results
+                    setSearchResults(prev => {
+                        const localResults = prev.filter(r => r.category !== 'geo');
+                        return [...localResults, ...geoResults];
+                    });
+                } catch {}
+                setSearchLoading(false);
+            }, 400);
+        } else {
+            setSearchLoading(false);
+        }
+
+        return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+    }, [searchQuery, searchCategory]);
+
+    const handleSearchSelect = (result: SearchResult) => {
+        mapRef.current?.flyTo({ center: [result.lng, result.lat], zoom: result.zoom, duration: 1200 });
+        triggerTopLoader();
         setSearchQuery(''); setSearchResults([]); setSearchFocused(false);
     };
 
@@ -3469,27 +3545,78 @@ export default function MapIndex() {
                 </div>}
 
                 {/* TOP-LEFT: Place Search */}
-                {showSearch && loaded && <div ref={searchRef} style={{ position: 'absolute' as const, top: 10, left: 10, zIndex: 15, width: 300 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(13,18,32,0.92)', border: `1px solid ${searchFocused ? theme.accent + '60' : theme.border}`, borderRadius: 8, padding: '0 10px', backdropFilter: 'blur(8px)', transition: 'border-color 0.15s' }}>
+                {showSearch && loaded && <div ref={searchRef} style={{ position: 'absolute' as const, top: 10, left: 10, zIndex: 15, width: 'min(380px, calc(100vw - 20px))' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(13,18,32,0.94)', border: `1px solid ${searchFocused ? theme.accent + '60' : theme.border}`, borderRadius: searchFocused && searchResults.length > 0 ? '8px 8px 0 0' : '8px', padding: '0 10px', backdropFilter: 'blur(10px)', transition: 'border-color 0.15s, border-radius 0.15s', boxShadow: searchFocused ? '0 4px 20px rgba(0,0,0,0.4)' : 'none' }}>
                         {searchLoading ? <div style={{ width: 13, height: 13, border: `2px solid ${theme.border}`, borderTop: `2px solid ${theme.accent}`, borderRadius: '50%', animation: 'argux-spin 0.6s linear infinite', flexShrink: 0 }} /> : <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={searchFocused ? theme.accent : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="14" y2="14"/></svg>}
-                        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} placeholder="Search any place worldwide..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '9px 0', color: theme.text, fontSize: 12, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
+                        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} placeholder="Search entities, places, coordinates..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '9px 0', color: theme.text, fontSize: 12, fontFamily: 'inherit', flex: 1, minWidth: 0 }} onKeyDown={e => { if (e.key === 'Escape') { setSearchQuery(''); setSearchFocused(false); } if (e.key === 'Enter' && searchResults.length > 0) handleSearchSelect(searchResults[0]); }} />
                         {searchQuery && <button onClick={() => { setSearchQuery(''); setSearchResults([]); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', display: 'flex', padding: 2 }}><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
+                        {/* Keyboard shortcut hint */}
+                        {!searchFocused && !searchQuery && <span style={{ fontSize: 8, color: theme.textDim, padding: '1px 5px', borderRadius: 3, background: `${theme.border}40`, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>/</span>}
                     </div>
-                    {searchFocused && searchResults.length > 0 && <div style={{ marginTop: 4, background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', maxHeight: 340, overflowY: 'auto' }}>
-                        {searchResults.map((r, i) => (
-                            <div key={i} onClick={() => handleSearchSelect(r)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: i < searchResults.length - 1 ? `1px solid ${theme.border}` : 'none', transition: 'background 0.1s', display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="1.5"/></svg>
-                                <div style={{ minWidth: 0, flex: 1 }}>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.name}</div>
-                                    <div style={{ fontSize: 9, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.sub}</div>
-                                </div>
-                                <span style={{ fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{r.lat.toFixed(2)}, {r.lng.toFixed(2)}</span>
-                            </div>
-                        ))}
-                        <div style={{ padding: '4px 12px 5px', borderTop: `1px solid ${theme.border}`, fontSize: 8, color: theme.textDim, textAlign: 'center' as const }}>Powered by OpenStreetMap Nominatim</div>
+                    {/* Category filter chips */}
+                    {searchFocused && searchQuery.length >= 2 && <div style={{ display: 'flex', gap: 3, padding: '6px 10px', background: 'rgba(13,18,32,0.94)', borderLeft: `1px solid ${theme.accent}60`, borderRight: `1px solid ${theme.accent}60`, backdropFilter: 'blur(10px)' }}>
+                        {[{ id: 'all' as const, label: 'All', icon: '🔍' }, { id: 'entities' as const, label: 'Entities', icon: '👤' }, { id: 'places' as const, label: 'Places', icon: '📍' }, { id: 'coords' as const, label: 'Coords', icon: '🎯' }].map(c => <button key={c.id} onClick={() => setSearchCategory(c.id)} style={{ padding: '2px 7px', borderRadius: 4, border: `1px solid ${searchCategory === c.id ? theme.accent + '40' : 'transparent'}`, background: searchCategory === c.id ? `${theme.accent}08` : 'transparent', color: searchCategory === c.id ? theme.accent : theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>{c.icon} {c.label}</button>)}
                     </div>}
-                    {searchFocused && !searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && <div style={{ marginTop: 4, background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '12px 14px', textAlign: 'center' as const, fontSize: 11, color: theme.textDim, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>No places found for "{searchQuery}"</div>}
-                    {searchFocused && searchLoading && searchResults.length === 0 && <div style={{ marginTop: 4, background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '12px 14px', textAlign: 'center' as const, fontSize: 11, color: theme.textDim, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>Searching...</div>}
+                    {/* Results dropdown */}
+                    {searchFocused && searchResults.length > 0 && <div style={{ background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.accent}60`, borderTop: `1px solid ${theme.border}30`, borderRadius: '0 0 8px 8px', overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', maxHeight: 400, overflowY: 'auto', scrollbarWidth: 'thin' }}>
+                        {/* Group results by category */}
+                        {(() => {
+                            const groups: Record<string, SearchResult[]> = {};
+                            const catFilter = searchCategory;
+                            searchResults.forEach(r => {
+                                if (catFilter === 'entities' && !['person', 'org', 'vehicle', 'device'].includes(r.category)) return;
+                                if (catFilter === 'places' && !['saved', 'zone', 'geo'].includes(r.category)) return;
+                                if (catFilter === 'coords' && r.category !== 'coord') return;
+                                const key = r.category === 'person' ? 'Persons' : r.category === 'org' ? 'Organizations' : r.category === 'vehicle' ? 'Vehicles' : r.category === 'device' ? 'Devices' : r.category === 'saved' ? 'Saved Places' : r.category === 'zone' ? 'Zones' : r.category === 'coord' ? 'Coordinates' : 'Places';
+                                if (!groups[key]) groups[key] = [];
+                                groups[key].push(r);
+                            });
+                            return Object.entries(groups).map(([groupName, items]) => <div key={groupName}>
+                                <div style={{ padding: '5px 12px', fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.1em', background: 'rgba(255,255,255,0.015)', borderBottom: `1px solid ${theme.border}20` }}>{groupName} <span style={{ fontWeight: 400, fontSize: 7, opacity: 0.7 }}>({items.length})</span></div>
+                                {items.map(r => (
+                                    <div key={r.id} onClick={() => handleSearchSelect(r)} style={{ padding: '7px 12px', cursor: 'pointer', borderBottom: `1px solid ${theme.border}10`, transition: 'background 0.1s', display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                        {/* Icon or avatar */}
+                                        {r.avatar ? <div style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${r.color}`, background: `url(${r.avatar}) center/cover`, flexShrink: 0 }} /> : <div style={{ width: 24, height: 24, borderRadius: r.category === 'person' ? '50%' : 5, background: `${r.color}12`, border: `1px solid ${r.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flexShrink: 0 }}>{r.icon}</div>}
+                                        {/* Text */}
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 11, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.name}</div>
+                                            <div style={{ fontSize: 8, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.sub}</div>
+                                        </div>
+                                        {/* Risk badge for persons */}
+                                        {r.risk && <span style={{ fontSize: 7, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: `${r.color}12`, color: r.color, border: `1px solid ${r.color}20`, flexShrink: 0 }}>{r.risk}</span>}
+                                        {/* Coordinates */}
+                                        <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{r.lat.toFixed(2)},{r.lng.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>);
+                        })()}
+                        {/* Footer */}
+                        <div style={{ padding: '5px 12px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 8, color: theme.textDim }}>
+                            <span>{searchResults.length} results{searchLoading ? ' · searching...' : ''}</span>
+                            <span>Typesense + Nominatim</span>
+                        </div>
+                    </div>}
+                    {/* Empty state */}
+                    {searchFocused && !searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && <div style={{ background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.accent}60`, borderTop: `1px solid ${theme.border}30`, borderRadius: '0 0 8px 8px', padding: '16px 14px', textAlign: 'center' as const, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>
+                        <div style={{ fontSize: 18, marginBottom: 6 }}>🔍</div>
+                        <div style={{ fontSize: 11, color: theme.textSecondary, fontWeight: 600, marginBottom: 2 }}>No results for "{searchQuery}"</div>
+                        <div style={{ fontSize: 9, color: theme.textDim }}>Try a person name, plate number, device ID, or address</div>
+                    </div>}
+                    {/* Loading state */}
+                    {searchFocused && searchLoading && searchResults.length === 0 && <div style={{ background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.accent}60`, borderTop: `1px solid ${theme.border}30`, borderRadius: '0 0 8px 8px', padding: '14px', textAlign: 'center' as const, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                        <div style={{ width: 12, height: 12, border: `2px solid ${theme.border}`, borderTop: `2px solid ${theme.accent}`, borderRadius: '50%', animation: 'argux-spin 0.6s linear infinite' }} />
+                        <span style={{ fontSize: 11, color: theme.textDim }}>Searching entities & places...</span>
+                    </div>}
+                    {/* Quick tips when focused but no query */}
+                    {searchFocused && searchQuery.length < 2 && <div style={{ marginTop: 4, background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Search across</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                            {[{ icon: '👤', label: 'Persons', desc: 'Name, nickname', color: '#ef4444' }, { icon: '🏢', label: 'Organizations', desc: 'Company name', color: '#3b82f6' }, { icon: '🚗', label: 'Vehicles', desc: 'Plate number', color: '#10b981' }, { icon: '📡', label: 'Devices', desc: 'Device label, ID', color: '#22c55e' }, { icon: '⭐', label: 'Saved Places', desc: 'Bookmarked locations', color: '#f59e0b' }, { icon: '🛡️', label: 'Zones', desc: 'Geofence zones', color: '#8b5cf6' }, { icon: '📍', label: 'Addresses', desc: 'Cities, streets', color: theme.accent }, { icon: '🎯', label: 'Coordinates', desc: '45.81, 15.97', color: '#22c55e' }].map(h => <div key={h.label} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4 }}>
+                                <span style={{ fontSize: 11 }}>{h.icon}</span>
+                                <div><div style={{ fontSize: 9, fontWeight: 600, color: h.color }}>{h.label}</div><div style={{ fontSize: 7, color: theme.textDim }}>{h.desc}</div></div>
+                            </div>)}
+                        </div>
+                    </div>}
                 </div>}
 
                 {/* TOP-RIGHT: Minimap */}
