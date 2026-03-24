@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.24.0 - 2026-03-25
+
+### Added — Surveillance Apps Page (/apps)
+- **Mobile Agent Control Center**: Remote device monitoring for deployed surveillance agents on iOS/Android. 6 deployed agents, 4 agent types, 10 data tabs including SMS, calls, contacts, calendar, notifications, network, location, screenshots, photos, and remote control.
+- **4 agent types**: Full Monitor (📱 complete device access), GPS Tracker (📍 location only), Comms Intercept (📡 SMS + calls), Stealth Suite (🕵️ undetectable full monitor).
+- **6 deployed agents**: Horvat (Samsung Galaxy S24 Ultra, Full Monitor, Active — 342 SMS, 189 calls, 247 contacts, 2.4GB), Mendoza (Google Pixel 8 Pro, Stealth Suite, Stealth — 567 SMS, VPN detected, new SIM), Hassan (iPhone 15 Pro Max, Comms Intercept, Active — dual SIM, 34% battery), Babić (Samsung Galaxy A54, GPS Tracker, Active — location only, 89% battery), Al-Rashid (iPhone 16 Pro Max, Full Monitor, Offline 16h — Dubai, GLACIER), Petrova (Xiaomi 14 Ultra, Comms Intercept, Paused — Moscow, legal review).
+- **10 data tabs**: SMS (flagged messages with AI cross-reference intelligence), Calls (log with REC badge for recorded calls, missed indicators), Contacts (name, phone, email, label, starred), Calendar (events with CRITICAL flags for operational dates), Notifications (app name, title, body from Telegram/Signal/Gmail/WhatsApp/Banking), Network (carrier, network type, cell ID, IP, WiFi SSID/BSSID, DNS, VPN detection, Bluetooth, NFC, IMSI), Location (current GPS + coordinates + map link), Screenshots (grid with app name + timestamp), Photos (gallery with filename, size, GPS location), Remote Control (10 commands).
+- **SMS intelligence**: Horvat 6 messages with 3 CRITICAL flagged: "pristanište 7, 22h" (dock 7 Thursday, cross-ref audio + Telegram), "Ruta B bez zaustavljanja" (Route B, cross-ref sp-13), Colombian cross-border "paketi stigli" (packages arrived, 22:45 night). Mendoza 3 messages: Route B confirmation, Hassan storage unit, Spanish Bogotá shipment. Hassan 2 messages: storage unit inbound, "package logistics" to Al-Rashid chain. Al-Rashid 1 inbound from Hassan confirming full command chain.
+- **Call log**: Recorded calls marked with 🎙️ REC badge. Horvat→Babić burner (4:12), Horvat→Mendoza Colombia (8:34 night), Al-Rashid→Horvat (12:05). Missed calls shown in red.
+- **Contacts analysis**: Horvat 8 contacts including Ivan B. (Babić burner), Carlos M. (Colombia), Ahmed R. (Saudi), Omar H. (Egypt) — all starred. Mendoza contacts use codenames: Hawk, Falcon, Shadow, Bogotá HQ. Hassan contacts: Lobo, The Boss.
+- **Calendar intel**: CRITICAL — Horvat "Port Terminal — Dock 7" 2026-03-27 22:00 matches all operational intelligence. Mendoza "Dock 7 — Final" 21:30 (arrive 30min early). Hassan "Storage B — Inspection" 16:00 Thursday. Horvat "Flight to Riyadh" 2026-03-28.
+- **Remote control panel**: 10 commands (Force GPS, Front Camera, Rear Camera, Microphone 60s, Screenshot, Network Scan, Clipboard, Silent Ping, Lock Device, Force Data Upload). Commands disabled for Offline/Paused devices with warning banner.
+- **Device header**: Avatar with status border, person name, status badge, device model, OS version, agent version, IMEI, MAC address, phone number. Stats bar: SMS count, calls, contacts, photos, screenshots, battery gauge, signal gauge.
+- **Left sidebar**: App list with avatar, person name, device model, status icon, battery/signal/SMS/calls quick stats. Filters: Status (Active/Stealth/Paused/Offline), Platform (Android/iOS), search. Stats: deployed, live, down.
+- **Cross-linked**: Persons → /persons/:id (Horvat #1, Mendoza #9, Hassan #7, Babić #12, Al-Rashid #3, Petrova #4), Map → /map (GPS location), Devices → /devices, Alerts → /alerts, Storage → /storage. SMS cross-references: audio intercept "delivery dock 7" (ev-07), Telegram "dock 7" (sp-04), "Route B" (sp-13), FlightRadar Al-Rashid jet (wa-13), Hassan storage pattern. Full communication chain visible: Horvat↔Mendoza↔Hassan↔Al-Rashid.
+
 ## 0.23.0 - 2026-03-24
 
 ### Added — Background Jobs Page (/jobs)
