@@ -10,8 +10,6 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware('guest')->group(function () {
-
-
     Route::get('/login', [AuthController::class, 'login'])->name('login');
     Route::post('/login', [AuthController::class, 'authenticate'])->name('login.authenticate');
 
@@ -62,7 +60,7 @@ Route::get('/web-scraper', fn () => \Inertia\Inertia::render('Dashboard/Index'))
 Route::get('/apps', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('apps');
 Route::get('/connections', fn () => \Inertia\Inertia::render('Connections/Index'))->name('connections');
 Route::get('/workflows', fn () => \Inertia\Inertia::render('Workflows/Index'))->name('workflows');
-Route::get('/data-sources', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('data-sources');
+Route::get('/data-sources', fn () => \Inertia\Inertia::render('DataSources/Index'))->name('data-sources');
 Route::get('/alerts', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('alerts');
 Route::get('/activity', fn () => \Inertia\Inertia::render('Activity/Index'))->name('activity');
 Route::get('/notifications', fn () => \Inertia\Inertia::render('Notifications/Index'))->name('notifications');

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.15.0 - 2026-03-24
+
+### Added — Data Sources Page (/data-sources)
+- **Integration Management Hub**: 22 external data sources across 6 categories and 8 countries, with health monitoring, sync controls, and per-country grouping.
+- **22 mock data sources**: Government (6: Business Registry, Population Registry, Land Registry, Court Records, Vehicle Registry, Tax Authority), Law Enforcement (3: INTERPOL I-24/7, Europol SIENA, National Police DB), Financial (3: EU Sanctions CFSP, PEP Screening Dow Jones, Bank Transaction Monitor AML), OSINT (3: Social Media Aggregator, News Monitor 500+ sources, Dark Web Monitor), Technical (3: GPS Tracker Fleet MQTT, Camera Network RTSP, IMSI Catcher Array), Commercial (4: OpenCorporates 210M+, Maritime AIS, Aviation Tracker FR24, Credit Bureau).
+- **Per-country grouping**: Sources grouped under sticky country headers with flag emoji (🇭🇷 Croatia, 🇪🇺 EU, 🌍 International/Global, 🇬🇧 UK, 🇺🇸 USA, 🇬🇷 Greece, 🇸🇪 Sweden, Multi-country) with per-group status counts.
+- **Left sidebar filters**: Category (6 types with icon + count), Status (Connected/Degraded/Paused/Error/Offline), Country (dropdown with counts), text search, stats bar (connected/degraded/error/paused counts), "Sync All Healthy" button, average health display.
+- **Source cards**: Health percentage ring (conic-gradient), provider name, category badge with icon, tags (Production/Classified/Real-time/AML/Degraded/Error/Commercial/AI-Enhanced), protocol label, status indicator.
+- **Detail panel**: Connection info (protocol, endpoint, auth method, rate limit, encryption at-rest/in-transit, schedule, last/next sync, record count), Data Fields chip list, Linked Modules as clickable navigation chips to relevant pages (/persons, /organizations, /vehicles, /devices, /map, /vision, /alerts, /operations, /risks, /workflows, /face-recognition, /scraper, /chat), notes, Sync Now / Pause / Resume action buttons.
+- **Sync Log tab**: Chronological sync history per source with status dot (success green, error red, partial amber), duration, record count, detail description, timestamp.
+- **Realistic statuses**: Connected (17 sources, health 88-100%), Degraded (2: Court Records timeout, Dark Web instability), Paused (1: Tax Authority certificate expired), Error (1: Credit Bureau server maintenance), various error rates and sync schedules.
+- **Connected to all modules**: Each source links to the modules it feeds — Persons, Organizations, Vehicles, Devices, Map, Vision, Face Recognition, Social Scraper, Web Scraper, AI Assistant, Alerts, Operations, Risks, Workflows, Connections, LPR, Comms.
+
 ## 0.14.0 - 2026-03-24
 
 ### Added — Risks Dashboard (/risks)
