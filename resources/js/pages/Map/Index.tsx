@@ -587,8 +587,64 @@ export default function MapIndex() {
         return { total, escalating, avgScore, avgConf, critPredicted, totalActions };
     }, [predResults]);
 
+    // ═══ PATTERN DETECTION ═══
+    const [showPatternPanel, setShowPatternPanel] = useState(false);
+    const [patternSubject, setPatternSubject] = useState<string>('');
+    const [patternCategory, setPatternCategory] = useState<string>('all');
+    const [patternRunning, setPatternRunning] = useState(false);
+    const [patternResults, setPatternResults] = useState<any[] | null>(null);
+    const [patternSelectedId, setPatternSelectedId] = useState<string | null>(null);
+
+    interface PatternEntry { id: string; personId: number; personName: string; personAvatar: string; risk: string; category: 'meeting' | 'schedule' | 'location' | 'communication' | 'movement'; severity: 'critical' | 'high' | 'medium' | 'low'; confidence: number; title: string; description: string; frequency: string; lastOccurrence: string; occurrences: number; periodDays: number; regularity: number; lat: number; lng: number; heatmap: number[]; involvedPersons: { name: string; count: number }[]; details: { label: string; value: string }[]; assessment: string; }
+
+    const patternCategories = [
+        { id: 'all', label: 'All Patterns', icon: '🔍' },
+        { id: 'meeting', label: 'Recurring Meetings', icon: '🤝', color: '#ef4444' },
+        { id: 'schedule', label: 'Activity Schedule', icon: '📅', color: '#8b5cf6' },
+        { id: 'location', label: 'Location Frequency', icon: '📍', color: '#3b82f6' },
+        { id: 'communication', label: 'Comms Patterns', icon: '📡', color: '#06b6d4' },
+        { id: 'movement', label: 'Route Regularity', icon: '🛤️', color: '#f59e0b' },
+    ];
+
+    const mockPatterns: PatternEntry[] = useMemo(() => [
+        { id: 'pt-1', personId: 1, personName: 'Marko Horvat', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', category: 'meeting', severity: 'critical', confidence: 96, title: 'Weekly meeting with Babić at Vukovarska', description: 'Subjects meet every Tuesday between 08:00–10:00 at Vukovarska 58. Pattern detected across 6 consecutive weeks. Average duration: 95 minutes. Location is a commercial office building.', frequency: 'Weekly · Tuesday', lastOccurrence: '2026-03-24 (Today)', occurrences: 6, periodDays: 7, regularity: 94, lat: 45.8020, lng: 15.9950, heatmap: [0,8,0,0,0,0,0], involvedPersons: [{ name: 'Babić', count: 6 }], details: [{ label: 'Avg Duration', value: '95 min' }, { label: 'Avg Distance', value: '8m' }, { label: 'Time Window', value: '08:00–10:00' }, { label: 'Location Type', value: 'Office Building' }], assessment: 'Highly regular operational meeting. Fixed schedule suggests structured organization. Consider intercepting communications before and after meetings.' },
+        { id: 'pt-2', personId: 9, personName: 'Carlos Mendoza', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', category: 'schedule', severity: 'critical', confidence: 91, title: 'Nighttime operational window 22:00–03:00', description: 'Subject consistently active between 22:00–03:00 on weeknights. GPS shows movement across 3–5 locations per session. Pattern intensified over past 2 weeks from 2 to 4 nights per week.', frequency: '4x weekly · Weeknights', lastOccurrence: '2026-03-24 03:37', occurrences: 14, periodDays: 2, regularity: 82, lat: 45.8075, lng: 15.9850, heatmap: [3,4,3,4,0,0,0], involvedPersons: [{ name: 'Unknown contacts', count: 3 }], details: [{ label: 'Active Window', value: '22:00–03:00' }, { label: 'Locations/Night', value: '3–5' }, { label: 'Weekly Frequency', value: '4 nights' }, { label: 'Trend', value: 'Intensifying ↑' }], assessment: 'Night activity pattern consistent with counter-surveillance training or clandestine operations. Increasing frequency suggests approaching operational phase.' },
+        { id: 'pt-3', personId: 1, personName: 'Marko Horvat', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', category: 'location', severity: 'high', confidence: 88, title: 'Port Terminal visits escalating', description: 'Subject visiting port terminal area with increasing frequency. 2 visits in first week, 5 visits in last week. Average duration decreasing (45min → 15min), suggesting reconnaissance transitioning to operational familiarity.', frequency: '5x last week', lastOccurrence: '2026-03-24 06:42', occurrences: 11, periodDays: 1, regularity: 71, lat: 45.8180, lng: 15.9920, heatmap: [2,1,2,2,3,1,0], involvedPersons: [{ name: 'Mendoza', count: 3 }, { name: 'Hassan', count: 2 }], details: [{ label: 'First Visit', value: '2026-03-10' }, { label: 'Total Visits', value: '11 in 14 days' }, { label: 'Avg Duration', value: '25 min (↓)' }, { label: 'Co-visitors', value: 'Mendoza (3), Hassan (2)' }], assessment: 'Location frequency pattern shows classic reconnaissance-to-familiarity progression. Decreasing visit duration indicates subject has mapped the area. High likelihood of planned operation at this location.' },
+        { id: 'pt-4', personId: 7, personName: 'Omar Hassan', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', category: 'communication', severity: 'high', confidence: 85, title: 'Burst communication before meetings', description: 'Subject shows consistent pattern of 8–12 encrypted messages sent within 2 hours before any co-location event with network members. Pattern detected across 9 of 11 recent meetings.', frequency: 'Before every meeting', lastOccurrence: '2026-03-23 09:15', occurrences: 9, periodDays: 3, regularity: 82, lat: 45.8160, lng: 15.9500, heatmap: [1,2,1,2,1,1,1], involvedPersons: [{ name: 'Unknown (encrypted)', count: 9 }, { name: 'Horvat', count: 4 }, { name: 'Mendoza', count: 3 }], details: [{ label: 'Messages/Burst', value: '8–12' }, { label: 'Lead Time', value: '1–2 hours' }, { label: 'Channel', value: 'Encrypted app' }, { label: 'Hit Rate', value: '9/11 meetings (82%)' }], assessment: 'Pre-meeting communication burst is a strong operational indicator. Subject likely serves as coordinator. Decrypting these messages would provide advance warning of meetings.' },
+        { id: 'pt-5', personId: 12, personName: 'Ivan Babić', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', category: 'movement', severity: 'high', confidence: 87, title: 'Checkpoint avoidance route pattern', description: 'Subject has developed a consistent alternate route that avoids 3 fixed LPR cameras. Route adds 12 minutes but has been used in 18 of last 20 trips between home and city center.', frequency: 'Daily · 90% of trips', lastOccurrence: '2026-03-23 18:45', occurrences: 18, periodDays: 1, regularity: 90, lat: 45.8020, lng: 15.9950, heatmap: [3,3,2,3,3,2,0], involvedPersons: [], details: [{ label: 'Cameras Avoided', value: '3 fixed LPR' }, { label: 'Added Time', value: '+12 min' }, { label: 'Adoption Rate', value: '18/20 trips (90%)' }, { label: 'Started', value: '2026-03-04' }], assessment: 'Highly deliberate checkpoint avoidance. 90% adoption rate indicates trained behavior, not coincidence. Subject is surveillance-aware. Deploy mobile LPR units on alternate route.' },
+        { id: 'pt-6', personId: 9, personName: 'Carlos Mendoza', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', category: 'meeting', severity: 'high', confidence: 83, title: 'Bi-weekly Horvat meetings rotating locations', description: 'Subject meets with Horvat approximately every 3–4 days. Unlike the Horvat-Babić pattern, these meetings rotate across 5 different locations, never repeating consecutively. Duration: 30–60 minutes.', frequency: 'Every 3–4 days', lastOccurrence: '2026-03-23 22:31', occurrences: 8, periodDays: 3, regularity: 68, lat: 45.8138, lng: 15.9780, heatmap: [1,0,1,1,0,1,0], involvedPersons: [{ name: 'Horvat', count: 8 }], details: [{ label: 'Avg Interval', value: '3.4 days' }, { label: 'Unique Locations', value: '5' }, { label: 'Repeats', value: 'Never consecutive' }, { label: 'Avg Duration', value: '42 min' }], assessment: 'Rotating location pattern indicates deliberate counter-surveillance. More sophisticated than fixed-location meetings. Predicting next location requires analysis of unused venues from the rotation set.' },
+        { id: 'pt-7', personId: 1, personName: 'Marko Horvat', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', category: 'schedule', severity: 'medium', confidence: 78, title: 'Weekend activity surge (new pattern)', description: 'Subject historically low-activity on weekends (2 locations/day). Last 3 weekends show 6–10 locations/day with extended commercial area visits. New pattern emerging, not yet fully established.', frequency: 'Weekends', lastOccurrence: '2026-03-23 (Sat)', occurrences: 3, periodDays: 7, regularity: 55, lat: 45.8131, lng: 15.9775, heatmap: [0,0,0,0,0,4,3], involvedPersons: [], details: [{ label: 'Baseline Weekend', value: '2 locations/day' }, { label: 'New Weekend', value: '6–10 locations/day' }, { label: 'Area Type', value: 'Commercial zones' }, { label: 'Pattern Age', value: '3 weeks' }], assessment: 'Emerging weekend activity pattern. Too early to confirm regularity (55%) but trend is clear. Commercial area visits may indicate logistics planning or material acquisition.' },
+        { id: 'pt-8', personId: 7, personName: 'Omar Hassan', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', category: 'location', severity: 'medium', confidence: 76, title: 'Storage facility visits every 48h', description: 'Subject visiting self-storage facility with precise 48-hour interval. 4 visits confirmed at almost exactly same time (16:00–16:20). Unusual precision suggests scheduled access or time-locked arrangement.', frequency: 'Every 48h · 16:00', lastOccurrence: '2026-03-23 16:15', occurrences: 4, periodDays: 2, regularity: 88, lat: 45.8050, lng: 15.9680, heatmap: [0,1,0,1,0,1,0], involvedPersons: [], details: [{ label: 'Interval', value: '48h ± 15min' }, { label: 'Time Window', value: '16:00–16:20' }, { label: 'Duration', value: '10–20 min' }, { label: 'Precision', value: 'Very high (88%)' }], assessment: 'Extreme timing precision suggests timed dead-drop or scheduled access arrangement. 48-hour cycle may correspond to material replenishment or message exchange protocol.' },
+    ], []);
+
+    const runPatternDetection = () => {
+        setPatternRunning(true);
+        triggerTopLoader();
+        setTimeout(() => {
+            let results = [...mockPatterns];
+            if (patternSubject) results = results.filter(r => String(r.personId) === patternSubject);
+            if (patternCategory !== 'all') results = results.filter(r => r.category === patternCategory);
+            setPatternResults(results);
+            setPatternRunning(false);
+        }, 1800 + Math.random() * 1200);
+    };
+
+    const patternStats = useMemo(() => {
+        if (!patternResults) return null;
+        const total = patternResults.length;
+        const critical = patternResults.filter(r => r.severity === 'critical').length;
+        const high = patternResults.filter(r => r.severity === 'high').length;
+        const avgReg = total > 0 ? Math.round(patternResults.reduce((s, r) => s + r.regularity, 0) / total) : 0;
+        const avgConf = total > 0 ? Math.round(patternResults.reduce((s, r) => s + r.confidence, 0) / total) : 0;
+        const totalOcc = patternResults.reduce((s, r) => s + r.occurrences, 0);
+        const subjects = new Set(patternResults.map(r => r.personId)).size;
+        return { total, critical, high, avgReg, avgConf, totalOcc, subjects };
+    }, [patternResults]);
+
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
     // ═══ FLOATING PANEL SYSTEM ═══
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern';
     interface PanelPos { x: number; y: number; }
     const defaultPanelPos: PanelPos = { x: 10, y: 10 };
     const [panelPositions, setPanelPositions] = useState<Record<string, PanelPos>>({});
@@ -2465,6 +2521,7 @@ export default function MapIndex() {
                 if (showCorrelationPanel) { setShowCorrelationPanel(false); return; }
                 if (showAnomalyPanel) { setShowAnomalyPanel(false); return; }
                 if (showPredictivePanel) { setShowPredictivePanel(false); return; }
+                if (showPatternPanel) { setShowPatternPanel(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
@@ -2476,7 +2533,7 @@ export default function MapIndex() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
+    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showPatternPanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -3078,7 +3135,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'intelligence' ? ' dragging' : ''}${dragOverId === 'intelligence' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('intelligence') }} onDragOver={e => handleSectionDragOver(e, 'intelligence')} onDrop={() => handleSectionDrop('intelligence')}>
-                    <Section title="Intelligence" icon={Ico.intel} badge={liveTrackSessions.length + (corrResults ? corrResults.length : 0) + (anomalyResults ? anomalyResults.length : 0) + (predResults ? predResults.length : 0)} dragHandle={dragHandleEl('intelligence')}>
+                    <Section title="Intelligence" icon={Ico.intel} badge={liveTrackSessions.length + (corrResults ? corrResults.length : 0) + (anomalyResults ? anomalyResults.length : 0) + (predResults ? predResults.length : 0) + (patternResults ? patternResults.length : 0)} dragHandle={dragHandleEl('intelligence')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {/* Live Tracker button */}
                             <button onClick={() => { setShowLiveTracker(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e30' : theme.border}`, background: liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.06)'; e.currentTarget.style.borderColor = '#22c55e40'; }} onMouseLeave={e => { e.currentTarget.style.background = liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent'; e.currentTarget.style.borderColor = liveTrackSessions.length > 0 ? '#22c55e30' : theme.border; }}>
@@ -3138,13 +3195,16 @@ export default function MapIndex() {
                                 <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showPredictivePanel ? '#ef4444' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
                             </button>
 
-                            {[
-                                { icon: '🔄', label: 'Pattern Detection', desc: 'Frequency & regularity' },
-                            ].map(p => <div key={p.label} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8, opacity: 0.5, cursor: 'not-allowed' }}>
-                                <span style={{ fontSize: 13 }}>{p.icon}</span>
-                                <div style={{ flex: 1 }}><div style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary }}>{p.label}</div><div style={{ fontSize: 7, color: theme.textDim }}>{p.desc}</div></div>
-                                <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, color: theme.textDim }}>Soon</span>
-                            </div>)}
+                            {/* Pattern Detection button */}
+                            <button onClick={() => { setShowPatternPanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${patternResults && patternResults.length > 0 ? '#06b6d430' : showPatternPanel ? '#06b6d440' : theme.border}`, background: showPatternPanel ? 'rgba(6,182,212,0.06)' : patternResults && patternResults.length > 0 ? 'rgba(6,182,212,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(6,182,212,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showPatternPanel ? 'rgba(6,182,212,0.06)' : patternResults && patternResults.length > 0 ? 'rgba(6,182,212,0.03)' : 'transparent'; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: patternResults && patternResults.length > 0 ? 'rgba(6,182,212,0.12)' : 'rgba(6,182,212,0.06)', border: `1px solid ${patternResults && patternResults.length > 0 ? '#06b6d430' : '#06b6d415'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>🔄</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: patternResults && patternResults.length > 0 ? '#06b6d4' : theme.text }}>Pattern Detection</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>{patternResults ? `${patternResults.length} patterns · ${patternResults.reduce((s, r) => s + r.occurrences, 0)} occurrences` : 'Frequency & regularity analysis'}</div>
+                                </div>
+                                {patternResults && patternResults.length > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#06b6d415', color: '#06b6d4', border: '1px solid #06b6d425' }}>{patternResults.length}</span>}
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showPatternPanel ? '#06b6d4' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
                         </div>
                     </Section>
                     </div>
@@ -4072,6 +4132,157 @@ export default function MapIndex() {
                         <div style={{ width: 32, height: 32, border: '3px solid rgba(239,68,68,0.2)', borderTopColor: '#ef4444', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite', marginBottom: 12 }} />
                         <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>Generating Predictions</div>
                         <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center', lineHeight: 1.5 }}>Analyzing {predTimeHorizon} horizon across {corrPersonOptions.length} subjects...<br/>Processing behavioral data, network graphs, and location history.</div>
+                    </div>}
+                    </>}
+                </div>}
+
+                {/* ═══ PATTERN DETECTION PANEL ═══ */}
+                {showPatternPanel && loaded && <div style={panelStyle('pattern', '420px', '#06b6d4')}>
+                    <PanelHeader id="pattern" icon="🔄" title="Pattern Detection" subtitle={patternResults ? `${patternResults.length} patterns · ${patternStats?.totalOcc || 0} occurrences` : 'Frequency & regularity analysis'} color="#06b6d4" onClose={() => setShowPatternPanel(false)} extra={patternResults ? <button onClick={() => { setPatternResults(null); setPatternSelectedId(null); }} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>✕ Clear</button> : undefined} />
+
+                    {!isPanelMin('pattern') && <>
+                    {/* Config */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Subject</div>
+                                <select value={patternSubject} onChange={e => setPatternSubject(e.target.value)} style={{ width: '100%', padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${patternSubject ? '#06b6d440' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
+                                    <option value="">All persons</option>
+                                    {corrPersonOptions.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Category</div>
+                                <select value={patternCategory} onChange={e => setPatternCategory(e.target.value)} style={{ width: '100%', padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${patternCategory !== 'all' ? '#06b6d440' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
+                                    {patternCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <button onClick={runPatternDetection} disabled={patternRunning} style={{ padding: '8px', borderRadius: 6, border: 'none', background: patternRunning ? theme.border : 'linear-gradient(135deg, #06b6d4, #0891b2)', color: patternRunning ? theme.textDim : '#fff', fontSize: 11, fontWeight: 800, cursor: patternRunning ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, letterSpacing: '0.05em', opacity: patternRunning ? 0.6 : 1, transition: 'all 0.2s' }}>
+                            {patternRunning ? <><div style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite' }} />Scanning Patterns...</> : <>🔄 Run Pattern Detection</>}
+                        </button>
+                    </div>
+
+                    {/* Results */}
+                    {patternResults && <>
+                        {/* Stats */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                            {[
+                                { label: 'Patterns', value: String(patternStats!.total), color: '#06b6d4' },
+                                { label: 'Subjects', value: String(patternStats!.subjects), color: '#3b82f6' },
+                                { label: 'Avg Reg', value: `${patternStats!.avgReg}%`, color: '#f59e0b' },
+                                { label: 'Events', value: String(patternStats!.totalOcc), color: '#22c55e' },
+                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' }}>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
+                                <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
+                            </div>)}
+                        </div>
+
+                        {/* Category + severity chips */}
+                        <div style={{ display: 'flex', gap: 3, padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0, flexWrap: 'wrap' }}>
+                            {[{ sev: 'critical', color: '#ef4444' }, { sev: 'high', color: '#f97316' }, { sev: 'medium', color: '#f59e0b' }].map(s => { const c = patternResults.filter(r => r.severity === s.sev).length; return c > 0 ? <span key={s.sev} style={{ fontSize: 7, fontWeight: 700, padding: '2px 5px', borderRadius: 3, background: `${s.color}10`, color: s.color, border: `1px solid ${s.color}20` }}>{c} {s.sev}</span> : null; })}
+                            <span style={{ width: 1, height: 14, background: theme.border, margin: '0 2px' }} />
+                            {patternCategories.filter(c => c.id !== 'all' && patternResults.some(r => r.category === c.id)).map(c => <span key={c.id} style={{ fontSize: 7, fontWeight: 600, padding: '2px 5px', borderRadius: 3, background: `${c.color}08`, color: c.color, border: `1px solid ${c.color}15` }}>{c.icon} {patternResults.filter(r => r.category === c.id).length}</span>)}
+                        </div>
+
+                        {/* Pattern list */}
+                        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                            {patternResults.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>✅</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Patterns Detected</div><div style={{ fontSize: 10, color: theme.textDim }}>No recurring behavioral patterns found for the selected filters.</div></div>}
+                            {patternResults.map(pt => {
+                                const sevColor = pt.severity === 'critical' ? '#ef4444' : pt.severity === 'high' ? '#f97316' : '#f59e0b';
+                                const catInfo = patternCategories.find(c => c.id === pt.category);
+                                const catColor = catInfo?.color || '#06b6d4';
+                                const isExp = patternSelectedId === pt.id;
+                                const maxHeat = Math.max(...pt.heatmap, 1);
+                                return <div key={pt.id} onClick={() => { setPatternSelectedId(isExp ? null : pt.id); mapRef.current?.flyTo({ center: [pt.lng, pt.lat], zoom: 16, duration: 800 }); triggerTopLoader(); }} style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}08`, cursor: 'pointer', background: isExp ? '#06b6d406' : 'transparent', transition: 'background 0.15s', borderLeft: `3px solid ${sevColor}` }} onMouseEnter={e => { if (!isExp) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isExp) e.currentTarget.style.background = 'transparent'; }}>
+                                    {/* Header */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                        <div style={{ width: 26, height: 26, borderRadius: '50%', border: `2px solid ${pt.risk === 'Critical' ? '#ef4444' : '#f97316'}`, background: `url(${pt.personAvatar}) center/cover`, flexShrink: 0 }} />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{pt.title}</div>
+                                            <div style={{ display: 'flex', gap: 3, alignItems: 'center', marginTop: 1 }}>
+                                                <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{pt.severity.toUpperCase()}</span>
+                                                <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${catColor}10`, color: catColor, border: `1px solid ${catColor}15` }}>{catInfo?.icon} {catInfo?.label}</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                            <div style={{ fontSize: 8, color: theme.textDim }}>{pt.personName.split(' ')[1]}</div>
+                                            <div style={{ fontSize: 8, fontWeight: 700, color: '#06b6d4', fontFamily: "'JetBrains Mono', monospace" }}>{pt.occurrences}×</div>
+                                        </div>
+                                    </div>
+                                    {/* Weekly heatmap bar */}
+                                    <div style={{ display: 'flex', gap: 2, marginBottom: 4 }}>
+                                        {pt.heatmap.map((v: number, i: number) => <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                                            <div style={{ width: '100%', height: 6, borderRadius: 1, background: v > 0 ? `rgba(6,182,212,${0.15 + (v / maxHeat) * 0.7})` : `${theme.border}40` }} />
+                                            <span style={{ fontSize: 5, color: v > 0 ? '#06b6d4' : theme.textDim, fontWeight: 600 }}>{dayLabels[i]}</span>
+                                        </div>)}
+                                    </div>
+                                    {/* Frequency + regularity */}
+                                    <div style={{ display: 'flex', gap: 8, fontSize: 8, alignItems: 'center' }}>
+                                        <span style={{ color: theme.textDim }}>📅 <span style={{ color: theme.text, fontWeight: 600 }}>{pt.frequency}</span></span>
+                                        <span style={{ color: theme.textDim }}>Regularity:</span>
+                                        <div style={{ width: 40, height: 3, borderRadius: 1, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${pt.regularity}%`, height: '100%', borderRadius: 1, background: pt.regularity >= 85 ? '#22c55e' : pt.regularity >= 65 ? '#f59e0b' : '#ef4444' }} /></div>
+                                        <span style={{ fontWeight: 700, color: pt.regularity >= 85 ? '#22c55e' : pt.regularity >= 65 ? '#f59e0b' : '#ef4444', fontFamily: "'JetBrains Mono', monospace" }}>{pt.regularity}%</span>
+                                    </div>
+
+                                    {/* Expanded */}
+                                    {isExp && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        {/* Description */}
+                                        <div style={{ fontSize: 9, color: theme.text, lineHeight: 1.5, padding: '8px', borderRadius: 5, background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.1)' }}>{pt.description}</div>
+                                        {/* Details grid */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                                            {pt.details.map((d: any) => <div key={d.label} style={{ padding: '5px 8px', borderRadius: 4, background: `${theme.border}15`, border: `1px solid ${theme.border}30` }}>
+                                                <div style={{ fontSize: 7, color: theme.textDim, fontWeight: 600, marginBottom: 1 }}>{d.label}</div>
+                                                <div style={{ fontSize: 9, color: theme.text, fontWeight: 700 }}>{d.value}</div>
+                                            </div>)}
+                                        </div>
+                                        {/* Involved persons */}
+                                        {pt.involvedPersons.length > 0 && <div style={{ padding: '6px 8px', borderRadius: 5, background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.1)' }}>
+                                            <div style={{ fontSize: 7, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 4 }}>👥 Involved Persons</div>
+                                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{pt.involvedPersons.map((p: any) => <span key={p.name} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, background: '#8b5cf608', color: '#8b5cf6', border: '1px solid #8b5cf615', fontWeight: 600 }}>{p.name} ({p.count}×)</span>)}</div>
+                                        </div>}
+                                        {/* Weekly heatmap expanded */}
+                                        <div style={{ padding: '6px 8px', borderRadius: 5, background: 'rgba(6,182,212,0.03)', border: '1px solid rgba(6,182,212,0.08)' }}>
+                                            <div style={{ fontSize: 7, fontWeight: 700, color: '#06b6d4', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>📊 Weekly Activity Heatmap</div>
+                                            <div style={{ display: 'flex', gap: 3 }}>
+                                                {pt.heatmap.map((v: number, i: number) => <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                                                    <div style={{ height: 28, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}><div style={{ width: '80%', height: `${v > 0 ? Math.max(20, (v / maxHeat) * 100) : 4}%`, borderRadius: '2px 2px 0 0', background: v > 0 ? `rgba(6,182,212,${0.3 + (v / maxHeat) * 0.6})` : `${theme.border}30`, transition: 'height 0.3s' }} /></div>
+                                                    <div style={{ fontSize: 7, color: v > 0 ? '#06b6d4' : theme.textDim, fontWeight: 700, marginTop: 2 }}>{dayLabels[i]}</div>
+                                                    <div style={{ fontSize: 7, color: v > 0 ? '#06b6d4' : theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{v}</div>
+                                                </div>)}
+                                            </div>
+                                        </div>
+                                        {/* Assessment */}
+                                        <div style={{ padding: '8px', borderRadius: 5, background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)' }}>
+                                            <div style={{ fontSize: 7, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>🎯 Assessment</div>
+                                            <div style={{ fontSize: 9, color: theme.text, lineHeight: 1.5 }}>{pt.assessment}</div>
+                                        </div>
+                                    </div>}
+                                </div>;
+                            })}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <span style={{ fontSize: 8, color: theme.textDim }}>{patternResults.length} patterns · ø{patternStats!.avgConf}% conf · ø{patternStats!.avgReg}% regularity</span>
+                            <div style={{ flex: 1 }} />
+                            <span style={{ fontSize: 7, color: '#06b6d4', fontWeight: 600 }}>AI: scikit-learn + Kafka</span>
+                        </div>
+                    </>}
+
+                    {/* Empty state */}
+                    {!patternResults && !patternRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' }}>
+                        <div style={{ fontSize: 36, marginBottom: 8 }}>🔄</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Pattern Detection</div>
+                        <div style={{ fontSize: 10, color: theme.textDim, maxWidth: 260, lineHeight: 1.5, marginBottom: 12 }}>Analyzes recurring behavioral patterns including meeting schedules, movement routes, communication timing, and location frequency across all monitored subjects.</div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>{patternCategories.filter(c => c.id !== 'all').map(c => <span key={c.id} style={{ fontSize: 7, padding: '2px 5px', borderRadius: 3, background: `${c.color}08`, color: c.color, border: `1px solid ${c.color}15` }}>{c.icon} {c.label}</span>)}</div>
+                    </div>}
+
+                    {/* Loading */}
+                    {patternRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
+                        <div style={{ width: 32, height: 32, border: '3px solid rgba(6,182,212,0.2)', borderTopColor: '#06b6d4', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite', marginBottom: 12 }} />
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#06b6d4', marginBottom: 4 }}>Scanning Patterns</div>
+                        <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center', lineHeight: 1.5 }}>Analyzing {patternSubject ? '1 subject' : `${corrPersonOptions.length} subjects`} across 30-day history...<br/>Processing {patternCategory === 'all' ? 'all categories' : patternCategories.find(c => c.id === patternCategory)?.label}.</div>
                     </div>}
                     </>}
                 </div>}
