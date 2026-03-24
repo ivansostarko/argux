@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.13.0 - 2026-03-24
+
+### Added — Activity Log Page (/activity)
+- **Unified Event Stream**: Full-featured activity log showing all tracked events across the ARGUX platform with 40 realistic mock events spanning 12 event types.
+- **Left sidebar filter panel** with 6 filter dimensions: Event Type (12 toggleable chips with counts), Severity (5 levels), Person (dropdown with all subjects), Organization (dropdown), Operation (dropdown: HAWK/GLACIER), and full-text search. All filters update results immediately with pagination reset.
+- **12 event types**: Phone, GPS, Camera, LPR, Face Recognition, Audio, Video, Zone (geofence), Alert, System, Workflow, Record — each with icon, color, and count badge.
+- **40 mock events** covering: zone breaches, face matches (94% Horvat, 87% Babić, 91% Kovačević), LPR captures (ZG-1847-AB, SA-9012-RH, ZG-5678-CD), co-location alerts (Horvat+Mendoza 3rd in 48h), phone signal events (SIM swap, 6h blackout), GPS anomalies (118km/h urban, storage facility 48h pattern), audio keywords ("delivery" ×3), camera AI detections (loitering, unauthorized vessel), workflow executions, system events (INTERPOL sync, AI inference, backup), evidence records.
+- **Expandable event detail**: Click any event row to expand with full description, metadata grid (Zone/Duration/Speed/Confidence etc.), and quick-link buttons to /persons/:id, /organizations/:id, /devices/:id, /operations, /map.
+- **Paginated**: 15 events per page with "Load more" button showing remaining count.
+- **Stats bar**: Live counts of total events, critical, high, and unique subjects matching current filters.
+- **Cross-linked entities**: Every event links to the real mock data — persons (Horvat, Mendoza, Babić, Hassan, Kovačević, Al-Rashid), organizations (Alpha Security, Rashid Holdings, Falcon Trading, Mendoza Import-Export, Gulf Maritime, Petrova Consulting), devices (by ID to /devices/:id), operations (HAWK, GLACIER).
+- **Connected to**: Map page (event types match live feed), Operations (same codenames), Workflows (execution events match workflow names), Persons/Orgs/Devices (same IDs), Vision page (same camera device IDs).
+
 ## 0.12.0 - 2026-03-24
 
 ### Added — Workflows Page (/workflows)
