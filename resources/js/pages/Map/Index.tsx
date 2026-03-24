@@ -435,8 +435,65 @@ export default function MapIndex() {
     const [showPlacesPanel, setShowPlacesPanel] = useState(false);
     const [showWorkspacesPanel, setShowWorkspacesPanel] = useState(false);
 
+    // ═══ EVENT CORRELATION ═══
+    const [showCorrelationPanel, setShowCorrelationPanel] = useState(false);
+    const [corrSubjectA, setCorrSubjectA] = useState<string>('');
+    const [corrSubjectB, setCorrSubjectB] = useState<string>('');
+    const [corrRadius, setCorrRadius] = useState(200); // meters
+    const [corrTimeWindow, setCorrTimeWindow] = useState('30d');
+    const [corrSortBy, setCorrSortBy] = useState<'date' | 'distance' | 'duration'>('date');
+    const [corrRunning, setCorrRunning] = useState(false);
+    const [corrResults, setCorrResults] = useState<any[] | null>(null);
+    const [corrSelectedEvent, setCorrSelectedEvent] = useState<string | null>(null);
+
+    interface CorrEvent { id: string; subjectA: { id: number; name: string; avatar: string; risk: string }; subjectB: { id: number; name: string; avatar: string; risk: string }; lat: number; lng: number; timestamp: string; timeAgo: string; distance: number; duration: number; source: string; confidence: number; severity: 'critical' | 'high' | 'medium' | 'low'; location: string; notes: string; }
+
+    const corrPersonOptions = useMemo(() => {
+        const seen = new Set<number>();
+        return mockSourceMarkers.filter(m => m.personId && !seen.has(m.personId!) && seen.add(m.personId!)).map(m => ({ id: String(m.personId), label: `${m.personName} ${m.personLastName}`, avatar: m.personAvatar || '', risk: m.risk || 'Unknown', nickname: m.personNickname || '' }));
+    }, []);
+
+    const mockCorrResults: CorrEvent[] = useMemo(() => [
+        { id: 'ce-1', subjectA: { id: 1, name: 'Marko Horvat', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical' }, subjectB: { id: 12, name: 'Ivan Babić', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High' }, lat: 45.8131, lng: 15.9775, timestamp: '2026-03-24 08:14', timeAgo: '2h ago', distance: 12, duration: 45, source: 'GPS + Phone', confidence: 97, severity: 'critical', location: 'Ban Jelačić Square, Zagreb', notes: 'Both subjects stationary for 45 min. Phone intercept suggests face-to-face meeting.' },
+        { id: 'ce-2', subjectA: { id: 1, name: 'Marko Horvat', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical' }, subjectB: { id: 9, name: 'Carlos Mendoza', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical' }, lat: 45.8075, lng: 15.9850, timestamp: '2026-03-23 22:31', timeAgo: '12h ago', distance: 34, duration: 18, source: 'Camera + GPS', confidence: 89, severity: 'critical', location: 'Savska cesta 41, Zagreb', notes: 'Nighttime meeting near known safe house. Subject B arrived by vehicle.' },
+        { id: 'ce-3', subjectA: { id: 12, name: 'Ivan Babić', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High' }, subjectB: { id: 7, name: 'Omar Hassan', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High' }, lat: 45.8200, lng: 15.9600, timestamp: '2026-03-23 15:08', timeAgo: '19h ago', distance: 78, duration: 6, source: 'Phone + LPR', confidence: 72, severity: 'high', location: 'Maksimirska 128, Zagreb', notes: 'Brief proximity event. Both driving, possible convoy or following.' },
+        { id: 'ce-4', subjectA: { id: 1, name: 'Marko Horvat', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical' }, subjectB: { id: 7, name: 'Omar Hassan', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High' }, lat: 45.8160, lng: 15.9500, timestamp: '2026-03-23 11:22', timeAgo: '23h ago', distance: 145, duration: 2, source: 'Camera', confidence: 64, severity: 'medium', location: 'Ilica 242, Zagreb', notes: 'Subjects in same area briefly. Possible coincidence or surveillance detection.' },
+        { id: 'ce-5', subjectA: { id: 9, name: 'Carlos Mendoza', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical' }, subjectB: { id: 12, name: 'Ivan Babić', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High' }, lat: 45.8095, lng: 15.9720, timestamp: '2026-03-22 19:45', timeAgo: '1d ago', distance: 22, duration: 32, source: 'GPS + Phone', confidence: 94, severity: 'critical', location: 'Heinzelova 62, Zagreb', notes: 'Extended meeting at commercial building. Third unknown person detected nearby.' },
+        { id: 'ce-6', subjectA: { id: 1, name: 'Marko Horvat', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical' }, subjectB: { id: 12, name: 'Ivan Babić', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High' }, lat: 45.8020, lng: 15.9950, timestamp: '2026-03-22 08:05', timeAgo: '2d ago', distance: 8, duration: 120, source: 'GPS + Phone + Camera', confidence: 99, severity: 'critical', location: 'Vukovarska 58, Zagreb', notes: 'Prolonged co-location (2h). Identified as recurring meeting point. 4th occurrence this month.' },
+        { id: 'ce-7', subjectA: { id: 7, name: 'Omar Hassan', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High' }, subjectB: { id: 9, name: 'Carlos Mendoza', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical' }, lat: 45.8180, lng: 15.9920, timestamp: '2026-03-21 14:30', timeAgo: '3d ago', distance: 55, duration: 10, source: 'LPR + GPS', confidence: 81, severity: 'high', location: 'Port area, Zagreb', notes: 'Both vehicles spotted at port facility. Cargo trailer GPS-007 also present.' },
+        { id: 'ce-8', subjectA: { id: 1, name: 'Marko Horvat', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical' }, subjectB: { id: 9, name: 'Carlos Mendoza', avatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical' }, lat: 45.8138, lng: 15.9780, timestamp: '2026-03-20 20:15', timeAgo: '4d ago', distance: 18, duration: 55, source: 'Phone + GPS', confidence: 92, severity: 'critical', location: 'Vlaška 70, Zagreb', notes: 'Evening meeting in residential area. Known associate residence.' },
+    ], []);
+
+    const runCorrelation = () => {
+        setCorrRunning(true);
+        triggerTopLoader();
+        setTimeout(() => {
+            let results = [...mockCorrResults];
+            if (corrSubjectA) results = results.filter(r => String(r.subjectA.id) === corrSubjectA || String(r.subjectB.id) === corrSubjectA);
+            if (corrSubjectB) results = results.filter(r => String(r.subjectA.id) === corrSubjectB || String(r.subjectB.id) === corrSubjectB);
+            results = results.filter(r => r.distance <= corrRadius);
+            if (corrSortBy === 'distance') results.sort((a, b) => a.distance - b.distance);
+            else if (corrSortBy === 'duration') results.sort((a, b) => b.duration - a.duration);
+            setCorrResults(results);
+            setCorrRunning(false);
+        }, 1200 + Math.random() * 800);
+    };
+
+    const corrStats = useMemo(() => {
+        if (!corrResults) return null;
+        const total = corrResults.length;
+        const avgDist = total > 0 ? Math.round(corrResults.reduce((s, r) => s + r.distance, 0) / total) : 0;
+        const avgDur = total > 0 ? Math.round(corrResults.reduce((s, r) => s + r.duration, 0) / total) : 0;
+        const totalDur = corrResults.reduce((s, r) => s + r.duration, 0);
+        const critical = corrResults.filter(r => r.severity === 'critical').length;
+        const high = corrResults.filter(r => r.severity === 'high').length;
+        const uniquePairs = new Set(corrResults.map(r => [r.subjectA.id, r.subjectB.id].sort().join('-'))).size;
+        const avgConf = total > 0 ? Math.round(corrResults.reduce((s, r) => s + r.confidence, 0) / total) : 0;
+        return { total, avgDist, avgDur, totalDur, critical, high, uniquePairs, avgConf };
+    }, [corrResults]);
+
     // ═══ FLOATING PANEL SYSTEM ═══
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation';
     interface PanelPos { x: number; y: number; }
     const defaultPanelPos: PanelPos = { x: 10, y: 10 };
     const [panelPositions, setPanelPositions] = useState<Record<string, PanelPos>>({});
@@ -2310,6 +2367,7 @@ export default function MapIndex() {
                 if (placingMarker) { setPlacingMarker(false); return; }
                 if (timelineOpen) { setTimelineOpen(false); setTimelinePlaying(false); return; }
                 if (showLiveTracker) { setShowLiveTracker(false); return; }
+                if (showCorrelationPanel) { setShowCorrelationPanel(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
@@ -2321,7 +2379,7 @@ export default function MapIndex() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
+    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -2923,7 +2981,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'intelligence' ? ' dragging' : ''}${dragOverId === 'intelligence' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('intelligence') }} onDragOver={e => handleSectionDragOver(e, 'intelligence')} onDrop={() => handleSectionDrop('intelligence')}>
-                    <Section title="Intelligence" icon={Ico.intel} badge={liveTrackSessions.length} dragHandle={dragHandleEl('intelligence')}>
+                    <Section title="Intelligence" icon={Ico.intel} badge={liveTrackSessions.length + (corrResults ? corrResults.length : 0)} dragHandle={dragHandleEl('intelligence')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {/* Live Tracker button */}
                             <button onClick={() => { setShowLiveTracker(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e30' : theme.border}`, background: liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.06)'; e.currentTarget.style.borderColor = '#22c55e40'; }} onMouseLeave={e => { e.currentTarget.style.background = liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent'; e.currentTarget.style.borderColor = liveTrackSessions.length > 0 ? '#22c55e30' : theme.border; }}>
@@ -2949,8 +3007,18 @@ export default function MapIndex() {
                             </div>}
 
                             {/* Other intelligence panels */}
+                            {/* Event Correlation button */}
+                            <button onClick={() => { setShowCorrelationPanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${corrResults && corrResults.length > 0 ? '#f59e0b30' : showCorrelationPanel ? '#f59e0b40' : theme.border}`, background: showCorrelationPanel ? 'rgba(245,158,11,0.06)' : corrResults && corrResults.length > 0 ? 'rgba(245,158,11,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showCorrelationPanel ? 'rgba(245,158,11,0.06)' : corrResults && corrResults.length > 0 ? 'rgba(245,158,11,0.03)' : 'transparent'; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: corrResults && corrResults.length > 0 ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.06)', border: `1px solid ${corrResults && corrResults.length > 0 ? '#f59e0b30' : '#f59e0b15'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>🔗</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: corrResults && corrResults.length > 0 ? '#f59e0b' : theme.text }}>Event Correlation</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>{corrResults ? `${corrResults.length} co-locations found` : 'Analyze co-location events'}</div>
+                                </div>
+                                {corrResults && corrResults.length > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#f59e0b15', color: '#f59e0b', border: '1px solid #f59e0b25' }}>{corrResults.length}</span>}
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showCorrelationPanel ? '#f59e0b' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+
                             {[
-                                { icon: '🔗', label: 'Event Correlation', desc: 'Analyze co-location events' },
                                 { icon: '🧠', label: 'Anomaly Detection', desc: 'AI movement analysis' },
                                 { icon: '📈', label: 'Predictive Risk', desc: 'Location & risk predictions' },
                                 { icon: '🔄', label: 'Pattern Detection', desc: 'Frequency & regularity' },
@@ -3459,6 +3527,154 @@ export default function MapIndex() {
                         <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveTrackSessions.length > 0 ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6002</span></span>
                     </div>
                 </>}
+                </div>}
+
+                {/* ═══ EVENT CORRELATION PANEL ═══ */}
+                {showCorrelationPanel && loaded && <div style={panelStyle('correlation', '400px', '#f59e0b')}>
+                    <PanelHeader id="correlation" icon="🔗" title="Event Correlation" subtitle={corrResults ? `${corrResults.length} co-locations · ${corrStats?.uniquePairs || 0} pairs` : 'Configure and run co-location analysis'} color="#f59e0b" onClose={() => setShowCorrelationPanel(false)} extra={corrResults ? <button onClick={() => { setCorrResults(null); setCorrSelectedEvent(null); }} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>✕ Clear</button> : undefined} />
+
+                    {!isPanelMin('correlation') && <>
+                    {/* Config section */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {/* Subject selectors */}
+                        <div style={{ display: 'flex', gap: 6 }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Subject A</div>
+                                <select value={corrSubjectA} onChange={e => setCorrSubjectA(e.target.value)} style={{ width: '100%', padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${corrSubjectA ? '#f59e0b40' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
+                                    <option value="">All persons</option>
+                                    {corrPersonOptions.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'flex-end', padding: '0 0 6px', color: '#f59e0b', fontSize: 10, fontWeight: 700 }}>↔</div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Subject B</div>
+                                <select value={corrSubjectB} onChange={e => setCorrSubjectB(e.target.value)} style={{ width: '100%', padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${corrSubjectB ? '#f59e0b40' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
+                                    <option value="">All persons</option>
+                                    {corrPersonOptions.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        {/* Threshold controls */}
+                        <div style={{ display: 'flex', gap: 6 }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}><span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Radius</span><span style={{ fontSize: 9, fontWeight: 700, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace" }}>{corrRadius}m</span></div>
+                                <input type="range" min={10} max={500} step={10} value={corrRadius} onChange={e => setCorrRadius(parseInt(e.target.value))} style={{ width: '100%', height: 4, accentColor: '#f59e0b' }} />
+                            </div>
+                            <div style={{ width: 90 }}>
+                                <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Window</div>
+                                <select value={corrTimeWindow} onChange={e => setCorrTimeWindow(e.target.value)} style={{ width: '100%', padding: '5px 6px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
+                                    <option value="24h">24 hours</option>
+                                    <option value="7d">7 days</option>
+                                    <option value="30d">30 days</option>
+                                    <option value="90d">90 days</option>
+                                    <option value="all">All time</option>
+                                </select>
+                            </div>
+                        </div>
+                        {/* Run button */}
+                        <button onClick={runCorrelation} disabled={corrRunning} style={{ padding: '8px', borderRadius: 6, border: 'none', background: corrRunning ? theme.border : 'linear-gradient(135deg, #f59e0b, #d97706)', color: corrRunning ? theme.textDim : '#fff', fontSize: 11, fontWeight: 800, cursor: corrRunning ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, letterSpacing: '0.05em', opacity: corrRunning ? 0.6 : 1, transition: 'all 0.2s' }}>
+                            {corrRunning ? <><div style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite' }} />Analyzing...</> : <>🔍 Run Correlation Analysis</>}
+                        </button>
+                    </div>
+
+                    {/* Results */}
+                    {corrResults && <>
+                        {/* Stats cards */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                            {[
+                                { label: 'Events', value: String(corrStats!.total), color: '#f59e0b' },
+                                { label: 'Pairs', value: String(corrStats!.uniquePairs), color: '#3b82f6' },
+                                { label: 'Avg Dist', value: `${corrStats!.avgDist}m`, color: '#22c55e' },
+                                { label: 'Avg Dur', value: `${corrStats!.avgDur}m`, color: '#8b5cf6' },
+                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' }}>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
+                                <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
+                            </div>)}
+                        </div>
+
+                        {/* Severity breakdown */}
+                        <div style={{ display: 'flex', gap: 3, padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                            {[
+                                { sev: 'critical', color: '#ef4444', count: corrStats!.critical },
+                                { sev: 'high', color: '#f97316', count: corrStats!.high },
+                                { sev: 'medium', color: '#f59e0b', count: corrResults.filter(r => r.severity === 'medium').length },
+                                { sev: 'low', color: '#6b7280', count: corrResults.filter(r => r.severity === 'low').length },
+                            ].map(s => <div key={s.sev} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, padding: '3px 0', borderRadius: 3, background: s.count > 0 ? `${s.color}08` : 'transparent', border: `1px solid ${s.count > 0 ? s.color + '20' : 'transparent'}` }}>
+                                <div style={{ width: 5, height: 5, borderRadius: 1, background: s.count > 0 ? s.color : theme.border }} />
+                                <span style={{ fontSize: 8, fontWeight: 700, color: s.count > 0 ? s.color : theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{s.count}</span>
+                                <span style={{ fontSize: 7, color: theme.textDim }}>{s.sev}</span>
+                            </div>)}
+                        </div>
+
+                        {/* Sort controls */}
+                        <div style={{ display: 'flex', gap: 3, padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                            <span style={{ fontSize: 8, color: theme.textDim, fontWeight: 600, display: 'flex', alignItems: 'center', marginRight: 2 }}>Sort:</span>
+                            {[{ id: 'date' as const, label: '📅 Date' }, { id: 'distance' as const, label: '📐 Distance' }, { id: 'duration' as const, label: '⏱️ Duration' }].map(s => <button key={s.id} onClick={() => { setCorrSortBy(s.id); const sorted = [...corrResults]; if (s.id === 'distance') sorted.sort((a, b) => a.distance - b.distance); else if (s.id === 'duration') sorted.sort((a, b) => b.duration - a.duration); else sorted.sort((a, b) => b.timestamp.localeCompare(a.timestamp)); setCorrResults(sorted); }} style={{ padding: '3px 7px', borderRadius: 3, border: `1px solid ${corrSortBy === s.id ? '#f59e0b30' : theme.border}`, background: corrSortBy === s.id ? '#f59e0b08' : 'transparent', color: corrSortBy === s.id ? '#f59e0b' : theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{s.label}</button>)}
+                        </div>
+
+                        {/* Event list */}
+                        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                            {corrResults.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Co-locations Found</div><div style={{ fontSize: 10, color: theme.textDim }}>Try increasing the radius or broadening the time window.</div></div>}
+                            {corrResults.map(ev => {
+                                const sevColor = ev.severity === 'critical' ? '#ef4444' : ev.severity === 'high' ? '#f97316' : ev.severity === 'medium' ? '#f59e0b' : '#6b7280';
+                                const confColor = ev.confidence >= 90 ? '#22c55e' : ev.confidence >= 75 ? '#f59e0b' : '#ef4444';
+                                const isSelected = corrSelectedEvent === ev.id;
+                                return <div key={ev.id} onClick={() => { setCorrSelectedEvent(isSelected ? null : ev.id); mapRef.current?.flyTo({ center: [ev.lng, ev.lat], zoom: 16, duration: 800 }); triggerTopLoader(); }} style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}08`, cursor: 'pointer', background: isSelected ? '#f59e0b06' : 'transparent', transition: 'background 0.15s', borderLeft: `3px solid ${sevColor}` }} onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}>
+                                    {/* Subject pair */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                                            <div style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${ev.subjectA.risk === 'Critical' ? '#ef4444' : '#f97316'}`, background: `url(${ev.subjectA.avatar}) center/cover`, flexShrink: 0 }} />
+                                            <div style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${ev.subjectB.risk === 'Critical' ? '#ef4444' : '#f97316'}`, background: `url(${ev.subjectB.avatar}) center/cover`, flexShrink: 0, marginLeft: -8 }} />
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ev.subjectA.name.split(' ')[1]} ↔ {ev.subjectB.name.split(' ')[1]}</div>
+                                            <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}>
+                                                <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{ev.severity.toUpperCase()}</span>
+                                                <span style={{ fontSize: 7, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{ev.confidence}%</span>
+                                                <span style={{ fontSize: 7, color: theme.textDim }}>{ev.source}</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                            <div style={{ fontSize: 8, color: theme.textDim }}>{ev.timeAgo}</div>
+                                        </div>
+                                    </div>
+                                    {/* Metrics */}
+                                    <div style={{ display: 'flex', gap: 10, fontSize: 8, marginBottom: isSelected ? 6 : 0 }}>
+                                        <span><span style={{ color: theme.textDim }}>📐</span> <span style={{ fontWeight: 700, color: ev.distance <= 25 ? '#ef4444' : ev.distance <= 100 ? '#f59e0b' : '#22c55e', fontFamily: "'JetBrains Mono', monospace" }}>{ev.distance}m</span></span>
+                                        <span><span style={{ color: theme.textDim }}>⏱️</span> <span style={{ fontWeight: 700, color: ev.duration >= 30 ? '#ef4444' : ev.duration >= 10 ? '#f59e0b' : theme.text, fontFamily: "'JetBrains Mono', monospace" }}>{ev.duration}min</span></span>
+                                        <span><span style={{ color: theme.textDim }}>📍</span> <span style={{ color: theme.textSecondary }}>{ev.location.split(',')[0]}</span></span>
+                                    </div>
+                                    {/* Expanded details */}
+                                    {isSelected && <div style={{ marginTop: 6, padding: '8px', borderRadius: 5, background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.1)' }}>
+                                        <div style={{ fontSize: 8, color: theme.textDim, marginBottom: 4 }}>📍 {ev.location}</div>
+                                        <div style={{ fontSize: 8, color: theme.textDim, marginBottom: 4 }}>📅 {ev.timestamp}</div>
+                                        <div style={{ fontSize: 8, color: theme.textDim, marginBottom: 4 }}>🎯 Coordinates: <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{ev.lat.toFixed(5)}, {ev.lng.toFixed(5)}</span></div>
+                                        <div style={{ fontSize: 9, color: theme.text, fontStyle: 'italic', lineHeight: 1.4, borderTop: `1px solid ${theme.border}15`, paddingTop: 6, marginTop: 4 }}>💬 {ev.notes}</div>
+                                    </div>}
+                                </div>;
+                            })}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <span style={{ fontSize: 8, color: theme.textDim }}>{corrResults.length} events · {corrStats!.totalDur}min total · ø{corrStats!.avgConf}% confidence</span>
+                        </div>
+                    </>}
+
+                    {/* Empty state before first run */}
+                    {!corrResults && !corrRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' }}>
+                        <div style={{ fontSize: 36, marginBottom: 8 }}>🔗</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Co-location Analysis</div>
+                        <div style={{ fontSize: 10, color: theme.textDim, maxWidth: 240, lineHeight: 1.5 }}>Configure subjects and thresholds above, then run the analysis to find co-location events between persons of interest.</div>
+                    </div>}
+
+                    {/* Loading state */}
+                    {corrRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
+                        <div style={{ width: 32, height: 32, border: '3px solid rgba(245,158,11,0.2)', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite', marginBottom: 12 }} />
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>Analyzing Events</div>
+                        <div style={{ fontSize: 9, color: theme.textDim }}>Cross-referencing position data across {corrPersonOptions.length} subjects...</div>
+                    </div>}
+                    </>}
                 </div>}
 
                 {/* ═══ WORKSPACES PANEL ═══ */}
