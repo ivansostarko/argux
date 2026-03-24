@@ -45,6 +45,7 @@ docker compose logs --tail=100 -f app
 docker compose logs --tail=100 -f cli
 docker compose logs --tail=100 -f nginx
 docker compose logs --tail=100 -f redis
+docker compose logs --tail=100 -f postgres
 ```
 
 ### Docker Compose 
@@ -76,9 +77,9 @@ docker compose exec cli php artisan install:broadcasting
 
 docker compose exec cli php artisan serve & npm run build 
 
+docker compose exec cli php artisan vendor:publish --provider="Fruitcake\LaravelDebugbar\ServiceProvider"
 
-
-
+docker compose exec cli php -m | grep pgsql
 ```
 
 
@@ -150,3 +151,6 @@ Production deployment targets Kubernetes with:
 - Persistent volumes for session storage
 - ConfigMaps for environment variables
 - Network policies for air-gap isolation
+
+
+

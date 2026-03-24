@@ -25,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             408 => 'Errors/408',
             419 => 'Errors/419',
             429 => 'Errors/429',
-            500 => 'Errors/500',
+          #  500 => 'Errors/500',
             503 => 'Errors/503',
         ];
 
