@@ -69,7 +69,7 @@ Route::get('/chat', fn () => \Inertia\Inertia::render('Chat/Index'))->name('chat
 Route::get('/chat/{convId}/print', fn (string $convId) => \Inertia\Inertia::render('Chat/Print', ['convId' => $convId]))->name('chat.print');
 Route::get('/records', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('records');
 Route::get('/storage', fn () => \Inertia\Inertia::render('Storage/Index'))->name('storage');
-Route::get('/reports', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('reports');
+Route::get('/reports', fn () => \Inertia\Inertia::render('Reports/Index'))->name('reports');
 Route::get('/jobs', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('jobs');
 Route::get('/profile', fn () => \Inertia\Inertia::render('Profile/Index'))->name('profile');
 Route::get('/settings', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('settings');
