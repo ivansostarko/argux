@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.19.0 - 2026-03-24
+
+### Added — Plate Recognition Page (/plate-recognition)
+- **LPR Intelligence Hub**: Full license plate recognition dashboard with YOLOv8 detection + PaddleOCR v3. 24 mock scans, 10 LPR readers, watchlist management, per-entity filtering.
+- **3 view tabs**: All Scans (filterable table of 24 captures), Watchlist (6 tracked plates as cards with risk + vehicle + capture count), Readers (10 LPR reader cards with status, location, camera link, capture count).
+- **24 mock LPR scans** across 15 unique plates: 13 watchlist hits (ZG-1234-AB ×5, ZG-5678-CD ×3, SA-9012-RH ×2, SA-3456-RH, BOG-789-ME, EG-4567-FT), 6 matched (registered vehicles), 3 unknown (KA-9921-CC rental near safe house, KA-5511-BB night), 2 partial reads (obscured plates). Linked to 8 persons, 6 organizations, 13 vehicles, 7 cameras.
+- **10 LPR readers**: 8 fixed (Vukovarska East, Airport Cargo Gate, A1 Highway Km 78, Savska Safe House, Port Terminal Entry, Ilica/Frankopanska, Rashid Tower Parking Dubai, Split Coastal Road) + 2 mobile units. Status: 8 online, 1 maintenance, 1 offline. Total captures: 106K+.
+- **Left sidebar 7 filter dimensions**: Search (plate, person, location, vehicle), Scan Status (Watchlist Hit/Matched/Unknown/Partial Read with counts), LPR Reader (dropdown 10 readers), Person (dropdown: Horvat, Babić, Al-Rashid, Mendoza, Hassan, Müller, Petrova, Al-Zahra), Organization (dropdown: Alpha Security, Rashid Holdings, Falcon Trading, Mendoza I/E, Meridian, Petrova, Gulf Maritime), Plate Number (dropdown all 15 unique plates). Stats bar: total scans, watchlist hits, unknown, readers online.
+- **Scan table columns**: Plate (monospace, red if watchlist), Reader/Location, Vehicle (make/model + person link), Status badge, Confidence bar + %, Speed (red if >100km/h), Time (relative + absolute).
+- **Watchlist tab**: 6 tracked plates as cards with oversized monospace plate display, risk badge from linked vehicle, vehicle description, person link, capture count, last seen timestamp. Click to filter scans.
+- **Readers tab**: 10 reader cards with online/offline/maintenance status dot, location, linked camera (link to /devices/:id), capture count. Click to filter scans by reader.
+- **Scan detail panel**: Large plate display on dark background with confidence + camera overlay, Vehicle section (make/model/color + link to /vehicles/:id), Person section (owner name link to /persons/:id + org link to /organizations/:id), Capture Details (reader, location, camera, direction, speed, lane, confidence %, timestamp, coordinates), tags, action buttons (Map, Alert Rules, Camera device link).
+- **Cross-linked**: Persons → /persons/:id (Horvat, Babić, Al-Rashid, Mendoza, Hassan, Müller, Petrova, Al-Zahra), Vehicles → /vehicles/:id (real mockVehicles plates), Organizations → /organizations/:id, Devices/Cameras → /devices/:id (cameras #3, #8, #11, #14), Map → /map, Alerts → /alerts (LPR watchlist rules), Activity → /activity (LPR events match). Same plates referenced in Activity Log, Alerts, Workflows, Map live feed.
+
 ## 0.18.0 - 2026-03-24
 
 ### Added — Reports Page (/reports)

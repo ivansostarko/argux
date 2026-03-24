@@ -53,7 +53,7 @@ Route::get('/devices', fn () => \Inertia\Inertia::render('Devices/Index'))->name
 Route::get('/devices/create', fn () => \Inertia\Inertia::render('Devices/Create'))->name('devices.create');
 Route::get('/devices/{id}/edit', fn (int $id) => \Inertia\Inertia::render('Devices/Edit', ['id' => $id]))->name('devices.edit')->where('id', '[0-9]+');
 Route::get('/devices/{id}', fn (int $id) => \Inertia\Inertia::render('Devices/Show', ['id' => $id]))->name('devices.show')->where('id', '[0-9]+');
-Route::get('/plate-recognition', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('plate-recognition');
+Route::get('/plate-recognition', fn () => \Inertia\Inertia::render('PlateRecognition/Index'))->name('plate-recognition');
 Route::get('/face-recognition', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('face-recognition');
 Route::get('/scraper', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('scraper');
 Route::get('/web-scraper', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('web-scraper');
