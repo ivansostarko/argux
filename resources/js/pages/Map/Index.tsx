@@ -460,6 +460,205 @@ export default function MapIndex() {
     const [showObjects, setShowObjects] = useState(false);
     const [showFps, setShowFps] = useState(false);
     const [showLiveFeed, setShowLiveFeed] = useState(false);
+
+    // ═══ LIVE TRACKER ═══
+    interface LiveTrackSession { id: string; personId: number; personName: string; personLastName: string; personNickname: string; personAvatar: string; risk: string; sourceType: 'gps' | 'phone'; sourceLabel: string; deviceId: number; status: 'tracking' | 'paused' | 'lost'; startedAt: string; speed: number; heading: string; distance: number; accuracy: number; battery: number; signal: number; positions: { lat: number; lng: number; ts: number }[]; color: string; }
+    const [liveTrackSessions, setLiveTrackSessions] = useState<LiveTrackSession[]>([]);
+    const [liveTrackSearch, setLiveTrackSearch] = useState('');
+    const [liveTrackFollow, setLiveTrackFollow] = useState<string | null>(null); // session ID to auto-follow
+    const [liveTrackShowTrails, setLiveTrackShowTrails] = useState(true);
+    const [liveTrackShowLabels, setLiveTrackShowLabels] = useState(true);
+    const [liveTrackShowRadius, setLiveTrackShowRadius] = useState(true);
+    const [showLiveTracker, setShowLiveTracker] = useState(false);
+    const [liveTrackTab, setLiveTrackTab] = useState<'sessions' | 'targets' | 'history'>('sessions');
+    const liveTrackMarkersRef = useRef<any[]>([]);
+    const liveTrackInterval = useRef<number | null>(null);
+
+    // Persons available for tracking (have GPS or phone locator sources)
+    const trackablePersons = useMemo(() => {
+        const gpsPersons = mockSourceMarkers.filter(m => m.sourceId === 'gps' && m.personId).map(m => ({ personId: m.personId!, personName: m.personName!, personLastName: m.personLastName!, personNickname: m.personNickname || '', personAvatar: m.personAvatar || '', risk: m.risk || 'Unknown', sourceType: 'gps' as const, sourceLabel: m.label, deviceId: m.deviceId || 0, lat: m.lat, lng: m.lng, battery: m.battery ?? 0, signal: m.signal ?? 0, status: m.status }));
+        const phonePersons = mockSourceMarkers.filter(m => m.sourceId === 'app-locator' && m.personId).map(m => ({ personId: m.personId!, personName: m.personName!, personLastName: m.personLastName!, personNickname: m.personNickname || '', personAvatar: m.personAvatar || '', risk: m.risk || 'Unknown', sourceType: 'phone' as const, sourceLabel: m.label, deviceId: m.deviceId || 0, lat: m.lat, lng: m.lng, battery: m.battery ?? 0, signal: m.signal ?? 0, status: m.status }));
+        return [...gpsPersons, ...phonePersons];
+    }, []);
+
+    const trackColors = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316', '#ef4444'];
+    const headings = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+    const startLiveTrack = (tp: typeof trackablePersons[0]) => {
+        triggerTopLoader();
+        const existing = liveTrackSessions.find(s => s.personId === tp.personId && s.sourceType === tp.sourceType);
+        if (existing) return;
+        const color = trackColors[liveTrackSessions.length % trackColors.length];
+        const now = new Date();
+        const ts = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        const session: LiveTrackSession = {
+            id: `lt-${Date.now()}-${tp.personId}`, personId: tp.personId, personName: tp.personName, personLastName: tp.personLastName, personNickname: tp.personNickname, personAvatar: tp.personAvatar, risk: tp.risk, sourceType: tp.sourceType, sourceLabel: tp.sourceLabel, deviceId: tp.deviceId, status: tp.status === 'offline' ? 'lost' : 'tracking', startedAt: ts, speed: Math.floor(Math.random() * 45), heading: headings[Math.floor(Math.random() * 8)], distance: 0, accuracy: tp.sourceType === 'phone' ? 5 + Math.floor(Math.random() * 20) : 2 + Math.floor(Math.random() * 5), battery: tp.battery, signal: tp.signal, positions: [{ lat: tp.lat, lng: tp.lng, ts: Date.now() }], color,
+        };
+        setLiveTrackSessions(prev => [...prev, session]);
+    };
+
+    const stopLiveTrack = (sessionId: string) => {
+        triggerTopLoader();
+        setLiveTrackSessions(prev => prev.filter(s => s.id !== sessionId));
+        if (liveTrackFollow === sessionId) setLiveTrackFollow(null);
+    };
+
+    const togglePauseLiveTrack = (sessionId: string) => {
+        setLiveTrackSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: s.status === 'tracking' ? 'paused' : 'tracking' } : s));
+    };
+
+    const stopAllLiveTracks = () => {
+        triggerTopLoader();
+        setLiveTrackSessions([]);
+        setLiveTrackFollow(null);
+    };
+
+    // Simulate live position updates every 2 seconds
+    useEffect(() => {
+        if (liveTrackSessions.filter(s => s.status === 'tracking').length === 0) {
+            if (liveTrackInterval.current) { clearInterval(liveTrackInterval.current); liveTrackInterval.current = null; }
+            return;
+        }
+        liveTrackInterval.current = window.setInterval(() => {
+            setLiveTrackSessions(prev => prev.map(s => {
+                if (s.status !== 'tracking') return s;
+                const last = s.positions[s.positions.length - 1];
+                // Random walk simulation
+                const dlat = (Math.random() - 0.5) * 0.0008;
+                const dlng = (Math.random() - 0.5) * 0.0012;
+                const newLat = last.lat + dlat;
+                const newLng = last.lng + dlng;
+                const dx = dlng * 111320 * Math.cos(newLat * Math.PI / 180);
+                const dy = dlat * 111320;
+                const stepDist = Math.sqrt(dx * dx + dy * dy);
+                const speed = Math.round(stepDist / 2 * 3.6); // m/2s → km/h
+                const angle = Math.atan2(dx, dy) * 180 / Math.PI;
+                const hIdx = Math.round(((angle + 360) % 360) / 45) % 8;
+                // Randomly degrade signal or lose track
+                const rnd = Math.random();
+                let newStatus: 'tracking' | 'paused' | 'lost' = s.status;
+                let newSignal = s.signal + Math.floor((Math.random() - 0.5) * 6);
+                newSignal = Math.max(0, Math.min(100, newSignal));
+                if (rnd > 0.98 && s.status === 'tracking') newStatus = 'lost';
+                const newBat = Math.max(0, s.battery - (Math.random() > 0.8 ? 1 : 0));
+                return { ...s, speed, heading: headings[hIdx], distance: s.distance + stepDist, accuracy: s.sourceType === 'phone' ? 3 + Math.floor(Math.random() * 25) : 1 + Math.floor(Math.random() * 6), battery: newBat, signal: newSignal, status: newStatus, positions: [...s.positions, { lat: newLat, lng: newLng, ts: Date.now() }].slice(-200) };
+            }));
+        }, 2000);
+        return () => { if (liveTrackInterval.current) { clearInterval(liveTrackInterval.current); liveTrackInterval.current = null; } };
+    }, [liveTrackSessions.filter(s => s.status === 'tracking').length]);
+
+    // Auto-follow tracked person
+    useEffect(() => {
+        if (!liveTrackFollow) return;
+        const session = liveTrackSessions.find(s => s.id === liveTrackFollow);
+        if (!session || session.positions.length === 0) return;
+        const last = session.positions[session.positions.length - 1];
+        const map = mapRef.current;
+        if (map) map.easeTo({ center: [last.lng, last.lat], duration: 800 });
+    }, [liveTrackFollow, liveTrackSessions]);
+
+    // Render live track markers and trails on map
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        liveTrackMarkersRef.current.forEach(m => m.remove());
+        liveTrackMarkersRef.current = [];
+        const ml = (window as any).maplibregl;
+        if (!ml) return;
+
+        liveTrackSessions.forEach(session => {
+            if (session.positions.length === 0) return;
+            const last = session.positions[session.positions.length - 1];
+            const riskColor = session.risk === 'Critical' ? '#ef4444' : session.risk === 'High' ? '#f97316' : '#f59e0b';
+            const isLost = session.status === 'lost';
+            const isPaused = session.status === 'paused';
+
+            // Trail line
+            if (liveTrackShowTrails && session.positions.length > 1) {
+                const srcId = `lt-trail-${session.id}`;
+                const coords = session.positions.map(p => [p.lng, p.lat]);
+                const geojson: any = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
+                try {
+                    if (map.getSource(srcId)) { (map.getSource(srcId) as any).setData(geojson); }
+                    else { map.addSource(srcId, { type: 'geojson', data: geojson }); map.addLayer({ id: `${srcId}-line`, type: 'line', source: srcId, paint: { 'line-color': session.color, 'line-width': 2.5, 'line-opacity': isPaused ? 0.3 : 0.7, 'line-dasharray': isPaused ? [4, 4] : [1, 0] } }); }
+                } catch {}
+            }
+
+            // Accuracy radius circle
+            if (liveTrackShowRadius && session.accuracy > 5) {
+                const circSrcId = `lt-radius-${session.id}`;
+                const steps = 40;
+                const km = session.accuracy / 1000;
+                const circCoords: [number, number][] = [];
+                for (let i = 0; i <= steps; i++) {
+                    const a = (i / steps) * Math.PI * 2;
+                    circCoords.push([last.lng + (km / 111.32) * Math.cos(a) / Math.cos(last.lat * Math.PI / 180), last.lat + (km / 111.32) * Math.sin(a)]);
+                }
+                const circGeo: any = { type: 'Feature', geometry: { type: 'Polygon', coordinates: [circCoords] } };
+                try {
+                    if (map.getSource(circSrcId)) { (map.getSource(circSrcId) as any).setData(circGeo); }
+                    else { map.addSource(circSrcId, { type: 'geojson', data: circGeo }); map.addLayer({ id: `${circSrcId}-fill`, type: 'fill', source: circSrcId, paint: { 'fill-color': session.color, 'fill-opacity': 0.06 } }); map.addLayer({ id: `${circSrcId}-stroke`, type: 'line', source: circSrcId, paint: { 'line-color': session.color, 'line-width': 1, 'line-opacity': 0.3, 'line-dasharray': [3, 3] } }); }
+                } catch {}
+            }
+
+            // Person marker
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tmap-marker-source';
+            wrapper.style.cssText = `opacity:${isLost ? 0.4 : 1};transition:opacity 0.5s;`;
+            const pulseRing = session.status === 'tracking' ? `<div style="position:absolute;inset:-8px;border-radius:50%;border:2px solid ${session.color};opacity:0;pointer-events:none" class="tmap-tl-pulse"></div>` : '';
+            wrapper.innerHTML = `<div class="tmap-marker-inner" style="width:34px;height:34px;border-radius:50%;border:3px solid ${session.color};background:url(${session.personAvatar}) center/cover;box-shadow:0 0 14px ${session.color}50,0 4px 12px rgba(0,0,0,0.5);position:relative;overflow:visible;">${pulseRing}<div style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:${session.status === 'tracking' ? '#22c55e' : session.status === 'paused' ? '#f59e0b' : '#ef4444'};border:2px solid rgba(13,18,32,0.9);pointer-events:none;${session.status === 'tracking' ? 'animation:tmap-tl-ring 1.5s infinite;' : ''}"></div><div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);min-width:14px;height:12px;border-radius:6px;background:${session.color};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;padding:0 3px;pointer-events:none"><span style="font-size:6px;font-weight:900;color:#fff;line-height:1">${session.sourceType === 'gps' ? '📡' : '📍'}</span></div></div>${liveTrackShowLabels ? `<div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:4px;white-space:nowrap;pointer-events:none;text-align:center"><div style="font-size:8px;font-weight:800;color:${session.color};text-shadow:0 1px 4px rgba(0,0,0,0.9)">${session.personName} ${session.personLastName}</div><div style="font-size:7px;font-weight:600;color:${session.status === 'tracking' ? '#22c55e' : session.status === 'paused' ? '#f59e0b' : '#ef4444'};text-shadow:0 1px 4px rgba(0,0,0,0.9)">${session.speed} km/h · ${session.heading}</div></div>` : ''}`;
+
+            const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([last.lng, last.lat]).addTo(map);
+
+            // Click → popup
+            wrapper.addEventListener('click', (ev: Event) => {
+                ev.stopPropagation();
+                const addr = mockAddress(last.lat, last.lng);
+                const dur = session.positions.length > 1 ? Math.round((Date.now() - session.positions[0].ts) / 1000) : 0;
+                const durStr = dur >= 3600 ? `${Math.floor(dur / 3600)}h ${Math.floor((dur % 3600) / 60)}m` : dur >= 60 ? `${Math.floor(dur / 60)}m ${dur % 60}s` : `${dur}s`;
+                const distStr = session.distance >= 1000 ? `${(session.distance / 1000).toFixed(2)} km` : `${Math.round(session.distance)} m`;
+                const batColor = session.battery > 60 ? '#22c55e' : session.battery > 20 ? '#f59e0b' : '#ef4444';
+                const sigColor = session.signal > 70 ? '#22c55e' : session.signal > 30 ? '#f59e0b' : '#ef4444';
+                const statColor = session.status === 'tracking' ? '#22c55e' : session.status === 'paused' ? '#f59e0b' : '#ef4444';
+                new ml.Popup({ offset: 20, maxWidth: '300px', className: 'tmap-popup' }).setLngLat([last.lng, last.lat]).setHTML(`<div class="tmap-popup-card">
+                    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ax-border)">
+                        <div style="width:40px;height:40px;border-radius:50%;border:3px solid ${session.color};background:url(${session.personAvatar}) center/cover;flex-shrink:0"></div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-size:12px;font-weight:700;color:var(--ax-text)"><a href="/persons/${session.personId}" style="color:var(--ax-accent);text-decoration:none">${session.personName} ${session.personLastName}</a></div>
+                            <div style="font-size:9px;color:var(--ax-text-dim)">aka ${session.personNickname} · ${session.sourceType === 'gps' ? '📡 GPS' : '📍 Phone'}</div>
+                            <div style="display:flex;gap:4px;margin-top:2px">
+                                <span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${statColor}15;color:${statColor};border:1px solid ${statColor}30"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statColor};margin-right:2px;vertical-align:middle"></span>${session.status.toUpperCase()}</span>
+                                <span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${session.color}15;color:${session.color};border:1px solid ${session.color}30">LIVE</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tmap-popup-grid">
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🏎️ Speed</span><span class="tmap-popup-val" style="font-weight:700;color:${session.speed > 80 ? '#ef4444' : session.speed > 40 ? '#f59e0b' : 'var(--ax-text)'}">${session.speed} km/h ${session.heading}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📐 Distance</span><span class="tmap-popup-val">${distStr}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">⏱️ Duration</span><span class="tmap-popup-val">${durStr}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🎯 Accuracy</span><span class="tmap-popup-val">${session.accuracy}m</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📶 Signal</span><span class="tmap-popup-val" style="color:${sigColor};font-weight:700">${session.signal}%</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">🔋 Battery</span><span class="tmap-popup-val" style="color:${batColor};font-weight:700">${session.battery}%</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📊 Points</span><span class="tmap-popup-val">${session.positions.length} positions logged</span></div>
+                    </div>
+                    <div class="tmap-popup-coords">${last.lat.toFixed(5)}, ${last.lng.toFixed(5)}</div>
+                </div>`).addTo(map);
+            });
+
+            liveTrackMarkersRef.current.push(marker);
+        });
+
+        return () => {
+            liveTrackMarkersRef.current.forEach(m => m.remove());
+            liveTrackMarkersRef.current = [];
+            // Clean up trail sources/layers
+            liveTrackSessions.forEach(session => {
+                try { if (map.getLayer(`lt-trail-${session.id}-line`)) map.removeLayer(`lt-trail-${session.id}-line`); if (map.getSource(`lt-trail-${session.id}`)) map.removeSource(`lt-trail-${session.id}`); } catch {}
+                try { if (map.getLayer(`lt-radius-${session.id}-fill`)) map.removeLayer(`lt-radius-${session.id}-fill`); if (map.getLayer(`lt-radius-${session.id}-stroke`)) map.removeLayer(`lt-radius-${session.id}-stroke`); if (map.getSource(`lt-radius-${session.id}`)) map.removeSource(`lt-radius-${session.id}`); } catch {}
+            });
+        };
+    }, [liveTrackSessions, liveTrackShowTrails, liveTrackShowLabels, liveTrackShowRadius, loaded]);
     const [liveFeedRunning, setLiveFeedRunning] = useState(true);
     const [liveFeedEvents, setLiveFeedEvents] = useState<any[]>([]);
     const [liveFeedFilter, setLiveFeedFilter] = useState<Set<string>>(new Set(['lpr', 'face', 'zone', 'source', 'alert']));
@@ -2032,18 +2231,20 @@ export default function MapIndex() {
                 if (rulerActive) { setRulerActive(false); return; }
                 if (placingMarker) { setPlacingMarker(false); return; }
                 if (timelineOpen) { setTimelineOpen(false); setTimelinePlaying(false); return; }
+                if (showLiveTracker) { setShowLiveTracker(false); return; }
                 if (sidebarOpen) { setSidebarOpen(false); return; }
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, sidebarOpen]);
+    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
         return () => {
             if (timelinePlayRef.current) clearInterval(timelinePlayRef.current);
             if (topLoaderTimer.current) clearTimeout(topLoaderTimer.current);
+            if (liveTrackInterval.current) clearInterval(liveTrackInterval.current);
         };
     }, []);
 
@@ -2903,7 +3104,44 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'intelligence' ? ' dragging' : ''}${dragOverId === 'intelligence' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('intelligence') }} onDragOver={e => handleSectionDragOver(e, 'intelligence')} onDrop={() => handleSectionDrop('intelligence')}>
-                    <Section title="Intelligence" icon={Ico.intel} dragHandle={dragHandleEl('intelligence')}><div className="tmap-empty">Intelligence analysis panels coming soon.</div></Section>
+                    <Section title="Intelligence" icon={Ico.intel} badge={liveTrackSessions.length} dragHandle={dragHandleEl('intelligence')}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {/* Live Tracker button */}
+                            <button onClick={() => { setShowLiveTracker(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e30' : theme.border}`, background: liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.06)'; e.currentTarget.style.borderColor = '#22c55e40'; }} onMouseLeave={e => { e.currentTarget.style.background = liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent'; e.currentTarget.style.borderColor = liveTrackSessions.length > 0 ? '#22c55e30' : theme.border; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.06)', border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e30' : '#22c55e15'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, position: 'relative' }}>🎯{liveTrackSessions.length > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', background: '#22c55e', border: '1.5px solid rgba(13,18,32,0.9)', animation: 'tmap-tl-ring 1.5s infinite' }} />}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: liveTrackSessions.length > 0 ? '#22c55e' : theme.text }}>Live Tracker</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>{liveTrackSessions.length > 0 ? `${liveTrackSessions.filter(s => s.status === 'tracking').length} tracking · ${liveTrackSessions.filter(s => s.status === 'paused').length} paused` : 'Track persons via GPS or phone'}</div>
+                                </div>
+                                {liveTrackSessions.length > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#22c55e15', color: '#22c55e', border: '1px solid #22c55e25' }}>{liveTrackSessions.length}</span>}
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+
+                            {/* Active session mini-badges */}
+                            {liveTrackSessions.length > 0 && <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', padding: '0 2px' }}>
+                                {liveTrackSessions.map(s => {
+                                    const statColor = s.status === 'tracking' ? '#22c55e' : s.status === 'paused' ? '#f59e0b' : '#ef4444';
+                                    return <button key={s.id} onClick={() => { setShowLiveTracker(true); setLiveTrackFollow(s.id); triggerTopLoader(); const last = s.positions[s.positions.length - 1]; if (last && mapRef.current) mapRef.current.flyTo({ center: [last.lng, last.lat], zoom: 16, duration: 800 }); }} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '2px 5px', borderRadius: 3, border: `1px solid ${s.color}30`, background: `${s.color}06`, cursor: 'pointer', fontFamily: 'inherit' }}>
+                                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: statColor, flexShrink: 0 }} />
+                                        <span style={{ fontSize: 7, fontWeight: 700, color: s.color }}>{s.personName.charAt(0)}{s.personLastName.charAt(0)}</span>
+                                        <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{s.speed}km/h</span>
+                                    </button>;
+                                })}
+                            </div>}
+
+                            {/* Other intelligence panels */}
+                            {[
+                                { icon: '🔗', label: 'Event Correlation', desc: 'Analyze co-location events' },
+                                { icon: '🧠', label: 'Anomaly Detection', desc: 'AI movement analysis' },
+                                { icon: '📈', label: 'Predictive Risk', desc: 'Location & risk predictions' },
+                                { icon: '🔄', label: 'Pattern Detection', desc: 'Frequency & regularity' },
+                            ].map(p => <div key={p.label} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8, opacity: 0.5, cursor: 'not-allowed' }}>
+                                <span style={{ fontSize: 13 }}>{p.icon}</span>
+                                <div style={{ flex: 1 }}><div style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary }}>{p.label}</div><div style={{ fontSize: 7, color: theme.textDim }}>{p.desc}</div></div>
+                                <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, color: theme.textDim }}>Soon</span>
+                            </div>)}
+                        </div>
+                    </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'objects' ? ' dragging' : ''}${dragOverId === 'objects' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('objects') }} onDragOver={e => handleSectionDragOver(e, 'objects')} onDrop={() => handleSectionDrop('objects')}>
                     <Section title="Objects" icon={Ico.objects} badge={mapObjects.length} dragHandle={dragHandleEl('objects')}>
@@ -3366,6 +3604,136 @@ export default function MapIndex() {
                                 </div>;
                             })}
                         </div>
+                    </div>
+                </div>}
+
+                {/* Live Tracker Panel */}
+                {showLiveTracker && loaded && <div style={{ position: 'absolute', top: 10, left: 10, width: 'min(360px, calc(100vw - 20px))', maxHeight: 'calc(100% - 20px)', zIndex: 16, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e20' : theme.border}`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out' }}>
+                    {/* Header */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 7, background: liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.06)', border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e30' : '#22c55e15'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, position: 'relative' }}>🎯{liveTrackSessions.filter(s => s.status === 'tracking').length > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: 7, height: 7, borderRadius: '50%', background: '#22c55e', border: '1.5px solid rgba(13,18,32,0.9)', animation: 'tmap-tl-ring 1.5s infinite' }} />}</div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Live Tracker</div>
+                            <div style={{ fontSize: 8, color: theme.textDim }}>{liveTrackSessions.length > 0 ? `${liveTrackSessions.filter(s => s.status === 'tracking').length} tracking · ${trackablePersons.length} available` : `${trackablePersons.length} targets available`}</div>
+                        </div>
+                        <button onClick={() => { setShowLiveTracker(false); }} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
+                    </div>
+
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}20`, flexShrink: 0 }}>
+                        {[{ id: 'sessions' as const, label: 'Sessions', count: liveTrackSessions.length }, { id: 'targets' as const, label: 'Targets', count: trackablePersons.length }, { id: 'history' as const, label: 'History', count: 0 }].map(t => <button key={t.id} onClick={() => setLiveTrackTab(t.id)} style={{ flex: 1, padding: '7px 0', background: 'transparent', border: 'none', borderBottom: `2px solid ${liveTrackTab === t.id ? '#22c55e' : 'transparent'}`, color: liveTrackTab === t.id ? '#22c55e' : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>{t.label}{t.count > 0 && <span style={{ fontSize: 7, fontWeight: 800, padding: '0 3px', borderRadius: 3, background: liveTrackTab === t.id ? '#22c55e15' : `${theme.border}`, color: liveTrackTab === t.id ? '#22c55e' : theme.textDim }}>{t.count}</span>}</button>)}
+                    </div>
+
+                    {/* Display toggles */}
+                    {liveTrackSessions.length > 0 && <div style={{ display: 'flex', gap: 3, padding: '6px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, flexWrap: 'wrap' }}>
+                        <button onClick={() => { setLiveTrackShowTrails(!liveTrackShowTrails); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${liveTrackShowTrails ? '#22c55e30' : theme.border}`, background: liveTrackShowTrails ? '#22c55e08' : 'transparent', color: liveTrackShowTrails ? '#22c55e' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🛤️ Trails</button>
+                        <button onClick={() => { setLiveTrackShowLabels(!liveTrackShowLabels); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${liveTrackShowLabels ? '#3b82f630' : theme.border}`, background: liveTrackShowLabels ? '#3b82f608' : 'transparent', color: liveTrackShowLabels ? '#3b82f6' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🏷️ Labels</button>
+                        <button onClick={() => { setLiveTrackShowRadius(!liveTrackShowRadius); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${liveTrackShowRadius ? '#f59e0b30' : theme.border}`, background: liveTrackShowRadius ? '#f59e0b08' : 'transparent', color: liveTrackShowRadius ? '#f59e0b' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>⭕ Accuracy</button>
+                        {liveTrackSessions.length > 1 && <button onClick={stopAllLiveTracks} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)', color: theme.danger, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, marginLeft: 'auto' }}>✕ Stop All</button>}
+                    </div>}
+
+                    {/* Tab content */}
+                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+
+                        {/* Sessions tab */}
+                        {liveTrackTab === 'sessions' && <>
+                            {liveTrackSessions.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}>
+                                <div style={{ fontSize: 28, marginBottom: 8 }}>🎯</div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Active Sessions</div>
+                                <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 12 }}>Go to Targets tab to start tracking a person via GPS or phone locator.</div>
+                                <button onClick={() => setLiveTrackTab('targets')} style={{ padding: '6px 16px', borderRadius: 5, border: '1px solid #22c55e30', background: 'rgba(34,197,94,0.06)', color: '#22c55e', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Browse Targets →</button>
+                            </div>}
+                            {liveTrackSessions.map(s => {
+                                const statColor = s.status === 'tracking' ? '#22c55e' : s.status === 'paused' ? '#f59e0b' : '#ef4444';
+                                const riskColor = s.risk === 'Critical' ? '#ef4444' : s.risk === 'High' ? '#f97316' : '#f59e0b';
+                                const isFollowing = liveTrackFollow === s.id;
+                                const dur = s.positions.length > 1 ? Math.round((Date.now() - s.positions[0].ts) / 1000) : 0;
+                                const durStr = dur >= 3600 ? `${Math.floor(dur / 3600)}h ${Math.floor((dur % 3600) / 60)}m` : dur >= 60 ? `${Math.floor(dur / 60)}m ${dur % 60}s` : `${dur}s`;
+                                const distStr = s.distance >= 1000 ? `${(s.distance / 1000).toFixed(2)} km` : `${Math.round(s.distance)} m`;
+                                const batColor = s.battery > 60 ? '#22c55e' : s.battery > 20 ? '#f59e0b' : '#ef4444';
+                                const sigColor = s.signal > 70 ? '#22c55e' : s.signal > 30 ? '#f59e0b' : '#ef4444';
+                                const last = s.positions[s.positions.length - 1];
+                                return <div key={s.id} style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}10`, background: isFollowing ? `${s.color}04` : 'transparent' }}>
+                                    {/* Person header */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                        <div style={{ width: 32, height: 32, borderRadius: '50%', border: `2.5px solid ${s.color}`, background: `url(${s.personAvatar}) center/cover`, flexShrink: 0, cursor: 'pointer' }} onClick={() => { if (last && mapRef.current) mapRef.current.flyTo({ center: [last.lng, last.lat], zoom: 16, duration: 800 }); }} />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: theme.text }}>{s.personName} {s.personLastName} <span style={{ fontWeight: 400, color: theme.textDim, fontSize: 9 }}>({s.personNickname})</span></div>
+                                            <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}>
+                                                <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 5px', borderRadius: 3, background: `${statColor}15`, color: statColor, border: `1px solid ${statColor}25` }}>{s.status === 'tracking' ? '● TRACKING' : s.status === 'paused' ? '⏸ PAUSED' : '✕ SIGNAL LOST'}</span>
+                                                <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${riskColor}12`, color: riskColor, border: `1px solid ${riskColor}20` }}>{s.risk}</span>
+                                                <span style={{ fontSize: 7, fontWeight: 600, color: s.sourceType === 'gps' ? '#22c55e' : '#06b6d4' }}>{s.sourceType === 'gps' ? '📡 GPS' : '📍 Phone'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* Stats grid */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', fontSize: 8, marginBottom: 6 }}>
+                                        <div><span style={{ color: theme.textDim }}>Speed</span><div style={{ fontWeight: 700, color: s.speed > 80 ? '#ef4444' : s.speed > 40 ? '#f59e0b' : '#22c55e', fontFamily: "'JetBrains Mono', monospace" }}>{s.speed} km/h</div></div>
+                                        <div><span style={{ color: theme.textDim }}>Heading</span><div style={{ fontWeight: 700, color: theme.text }}>{s.heading}</div></div>
+                                        <div><span style={{ color: theme.textDim }}>Distance</span><div style={{ fontWeight: 700, color: theme.text }}>{distStr}</div></div>
+                                        <div><span style={{ color: theme.textDim }}>Duration</span><div style={{ fontWeight: 700, color: theme.text }}>{durStr}</div></div>
+                                        <div><span style={{ color: theme.textDim }}>Accuracy</span><div style={{ fontWeight: 700, color: theme.text }}>{s.accuracy}m</div></div>
+                                        <div><span style={{ color: theme.textDim }}>Signal</span><div style={{ fontWeight: 700, color: sigColor }}>{s.signal}%</div></div>
+                                        <div><span style={{ color: theme.textDim }}>Battery</span><div style={{ fontWeight: 700, color: batColor }}>{s.battery}%</div></div>
+                                        <div><span style={{ color: theme.textDim }}>Points</span><div style={{ fontWeight: 700, color: theme.text }}>{s.positions.length}</div></div>
+                                    </div>
+                                    {/* Battery + Signal bars */}
+                                    <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                                        <div style={{ flex: 1 }}><div style={{ fontSize: 7, color: theme.textDim, marginBottom: 2 }}>🔋 Battery</div><div style={{ height: 4, borderRadius: 2, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${s.battery}%`, height: '100%', background: batColor, borderRadius: 2, transition: 'width 0.5s' }} /></div></div>
+                                        <div style={{ flex: 1 }}><div style={{ fontSize: 7, color: theme.textDim, marginBottom: 2 }}>📶 Signal</div><div style={{ height: 4, borderRadius: 2, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${s.signal}%`, height: '100%', background: sigColor, borderRadius: 2, transition: 'width 0.5s' }} /></div></div>
+                                    </div>
+                                    {/* Actions */}
+                                    <div style={{ display: 'flex', gap: 4 }}>
+                                        <button onClick={() => { if (last && mapRef.current) mapRef.current.flyTo({ center: [last.lng, last.lat], zoom: 17, duration: 800 }); }} style={{ flex: 1, padding: '5px', borderRadius: 4, border: `1px solid ${s.color}25`, background: `${s.color}06`, color: s.color, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>📍 Locate</button>
+                                        <button onClick={() => setLiveTrackFollow(isFollowing ? null : s.id)} style={{ flex: 1, padding: '5px', borderRadius: 4, border: `1px solid ${isFollowing ? s.color + '40' : theme.border}`, background: isFollowing ? `${s.color}10` : 'transparent', color: isFollowing ? s.color : theme.textDim, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>{isFollowing ? '🎯 Following' : '🎯 Follow'}</button>
+                                        <button onClick={() => togglePauseLiveTrack(s.id)} style={{ padding: '5px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{s.status === 'tracking' ? '⏸' : '▶'}</button>
+                                        <button onClick={() => stopLiveTrack(s.id)} style={{ padding: '5px 8px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)', color: theme.danger, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
+                                    </div>
+                                </div>;
+                            })}
+                        </>}
+
+                        {/* Targets tab */}
+                        {liveTrackTab === 'targets' && <div style={{ padding: '8px 14px' }}>
+                            <input value={liveTrackSearch} onChange={e => setLiveTrackSearch(e.target.value)} placeholder="Search persons..." style={{ padding: '6px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${liveTrackSearch ? '#22c55e50' : theme.border}`, borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: '100%', marginBottom: 8 }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {trackablePersons.filter(tp => { if (liveTrackSearch.trim()) { const q = liveTrackSearch.toLowerCase(); return tp.personName.toLowerCase().includes(q) || tp.personLastName.toLowerCase().includes(q) || tp.personNickname.toLowerCase().includes(q); } return true; }).map(tp => {
+                                    const isActive = liveTrackSessions.some(s => s.personId === tp.personId && s.sourceType === tp.sourceType);
+                                    const riskColor = tp.risk === 'Critical' ? '#ef4444' : tp.risk === 'High' ? '#f97316' : '#f59e0b';
+                                    const batColor = tp.battery > 60 ? '#22c55e' : tp.battery > 20 ? '#f59e0b' : '#ef4444';
+                                    return <div key={`${tp.personId}-${tp.sourceType}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1px solid ${isActive ? '#22c55e20' : theme.border}`, background: isActive ? 'rgba(34,197,94,0.03)' : 'transparent' }}>
+                                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: `2px solid ${riskColor}`, background: tp.personAvatar ? `url(${tp.personAvatar}) center/cover` : 'rgba(13,18,32,0.9)', flexShrink: 0 }} />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{tp.personName} {tp.personLastName}</div>
+                                            <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}>
+                                                <span style={{ fontSize: 7, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: `${riskColor}12`, color: riskColor, border: `1px solid ${riskColor}20` }}>{tp.risk}</span>
+                                                <span style={{ fontSize: 7, color: tp.sourceType === 'gps' ? '#22c55e' : '#06b6d4', fontWeight: 600 }}>{tp.sourceType === 'gps' ? '📡 GPS' : '📍 Phone'}</span>
+                                                <span style={{ fontSize: 7, color: tp.status === 'online' ? '#22c55e' : tp.status === 'degraded' ? '#f59e0b' : '#6b7280' }}>● {tp.status}</span>
+                                                <span style={{ fontSize: 7, color: batColor }}>🔋{tp.battery}%</span>
+                                            </div>
+                                        </div>
+                                        {isActive ? <span style={{ fontSize: 8, fontWeight: 700, color: '#22c55e', padding: '3px 8px', borderRadius: 4, background: '#22c55e10', border: '1px solid #22c55e20' }}>ACTIVE</span> : <button onClick={() => { startLiveTrack(tp); setLiveTrackTab('sessions'); triggerTopLoader(); }} disabled={tp.status === 'offline'} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${tp.status === 'offline' ? theme.border : '#22c55e30'}`, background: tp.status === 'offline' ? 'transparent' : 'rgba(34,197,94,0.08)', color: tp.status === 'offline' ? theme.textDim : '#22c55e', fontSize: 9, fontWeight: 700, cursor: tp.status === 'offline' ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: tp.status === 'offline' ? 0.5 : 1 }}>▶ Track</button>}
+                                    </div>;
+                                })}
+                            </div>
+                        </div>}
+
+                        {/* History tab */}
+                        {liveTrackTab === 'history' && <div style={{ padding: 30, textAlign: 'center' }}>
+                            <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Tracking History</div>
+                            <div style={{ fontSize: 10, color: theme.textDim }}>Past tracking sessions will appear here. Export routes and analysis reports.</div>
+                        </div>}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: liveTrackSessions.filter(s => s.status === 'tracking').length > 0 ? '#22c55e' : '#6b7280', boxShadow: liveTrackSessions.filter(s => s.status === 'tracking').length > 0 ? '0 0 6px #22c55e60' : 'none' }} />
+                        <span style={{ fontSize: 8, color: liveTrackSessions.filter(s => s.status === 'tracking').length > 0 ? '#22c55e' : theme.textDim, fontWeight: 600 }}>{liveTrackSessions.filter(s => s.status === 'tracking').length > 0 ? `${liveTrackSessions.filter(s => s.status === 'tracking').length} live` : 'Idle'}</span>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>·</span>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{trackablePersons.filter(t => t.status === 'online').length}/{trackablePersons.length} online</span>
+                        <div style={{ flex: 1 }} />
+                        <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveTrackSessions.length > 0 ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6002</span></span>
                     </div>
                 </div>}
 
