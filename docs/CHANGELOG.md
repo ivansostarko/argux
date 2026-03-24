@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.17.0 - 2026-03-24
+
+### Added — Storage Browser Page (/storage)
+- **MinIO File Manager**: Split-panel file browser with entity folder tree (left), sortable file list (center), and file detail/preview panel (right).
+- **Folder tree structure**: Two root nodes (Persons/Organizations) with expandable entity folders. Each entity has 9 subfolders: Audio, Video, Photos, Documents, Transcripts, Reports, Evidence, Social Media, Camera Captures. 12 persons + 10 organizations in tree. Click any folder to filter file list. Expand/collapse with arrow indicators.
+- **30 mock files** across 8 persons and 3 organizations: Audio intercepts (.wav with transcription), surveillance video (.mp4 with duration/resolution), LPR photos (.jpg), weekly reports (.pdf with page counts), evidence packages (.zip), social media archives (.json), camera captures, transcripts, GPS routes (.gpx), financial analysis (.xlsx), sanctions screening, bank transactions (.csv), face match captures, shell company reports, network graph exports.
+- **9 file types**: Audio (🎙️), Video (🎥), Photo (📷), Document (📄), Transcript (📝), Report (📊), Evidence (🔒), Social Media (💬), Camera Capture (📹) — each with icon and color.
+- **File list**: Sortable columns (Name, Entity, Type, Tags, Size) with ascending/descending toggle. Entity column links to /persons/:id or /organizations/:id. Tags shown as chips. Size in monospace.
+- **Search**: Full-text across filenames, entity names, tags, and transcription text.
+- **File type filter**: Quick-toggle chips in sidebar with per-type file counts.
+- **Drag-and-drop upload zone**: Expandable upload area with drop target, entity assignment display, browse button. Shows which entity folder files will be assigned to.
+- **Path breadcrumb**: Storage → Entity Type → Entity Name navigation with file count and total size.
+- **File detail panel**: File icon + name + MIME type, preview area (image placeholder, audio player with progress bar, video player with progress bar), full metadata (size, MIME, entity, folder, path, uploaded by/at, modified, source, duration, resolution, pages), tags as chips, transcription text (for audio files with Faster-Whisper output), Download/Share/Entity link buttons.
+- **Cross-linked entities**: Every file linked to /persons/:id (Horvat, Mendoza, Babić, Hassan, Al-Rashid, Kovačević, Li Wei) or /organizations/:id (Alpha Security, Rashid Holdings, Falcon Trading). File sources reference existing features: LPR Reader, InsightFace, Faster-Whisper, IMSI Catcher, GPS Tracker, Camera Network, Social Scraper, Report Generator, Workflow Engine, OpenCorporates, EU Sanctions, Bank Monitor, Connections Graph.
+
 ## 0.16.0 - 2026-03-24
 
 ### Added — Alert Rules Page (/alerts)
