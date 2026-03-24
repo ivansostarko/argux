@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.20.0 - 2026-03-24
+
+### Added — Face Recognition Page (/face-recognition)
+- **InsightFace / ArcFace Intelligence Hub**: Face capture gallery, database search with upload, per-person/camera statistics. 20 mock captures across 7 persons and 11 cameras.
+- **3 view tabs**: All Captures (responsive grid of face capture cards), Face Search (upload photo + select known person → simulate GPU-accelerated database scan with results), Statistics (captures per person with confidence dots, captures per camera with device links).
+- **20 mock face captures**: 5 Horvat (94% street cam with baseball cap, 91% port with sunglasses, 97% HQ, 96% Frankopanska, 73% Split hotel), 3 Babić (87% Maksimir alone, 92% HQ with Horvat, 78% diplomatic quarter with hat), 1 Kovačević (91% HQ first-in-2-weeks), 2 Al-Rashid (89% airport with bodyguards, 85% Dubai parking), 2 Hassan (82% port, 68% Dubai with keffiyeh), 2 Mendoza (76% night hood+mask, 88% near Savska), 1 Petrova (90% Moscow meeting), 3 unknown/no-match, 2 pending review.
+- **Face Search mode**: Drag-and-drop photo upload zone (JPEG/PNG, min 100×100), OR select known person from database dropdown (all 15 persons with risk level). Simulated InsightFace GPU search with progress bar (ONNX Runtime, NVIDIA A100), results shown as confidence cards with camera, location, timestamp, disguise info. Click result → jump to captures tab with detail panel.
+- **Capture card grid**: Face photo (avatar or ❓ for unknown), confidence badge (green >85%, amber >70%, red <70%), status overlay (Confirmed/Possible/No Match/Pending), camera label, person name, location, disguise indicator (🎭), operation tag, time ago.
+- **Left sidebar 6 filters**: Search (person, camera, location, tags), Match Status (Confirmed 13, Possible 4, No Match 3, Pending 2), Camera Source (11 cameras), Matched Person (7 persons), Operation (HAWK/GLACIER), Min Confidence slider (0-95%).
+- **Capture detail panel**: Avatar with status border, confidence gauge (conic-gradient with percentage), capture metadata (camera, location, disguise type, companions, timestamp, quality score, coordinates, operation), tags, action buttons (Profile → /persons/:id, Camera → /devices/:id, Map → /map).
+- **Statistics tab**: Per-person breakdown (avatar, name, capture count, avg confidence, individual confidence dots color-coded, profile link). Per-camera breakdown (camera name, location, capture count, device link to /devices/:id).
+- **Cross-linked**: Persons → /persons/:id (Horvat #1, Babić #12, Kovačević #2, Al-Rashid #3, Hassan #7, Mendoza #9, Petrova #4), Cameras/Devices → /devices/:id (11 camera devices from mock data), Map → /map, Vision → /vision, Alerts → /alerts (face_match rules ar-03, ar-14), Activity → /activity (face events ev-02, ev-12, ev-24, ev-35), Workflows → /workflows (Face Recognition template), Data Sources → InsightFace/ArcFace ONNX engine.
+
 ## 0.19.0 - 2026-03-24
 
 ### Added — Plate Recognition Page (/plate-recognition)
