@@ -430,6 +430,9 @@ export default function MapIndex() {
     const [showLPRPanel, setShowLPRPanel] = useState(false);
     const [showFacePanel, setShowFacePanel] = useState(false);
     const activeLayerPanel = showHeatmapPanel ? 'heatmap' : showNetworkPanel ? 'network' : showLPRPanel ? 'lpr' : showFacePanel ? 'face' : null;
+    const [showRulerPanel, setShowRulerPanel] = useState(false);
+    const [showZonePanel, setShowZonePanel] = useState(false);
+    const [showPlacesPanel, setShowPlacesPanel] = useState(false);
 
     const filteredObjects = mapObjects.filter(o => {
         if (objSearch && !o.name.toLowerCase().includes(objSearch.toLowerCase()) && !o.type.includes(objSearch.toLowerCase())) return false;
@@ -2245,13 +2248,16 @@ export default function MapIndex() {
                 if (timelineOpen) { setTimelineOpen(false); setTimelinePlaying(false); return; }
                 if (showLiveTracker) { setShowLiveTracker(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
+                if (showRulerPanel) { setShowRulerPanel(false); return; }
+                if (showZonePanel) { setShowZonePanel(false); return; }
+                if (showPlacesPanel) { setShowPlacesPanel(false); return; }
                 if (activeLayerPanel) { setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); return; }
                 if (sidebarOpen) { setSidebarOpen(false); return; }
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showObjectsPanel, activeLayerPanel, sidebarOpen]);
+    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -2816,102 +2822,39 @@ export default function MapIndex() {
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'tools' ? ' dragging' : ''}${dragOverId === 'tools' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('tools') }} onDragOver={e => handleSectionDragOver(e, 'tools')} onDrop={() => handleSectionDrop('tools')}>
                     <Section title="Tools" icon={Ico.tools} badge={(rulerActive ? 1 : 0) + (zoneDrawing ? 1 : 0)} dragHandle={dragHandleEl('tools')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {/* Ruler */}
-                            <div style={{ border: `1px solid ${rulerActive ? '#f59e0b30' : theme.border}`, borderRadius: 6, padding: 8, background: rulerActive ? 'rgba(245,158,11,0.03)' : 'transparent' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={rulerActive ? '#f59e0b' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 14L14 2"/><path d="M5 14L2 14L2 11"/><path d="M11 2L14 2L14 5"/><line x1="4" y1="10" x2="6" y2="12"/><line x1="6" y1="8" x2="8" y2="10"/><line x1="8" y1="6" x2="10" y2="8"/></svg>
-                                        <span style={{ fontSize: 11, fontWeight: 600, color: rulerActive ? '#f59e0b' : theme.text }}>Ruler</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {/* Ruler button */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); triggerTopLoader(); setZoneDrawing(null); } }} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: rulerActive ? '#f59e0b' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
+                                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: rulerActive ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                </button>
+                                <button onClick={() => { setShowRulerPanel(true); setShowZonePanel(false); triggerTopLoader(); }} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, border: `1px solid ${rulerActive ? '#f59e0b25' : showRulerPanel ? '#f59e0b40' : theme.border}`, background: showRulerPanel ? 'rgba(245,158,11,0.06)' : rulerActive ? 'rgba(245,158,11,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.12s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showRulerPanel ? 'rgba(245,158,11,0.06)' : rulerActive ? 'rgba(245,158,11,0.03)' : 'transparent'; }}>
+                                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={rulerActive ? '#f59e0b' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 14L14 2"/><path d="M5 14L2 14L2 11"/><path d="M11 2L14 2L14 5"/></svg>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: rulerActive ? '#f59e0b' : theme.text }}>Ruler</div>
+                                        <div style={{ fontSize: 7, color: theme.textDim }}>{rulerActive ? `${rulerPoints.length} points${rulerPoints.length >= 2 ? ` · ${formatDist(calcDistance(rulerPoints))}` : ''}` : 'Measure distances on map'}</div>
                                     </div>
-                                    <button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); triggerTopLoader(); setZoneDrawing(null); } }} style={{ padding: '3px 10px', borderRadius: 4, border: `1px solid ${rulerActive ? '#f59e0b50' : theme.border}`, background: rulerActive ? 'rgba(245,158,11,0.1)' : 'transparent', color: rulerActive ? '#f59e0b' : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{rulerActive ? 'Stop' : 'Start'}</button>
-                                </div>
-                                <div style={{ fontSize: 9, color: theme.textDim, marginBottom: rulerPoints.length > 0 ? 8 : 0 }}>
-                                    {rulerActive ? 'Click on the map to add measurement points.' : 'Measure distance between multiple points on the map.'}
-                                </div>
-
-                                {rulerPoints.length > 0 && <>
-                                    {/* Points list */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto', marginBottom: 6 }}>
-                                        {rulerPoints.map((pt, i) => {
-                                            const segDist = i > 0 ? calcDistance([rulerPoints[i - 1], pt]) : 0;
-                                            return <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.1)' }}>
-                                                <div style={{ width: 14, height: 14, borderRadius: '50%', background: 'rgba(245,158,11,0.15)', border: '1.5px solid #f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 800, color: '#f59e0b', flexShrink: 0 }}>{i + 1}</div>
-                                                <span style={{ fontSize: 9, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flex: 1 }}>{pt.lat.toFixed(5)}, {pt.lng.toFixed(5)}</span>
-                                                {i > 0 && <span style={{ fontSize: 8, fontWeight: 700, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>+{formatDist(segDist)}</span>}
-                                            </div>;
-                                        })}
-                                    </div>
-
-                                    {/* Total distance */}
-                                    {rulerPoints.length >= 2 && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 5, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 6 }}>
-                                        <span style={{ fontSize: 9, fontWeight: 600, color: theme.textSecondary }}>Total Distance</span>
-                                        <span style={{ fontSize: 12, fontWeight: 800, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace" }}>{formatDist(calcDistance(rulerPoints))}</span>
-                                    </div>}
-
-                                    {/* Segment count */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 9, color: theme.textDim, marginBottom: 6 }}>
-                                        <span>{rulerPoints.length} point{rulerPoints.length !== 1 ? 's' : ''}</span>
-                                        {rulerPoints.length >= 2 && <span>· {rulerPoints.length - 1} segment{rulerPoints.length - 1 !== 1 ? 's' : ''}</span>}
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div style={{ display: 'flex', gap: 4 }}>
-                                        <button onClick={undoRulerPoint} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + '50'; e.currentTarget.style.color = theme.accent; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}>Undo</button>
-                                        <button onClick={clearRuler} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)', color: theme.danger, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Clear All</button>
-                                    </div>
-                                </>}
+                                    {rulerPoints.length >= 2 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#f59e0b15', color: '#f59e0b', border: '1px solid #f59e0b25', fontFamily: "'JetBrains Mono', monospace" }}>{formatDist(calcDistance(rulerPoints))}</span>}
+                                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showRulerPanel ? '#f59e0b' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                                </button>
                             </div>
-
-                            {/* Zone Editor */}
-                            <div style={{ border: `1px solid ${zoneDrawing ? '#8b5cf630' : theme.border}`, borderRadius: 6, padding: 8, background: zoneDrawing ? 'rgba(139,92,246,0.03)' : 'transparent' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={zoneDrawing ? '#8b5cf6' : theme.textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="3,2 13,2 15,8 10,14 6,14 1,8"/></svg>
-                                        <span style={{ fontSize: 11, fontWeight: 600, color: zoneDrawing ? '#8b5cf6' : theme.text }}>Zone Editor</span>
-                                        <span style={{ fontSize: 8, fontWeight: 600, color: theme.textDim, background: theme.bgInput, padding: '1px 5px', borderRadius: 3 }}>{zones.length}</span>
+                            {/* Zone Editor button */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <button onClick={() => { if (zoneDrawing) { setZoneDrawing(null); } else { openAddZone(); } }} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: zoneDrawing ? '#8b5cf6' : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
+                                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: zoneDrawing ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                </button>
+                                <button onClick={() => { setShowZonePanel(true); setShowRulerPanel(false); triggerTopLoader(); }} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, border: `1px solid ${zoneDrawing ? '#8b5cf625' : showZonePanel ? '#8b5cf640' : theme.border}`, background: showZonePanel ? 'rgba(139,92,246,0.06)' : zoneDrawing ? 'rgba(139,92,246,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.12s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showZonePanel ? 'rgba(139,92,246,0.06)' : zoneDrawing ? 'rgba(139,92,246,0.03)' : 'transparent'; }}>
+                                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={zoneDrawing ? '#8b5cf6' : theme.textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: zoneDrawing ? '#8b5cf6' : theme.text }}>Zone Editor</div>
+                                        <div style={{ fontSize: 7, color: theme.textDim }}>{zones.length} zones{hiddenZones.size > 0 ? ` · ${hiddenZones.size} hidden` : ''}{zoneDrawing ? ' · Drawing...' : ''}</div>
                                     </div>
-                                    <button onClick={openAddZone} style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.accent, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>+ Add</button>
-                                </div>
-
-                                {/* Draw buttons */}
-                                {!zoneDrawing && <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-                                    <button onClick={() => startDrawZone('circle')} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf650'; e.currentTarget.style.color = '#8b5cf6'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="6"/></svg>Draw Circle</button>
-                                    <button onClick={() => startDrawZone('polygon')} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf650'; e.currentTarget.style.color = '#8b5cf6'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><polygon points="3,12 8,2 13,12"/></svg>Draw Polygon</button>
-                                </div>}
-
-                                {/* Drawing mode */}
-                                {zoneDrawing && <div style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', marginBottom: 6, fontSize: 9, color: '#8b5cf6', fontWeight: 600 }}>Drawing active — see map for instructions</div>}
-
-                                {/* Zone search */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, padding: '0 7px', marginBottom: 4 }}>
-                                    <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
-                                    <input value={zoneSearch} onChange={e => setZoneSearch(e.target.value)} placeholder="Search zones..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '4px 0', color: theme.text, fontSize: 10, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
-                                    {zoneSearch && <button onClick={() => setZoneSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 0, display: 'flex' }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
-                                </div>
-
-                                {/* Zone list */}
-                                {filteredZones.length === 0 && <div className="tmap-empty">{zoneSearch ? 'No matching zones.' : 'No zones defined.'}</div>}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 180, overflowY: 'auto' }}>
-                                    {filteredZones.map(z => {
-                                        const isHidden = hiddenZones.has(z.id);
-                                        return (
-                                        <div key={z.id} onClick={() => goToZone(z)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 6px', borderRadius: 5, border: `1px solid ${theme.border}`, cursor: 'pointer', transition: 'all 0.1s', opacity: isHidden ? 0.4 : 1 }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = z.color + '40'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; }}>
-                                            <button onClick={e => { e.stopPropagation(); toggleZoneVisibility(z.id); }} style={{ background: 'none', border: 'none', color: isHidden ? theme.textDim : z.color, cursor: 'pointer', padding: 1, display: 'flex', flexShrink: 0 }} title={isHidden ? 'Show zone' : 'Hide zone'}>{isHidden ? <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/><line x1="3" y1="13" x2="13" y2="3"/></svg> : <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>}</button>
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontSize: 10, fontWeight: 600, color: isHidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, textDecoration: isHidden ? 'line-through' : 'none' }}>{z.name}</div>
-                                                <div style={{ fontSize: 8, color: theme.textDim }}>{zoneTypes.find(t => t.id === z.type)?.icon} {zoneTypes.find(t => t.id === z.type)?.label} · {z.shape === 'circle' ? `${z.radius}m` : `${z.points?.length || 0} pts`}</div>
-                                            </div>
-                                            <button onClick={e => { e.stopPropagation(); openEditZone(z); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)} title="Edit"><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg></button>
-                                            <button onClick={e => { e.stopPropagation(); setZoneDeleteConfirm(z); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)} title="Delete"><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
-                                        </div>);
-                                    })}
-                                </div>
-                                <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span style={{ fontSize: 8, color: theme.textDim }}>Right-click zone on map for options.</span>
-                                    {hiddenZones.size > 0 && <button onClick={() => { setHiddenZones(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, fontWeight: 600, color: theme.accent, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Show All ({hiddenZones.size} hidden)</button>}
-                                </div>
+                                    {zones.length > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#8b5cf612', color: '#8b5cf6', border: '1px solid #8b5cf620' }}>{zones.length}</span>}
+                                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showZonePanel ? '#8b5cf6' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                                </button>
                             </div>
+                            {/* Active drawing indicator */}
+                            {zoneDrawing && <div style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', fontSize: 9, color: '#8b5cf6', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>Drawing {zoneDrawing.shape} — {zoneDrawing.points.length} pts<button onClick={() => setZoneDrawing(null)} style={{ fontSize: 8, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Cancel</button></div>}
                         </div>
                     </Section>
                     </div>
@@ -2983,69 +2926,22 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'places' ? ' dragging' : ''}${dragOverId === 'places' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('places') }} onDragOver={e => handleSectionDragOver(e, 'places')} onDrop={() => handleSectionDrop('places')}>
-                    <Section title="Saved Places" icon={Ico.places}  badge={savedPlaces.length} dragHandle={dragHandleEl('places')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {/* Search + Add */}
-                            <div style={{ display: 'flex', gap: 4 }}>
-                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, padding: '0 7px' }}>
-                                    <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
-                                    <input value={placesSearch} onChange={e => setPlacesSearch(e.target.value)} placeholder="Search saved..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '5px 0', color: theme.text, fontSize: 10, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
-                                    {placesSearch && <button onClick={() => setPlacesSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 0, display: 'flex' }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
+                    <Section title="Saved Places" icon={Ico.places} badge={savedPlaces.length} dragHandle={dragHandleEl('places')}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <button onClick={() => { setShowPlacesPanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${savedPlaces.length > 0 ? theme.accent + '25' : theme.border}`, background: showPlacesPanel ? `${theme.accent}06` : savedPlaces.length > 0 ? `${theme.accent}03` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = `${theme.accent}08`; }} onMouseLeave={e => { e.currentTarget.style.background = showPlacesPanel ? `${theme.accent}06` : savedPlaces.length > 0 ? `${theme.accent}03` : 'transparent'; }}>
+                                <div style={{ width: 24, height: 24, borderRadius: 5, background: `${theme.accent}08`, border: `1px solid ${theme.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>📍</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: theme.text }}>Saved Places</div>
+                                    <div style={{ fontSize: 7, color: theme.textDim }}>{savedPlaces.length} places saved</div>
                                 </div>
-                                <button onClick={openAddPlace} title="Add place" style={{ width: 28, height: 28, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.accent, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} onMouseEnter={e => { e.currentTarget.style.background = theme.accentDim; e.currentTarget.style.borderColor = theme.accent + '50'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg></button>
-                                <button onClick={addCurrentLocation} title="Save current view" style={{ width: 28, height: 28, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.borderColor = theme.accent + '50'; }} onMouseLeave={e => { e.currentTarget.style.color = theme.textDim; e.currentTarget.style.borderColor = theme.border; }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/></svg></button>
+                                {savedPlaces.length > 0 && <span style={{ fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: `${theme.accent}12`, color: theme.accent, border: `1px solid ${theme.accent}20` }}>{savedPlaces.length}</span>}
+                                <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showPlacesPanel ? theme.accent : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+                            {/* Quick action buttons */}
+                            <div style={{ display: 'flex', gap: 3 }}>
+                                <button onClick={openAddPlace} style={{ flex: 1, padding: '5px', borderRadius: 4, border: `1px solid ${theme.accent}25`, background: `${theme.accent}04`, color: theme.accent, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>+ Add Place</button>
+                                <button onClick={addCurrentLocation} style={{ flex: 1, padding: '5px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>📍 Save View</button>
                             </div>
-
-                            {/* Place list */}
-                            {filteredPlaces.length === 0 && <div className="tmap-empty">{placesSearch ? 'No matching places.' : 'No saved places.'}</div>}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 220, overflowY: 'auto' }}>
-                                {filteredPlaces.map(p => (
-                                    <div key={p.id} onClick={() => goToPlace(p)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 8px', borderRadius: 6, border: `1px solid ${theme.border}`, cursor: 'pointer', transition: 'all 0.1s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = p.color + '40'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; }}>
-                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, flexShrink: 0, boxShadow: `0 0 6px ${p.color}40` }} />
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontSize: 11, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{p.name}</div>
-                                            {p.note && <div style={{ fontSize: 8, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{p.note}</div>}
-                                        </div>
-                                        <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{p.lat.toFixed(1)}, {p.lng.toFixed(1)}</span>
-                                        <button onClick={e => { e.stopPropagation(); openEditPlace(p); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)} title="Edit"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg></button>
-                                        <button onClick={e => { e.stopPropagation(); setDeleteConfirm(p); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)} title="Delete"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Add/Edit Modal */}
-                            {placeModal && <div style={{ background: theme.bgCard, border: `1px solid ${theme.accent}30`, borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: theme.accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{placeModal.mode === 'add' ? '+ New Place' : '✎ Edit Place'}</div>
-                                <input value={placeForm.name} onChange={e => setPlaceForm(f => ({ ...f, name: e.target.value }))} placeholder="Place name *" style={{ width: '100%', padding: '6px 8px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, color: theme.text, fontSize: 11, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' as const }} />
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <input value={placeForm.lat} onChange={e => setPlaceForm(f => ({ ...f, lat: e.target.value }))} placeholder="Latitude *" style={{ flex: 1, padding: '6px 8px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, color: theme.text, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', minWidth: 0 }} />
-                                    <input value={placeForm.lng} onChange={e => setPlaceForm(f => ({ ...f, lng: e.target.value }))} placeholder="Longitude *" style={{ flex: 1, padding: '6px 8px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, color: theme.text, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', minWidth: 0 }} />
-                                    <input value={placeForm.zoom} onChange={e => setPlaceForm(f => ({ ...f, zoom: e.target.value }))} placeholder="Z" style={{ width: 36, padding: '6px 4px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, color: theme.text, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', textAlign: 'center' as const }} />
-                                </div>
-                                <input value={placeForm.note} onChange={e => setPlaceForm(f => ({ ...f, note: e.target.value }))} placeholder="Note (optional)" style={{ width: '100%', padding: '6px 8px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 5, color: theme.text, fontSize: 10, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' as const }} />
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <span style={{ fontSize: 9, color: theme.textDim, marginRight: 2 }}>Color</span>
-                                    {placeColors.map(c => <button key={c} onClick={() => setPlaceForm(f => ({ ...f, color: c }))} style={{ width: 16, height: 16, borderRadius: 4, background: c, border: placeForm.color === c ? '2px solid #fff' : '2px solid transparent', cursor: 'pointer', padding: 0, boxShadow: placeForm.color === c ? `0 0 6px ${c}60` : 'none' }} />)}
-                                </div>
-                                <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-                                    <button onClick={savePlace} disabled={!placeForm.name.trim() || !placeForm.lat || !placeForm.lng} style={{ flex: 1, padding: '6px 0', borderRadius: 5, border: 'none', background: (!placeForm.name.trim() || !placeForm.lat || !placeForm.lng) ? theme.border : theme.accent, color: '#fff', fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: (!placeForm.name.trim() || !placeForm.lat || !placeForm.lng) ? 'not-allowed' : 'pointer', opacity: (!placeForm.name.trim() || !placeForm.lat || !placeForm.lng) ? 0.4 : 1 }}>{placeModal.mode === 'add' ? 'Save Place' : 'Update Place'}</button>
-                                    <button onClick={() => setPlaceModal(null)} style={{ padding: '6px 14px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 10, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Cancel</button>
-                                </div>
-                            </div>}
-
-                            {/* Delete Confirmation */}
-                            {deleteConfirm && <div style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: 12, marginTop: 4 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={theme.danger} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><line x1="8" y1="5" x2="8" y2="9"/><circle cx="8" cy="11.5" r="0.5" fill={theme.danger}/></svg>
-                                    <span style={{ fontSize: 10, fontWeight: 700, color: theme.danger, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Delete Place</span>
-                                </div>
-                                <div style={{ fontSize: 11, color: theme.text, marginBottom: 4 }}>Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?</div>
-                                <div style={{ fontSize: 9, color: theme.textDim, marginBottom: 10 }}>This action cannot be undone.</div>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <button onClick={confirmDeletePlace} style={{ flex: 1, padding: '6px 0', borderRadius: 5, border: 'none', background: theme.danger, color: '#fff', fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>Delete</button>
-                                    <button onClick={() => setDeleteConfirm(null)} style={{ padding: '6px 14px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 10, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Cancel</button>
-                                </div>
-                            </div>}
                         </div>
                     </Section>
                     </div>
@@ -3539,6 +3435,165 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>{trackablePersons.filter(t => t.status === 'online').length}/{trackablePersons.length} online</span>
                         <div style={{ flex: 1 }} />
                         <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveTrackSessions.length > 0 ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6002</span></span>
+                    </div>
+                </div>}
+
+                {/* ═══ SAVED PLACES PANEL ═══ */}
+                {showPlacesPanel && loaded && <div style={{ position: 'absolute', bottom: timelineOpen ? 290 : 16, left: showObjectsPanel ? 'calc(min(380px, 100vw - 20px) + 20px)' : 10, width: 'min(320px, calc(100vw - 20px))', maxHeight: timelineOpen ? 'calc(100% - 310px)' : 'calc(100% - 32px)', zIndex: 15, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${theme.accent}15`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out', transition: 'bottom 0.3s ease, max-height 0.3s ease' }}>
+                    {/* Header */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 7, background: `${theme.accent}08`, border: `1px solid ${theme.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📍</div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Saved Places</div>
+                            <div style={{ fontSize: 8, color: theme.textDim }}>{savedPlaces.length} places</div>
+                        </div>
+                        <button onClick={openAddPlace} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>+ Add</button>
+                        <button onClick={addCurrentLocation} title="Save current view" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 10, padding: 0, flexShrink: 0 }}>📍</button>
+                        <button onClick={() => setShowPlacesPanel(false)} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
+                    </div>
+                    {/* Search */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${placesSearch ? theme.accent + '50' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                            <input value={placesSearch} onChange={e => setPlacesSearch(e.target.value)} placeholder="Search places..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '7px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
+                            {placesSearch && <button onClick={() => setPlacesSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }}><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
+                        </div>
+                    </div>
+                    {/* Place list */}
+                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                        {filteredPlaces.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>📍</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>{placesSearch ? 'No Matches' : 'No Saved Places'}</div><div style={{ fontSize: 10, color: theme.textDim }}>{placesSearch ? 'Try a different search.' : 'Save locations for quick navigation.'}</div></div>}
+                        {filteredPlaces.map(p => (
+                            <div key={p.id} onClick={() => goToPlace(p)} style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}08`, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.1s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.background = `${p.color}08`; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${p.color}15`, border: `1.5px solid ${p.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, boxShadow: `0 0 6px ${p.color}50` }} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{p.name}</div>
+                                    <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}>
+                                        <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{p.lat.toFixed(4)}, {p.lng.toFixed(4)}</span>
+                                        <span style={{ fontSize: 7, color: theme.textDim }}>z{p.zoom}</span>
+                                    </div>
+                                    {p.note && <div style={{ fontSize: 8, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginTop: 1 }}>{p.note}</div>}
+                                </div>
+                                <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                                    <button onClick={e => { e.stopPropagation(); openEditPlace(p); }} title="Edit" style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: theme.textDim }} onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg></button>
+                                    <button onClick={e => { e.stopPropagation(); setDeleteConfirm(p); }} title="Delete" style={{ width: 22, height: 22, borderRadius: 4, border: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.03)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: theme.textDim }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    {/* Add/Edit form */}
+                    {placeModal && <div style={{ padding: '10px 14px', borderTop: `1px solid ${theme.accent}20`, flexShrink: 0, background: 'rgba(29,111,239,0.02)' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: theme.accent, marginBottom: 6 }}>{placeModal.mode === 'add' ? '+ New Place' : '✎ Edit Place'}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <input value={placeForm.name} onChange={e => setPlaceForm(f => ({ ...f, name: e.target.value }))} placeholder="Place name *" style={{ width: '100%', padding: '7px 10px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, color: theme.text, fontSize: 11, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' as const }} />
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                <input value={placeForm.lat} onChange={e => setPlaceForm(f => ({ ...f, lat: e.target.value }))} placeholder="Latitude *" style={{ flex: 1, padding: '7px 10px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, color: theme.text, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', minWidth: 0 }} />
+                                <input value={placeForm.lng} onChange={e => setPlaceForm(f => ({ ...f, lng: e.target.value }))} placeholder="Longitude *" style={{ flex: 1, padding: '7px 10px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, color: theme.text, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', minWidth: 0 }} />
+                                <input value={placeForm.zoom} onChange={e => setPlaceForm(f => ({ ...f, zoom: e.target.value }))} placeholder="Z" style={{ width: 40, padding: '7px 4px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, color: theme.text, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", outline: 'none', textAlign: 'center' as const }} />
+                            </div>
+                            <input value={placeForm.note} onChange={e => setPlaceForm(f => ({ ...f, note: e.target.value }))} placeholder="Note (optional)" style={{ width: '100%', padding: '7px 10px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, color: theme.text, fontSize: 10, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' as const }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ fontSize: 9, color: theme.textDim, marginRight: 2 }}>Color</span>{placeColors.map(c => <button key={c} onClick={() => setPlaceForm(f => ({ ...f, color: c }))} style={{ width: 16, height: 16, borderRadius: 4, background: c, border: placeForm.color === c ? '2px solid #fff' : '2px solid transparent', cursor: 'pointer', padding: 0, boxShadow: placeForm.color === c ? `0 0 6px ${c}60` : 'none' }} />)}</div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                <button onClick={savePlace} disabled={!placeForm.name.trim() || !placeForm.lat || !placeForm.lng} style={{ flex: 1, padding: '7px 0', borderRadius: 5, border: 'none', background: (!placeForm.name.trim() || !placeForm.lat || !placeForm.lng) ? theme.border : theme.accent, color: '#fff', fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: (!placeForm.name.trim() || !placeForm.lat || !placeForm.lng) ? 'not-allowed' : 'pointer', opacity: (!placeForm.name.trim() || !placeForm.lat || !placeForm.lng) ? 0.4 : 1 }}>{placeModal.mode === 'add' ? 'Save Place' : 'Update'}</button>
+                                <button onClick={() => setPlaceModal(null)} style={{ padding: '7px 14px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 10, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Cancel</button>
+                            </div>
+                        </div>
+                    </div>}
+                    {/* Delete confirmation */}
+                    {deleteConfirm && <div style={{ padding: '10px 14px', borderTop: '1px solid rgba(239,68,68,0.2)', flexShrink: 0, background: 'rgba(239,68,68,0.02)' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: theme.danger, marginBottom: 4 }}>Delete "{deleteConfirm.name}"?</div>
+                        <div style={{ fontSize: 9, color: theme.textDim, marginBottom: 8 }}>This action cannot be undone.</div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={confirmDeletePlace} style={{ flex: 1, padding: '7px 0', borderRadius: 5, border: 'none', background: theme.danger, color: '#fff', fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>Delete</button>
+                            <button onClick={() => setDeleteConfirm(null)} style={{ padding: '7px 14px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 10, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                    </div>}
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{filteredPlaces.length} of {savedPlaces.length} shown</span>
+                    </div>
+                </div>}
+
+                {/* ═══ TOOL PANELS ═══ */}
+                {/* Ruler Panel */}
+                {showRulerPanel && loaded && <div style={{ position: 'absolute', top: showLiveTracker ? 'calc(50% + 10px)' : 10, left: 10, width: 'min(320px, calc(100vw - 20px))', maxHeight: showLiveTracker ? 'calc(50% - 20px)' : 'calc(100% - 20px)', zIndex: 15, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${rulerActive ? '#f59e0b20' : theme.border}`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out' }}>
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={rulerActive ? '#f59e0b' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 14L14 2"/><path d="M5 14L2 14L2 11"/><path d="M11 2L14 2L14 5"/><line x1="4" y1="10" x2="6" y2="12"/><line x1="6" y1="8" x2="8" y2="10"/></svg>
+                        <div style={{ flex: 1 }}><div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Ruler</div><div style={{ fontSize: 8, color: theme.textDim }}>{rulerActive ? `${rulerPoints.length} points · Click map to add` : 'Measure distances between points'}</div></div>
+                        <button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); triggerTopLoader(); setZoneDrawing(null); } }} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${rulerActive ? '#f59e0b40' : '#22c55e30'}`, background: rulerActive ? 'rgba(245,158,11,0.08)' : 'rgba(34,197,94,0.06)', color: rulerActive ? '#f59e0b' : '#22c55e', fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{rulerActive ? '⏹ Stop' : '▶ Start'}</button>
+                        <button onClick={() => setShowRulerPanel(false)} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0, padding: '10px 14px' }}>
+                        {/* Total distance card */}
+                        {rulerPoints.length >= 2 && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 10 }}>
+                            <div><div style={{ fontSize: 8, color: theme.textDim, marginBottom: 1 }}>Total Distance</div><div style={{ fontSize: 16, fontWeight: 800, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace" }}>{formatDist(calcDistance(rulerPoints))}</div></div>
+                            <div style={{ textAlign: 'right' }}><div style={{ fontSize: 8, color: theme.textDim }}>{rulerPoints.length} pts · {rulerPoints.length - 1} seg</div></div>
+                        </div>}
+                        {/* Points list */}
+                        {rulerPoints.length > 0 ? <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {rulerPoints.map((pt, i) => {
+                                const segDist = i > 0 ? calcDistance([rulerPoints[i - 1], pt]) : 0;
+                                return <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 5, background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.08)' }}>
+                                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(245,158,11,0.12)', border: '1.5px solid #f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, color: '#f59e0b', flexShrink: 0 }}>{i + 1}</div>
+                                    <div style={{ flex: 1 }}><span style={{ fontSize: 9, color: theme.text, fontFamily: "'JetBrains Mono', monospace" }}>{pt.lat.toFixed(5)}, {pt.lng.toFixed(5)}</span><div style={{ fontSize: 7, color: theme.textDim }}>{mockAddress(pt.lat, pt.lng)}</div></div>
+                                    {i > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>+{formatDist(segDist)}</span>}
+                                </div>;
+                            })}
+                        </div> : <div style={{ padding: 20, textAlign: 'center' }}><div style={{ fontSize: 24, marginBottom: 6 }}>📏</div><div style={{ fontSize: 11, fontWeight: 600, color: theme.textSecondary }}>{rulerActive ? 'Click on the map to add points' : 'Start the ruler to begin measuring'}</div></div>}
+                    </div>
+                    {rulerPoints.length > 0 && <div style={{ padding: '8px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', gap: 4, flexShrink: 0 }}>
+                        <button onClick={undoRulerPoint} style={{ flex: 1, padding: '6px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>↩ Undo</button>
+                        <button onClick={clearRuler} style={{ flex: 1, padding: '6px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)', color: theme.danger, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>🗑️ Clear All</button>
+                    </div>}
+                </div>}
+
+                {/* Zone Editor Panel */}
+                {showZonePanel && loaded && <div style={{ position: 'absolute', top: showLiveTracker ? 'calc(50% + 10px)' : 10, left: 10, width: 'min(340px, calc(100vw - 20px))', maxHeight: showLiveTracker ? 'calc(50% - 20px)' : 'calc(100% - 20px)', zIndex: 15, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${zoneDrawing ? '#8b5cf620' : theme.border}`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out' }}>
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={zoneDrawing ? '#8b5cf6' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>
+                        <div style={{ flex: 1 }}><div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Zone Editor</div><div style={{ fontSize: 8, color: theme.textDim }}>{zones.length} zones · {zones.length - hiddenZones.size} visible{zoneDrawing ? ' · Drawing...' : ''}</div></div>
+                        <button onClick={openAddZone} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>+ Add</button>
+                        <button onClick={() => setShowZonePanel(false)} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
+                    </div>
+                    {/* Draw zone buttons */}
+                    {!zoneDrawing && <div style={{ display: 'flex', gap: 4, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <button onClick={() => startDrawZone('circle')} style={{ flex: 1, padding: '6px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf650'; e.currentTarget.style.color = '#8b5cf6'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}>⭕ Circle</button>
+                        <button onClick={() => startDrawZone('polygon')} style={{ flex: 1, padding: '6px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf650'; e.currentTarget.style.color = '#8b5cf6'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}>⬡ Polygon</button>
+                    </div>}
+                    {zoneDrawing && <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}><div style={{ padding: '5px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', fontSize: 9, color: '#8b5cf6', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>Drawing {zoneDrawing.shape} — {zoneDrawing.points.length} pts<button onClick={() => setZoneDrawing(null)} style={{ fontSize: 8, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Cancel</button></div></div>}
+                    {/* Search */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${zoneSearch ? '#8b5cf650' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                            <input value={zoneSearch} onChange={e => setZoneSearch(e.target.value)} placeholder="Search zones..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '7px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
+                            {zoneSearch && <button onClick={() => setZoneSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }}><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
+                        </div>
+                    </div>
+                    {/* Zone list */}
+                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                        {filteredZones.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>🛡️</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>{zoneSearch ? 'No Matches' : 'No Zones'}</div><div style={{ fontSize: 10, color: theme.textDim }}>{zoneSearch ? 'Try a different search.' : 'Draw a circle or polygon on the map.'}</div></div>}
+                        {filteredZones.map(z => {
+                            const isHidden = hiddenZones.has(z.id);
+                            const zt = zoneTypes.find(t => t.id === z.type);
+                            return <div key={z.id} onClick={() => goToZone(z)} style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}08`, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: isHidden ? 0.45 : 1, transition: 'all 0.15s, background 0.1s', background: 'transparent' }} onMouseEnter={e => { e.currentTarget.style.background = `${z.color}06`; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: z.shape === 'circle' ? '50%' : 5, background: `${z.color}12`, border: `1.5px solid ${z.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0, position: 'relative' }}>{zt?.icon || '🛡️'}{isHidden && <div style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', background: 'rgba(13,18,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/></svg></div>}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: isHidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, textDecoration: isHidden ? 'line-through' : 'none' }}>{z.name}</div>
+                                    <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}><span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${z.color}12`, color: z.color, border: `1px solid ${z.color}20` }}>{zt?.label || z.type}</span><span style={{ fontSize: 7, color: theme.textDim }}>{z.shape === 'circle' ? `${z.radius}m radius` : `${z.points?.length || 0} vertices`}</span></div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                                    <button onClick={e => { e.stopPropagation(); toggleZoneVisibility(z.id); triggerTopLoader(); }} title={isHidden ? 'Show' : 'Hide'} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${isHidden ? theme.danger + '20' : theme.border}`, background: isHidden ? 'rgba(239,68,68,0.04)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontSize: 9, color: isHidden ? theme.danger : theme.textDim }}>{isHidden ? '👁️‍🗨️' : '👁️'}</button>
+                                    <button onClick={e => { e.stopPropagation(); openEditZone(z); }} title="Edit" style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: theme.textDim }} onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg></button>
+                                    <button onClick={e => { e.stopPropagation(); setZoneDeleteConfirm(z); }} title="Delete" style={{ width: 22, height: 22, borderRadius: 4, border: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.03)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: theme.textDim }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+                                </div>
+                            </div>;
+                        })}
+                    </div>
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{filteredZones.length} of {zones.length} zones</span>
+                        <div style={{ flex: 1 }} />
+                        {hiddenZones.size > 0 && <button onClick={() => { setHiddenZones(new Set()); triggerTopLoader(); }} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: '1px solid #22c55e20', background: '#22c55e06', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>👁️ Show All ({hiddenZones.size})</button>}
                     </div>
                 </div>}
 
