@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.12.0 - 2026-03-24
+
+### Added — Workflows Page (/workflows)
+- **Automated Surveillance Workflow Engine**: Kanban board + list + template views for managing trigger→action automation chains.
+- **3 view modes**: Kanban (5 columns: Draft/Active/Paused/Completed/Archived), List (sortable table), Templates (pre-built workflow cards).
+- **9 mock workflows** linked to real operations (HAWK, GLACIER, PHOENIX, CERBERUS) covering: port intrusion detection, co-location monitoring, counter-surveillance detection, LPR watchlist tracking, financial transaction monitoring, nightly activity sweep, diplomatic surveillance, border crossing alerts, cargo watch.
+- **10 trigger types**: Zone Entry, Zone Exit, Co-location, Face Match, LPR Match, Signal Lost, Speed Alert, Keyword Detection, Schedule (cron), Manual.
+- **8 action types**: Alert, Assign Team, Escalate, AI Analysis (Ollama/XGBoost), Create Record, Notify, Deploy Device, Generate Report.
+- **6 pre-built templates**: Zone Breach Response, Co-location Evidence Capture, Vehicle Tracking Chain, Daily Intelligence Briefing, Signal Loss Response, Face Recognition Alert.
+- **Execution log**: Per-workflow run history with status (success/failed/running), duration, trigger description, output summary, timestamps. Running state with pulse animation.
+- **Detail panel**: Config tab (triggers with configs, numbered action pipeline, linked persons with /persons/:id links, metadata). Log tab (execution history).
+- **Cross-linked**: Workflows tied to Operations (OP HAWK, GLACIER, etc.), linked persons (Horvat, Mendoza, Babić, Hassan, Al-Rashid), with navigation to /operations, /map, /alerts, /persons/:id.
+- **Filter/search**: By operation name and text search across workflow names.
+
 ## 0.11.0 - 2026-03-24
 
 ### Added — Operations Page (/operations)
