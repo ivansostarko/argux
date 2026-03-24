@@ -33,7 +33,7 @@ Route::post('/2fa/resend', [AuthController::class, 'resendTwoFactor'])->name('2f
 */
 
 Route::get('/map', fn () => \Inertia\Inertia::render('Map/Index'))->name('map');
-Route::get('/vision', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('vision');
+Route::get('/vision', fn () => \Inertia\Inertia::render('Vision/Index'))->name('vision');
 Route::get('/operations', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('operations');
 Route::get('/persons', fn () => \Inertia\Inertia::render('Persons/Index'))->name('persons.index');
 Route::get('/persons/create', fn () => \Inertia\Inertia::render('Persons/Create'))->name('persons.create');

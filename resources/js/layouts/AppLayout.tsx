@@ -89,7 +89,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }, []);
 
     // Determine if breadcrumbs should show (not on map, auth, error pages)
-    const noBreadcrumbPaths = ['/map', '/login', '/register', '/2fa', '/forgot-password'];
+    const noBreadcrumbPaths = ['/map', '/vision', '/login', '/register', '/2fa', '/forgot-password'];
     const showBreadcrumbs = !noBreadcrumbPaths.some(p => currentPath === p || currentPath.startsWith('/errors'));
 
     return (

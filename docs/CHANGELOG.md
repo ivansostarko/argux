@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.9.0 - 2026-03-24
+
+### Added — Intelligence Panels & Vision Page
+- **Anomaly Detection panel** (Alt+3): AI-powered behavioral analysis with 6 anomaly types, 9 mock anomalies, sensitivity slider, deviation bars, baseline vs observed comparison, recommendations. On-premise Ollama LLaMA 3.1.
+- **Predictive Risk panel** (Alt+4): ML risk trajectory with conic-gradient risk gauges, predicted locations, threat assessments, numbered recommended actions. XGBoost + scikit-learn.
+- **Pattern Detection panel** (Alt+5): Recurring behavioral pattern analysis with 5 categories, weekly heatmap bars, regularity progress bars, involved persons, expanded bar chart.
+- **Incident Timeline panel** (Alt+6): Chronological event feed with 10 event types, 15 mock events, visual timeline connectors, severity/type/search filtering, metadata grids.
+- **Heat Calendar panel** (Alt+7): GitHub-style 90-day activity grid per person with 13×7 cell grid, month labels, hover tooltips, peak day highlight, legend.
+- **Entity Comparison panel** (Alt+8): Side-by-side dual-bar comparison of 12 metrics between two subjects, weekly activity chart, overlap analysis grid.
+- **Route Replay panel** (Alt+9): Historical movement animation with VCR transport controls, 0.5×/1×/2×/4× speed, progress scrubber, waypoint event log, speed/bearing/time readout.
+- **Geofence alerts** integrated into Live Feed: Zone entry/exit events added as dedicated feed templates.
+- **Enhanced map search**: Unified search across 8 categories (persons, orgs, vehicles, devices, saved places, zones, coordinates, geocoding). Category filter chips, grouped results, quick tips.
+- **Export/Share modal** (E key): Export map as PNG (canvas download) or PDF (print dialog with metadata). Share workspace URL with encoded viewport state.
+- **Keyboard shortcuts overlay** (Ctrl+Q): 27 shortcuts across 4 groups. Input-safe, Esc-priority chain.
+- **Panel system upgrades**: Z-index management (click-to-front), snap-to-edge (24px threshold), resize grip (bottom-right), touch drag support, auto-cascade for multi-panel positioning.
+- **Vision page** (/vision): Full camera surveillance wall with 11 cameras from mock devices. Features: 1×1/2×2/3×3/4×4 grid layouts, per-camera hover controls (play/pause, mute/unmute, record, night vision, snapshot, fullscreen, volume slider), AI detection overlays with tracking corners, real-time FPS/bitrate/audio stats, live clock, alert badges, status filtering, type filtering, search, detail sidebar with device info + AI detections + alerts + navigation links.
+- **Vite chunking**: Manual chunks for maplibre, react, inertia, misc vendors, mock data. Warning limit 1500kB.
+
+### Fixed
+- Panel buttons (close/minimize/maximize) not responding: `onMouseDown` on wrapper now skips interactive elements.
+- Panel snap-to-edge using wrong dimensions: now reads actual panel element size.
+- Multi-panel overlap: auto-cascade positions panels 30px apart.
+- TypeScript `as const` assertions added to 175+ lines for CSS literal types.
+- `sourceDefs` → `sourceTypes` fix in enhanced search.
+- `Record<string, string>` casts on incident metadata objects.
+- `bringToFront` optimized to skip re-render when panel already on top.
+- Video autoplay: proper play() promise handling with muted-first strategy.
+- Breadcrumbs removed from Vision page (full-screen experience like Map).
+
 ## 0.8.1 - 2026-03-22
 
 ### Added — Map Overlays & Settings

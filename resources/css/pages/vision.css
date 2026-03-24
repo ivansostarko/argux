@@ -1,0 +1,28 @@
+/* ═══════════════════════════════════════════
+   ARGUX — Vision Camera Wall
+   ═══════════════════════════════════════════ */
+
+@keyframes argux-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+@keyframes argux-fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Camera tile hover */
+.vision-tile:hover .vision-hover-overlay {
+    background: rgba(255,255,255,0.02) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .vision-sidebar { display: none !important; }
+}
+
+@media (max-width: 640px) {
+    .vision-topbar { flex-wrap: wrap; gap: 4px !important; }
+    .vision-topbar > * { flex-shrink: 1; }
+}
