@@ -704,9 +704,68 @@ export default function MapIndex() {
         subjects: new Set(mockIncidents.filter(e => e.personId > 0).map(e => e.personId)).size,
     }), [mockIncidents]);
 
+    // ═══ HEAT CALENDAR ═══
+    const [showHeatCalPanel, setShowHeatCalPanel] = useState(false);
+    const [heatCalPerson, setHeatCalPerson] = useState<string>('1');
+
+    const heatCalData = useMemo(() => {
+        const data: Record<number, Record<string, number>> = {};
+        [1, 7, 9, 12].forEach(pid => {
+            data[pid] = {};
+            const now = new Date(2026, 2, 24);
+            for (let d = 0; d < 90; d++) {
+                const date = new Date(now); date.setDate(now.getDate() - d);
+                const key = date.toISOString().slice(0, 10);
+                const dow = date.getDay();
+                const isWeekend = dow === 0 || dow === 6;
+                const base = pid === 1 ? 14 : pid === 9 ? 18 : pid === 7 ? 8 : 10;
+                const noise = Math.floor(Math.random() * 12) - 3;
+                const weekendMod = isWeekend ? (pid === 1 && d < 21 ? 8 : -5) : 0;
+                const trend = pid === 9 ? Math.floor(d < 14 ? 6 : 0) : 0;
+                data[pid][key] = Math.max(0, base + noise + weekendMod + trend);
+            }
+        });
+        return data;
+    }, []);
+
+    const heatCalPersonInfo: Record<number, { name: string; risk: string }> = { 1: { name: 'Marko Horvat', risk: 'Critical' }, 7: { name: 'Omar Hassan', risk: 'High' }, 9: { name: 'Carlos Mendoza', risk: 'Critical' }, 12: { name: 'Ivan Babić', risk: 'High' } };
+
+    // ═══ MULTI-ENTITY COMPARISON ═══
+    const [showComparePanel, setShowComparePanel] = useState(false);
+    const [compareA, setCompareA] = useState<string>('1');
+    const [compareB, setCompareB] = useState<string>('9');
+
+    interface CompareMetric { label: string; icon: string; aVal: string | number; bVal: string | number; unit?: string; higherIsBad?: boolean; }
+
+    const compareData = useMemo((): CompareMetric[] => {
+        if (!compareA || !compareB) return [];
+        const metrics: Record<string, Record<string, { events: number; avgSpeed: number; nightActivity: number; zones: number; colocs: number; devices: number; lprHits: number; faceHits: number; comms: number; riskScore: number; locations: number; anomalies: number }>> = {
+            '1': { data: { events: 847, avgSpeed: 42, nightActivity: 18, zones: 4, colocs: 23, devices: 3, lprHits: 56, faceHits: 12, comms: 34, riskScore: 94, locations: 31, anomalies: 7 } },
+            '7': { data: { events: 412, avgSpeed: 28, nightActivity: 6, zones: 2, colocs: 11, devices: 2, lprHits: 18, faceHits: 5, comms: 89, riskScore: 72, locations: 14, anomalies: 4 } },
+            '9': { data: { events: 634, avgSpeed: 55, nightActivity: 32, zones: 3, colocs: 19, devices: 4, lprHits: 41, faceHits: 8, comms: 52, riskScore: 89, locations: 26, anomalies: 6 } },
+            '12': { data: { events: 523, avgSpeed: 38, nightActivity: 11, zones: 3, colocs: 15, devices: 2, lprHits: 34, faceHits: 7, comms: 21, riskScore: 81, locations: 19, anomalies: 5 } },
+        };
+        const a = (metrics[compareA] || metrics['1']).data;
+        const b = (metrics[compareB] || metrics['9']).data;
+        return [
+            { label: 'Risk Score', icon: '⚠️', aVal: a.riskScore, bVal: b.riskScore, higherIsBad: true },
+            { label: 'Total Events', icon: '📊', aVal: a.events, bVal: b.events, higherIsBad: true },
+            { label: 'Night Activity', icon: '🌙', aVal: a.nightActivity, bVal: b.nightActivity, unit: 'events', higherIsBad: true },
+            { label: 'Avg Speed', icon: '🏎️', aVal: a.avgSpeed, bVal: b.avgSpeed, unit: 'km/h', higherIsBad: true },
+            { label: 'Locations Visited', icon: '📍', aVal: a.locations, bVal: b.locations, higherIsBad: true },
+            { label: 'Co-locations', icon: '🔗', aVal: a.colocs, bVal: b.colocs, higherIsBad: true },
+            { label: 'Zone Violations', icon: '🛡️', aVal: a.zones, bVal: b.zones, higherIsBad: true },
+            { label: 'LPR Captures', icon: '🚗', aVal: a.lprHits, bVal: b.lprHits },
+            { label: 'Face Matches', icon: '🧑', aVal: a.faceHits, bVal: b.faceHits },
+            { label: 'Comms Intercepts', icon: '📡', aVal: a.comms, bVal: b.comms, higherIsBad: true },
+            { label: 'Active Devices', icon: '📱', aVal: a.devices, bVal: b.devices },
+            { label: 'Anomalies', icon: '🧠', aVal: a.anomalies, bVal: b.anomalies, higherIsBad: true },
+        ];
+    }, [compareA, compareB]);
+
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -728,6 +787,8 @@ export default function MapIndex() {
         places: { x: 10, y: 10 },
         workspaces: { x: 10, y: 10 },
         layers: { x: 10, y: 10 },
+        heatcal: { x: 10, y: 10 },
+        compare: { x: 10, y: 10 },
     };
 
     const [panelPositions, setPanelPositions] = useState<Record<string, PanelPos>>({});
@@ -2813,6 +2874,8 @@ export default function MapIndex() {
                 if (showPredictivePanel) { setShowPredictivePanel(false); return; }
                 if (showPatternPanel) { setShowPatternPanel(false); return; }
                 if (showIncidentPanel) { setShowIncidentPanel(false); return; }
+                if (showHeatCalPanel) { setShowHeatCalPanel(false); return; }
+                if (showComparePanel) { setShowComparePanel(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
@@ -2849,6 +2912,8 @@ export default function MapIndex() {
             if (e.key === '4' && e.altKey) { e.preventDefault(); setShowPredictivePanel(prev => !prev); triggerTopLoader(); return; }
             if (e.key === '5' && e.altKey) { e.preventDefault(); setShowPatternPanel(prev => !prev); triggerTopLoader(); return; }
             if (e.key === '6' && e.altKey) { e.preventDefault(); setShowIncidentPanel(prev => !prev); triggerTopLoader(); return; }
+            if (e.key === '7' && e.altKey) { e.preventDefault(); setShowHeatCalPanel(prev => !prev); triggerTopLoader(); return; }
+            if (e.key === '8' && e.altKey) { e.preventDefault(); setShowComparePanel(prev => !prev); triggerTopLoader(); return; }
 
             // Tools
             if (e.key === 'r' && !e.ctrlKey) { setRulerActive(prev => !prev); return; }
@@ -2860,7 +2925,7 @@ export default function MapIndex() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [showExportModal, showShortcuts, tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showPatternPanel, showIncidentPanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
+    }, [showExportModal, showShortcuts, tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showPatternPanel, showIncidentPanel, showHeatCalPanel, showComparePanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -3542,6 +3607,26 @@ export default function MapIndex() {
                                 </div>
                                 <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: incidentStats.critical > 0 ? '#ef444415' : `${theme.accent}12`, color: incidentStats.critical > 0 ? '#ef4444' : theme.accent, border: `1px solid ${incidentStats.critical > 0 ? '#ef444425' : theme.accent + '20'}` }}>{mockIncidents.length}</span>
                                 <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showIncidentPanel ? '#f97316' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+
+                            {/* Heat Calendar button */}
+                            <button onClick={() => { setShowHeatCalPanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${showHeatCalPanel ? '#10b98140' : theme.border}`, background: showHeatCalPanel ? 'rgba(16,185,129,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showHeatCalPanel ? 'rgba(16,185,129,0.06)' : 'transparent'; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📅</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: showHeatCalPanel ? '#10b981' : theme.text }}>Heat Calendar</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>Daily activity grid · 90 days</div>
+                                </div>
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showHeatCalPanel ? '#10b981' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+
+                            {/* Multi-Entity Comparison button */}
+                            <button onClick={() => { setShowComparePanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${showComparePanel ? '#a855f740' : theme.border}`, background: showComparePanel ? 'rgba(168,85,247,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(168,85,247,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showComparePanel ? 'rgba(168,85,247,0.06)' : 'transparent'; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>⚖️</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: showComparePanel ? '#a855f7' : theme.text }}>Entity Comparison</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>Side-by-side activity analysis</div>
+                                </div>
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showComparePanel ? '#a855f7' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
                             </button>
                         </div>
                     </Section>
@@ -4798,6 +4883,220 @@ export default function MapIndex() {
                     </>}
                 </div>}
 
+                {/* ═══ HEAT CALENDAR PANEL ═══ */}
+                {showHeatCalPanel && loaded && <div data-panel="heatcal" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('heatcal' as PanelId); }} style={panelStyle('heatcal', '460px', '#10b981')}>
+                    <PanelHeader id="heatcal" icon="📅" title="Heat Calendar" subtitle={`${heatCalPersonInfo[parseInt(heatCalPerson)]?.name || 'Select person'} · 90 days`} color="#10b981" onClose={() => setShowHeatCalPanel(false)} />
+                    <PanelResizeGrip id="heatcal" />
+
+                    {!isPanelMin('heatcal') && <>
+                    {/* Person selector */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', gap: 3 }}>
+                            {Object.entries(heatCalPersonInfo).map(([pid, info]) => {
+                                const on = heatCalPerson === pid;
+                                const riskColor = info.risk === 'Critical' ? '#ef4444' : '#f97316';
+                                return <button key={pid} onClick={() => setHeatCalPerson(pid)} style={{ flex: 1, padding: '5px 4px', borderRadius: 5, border: `1px solid ${on ? '#10b98140' : theme.border}`, background: on ? 'rgba(16,185,129,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' as const }}>
+                                    <div style={{ fontSize: 9, fontWeight: 700, color: on ? '#10b981' : theme.text }}>{info.name.split(' ')[1]}</div>
+                                    <div style={{ fontSize: 7, color: riskColor, fontWeight: 600 }}>{info.risk}</div>
+                                </button>;
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Calendar grid */}
+                    <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', scrollbarWidth: 'thin', padding: '10px 14px', minHeight: 0 }}>
+                        {(() => {
+                            const personData = heatCalData[parseInt(heatCalPerson)] || {};
+                            const weeks: string[][] = [];
+                            const now = new Date(2026, 2, 24);
+                            // Build 13 weeks × 7 days
+                            for (let w = 12; w >= 0; w--) {
+                                const week: string[] = [];
+                                for (let d = 0; d < 7; d++) {
+                                    const dayOffset = w * 7 + (6 - d);
+                                    const date = new Date(now); date.setDate(now.getDate() - dayOffset);
+                                    week.push(date.toISOString().slice(0, 10));
+                                }
+                                weeks.push(week);
+                            }
+                            const maxVal = Math.max(1, ...Object.values(personData));
+                            const monthLabels: { label: string; col: number }[] = [];
+                            weeks.forEach((wk, wi) => { const d = new Date(wk[0]); if (d.getDate() <= 7) monthLabels.push({ label: d.toLocaleString('en', { month: 'short' }), col: wi }); });
+                            const totalEvents = Object.values(personData).reduce((a, b) => a + b, 0);
+                            const avgPerDay = Math.round(totalEvents / 90);
+                            const maxDay = Object.entries(personData).sort((a, b) => b[1] - a[1])[0];
+                            const activeDays = Object.values(personData).filter(v => v > 0).length;
+
+                            return <>
+                                {/* Stats row */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 10 }}>
+                                    {[
+                                        { label: 'Total', value: String(totalEvents), color: '#10b981' },
+                                        { label: 'Daily Avg', value: String(avgPerDay), color: '#3b82f6' },
+                                        { label: 'Peak Day', value: maxDay ? String(maxDay[1]) : '0', color: '#ef4444' },
+                                        { label: 'Active Days', value: `${activeDays}/90`, color: '#f59e0b' },
+                                    ].map(s => <div key={s.label} style={{ padding: '5px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' as const }}>
+                                        <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
+                                        <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2 }}>{s.label}</div>
+                                    </div>)}
+                                </div>
+
+                                {/* Month labels */}
+                                <div style={{ display: 'flex', gap: 2, marginBottom: 2, paddingLeft: 22 }}>
+                                    {weeks.map((_, wi) => { const ml = monthLabels.find(m => m.col === wi); return <div key={wi} style={{ width: 11, fontSize: 7, color: theme.textDim, fontWeight: 600, textAlign: 'center' as const }}>{ml?.label || ''}</div>; })}
+                                </div>
+
+                                {/* Grid: rows = days (Mon-Sun), cols = weeks */}
+                                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayName, di) => <div key={dayName} style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 2 }}>
+                                    <span style={{ width: 18, fontSize: 7, color: theme.textDim, textAlign: 'right' as const, flexShrink: 0, fontWeight: 600 }}>{di % 2 === 0 ? dayName : ''}</span>
+                                    {weeks.map((wk, wi) => {
+                                        const dateStr = wk[di];
+                                        const val = personData[dateStr] || 0;
+                                        const intensity = val / maxVal;
+                                        const bg = val === 0 ? `${theme.border}25` : `rgba(16,185,129,${0.15 + intensity * 0.75})`;
+                                        const today = dateStr === '2026-03-24';
+                                        return <div key={wi} title={`${dateStr}: ${val} events`} style={{ width: 11, height: 11, borderRadius: 2, background: bg, border: today ? '1.5px solid #fff' : '1px solid transparent', cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.4)'; e.currentTarget.style.zIndex = '5'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '0'; }} />;
+                                    })}
+                                </div>)}
+
+                                {/* Legend */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, justifyContent: 'flex-end' }}>
+                                    <span style={{ fontSize: 7, color: theme.textDim }}>Less</span>
+                                    {[0, 0.2, 0.4, 0.6, 0.8, 1].map(v => <div key={v} style={{ width: 10, height: 10, borderRadius: 2, background: v === 0 ? `${theme.border}25` : `rgba(16,185,129,${0.15 + v * 0.75})` }} />)}
+                                    <span style={{ fontSize: 7, color: theme.textDim }}>More</span>
+                                </div>
+
+                                {/* Peak info */}
+                                {maxDay && <div style={{ marginTop: 8, padding: '6px 8px', borderRadius: 5, background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)', fontSize: 9, color: theme.textDim }}>📈 Peak: <span style={{ color: '#ef4444', fontWeight: 700 }}>{maxDay[1]} events</span> on <span style={{ color: theme.text, fontWeight: 600 }}>{maxDay[0]}</span></div>}
+                            </>;
+                        })()}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>90-day activity heatmap · Kafka event stream</span>
+                        <div style={{ flex: 1 }} />
+                        <span style={{ fontSize: 7, color: '#10b981', fontWeight: 600 }}>ClickHouse Analytics</span>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ ENTITY COMPARISON PANEL ═══ */}
+                {showComparePanel && loaded && <div data-panel="compare" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('compare' as PanelId); }} style={panelStyle('compare', '440px', '#a855f7')}>
+                    <PanelHeader id="compare" icon="⚖️" title="Entity Comparison" subtitle={`${heatCalPersonInfo[parseInt(compareA)]?.name || '—'} vs ${heatCalPersonInfo[parseInt(compareB)]?.name || '—'}`} color="#a855f7" onClose={() => setShowComparePanel(false)} />
+                    <PanelResizeGrip id="compare" />
+
+                    {!isPanelMin('compare') && <>
+                    {/* Subject selectors */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 8, fontWeight: 700, color: '#3b82f6', marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Subject A</div>
+                                <select value={compareA} onChange={e => setCompareA(e.target.value)} style={{ width: '100%', padding: '5px 8px', background: theme.bgInput, color: theme.text, border: '1px solid #3b82f640', borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
+                                    {corrPersonOptions.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ fontSize: 16, color: theme.textDim, marginTop: 14 }}>⚔️</div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 8, fontWeight: 700, color: '#ef4444', marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Subject B</div>
+                                <select value={compareB} onChange={e => setCompareB(e.target.value)} style={{ width: '100%', padding: '5px 8px', background: theme.bgInput, color: theme.text, border: '1px solid #ef444440', borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
+                                    {corrPersonOptions.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        {compareA === compareB && <div style={{ marginTop: 6, padding: '4px 8px', borderRadius: 4, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 9, color: '#f59e0b' }}>⚠️ Select two different subjects for comparison</div>}
+                    </div>
+
+                    {/* Comparison metrics */}
+                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                        {compareA !== compareB && compareData.map(m => {
+                            const aNum = typeof m.aVal === 'number' ? m.aVal : 0;
+                            const bNum = typeof m.bVal === 'number' ? m.bVal : 0;
+                            const maxV = Math.max(aNum, bNum, 1);
+                            const aWider = aNum >= bNum;
+                            const diff = aNum - bNum;
+                            const diffPct = maxV > 0 ? Math.round((Math.abs(diff) / maxV) * 100) : 0;
+                            const highlightA = m.higherIsBad && aNum > bNum;
+                            const highlightB = m.higherIsBad && bNum > aNum;
+                            return <div key={m.label} style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}06` }}>
+                                {/* Label row */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 4 }}>
+                                    <span style={{ fontSize: 10 }}>{m.icon}</span>
+                                    <span style={{ fontSize: 9, fontWeight: 700, color: theme.textSecondary }}>{m.label}</span>
+                                    {diffPct > 15 && <span style={{ fontSize: 7, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}>Δ{diffPct}%</span>}
+                                </div>
+                                {/* Dual bar */}
+                                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                    {/* A value */}
+                                    <span style={{ width: 36, fontSize: 11, fontWeight: 800, color: highlightA ? '#ef4444' : '#3b82f6', fontFamily: "'JetBrains Mono', monospace", textAlign: 'right' as const }}>{m.aVal}</span>
+                                    {/* A bar (right-aligned) */}
+                                    <div style={{ flex: 1, height: 8, borderRadius: 2, background: `${theme.border}20`, overflow: 'hidden', display: 'flex', justifyContent: 'flex-end' }}>
+                                        <div style={{ width: `${(aNum / maxV) * 100}%`, height: '100%', borderRadius: 2, background: highlightA ? 'linear-gradient(90deg, #3b82f6, #ef4444)' : '#3b82f6', transition: 'width 0.4s' }} />
+                                    </div>
+                                    {/* Divider */}
+                                    <div style={{ width: 2, height: 14, background: theme.border, borderRadius: 1, flexShrink: 0 }} />
+                                    {/* B bar (left-aligned) */}
+                                    <div style={{ flex: 1, height: 8, borderRadius: 2, background: `${theme.border}20`, overflow: 'hidden' }}>
+                                        <div style={{ width: `${(bNum / maxV) * 100}%`, height: '100%', borderRadius: 2, background: highlightB ? 'linear-gradient(270deg, #ef4444, #ef444460)' : '#ef4444', transition: 'width 0.4s' }} />
+                                    </div>
+                                    {/* B value */}
+                                    <span style={{ width: 36, fontSize: 11, fontWeight: 800, color: highlightB ? '#ef4444' : '#ef444499', fontFamily: "'JetBrains Mono', monospace", textAlign: 'left' as const }}>{m.bVal}</span>
+                                </div>
+                                {m.unit && <div style={{ textAlign: 'center' as const, fontSize: 7, color: theme.textDim, marginTop: 1 }}>{m.unit}</div>}
+                            </div>;
+                        })}
+
+                        {/* Activity pattern comparison */}
+                        {compareA !== compareB && <div style={{ padding: '10px 14px' }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: '#a855f7', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 8 }}>📊 Weekly Activity Pattern</div>
+                            <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 50 }}>
+                                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
+                                    const aVal = [12, 15, 11, 18, 14, 6, 4][i] * (parseInt(compareA) === 9 ? 1.3 : 1);
+                                    const bVal = [10, 8, 13, 9, 16, 12, 7][i] * (parseInt(compareB) === 9 ? 1.3 : 1);
+                                    const maxD = Math.max(aVal, bVal, 1);
+                                    return <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 1 }}>
+                                        <div style={{ display: 'flex', gap: 1, alignItems: 'flex-end', height: 36 }}>
+                                            <div style={{ width: 6, height: `${(aVal / 25) * 100}%`, borderRadius: '2px 2px 0 0', background: '#3b82f6', minHeight: 2 }} />
+                                            <div style={{ width: 6, height: `${(bVal / 25) * 100}%`, borderRadius: '2px 2px 0 0', background: '#ef4444', minHeight: 2 }} />
+                                        </div>
+                                        <span style={{ fontSize: 6, color: theme.textDim, fontWeight: 600 }}>{day}</span>
+                                    </div>;
+                                })}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 6 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><div style={{ width: 8, height: 4, borderRadius: 1, background: '#3b82f6' }} /><span style={{ fontSize: 7, color: '#3b82f6', fontWeight: 600 }}>{heatCalPersonInfo[parseInt(compareA)]?.name.split(' ')[1] || 'A'}</span></div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><div style={{ width: 8, height: 4, borderRadius: 1, background: '#ef4444' }} /><span style={{ fontSize: 7, color: '#ef4444', fontWeight: 600 }}>{heatCalPersonInfo[parseInt(compareB)]?.name.split(' ')[1] || 'B'}</span></div>
+                            </div>
+                        </div>}
+
+                        {/* Overlap analysis */}
+                        {compareA !== compareB && <div style={{ padding: '8px 14px' }}>
+                            <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(168,85,247,0.04)', border: '1px solid rgba(168,85,247,0.1)' }}>
+                                <div style={{ fontSize: 8, fontWeight: 700, color: '#a855f7', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 4 }}>🔗 Overlap Analysis</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                                    {[
+                                        { label: 'Co-locations', value: '23 events', color: '#ef4444' },
+                                        { label: 'Shared Zones', value: '2 zones', color: '#f59e0b' },
+                                        { label: 'Shared Contacts', value: '4 persons', color: '#3b82f6' },
+                                        { label: 'Time Overlap', value: '68%', color: '#22c55e' },
+                                    ].map(o => <div key={o.label} style={{ padding: '4px 6px', borderRadius: 4, background: `${theme.border}15` }}>
+                                        <div style={{ fontSize: 7, color: theme.textDim }}>{o.label}</div>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: o.color }}>{o.value}</div>
+                                    </div>)}
+                                </div>
+                            </div>
+                        </div>}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{compareData.length} metrics · 30-day analysis window</span>
+                        <div style={{ flex: 1 }} />
+                        <span style={{ fontSize: 7, color: '#a855f7', fontWeight: 600 }}>ClickHouse + scikit-learn</span>
+                    </div>
+                    </>}
+                </div>}
+
                 {/* ═══ WORKSPACES PANEL ═══ */}
                 {showWorkspacesPanel && loaded && <div data-panel="workspaces" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('workspaces' as PanelId); }} style={panelStyle('workspaces', '360px', theme.accent)}>
                     <PanelHeader id="workspaces" icon="📋" title="Workspaces" subtitle={`${workspaces.length} saved${wsActiveId ? ` · ${workspaces.find(w => w.id === wsActiveId)?.name}` : ''}`} color={theme.accent} onClose={() => setShowWorkspacesPanel(false)} extra={<button onClick={openSaveWs} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>💾 Save</button>} />
@@ -5348,6 +5647,8 @@ export default function MapIndex() {
                                     { keys: ['Alt', '4'], desc: 'Toggle Predictive Risk' },
                                     { keys: ['Alt', '5'], desc: 'Toggle Pattern Detection' },
                                     { keys: ['Alt', '6'], desc: 'Toggle Incident Timeline' },
+                                    { keys: ['Alt', '7'], desc: 'Toggle Heat Calendar' },
+                                    { keys: ['Alt', '8'], desc: 'Toggle Entity Comparison' },
                                 ]},
                                 { title: 'Tools & Overlays', color: '#8b5cf6', items: [
                                     { keys: ['T'], desc: 'Toggle timeline panel' },
