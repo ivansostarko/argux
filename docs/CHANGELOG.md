@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.14.0 - 2026-03-24
+
+### Added — Risks Dashboard (/risks)
+- **Threat Assessment Center**: Cross-entity risk scoring dashboard with 5 tabs, left sidebar filters, and expandable factor breakdowns.
+- **5 view tabs**: Overview (KPI cards + top threats + factor distribution), Persons (sortable risk table with expandable factor detail), Organizations (risk-colored cards with linked persons), Vehicles (risk table with owner links), Risk Factors Matrix (all factors sorted by score).
+- **Overview tab**: 3 KPI cards (Persons/Orgs/Vehicles) with critical/high/medium counts and stacked risk distribution bars. Top Threat Entities section showing Critical-rated persons with avatar, risk gauge (conic-gradient), and factor chips. Risk Factor Distribution grid showing 8 categories with factor counts and average scores — clickable to jump to matrix.
+- **Persons tab**: Table with avatar, name, nationality, risk level, composite risk score bar, top factor chip, and View link. Click to expand and see all risk factors with severity badge, detailed description, and individual score. Factors for 5 key subjects (Horvat: 6 factors, Mendoza: 5, Babić: 4, Hassan: 3, Al-Rashid: 3) totaling 21 risk factors.
+- **Organizations tab**: Card grid with industry, country, CEO, linked persons as clickable chips, risk badge. Links to /organizations/:id and /persons/:id.
+- **Vehicles tab**: Table with plate (monospace), make/model/year/color, risk level, owner link to /persons/:id, detail link to /vehicles/:id.
+- **Risk Factors Matrix tab**: All 21 risk factors across all subjects, sorted by score (0-100), with category icon, severity badge, detailed explanation, and link to subject profile. Filterable by 8 categories.
+- **8 risk factor categories**: High-Risk Connections, Zone Violations, LPR Flags, Behavioral Anomalies, Comms Anomalies, Co-location Patterns, AI Anomalies, Financial Flags.
+- **Left sidebar**: Risk Level filter (All/Critical/High/Medium/Low/No Risk with entity counts and color-coded bars), Factor Category filter (visible on matrix tab), search, quick links to /map, /activity, /operations, /workflows.
+- **Cross-linked**: Persons to /persons/:id, organizations to /organizations/:id, vehicles to /vehicles/:id, map, activity log, operations, workflows. Uses real mock data from all entity modules.
+
 ## 0.13.0 - 2026-03-24
 
 ### Added — Activity Log Page (/activity)
