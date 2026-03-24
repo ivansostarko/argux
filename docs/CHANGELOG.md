@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11.0 - 2026-03-24
+
+### Added — Operations Page (/operations)
+- **Surveillance Operation Planning Center**: Full-featured operations management page with split-panel layout (operation list + detail view).
+- **5 mock operations** with realistic intelligence scenarios: HAWK (Active, arms trafficking), GLACIER (Planning, financial network), PHOENIX (Preparation, tech transfer), CERBERUS (Debrief, border crossing), SHADOW (Closed, diplomatic — redacted).
+- **8 detail tabs**: Overview, Targets, Resources, Teams, Zones, Alerts, Timeline, Briefing.
+- **Overview tab**: KPI stats cards (events/alerts/hours/intel), operational checklist with team assignments and completion tracking, threat assessment with risk gauge (conic-gradient).
+- **Targets tab**: Grid of target persons with avatars, risk badges, nationality — linked to /persons/:id. Target organizations linked to /organizations/:id.
+- **Resources tab**: Deployed devices with status and type icons — linked to /devices/:id. Tracked vehicles with plate/make/model — linked to /vehicles/:id.
+- **Teams tab**: 6 pre-configured teams (Alpha Ground, Bravo Technical, Charlie SIGINT, Delta Maritime, Echo Air, Fox Rapid Response) with color-coded cards, team leads, member callsigns and roles.
+- **Zones tab**: Operation zones (surveillance/restricted/staging/buffer) with coordinates and radius. Linked to Map view.
+- **Alerts tab**: Per-operation alert rules with trigger types (Zone Entry, Co-location, LPR Match, Face Match, Signal Lost, Speed, Transaction), severity levels, and enable/disable state.
+- **Timeline tab**: Chronological event timeline with connected dot-line visualization, color-coded by type (phase/event/intel/alert).
+- **Briefing tab**: SITREP notes, comms channel/frequency display, classification footer.
+- **Operation list sidebar**: Filterable by phase (Planning/Preparation/Active/Debrief/Closed) with search, showing codename, priority badge, description preview, and resource counts.
+- **Risk gauge**: Conic-gradient circular gauge in operation header showing computed risk level (0-100).
+- **Connected features**: Direct links to /persons/:id, /organizations/:id, /devices/:id, /vehicles/:id, /map, /vision from all relevant tabs. Uses real mock data from persons, organizations, devices, vehicles.
+
 ## 0.10.2 - 2026-03-24
 
 ### Fixed — Vision Page Complete Rewrite
