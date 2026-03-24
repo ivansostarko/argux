@@ -643,8 +643,69 @@ export default function MapIndex() {
 
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+    // ═══ INCIDENT TIMELINE ═══
+    const [showIncidentPanel, setShowIncidentPanel] = useState(false);
+    const [incidentSearch, setIncidentSearch] = useState('');
+    const [incidentTypeFilter, setIncidentTypeFilter] = useState<Set<string>>(new Set(['all']));
+    const [incidentSevFilter, setIncidentSevFilter] = useState<Set<string>>(new Set(['all']));
+    const [incidentSelectedId, setIncidentSelectedId] = useState<string | null>(null);
+    const [incidentSortAsc, setIncidentSortAsc] = useState(false);
+
+    interface IncidentEvent { id: string; type: 'phone' | 'gps' | 'camera' | 'lpr' | 'face' | 'audio' | 'video' | 'zone' | 'alert' | 'comms'; severity: 'critical' | 'high' | 'medium' | 'low' | 'info'; title: string; description: string; personId: number; personName: string; personAvatar: string; risk: string; lat: number; lng: number; timestamp: string; timeAgo: string; source: string; location: string; linkedEntityType?: 'person' | 'org' | 'device' | 'vehicle'; linkedEntityName?: string; metadata: Record<string, string>; }
+
+    const incidentTypes = [
+        { id: 'phone', icon: '📱', label: 'Phone', color: '#06b6d4' },
+        { id: 'gps', icon: '📡', label: 'GPS', color: '#22c55e' },
+        { id: 'camera', icon: '📹', label: 'Camera', color: '#8b5cf6' },
+        { id: 'lpr', icon: '🚗', label: 'LPR', color: '#10b981' },
+        { id: 'face', icon: '🧑‍🦲', label: 'Face', color: '#ec4899' },
+        { id: 'audio', icon: '🎙️', label: 'Audio', color: '#f59e0b' },
+        { id: 'video', icon: '🎥', label: 'Video', color: '#3b82f6' },
+        { id: 'zone', icon: '🛡️', label: 'Zone', color: '#f97316' },
+        { id: 'alert', icon: '🚨', label: 'Alert', color: '#ef4444' },
+        { id: 'comms', icon: '💬', label: 'Comms', color: '#a855f7' },
+    ];
+
+    const mockIncidents: IncidentEvent[] = useMemo(() => [
+        { id: 'inc-01', type: 'zone', severity: 'critical', title: 'Geofence breach — Restricted Zone Alpha', description: 'Subject entered restricted perimeter zone. GPS tracker confirmed position inside exclusion boundary for 4 minutes before exiting via the south gate.', personId: 1, personName: 'Marko Horvat', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', lat: 45.8131, lng: 15.9775, timestamp: '2026-03-24 10:02', timeAgo: '12m ago', source: 'GPS Tracker · Zone Engine', location: 'Restricted Zone Alpha, Zagreb', metadata: ({ 'Zone': 'Restricted Alpha', 'Duration Inside': '4 min 12s', 'Entry Point': 'North fence', 'Exit Point': 'South gate' } as Record<string, string>) },
+        { id: 'inc-02', type: 'face', severity: 'critical', title: 'Facial recognition match — Camera 07', description: 'Positive facial match (94% confidence) from Camera 07 at Trg bana Jelačića. Subject was wearing a baseball cap. Match cross-referenced with InsightFace database.', personId: 9, personName: 'Carlos Mendoza', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', lat: 45.8133, lng: 15.9773, timestamp: '2026-03-24 09:48', timeAgo: '26m ago', source: 'InsightFace · Camera 07', location: 'Trg bana Jelačića, Zagreb', linkedEntityType: 'device', linkedEntityName: 'Camera 07', metadata: ({ 'Confidence': '94%', 'Camera': 'CAM-07', 'Disguise': 'Baseball cap', 'Database': 'InsightFace' } as Record<string, string>) },
+        { id: 'inc-03', type: 'lpr', severity: 'high', title: 'License plate captured — ZG-1847-AB', description: 'Vehicle registered to subject captured at LPR checkpoint on Vukovarska cesta. Speed: 52 km/h. Heading east toward port district.', personId: 1, personName: 'Marko Horvat', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', lat: 45.8020, lng: 15.9950, timestamp: '2026-03-24 09:31', timeAgo: '43m ago', source: 'LPR Reader · Vukovarska', location: 'Vukovarska cesta, Zagreb', linkedEntityType: 'vehicle', linkedEntityName: 'BMW 5 Series (ZG-1847-AB)', metadata: ({ 'Plate': 'ZG-1847-AB', 'Speed': '52 km/h', 'Direction': 'East', 'Vehicle': 'BMW 5 Series' } as Record<string, string>) },
+        { id: 'inc-04', type: 'alert', severity: 'critical', title: 'Co-location alert — Horvat & Mendoza', description: 'Proximity alert triggered. Both subjects detected within 25m radius at Savska cesta for 8 minutes. This is the 3rd co-location event in 48 hours.', personId: 1, personName: 'Marko Horvat', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', lat: 45.8075, lng: 15.9850, timestamp: '2026-03-24 09:15', timeAgo: '59m ago', source: 'Correlation Engine', location: 'Savska cesta 41, Zagreb', metadata: ({ 'Subject B': 'Carlos Mendoza', 'Distance': '25m', 'Duration': '8 min', 'Occurrence': '3rd in 48h' } as Record<string, string>) },
+        { id: 'inc-05', type: 'phone', severity: 'high', title: 'Phone signal reappeared after 6h dark period', description: 'Mobile locator signal restored after 6-hour blackout period. Subject phone was powered off or in Faraday bag from 03:00 to 09:00. Current position: Maksimirska residential area.', personId: 9, personName: 'Carlos Mendoza', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', lat: 45.8200, lng: 15.9600, timestamp: '2026-03-24 09:02', timeAgo: '1h ago', source: 'Mobile Locator · APP-LOC', location: 'Maksimirska 128, Zagreb', metadata: ({ 'Dark Period': '03:00–09:00 (6h)', 'Signal Strength': '72%', 'Battery': '45%', 'Possible Cause': 'Powered off / Faraday' } as Record<string, string>) },
+        { id: 'inc-06', type: 'gps', severity: 'medium', title: 'GPS tracker speed anomaly — 118 km/h urban', description: 'Vehicle GPS recorded sustained speed of 118 km/h in 50 km/h urban zone for 3.2 km. Route through Ilica toward Črnomerec. No pursuit reported.', personId: 12, personName: 'Ivan Babić', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', lat: 45.8160, lng: 15.9500, timestamp: '2026-03-24 08:44', timeAgo: '1h ago', source: 'GPS Tracker · GPS-002', location: 'Ilica 242, Zagreb', linkedEntityType: 'device', linkedEntityName: 'GPS-002', metadata: ({ 'Max Speed': '118 km/h', 'Zone Limit': '50 km/h', 'Distance': '3.2 km', 'Duration': '2 min' } as Record<string, string>) },
+        { id: 'inc-07', type: 'comms', severity: 'high', title: 'New encrypted channel — 14 messages to unknown', description: 'Subject registered with new encrypted messaging service (Signal-compatible). 14 messages exchanged in first hour with unidentified contact. IMSI correlation pending.', personId: 7, personName: 'Omar Hassan', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', lat: 45.8160, lng: 15.9500, timestamp: '2026-03-24 08:22', timeAgo: '2h ago', source: 'IMSI Catcher · Comms Monitor', location: 'Trešnjevka, Zagreb', metadata: ({ 'Platform': 'Encrypted (Signal-like)', 'Messages': '14 in 1h', 'Contact': 'Unknown IMSI', 'Status': 'IMSI correlation pending' } as Record<string, string>) },
+        { id: 'inc-08', type: 'camera', severity: 'medium', title: 'Surveillance camera — subject loitering', description: 'Camera 12 recorded subject standing outside building entrance for 22 minutes without entering. Behavior flagged as possible surveillance or counter-surveillance.', personId: 12, personName: 'Ivan Babić', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', lat: 45.8095, lng: 15.9720, timestamp: '2026-03-24 07:55', timeAgo: '2h ago', source: 'Camera 12 · AI Detection', location: 'Heinzelova 62, Zagreb', linkedEntityType: 'device', linkedEntityName: 'Camera 12', metadata: ({ 'Duration': '22 min', 'Camera': 'CAM-12', 'Behavior': 'Loitering', 'AI Flag': 'Counter-surveillance' } as Record<string, string>) },
+        { id: 'inc-09', type: 'audio', severity: 'low', title: 'Audio intercept transcribed — routine call', description: 'Faster-Whisper transcription completed for 4-minute phone call. Content assessed as routine personal call with family member. No operational intelligence detected.', personId: 7, personName: 'Omar Hassan', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', lat: 45.8050, lng: 15.9680, timestamp: '2026-03-24 07:30', timeAgo: '3h ago', source: 'Faster-Whisper · Audio Monitor', location: 'Dubrava, Zagreb', metadata: ({ 'Duration': '4 min 12s', 'Language': 'Arabic', 'Assessment': 'Routine / Personal', 'Transcription': 'Available' } as Record<string, string>) },
+        { id: 'inc-10', type: 'video', severity: 'info', title: 'Video recording uploaded — parking garage', description: 'Surveillance video from parking garage uploaded and indexed. 45-minute recording covering garage level B2. Subject vehicle entry captured at 06:48.', personId: 1, personName: 'Marko Horvat', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', lat: 45.8138, lng: 15.9780, timestamp: '2026-03-24 06:48', timeAgo: '3h ago', source: 'Video Storage · MinIO', location: 'Parking Garage B2, Vlaška', linkedEntityType: 'vehicle', linkedEntityName: 'BMW 5 Series', metadata: ({ 'Duration': '45 min', 'Location': 'Garage Level B2', 'Vehicle Entry': '06:48', 'Storage': 'MinIO indexed' } as Record<string, string>) },
+        { id: 'inc-11', type: 'zone', severity: 'high', title: 'Geofence exit — Monitored Zone Bravo', description: 'Subject exited monitored perimeter zone. Last position within zone recorded 14 minutes prior. Heading northwest on foot.', personId: 7, personName: 'Omar Hassan', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', lat: 45.8180, lng: 15.9920, timestamp: '2026-03-24 06:15', timeAgo: '4h ago', source: 'GPS Tracker · Zone Engine', location: 'Monitored Zone Bravo, Port Area', metadata: ({ 'Zone': 'Monitored Bravo', 'Time Inside': '38 min', 'Exit Direction': 'Northwest', 'Mode': 'On foot' } as Record<string, string>) },
+        { id: 'inc-12', type: 'gps', severity: 'info', title: 'GPS tracker battery low — 12%', description: 'GPS-006 battery level dropped below 15% threshold. Device attached to subject motorcycle. Last known position: Trešnjevka area. Signal strength degrading.', personId: 7, personName: 'Omar Hassan', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', lat: 45.8095, lng: 15.9720, timestamp: '2026-03-24 05:30', timeAgo: '5h ago', source: 'GPS Tracker · GPS-006', location: 'Trešnjevka, Zagreb', linkedEntityType: 'device', linkedEntityName: 'GPS-006', metadata: ({ 'Battery': '12%', 'Device': 'GPS-006', 'Attached To': 'Motorcycle', 'Signal': 'Degrading' } as Record<string, string>) },
+        { id: 'inc-13', type: 'alert', severity: 'medium', title: 'Signal lost — Phone locator timeout', description: 'Mobile phone locator lost signal for subject. Last known position at Dubrava residential area. Timeout: 30 minutes. Previous signal strength was 88%.', personId: 12, personName: 'Ivan Babić', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', lat: 45.8200, lng: 15.9600, timestamp: '2026-03-24 04:00', timeAgo: '6h ago', source: 'Mobile Locator · Timeout', location: 'Dubrava, Zagreb', metadata: ({ 'Timeout': '30 min', 'Last Signal': '88%', 'Last Position': 'Dubrava', 'Possible Cause': 'Phone off / No coverage' } as Record<string, string>) },
+        { id: 'inc-14', type: 'lpr', severity: 'high', title: 'Unregistered vehicle at checkpoint', description: 'Unknown vehicle plate KA-9921-CC captured at LPR reader near monitored safe house. Vehicle not in any watchlist. Plate registered to rental company.', personId: 0, personName: 'Unknown', personAvatar: '', risk: 'Unknown', lat: 45.8075, lng: 15.9850, timestamp: '2026-03-24 03:22', timeAgo: '7h ago', source: 'LPR Reader · Savska', location: 'Savska cesta 41, Zagreb', linkedEntityType: 'vehicle', linkedEntityName: 'Unknown (KA-9921-CC)', metadata: ({ 'Plate': 'KA-9921-CC', 'Registration': 'Rental company', 'Watchlist': 'Not found', 'Location': 'Near safe house' } as Record<string, string>) },
+        { id: 'inc-15', type: 'phone', severity: 'critical', title: 'SIM swap detected — new IMSI', description: 'Subject phone registered new IMSI number. Previous SIM deactivated. New SIM from prepaid batch. IMSI correlation shows purchase location: Kiosk, Glavni Kolodvor.', personId: 9, personName: 'Carlos Mendoza', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', lat: 45.8070, lng: 15.9780, timestamp: '2026-03-24 02:45', timeAgo: '7h ago', source: 'IMSI Catcher · SIM Monitor', location: 'Glavni Kolodvor, Zagreb', metadata: ({ 'Old IMSI': '21910***4821', 'New IMSI': '21901***7733', 'SIM Type': 'Prepaid', 'Purchase': 'Kiosk, Glavni Kolodvor' } as Record<string, string>) },
+    ], []);
+
+    const filteredIncidents = useMemo(() => {
+        let results = [...mockIncidents];
+        if (!incidentTypeFilter.has('all')) results = results.filter(e => incidentTypeFilter.has(e.type));
+        if (!incidentSevFilter.has('all')) results = results.filter(e => incidentSevFilter.has(e.severity));
+        if (incidentSearch.trim()) { const q = incidentSearch.toLowerCase(); results = results.filter(e => e.title.toLowerCase().includes(q) || e.personName.toLowerCase().includes(q) || e.location.toLowerCase().includes(q) || e.source.toLowerCase().includes(q)); }
+        if (incidentSortAsc) results.reverse();
+        return results;
+    }, [mockIncidents, incidentTypeFilter, incidentSevFilter, incidentSearch, incidentSortAsc]);
+
+    const incidentStats = useMemo(() => ({
+        total: mockIncidents.length,
+        critical: mockIncidents.filter(e => e.severity === 'critical').length,
+        high: mockIncidents.filter(e => e.severity === 'high').length,
+        medium: mockIncidents.filter(e => e.severity === 'medium').length,
+        low: mockIncidents.filter(e => e.severity === 'low').length,
+        info: mockIncidents.filter(e => e.severity === 'info').length,
+        types: new Set(mockIncidents.map(e => e.type)).size,
+        subjects: new Set(mockIncidents.filter(e => e.personId > 0).map(e => e.personId)).size,
+    }), [mockIncidents]);
+
     // ═══ FLOATING PANEL SYSTEM ═══
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents';
     interface PanelPos { x: number; y: number; }
     const defaultPanelPos: PanelPos = { x: 10, y: 10 };
     const [panelPositions, setPanelPositions] = useState<Record<string, PanelPos>>({});
@@ -2522,6 +2583,7 @@ export default function MapIndex() {
                 if (showAnomalyPanel) { setShowAnomalyPanel(false); return; }
                 if (showPredictivePanel) { setShowPredictivePanel(false); return; }
                 if (showPatternPanel) { setShowPatternPanel(false); return; }
+                if (showIncidentPanel) { setShowIncidentPanel(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
@@ -2533,7 +2595,7 @@ export default function MapIndex() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showPatternPanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
+    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showPatternPanel, showIncidentPanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -3204,6 +3266,17 @@ export default function MapIndex() {
                                 </div>
                                 {patternResults && patternResults.length > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#06b6d415', color: '#06b6d4', border: '1px solid #06b6d425' }}>{patternResults.length}</span>}
                                 <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showPatternPanel ? '#06b6d4' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+
+                            {/* Incident Timeline button */}
+                            <button onClick={() => { setShowIncidentPanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${showIncidentPanel ? '#f9731640' : theme.border}`, background: showIncidentPanel ? 'rgba(249,115,22,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(249,115,22,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showIncidentPanel ? 'rgba(249,115,22,0.06)' : 'transparent'; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📋</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: showIncidentPanel ? '#f97316' : theme.text }}>Incident Timeline</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>{mockIncidents.length} events · {incidentStats.critical} critical</div>
+                                </div>
+                                <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: incidentStats.critical > 0 ? '#ef444415' : `${theme.accent}12`, color: incidentStats.critical > 0 ? '#ef4444' : theme.accent, border: `1px solid ${incidentStats.critical > 0 ? '#ef444425' : theme.accent + '20'}` }}>{mockIncidents.length}</span>
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showIncidentPanel ? '#f97316' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
                             </button>
                         </div>
                     </Section>
@@ -4284,6 +4357,120 @@ export default function MapIndex() {
                         <div style={{ fontSize: 12, fontWeight: 700, color: '#06b6d4', marginBottom: 4 }}>Scanning Patterns</div>
                         <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center' as const, lineHeight: 1.5 }}>Analyzing {patternSubject ? '1 subject' : `${corrPersonOptions.length} subjects`} across 30-day history...<br/>Processing {patternCategory === 'all' ? 'all categories' : patternCategories.find(c => c.id === patternCategory)?.label}.</div>
                     </div>}
+                    </>}
+                </div>}
+
+                {/* ═══ INCIDENT TIMELINE PANEL ═══ */}
+                {showIncidentPanel && loaded && <div style={panelStyle('incidents', '420px', '#f97316')}>
+                    <PanelHeader id="incidents" icon="📋" title="Incident Timeline" subtitle={`${filteredIncidents.length} of ${mockIncidents.length} events · ${incidentStats.subjects} subjects`} color="#f97316" onClose={() => setShowIncidentPanel(false)} extra={<button onClick={() => setIncidentSortAsc(!incidentSortAsc)} title={incidentSortAsc ? 'Oldest first' : 'Newest first'} style={{ padding: '3px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{incidentSortAsc ? '↑ Old' : '↓ New'}</button>} />
+
+                    {!isPanelMin('incidents') && <>
+                    {/* Severity summary */}
+                    <div style={{ display: 'flex', gap: 3, padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        {[
+                            { sev: 'all', label: 'All', color: '#f97316', count: mockIncidents.length },
+                            { sev: 'critical', label: 'Crit', color: '#ef4444', count: incidentStats.critical },
+                            { sev: 'high', label: 'High', color: '#f97316', count: incidentStats.high },
+                            { sev: 'medium', label: 'Med', color: '#f59e0b', count: incidentStats.medium },
+                            { sev: 'low', label: 'Low', color: '#6b7280', count: incidentStats.low },
+                            { sev: 'info', label: 'Info', color: '#3b82f6', count: incidentStats.info },
+                        ].map(s => { const on = incidentSevFilter.has(s.sev); return <button key={s.sev} onClick={() => setIncidentSevFilter(prev => { if (s.sev === 'all') return new Set(['all']); const n = new Set(prev); n.delete('all'); if (n.has(s.sev)) { n.delete(s.sev); if (n.size === 0) return new Set(['all']); } else n.add(s.sev); return n; })} style={{ flex: 1, padding: '4px 2px', borderRadius: 4, border: `1px solid ${on ? s.color + '40' : 'transparent'}`, background: on ? `${s.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' as const, transition: 'all 0.1s' }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: on ? s.color : theme.textDim, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.count}</div>
+                            <div style={{ fontSize: 6, fontWeight: 700, color: on ? s.color : theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 1 }}>{s.label}</div>
+                        </button>; })}
+                    </div>
+
+                    {/* Type filter chips */}
+                    <div style={{ display: 'flex', gap: 3, padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0, flexWrap: 'wrap' as const }}>
+                        <button onClick={() => setIncidentTypeFilter(new Set(['all']))} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${incidentTypeFilter.has('all') ? '#f9731640' : theme.border}`, background: incidentTypeFilter.has('all') ? '#f9731608' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 600, color: incidentTypeFilter.has('all') ? '#f97316' : theme.textDim }}>All</button>
+                        {incidentTypes.map(t => { const on = incidentTypeFilter.has(t.id); const count = mockIncidents.filter(e => e.type === t.id).length; return count > 0 ? <button key={t.id} onClick={() => setIncidentTypeFilter(prev => { const n = new Set(prev); n.delete('all'); if (n.has(t.id)) { n.delete(t.id); if (n.size === 0) return new Set(['all']); } else n.add(t.id); return n; })} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${on ? t.color + '40' : theme.border}`, background: on ? `${t.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 2, fontSize: 8, fontWeight: 600, color: on ? t.color : theme.textDim }}>{t.icon}<span style={{ fontSize: 7 }}>{count}</span></button> : null; })}
+                    </div>
+
+                    {/* Search */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${incidentSearch ? '#f9731650' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                            <input value={incidentSearch} onChange={e => setIncidentSearch(e.target.value)} placeholder="Search events, persons, locations..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 10, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
+                            {incidentSearch && <button onClick={() => setIncidentSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }}><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
+                        </div>
+                    </div>
+
+                    {/* Event list */}
+                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                        {filteredIncidents.length === 0 && <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, marginBottom: 8 }}>📋</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Events Match</div><div style={{ fontSize: 10, color: theme.textDim }}>Adjust filters or search terms to see events.</div></div>}
+                        {filteredIncidents.map(ev => {
+                            const sevColor = ev.severity === 'critical' ? '#ef4444' : ev.severity === 'high' ? '#f97316' : ev.severity === 'medium' ? '#f59e0b' : ev.severity === 'low' ? '#6b7280' : '#3b82f6';
+                            const typeInfo = incidentTypes.find(t => t.id === ev.type);
+                            const typeColor = typeInfo?.color || '#f97316';
+                            const isExp = incidentSelectedId === ev.id;
+                            return <div key={ev.id} onClick={() => { setIncidentSelectedId(isExp ? null : ev.id); mapRef.current?.flyTo({ center: [ev.lng, ev.lat], zoom: 16, duration: 800 }); triggerTopLoader(); }} style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}06`, cursor: 'pointer', background: isExp ? '#f9731606' : 'transparent', transition: 'background 0.15s' }} onMouseEnter={e => { if (!isExp) e.currentTarget.style.background = 'rgba(255,255,255,0.015)'; }} onMouseLeave={e => { if (!isExp) e.currentTarget.style.background = 'transparent'; }}>
+                                {/* Timeline connector */}
+                                <div style={{ display: 'flex', gap: 10 }}>
+                                    {/* Left: timeline line + icon */}
+                                    <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', width: 28, flexShrink: 0 }}>
+                                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: `${typeColor}12`, border: `1.5px solid ${typeColor}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flexShrink: 0 }}>{typeInfo?.icon || '📌'}</div>
+                                        <div style={{ width: 1.5, flex: 1, background: `linear-gradient(to bottom, ${typeColor}30, transparent)`, marginTop: 4, minHeight: 8 }} />
+                                    </div>
+                                    {/* Right: content */}
+                                    <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}>
+                                        {/* Header */}
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 3 }}>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: 10, fontWeight: 700, color: theme.text, lineHeight: 1.3 }}>{ev.title}</div>
+                                                <div style={{ display: 'flex', gap: 3, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' as const }}>
+                                                    <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{ev.severity.toUpperCase()}</span>
+                                                    <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${typeColor}10`, color: typeColor, border: `1px solid ${typeColor}15` }}>{typeInfo?.label}</span>
+                                                    {ev.personId > 0 && <span style={{ fontSize: 7, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}><div style={{ width: 10, height: 10, borderRadius: '50%', background: ev.personAvatar ? `url(${ev.personAvatar}) center/cover` : theme.border, border: `1px solid ${ev.risk === 'Critical' ? '#ef444440' : '#f9731640'}`, flexShrink: 0 }} />{ev.personName.split(' ')[1]}</span>}
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                                                <div style={{ fontSize: 8, color: theme.textDim, fontWeight: 600 }}>{ev.timeAgo}</div>
+                                                <div style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{ev.timestamp.split(' ')[1]}</div>
+                                            </div>
+                                        </div>
+                                        {/* Location + source */}
+                                        <div style={{ display: 'flex', gap: 6, fontSize: 8, color: theme.textDim }}>
+                                            <span>📍 {ev.location.split(',')[0]}</span>
+                                            {ev.linkedEntityName && <span>🔗 {ev.linkedEntityName.length > 20 ? ev.linkedEntityName.slice(0, 20) + '...' : ev.linkedEntityName}</span>}
+                                        </div>
+                                        {/* Expanded details */}
+                                        {isExp && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                                            {/* Description */}
+                                            <div style={{ fontSize: 9, color: theme.text, lineHeight: 1.5, padding: '8px', borderRadius: 5, background: 'rgba(249,115,22,0.04)', border: '1px solid rgba(249,115,22,0.1)' }}>{ev.description}</div>
+                                            {/* Metadata grid */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                                                {Object.entries(ev.metadata).map(([k, v]) => <div key={k} style={{ padding: '4px 8px', borderRadius: 4, background: `${theme.border}15`, border: `1px solid ${theme.border}30` }}>
+                                                    <div style={{ fontSize: 7, color: theme.textDim, fontWeight: 600, marginBottom: 1 }}>{k}</div>
+                                                    <div style={{ fontSize: 9, color: theme.text, fontWeight: 700 }}>{v}</div>
+                                                </div>)}
+                                            </div>
+                                            {/* Source + coords */}
+                                            <div style={{ display: 'flex', gap: 8, fontSize: 8, color: theme.textDim, flexWrap: 'wrap' as const }}>
+                                                <span>📡 {ev.source}</span>
+                                                <span>📍 {ev.location}</span>
+                                                <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>🎯 {ev.lat.toFixed(5)}, {ev.lng.toFixed(5)}</span>
+                                            </div>
+                                            {/* Person link */}
+                                            {ev.personId > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.1)' }}>
+                                                <div style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${ev.risk === 'Critical' ? '#ef4444' : '#f97316'}`, background: `url(${ev.personAvatar}) center/cover`, flexShrink: 0 }} />
+                                                <div><div style={{ fontSize: 10, fontWeight: 700, color: theme.accent }}>{ev.personName}</div><div style={{ fontSize: 7, color: theme.textDim }}>Risk: {ev.risk} · {ev.timestamp}</div></div>
+                                            </div>}
+                                        </div>}
+                                    </div>
+                                </div>
+                            </div>;
+                        })}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e60' }} />
+                        <span style={{ fontSize: 8, color: '#22c55e', fontWeight: 600 }}>Live</span>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>·</span>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{filteredIncidents.length} of {mockIncidents.length} · {incidentStats.types} types · {incidentStats.subjects} subjects</span>
+                        <div style={{ flex: 1 }} />
+                        <span style={{ fontSize: 7, color: '#f97316', fontWeight: 600 }}>Kafka Stream</span>
+                    </div>
                     </>}
                 </div>}
 
