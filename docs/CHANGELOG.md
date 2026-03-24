@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.1 - 2026-03-24
+
+### Fixed — Vision Video Playback
+- **Video autoplay fix**: Replaced single-shot `play()` with robust event-based recovery. Videos now use `suspend`, `stalled`, `loadeddata`, and `pause` event listeners to retry playback automatically. Added periodic 2-second health check as fallback. Staggered initial play (200-1000ms random delay per tile) prevents browser throttling when loading 8+ simultaneous streams. Separated pause-toggle logic from autoplay logic to avoid dependency conflicts.
+
 ## 0.9.0 - 2026-03-24
 
 ### Added — Intelligence Panels & Vision Page
