@@ -492,8 +492,67 @@ export default function MapIndex() {
         return { total, avgDist, avgDur, totalDur, critical, high, uniquePairs, avgConf };
     }, [corrResults]);
 
+    // ═══ ANOMALY DETECTION ═══
+    const [showAnomalyPanel, setShowAnomalyPanel] = useState(false);
+    const [anomalySubject, setAnomalySubject] = useState<string>('');
+    const [anomalyType, setAnomalyType] = useState<string>('all');
+    const [anomalySensitivity, setAnomalySensitivity] = useState(70);
+    const [anomalyRunning, setAnomalyRunning] = useState(false);
+    const [anomalyResults, setAnomalyResults] = useState<any[] | null>(null);
+    const [anomalySelectedId, setAnomalySelectedId] = useState<string | null>(null);
+
+    interface AnomalyEvent { id: string; personId: number; personName: string; personAvatar: string; risk: string; type: 'route' | 'temporal' | 'location' | 'speed' | 'communication' | 'behavioral'; severity: 'critical' | 'high' | 'medium' | 'low'; confidence: number; title: string; description: string; lat: number; lng: number; timestamp: string; timeAgo: string; baseline: string; observed: string; deviation: number; recommendation: string; }
+
+    const anomalyTypes = [
+        { id: 'all', label: 'All Types', icon: '🔍' },
+        { id: 'route', label: 'Route Deviation', icon: '🛤️', color: '#3b82f6' },
+        { id: 'temporal', label: 'Time Pattern', icon: '🕐', color: '#8b5cf6' },
+        { id: 'location', label: 'New Location', icon: '📍', color: '#ef4444' },
+        { id: 'speed', label: 'Speed Anomaly', icon: '🏎️', color: '#f97316' },
+        { id: 'communication', label: 'Comms Pattern', icon: '📡', color: '#06b6d4' },
+        { id: 'behavioral', label: 'Behavior Change', icon: '🧠', color: '#ec4899' },
+    ];
+
+    const mockAnomalies: AnomalyEvent[] = useMemo(() => [
+        { id: 'an-1', personId: 1, personName: 'Marko Horvat', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', type: 'route', severity: 'critical', confidence: 94, title: 'Unrecognized route to port district', description: 'Subject deviated from established commute pattern. Took 3 unusual turns through industrial zone before arriving at an unvisited location near the cargo terminal.', lat: 45.8180, lng: 15.9920, timestamp: '2026-03-24 06:42', timeAgo: '4h ago', baseline: 'Home → Office via Vukovarska', observed: 'Home → Industrial zone → Port terminal', deviation: 87, recommendation: 'Deploy surveillance unit to port terminal. Cross-reference with cargo manifests for today.' },
+        { id: 'an-2', personId: 9, personName: 'Carlos Mendoza', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', type: 'temporal', severity: 'critical', confidence: 91, title: '03:15 movement in residential zone', description: 'Subject GPS activated at 03:15 after 6h silence. 22-minute drive through residential area with 3 stops of 2-4 minutes each. Pattern consistent with counter-surveillance route.', lat: 45.8075, lng: 15.9850, timestamp: '2026-03-24 03:15', timeAgo: '7h ago', baseline: 'No movement 22:00–07:00 (30-day avg)', observed: 'Active 03:15–03:37 with multiple stops', deviation: 95, recommendation: 'Review camera footage along route. Flag associated vehicle for LPR priority.' },
+        { id: 'an-3', personId: 12, personName: 'Ivan Babić', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', type: 'location', severity: 'high', confidence: 88, title: 'First visit to diplomatic quarter', description: 'Subject entered diplomatic quarter for the first time in monitoring history. Spent 48 minutes within 200m of Embassy Row. No prior connections to diplomatic entities.', lat: 45.8131, lng: 15.9775, timestamp: '2026-03-23 14:22', timeAgo: '20h ago', baseline: 'Never visited diplomatic quarter', observed: '48min in diplomatic zone, 2 stops near embassies', deviation: 100, recommendation: 'Investigate diplomatic connections. Monitor for repeat visits. Check facial recognition at embassy cameras.' },
+        { id: 'an-4', personId: 1, personName: 'Marko Horvat', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', type: 'speed', severity: 'high', confidence: 82, title: 'High-speed evasive driving pattern', description: 'Vehicle GPS recorded speeds of 120–140 km/h on urban roads (limit 50). Multiple rapid direction changes suggesting evasive or pursuit driving. Duration: 8 minutes.', lat: 45.8200, lng: 15.9600, timestamp: '2026-03-23 22:08', timeAgo: '12h ago', baseline: 'Avg speed 35 km/h urban, max 65 km/h', observed: '120–140 km/h with evasive maneuvers', deviation: 78, recommendation: 'Review traffic cameras. Check if subject was under active surveillance at the time.' },
+        { id: 'an-5', personId: 7, personName: 'Omar Hassan', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', type: 'communication', severity: 'critical', confidence: 96, title: 'New encrypted channel activated', description: 'Subject phone registered with new encrypted messaging service. 14 messages exchanged in first hour with unknown contact. Previous pattern: only standard SMS and WhatsApp.', lat: 45.8160, lng: 15.9500, timestamp: '2026-03-23 11:05', timeAgo: '23h ago', baseline: 'SMS + WhatsApp only, 5–8 contacts/day', observed: 'New encrypted app + 14 messages to unknown', deviation: 92, recommendation: 'Attempt IMSI correlation on new contact. Flag encrypted channel for priority intercept authorization.' },
+        { id: 'an-6', personId: 9, personName: 'Carlos Mendoza', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', type: 'behavioral', severity: 'high', confidence: 79, title: 'Counter-surveillance techniques detected', description: 'Subject exhibited classic counter-surveillance behavior: U-turns, extended waits at non-destination locations, speed variations, and phone powered off during transit. 3rd occurrence this week.', lat: 45.8095, lng: 15.9720, timestamp: '2026-03-23 09:30', timeAgo: '1d ago', baseline: 'Direct routes, phone always on', observed: 'U-turns, waiting, phone off during transit', deviation: 85, recommendation: 'Subject likely surveillance-aware. Consider switching to passive monitoring. Brief field teams on detection.' },
+        { id: 'an-7', personId: 12, personName: 'Ivan Babić', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', type: 'route', severity: 'medium', confidence: 71, title: 'Avoided usual checkpoint route', description: 'Subject took 15-minute detour to avoid road segment with fixed LPR camera. Previous 30 days: used this road 94% of trips. Detour adds no time benefit.', lat: 45.8020, lng: 15.9950, timestamp: '2026-03-22 18:45', timeAgo: '1d ago', baseline: 'LPR checkpoint route used 94% of trips', observed: '15-min detour avoiding LPR camera', deviation: 68, recommendation: 'Deploy mobile LPR unit on alternate route. Monitor for pattern of checkpoint avoidance.' },
+        { id: 'an-8', personId: 1, personName: 'Marko Horvat', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', type: 'temporal', severity: 'medium', confidence: 74, title: 'Weekend activity pattern shift', description: 'Subject historically inactive on weekends (avg 2 locations/day). Last 2 weekends: 8+ locations/day with extended periods in commercial areas. Pattern suggests operational preparation.', lat: 45.8138, lng: 15.9780, timestamp: '2026-03-22 10:00', timeAgo: '2d ago', baseline: '2 locations/day on weekends', observed: '8+ locations/day, commercial areas', deviation: 72, recommendation: 'Increase weekend coverage. Map all visited commercial locations for pattern analysis.' },
+        { id: 'an-9', personId: 7, personName: 'Omar Hassan', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', type: 'location', severity: 'high', confidence: 86, title: 'Repeated visits to storage facility', description: 'Subject visited self-storage facility 4 times in 7 days. No prior history of visits. Each visit lasted 10–20 minutes. Facility has no known associations.', lat: 45.8050, lng: 15.9680, timestamp: '2026-03-21 16:15', timeAgo: '3d ago', baseline: 'No prior storage facility visits', observed: '4 visits in 7 days, 10–20 min each', deviation: 83, recommendation: 'Identify storage unit. Consider physical surveillance during next visit. Check facility records.' },
+    ], []);
+
+    const runAnomalyDetection = () => {
+        setAnomalyRunning(true);
+        triggerTopLoader();
+        setTimeout(() => {
+            let results = [...mockAnomalies];
+            if (anomalySubject) results = results.filter(r => String(r.personId) === anomalySubject);
+            if (anomalyType !== 'all') results = results.filter(r => r.type === anomalyType);
+            results = results.filter(r => r.confidence >= (100 - anomalySensitivity));
+            setAnomalyResults(results);
+            setAnomalyRunning(false);
+        }, 1500 + Math.random() * 1000);
+    };
+
+    const anomalyStats = useMemo(() => {
+        if (!anomalyResults) return null;
+        const total = anomalyResults.length;
+        const critical = anomalyResults.filter(r => r.severity === 'critical').length;
+        const high = anomalyResults.filter(r => r.severity === 'high').length;
+        const medium = anomalyResults.filter(r => r.severity === 'medium').length;
+        const avgConf = total > 0 ? Math.round(anomalyResults.reduce((s, r) => s + r.confidence, 0) / total) : 0;
+        const avgDev = total > 0 ? Math.round(anomalyResults.reduce((s, r) => s + r.deviation, 0) / total) : 0;
+        const subjects = new Set(anomalyResults.map(r => r.personId)).size;
+        const types = new Set(anomalyResults.map(r => r.type)).size;
+        return { total, critical, high, medium, avgConf, avgDev, subjects, types };
+    }, [anomalyResults]);
+
     // ═══ FLOATING PANEL SYSTEM ═══
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly';
     interface PanelPos { x: number; y: number; }
     const defaultPanelPos: PanelPos = { x: 10, y: 10 };
     const [panelPositions, setPanelPositions] = useState<Record<string, PanelPos>>({});
@@ -2368,6 +2427,7 @@ export default function MapIndex() {
                 if (timelineOpen) { setTimelineOpen(false); setTimelinePlaying(false); return; }
                 if (showLiveTracker) { setShowLiveTracker(false); return; }
                 if (showCorrelationPanel) { setShowCorrelationPanel(false); return; }
+                if (showAnomalyPanel) { setShowAnomalyPanel(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
@@ -2379,7 +2439,7 @@ export default function MapIndex() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
+    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -2981,7 +3041,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'intelligence' ? ' dragging' : ''}${dragOverId === 'intelligence' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('intelligence') }} onDragOver={e => handleSectionDragOver(e, 'intelligence')} onDrop={() => handleSectionDrop('intelligence')}>
-                    <Section title="Intelligence" icon={Ico.intel} badge={liveTrackSessions.length + (corrResults ? corrResults.length : 0)} dragHandle={dragHandleEl('intelligence')}>
+                    <Section title="Intelligence" icon={Ico.intel} badge={liveTrackSessions.length + (corrResults ? corrResults.length : 0) + (anomalyResults ? anomalyResults.length : 0)} dragHandle={dragHandleEl('intelligence')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {/* Live Tracker button */}
                             <button onClick={() => { setShowLiveTracker(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e30' : theme.border}`, background: liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.06)'; e.currentTarget.style.borderColor = '#22c55e40'; }} onMouseLeave={e => { e.currentTarget.style.background = liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent'; e.currentTarget.style.borderColor = liveTrackSessions.length > 0 ? '#22c55e30' : theme.border; }}>
@@ -3019,7 +3079,18 @@ export default function MapIndex() {
                             </button>
 
                             {[
-                                { icon: '🧠', label: 'Anomaly Detection', desc: 'AI movement analysis' },
+                                { icon: '🧠', label: 'Anomaly Detection', desc: 'AI movement analysis', panel: true },
+                            ].map(p => <button key={p.label} onClick={() => { setShowAnomalyPanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${anomalyResults && anomalyResults.length > 0 ? '#8b5cf630' : showAnomalyPanel ? '#8b5cf640' : theme.border}`, background: showAnomalyPanel ? 'rgba(139,92,246,0.06)' : anomalyResults && anomalyResults.length > 0 ? 'rgba(139,92,246,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showAnomalyPanel ? 'rgba(139,92,246,0.06)' : anomalyResults && anomalyResults.length > 0 ? 'rgba(139,92,246,0.03)' : 'transparent'; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: anomalyResults && anomalyResults.length > 0 ? 'rgba(139,92,246,0.12)' : 'rgba(139,92,246,0.06)', border: `1px solid ${anomalyResults && anomalyResults.length > 0 ? '#8b5cf630' : '#8b5cf615'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{p.icon}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: anomalyResults && anomalyResults.length > 0 ? '#8b5cf6' : theme.text }}>{p.label}</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>{anomalyResults ? `${anomalyResults.length} anomalies detected` : p.desc}</div>
+                                </div>
+                                {anomalyResults && anomalyResults.length > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#8b5cf615', color: '#8b5cf6', border: '1px solid #8b5cf625' }}>{anomalyResults.length}</span>}
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showAnomalyPanel ? '#8b5cf6' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>)}
+
+                            {[
                                 { icon: '📈', label: 'Predictive Risk', desc: 'Location & risk predictions' },
                                 { icon: '🔄', label: 'Pattern Detection', desc: 'Frequency & regularity' },
                             ].map(p => <div key={p.label} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8, opacity: 0.5, cursor: 'not-allowed' }}>
@@ -3673,6 +3744,154 @@ export default function MapIndex() {
                         <div style={{ width: 32, height: 32, border: '3px solid rgba(245,158,11,0.2)', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite', marginBottom: 12 }} />
                         <div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>Analyzing Events</div>
                         <div style={{ fontSize: 9, color: theme.textDim }}>Cross-referencing position data across {corrPersonOptions.length} subjects...</div>
+                    </div>}
+                    </>}
+                </div>}
+
+                {/* ═══ ANOMALY DETECTION PANEL ═══ */}
+                {showAnomalyPanel && loaded && <div style={panelStyle('anomaly', '400px', '#8b5cf6')}>
+                    <PanelHeader id="anomaly" icon="🧠" title="Anomaly Detection" subtitle={anomalyResults ? `${anomalyResults.length} anomalies · ${anomalyStats?.subjects || 0} subjects` : 'AI-powered movement pattern analysis'} color="#8b5cf6" onClose={() => setShowAnomalyPanel(false)} extra={anomalyResults ? <button onClick={() => { setAnomalyResults(null); setAnomalySelectedId(null); }} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>✕ Clear</button> : undefined} />
+
+                    {!isPanelMin('anomaly') && <>
+                    {/* Config */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {/* Subject + Type */}
+                        <div style={{ display: 'flex', gap: 6 }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Subject</div>
+                                <select value={anomalySubject} onChange={e => setAnomalySubject(e.target.value)} style={{ width: '100%', padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${anomalySubject ? '#8b5cf640' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
+                                    <option value="">All persons</option>
+                                    {corrPersonOptions.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Type</div>
+                                <select value={anomalyType} onChange={e => setAnomalyType(e.target.value)} style={{ width: '100%', padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${anomalyType !== 'all' ? '#8b5cf640' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
+                                    {anomalyTypes.map(t => <option key={t.id} value={t.id}>{t.icon} {t.label}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        {/* Sensitivity slider */}
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}><span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Sensitivity</span><span style={{ fontSize: 9, fontWeight: 700, color: '#8b5cf6', fontFamily: "'JetBrains Mono', monospace" }}>{anomalySensitivity}%</span></div>
+                            <input type="range" min={30} max={100} step={5} value={anomalySensitivity} onChange={e => setAnomalySensitivity(parseInt(e.target.value))} style={{ width: '100%', height: 4, accentColor: '#8b5cf6' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 7, color: theme.textDim, marginTop: 2 }}><span>Fewer, high-confidence</span><span>More, lower threshold</span></div>
+                        </div>
+                        {/* Run button */}
+                        <button onClick={runAnomalyDetection} disabled={anomalyRunning} style={{ padding: '8px', borderRadius: 6, border: 'none', background: anomalyRunning ? theme.border : 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: anomalyRunning ? theme.textDim : '#fff', fontSize: 11, fontWeight: 800, cursor: anomalyRunning ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, letterSpacing: '0.05em', opacity: anomalyRunning ? 0.6 : 1, transition: 'all 0.2s' }}>
+                            {anomalyRunning ? <><div style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite' }} />Running AI Analysis...</> : <>🧠 Run Anomaly Detection</>}
+                        </button>
+                    </div>
+
+                    {/* Results */}
+                    {anomalyResults && <>
+                        {/* Stats row */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                            {[
+                                { label: 'Anomalies', value: String(anomalyStats!.total), color: '#8b5cf6' },
+                                { label: 'Subjects', value: String(anomalyStats!.subjects), color: '#3b82f6' },
+                                { label: 'Avg Conf', value: `${anomalyStats!.avgConf}%`, color: '#22c55e' },
+                                { label: 'Avg Dev', value: `${anomalyStats!.avgDev}%`, color: '#f59e0b' },
+                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' }}>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
+                                <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
+                            </div>)}
+                        </div>
+
+                        {/* Severity + Type chips */}
+                        <div style={{ display: 'flex', gap: 3, padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0, flexWrap: 'wrap' }}>
+                            {[
+                                { sev: 'critical', color: '#ef4444', count: anomalyStats!.critical },
+                                { sev: 'high', color: '#f97316', count: anomalyStats!.high },
+                                { sev: 'medium', color: '#f59e0b', count: anomalyStats!.medium },
+                            ].filter(s => s.count > 0).map(s => <span key={s.sev} style={{ fontSize: 7, fontWeight: 700, padding: '2px 5px', borderRadius: 3, background: `${s.color}10`, color: s.color, border: `1px solid ${s.color}20` }}>{s.count} {s.sev}</span>)}
+                            <span style={{ width: 1, height: 14, background: theme.border, margin: '0 2px' }} />
+                            {anomalyTypes.filter(t => t.id !== 'all' && anomalyResults.some(r => r.type === t.id)).map(t => <span key={t.id} style={{ fontSize: 7, fontWeight: 600, padding: '2px 5px', borderRadius: 3, background: `${t.color}08`, color: t.color, border: `1px solid ${t.color}15` }}>{t.icon} {anomalyResults.filter(r => r.type === t.id).length}</span>)}
+                        </div>
+
+                        {/* Anomaly list */}
+                        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                            {anomalyResults.length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>✅</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>No Anomalies Detected</div><div style={{ fontSize: 10, color: theme.textDim }}>All movement patterns within expected baselines. Try increasing sensitivity.</div></div>}
+                            {anomalyResults.map(an => {
+                                const sevColor = an.severity === 'critical' ? '#ef4444' : an.severity === 'high' ? '#f97316' : an.severity === 'medium' ? '#f59e0b' : '#6b7280';
+                                const typeInfo = anomalyTypes.find(t => t.id === an.type);
+                                const typeColor = typeInfo?.color || '#8b5cf6';
+                                const confColor = an.confidence >= 90 ? '#22c55e' : an.confidence >= 75 ? '#f59e0b' : '#ef4444';
+                                const isExpanded = anomalySelectedId === an.id;
+                                return <div key={an.id} onClick={() => { setAnomalySelectedId(isExpanded ? null : an.id); mapRef.current?.flyTo({ center: [an.lng, an.lat], zoom: 16, duration: 800 }); triggerTopLoader(); }} style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}08`, cursor: 'pointer', background: isExpanded ? '#8b5cf606' : 'transparent', transition: 'background 0.15s', borderLeft: `3px solid ${sevColor}` }} onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = 'transparent'; }}>
+                                    {/* Header */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                        <div style={{ width: 26, height: 26, borderRadius: '50%', border: `2px solid ${an.risk === 'Critical' ? '#ef4444' : '#f97316'}`, background: `url(${an.personAvatar}) center/cover`, flexShrink: 0 }} />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{an.title}</div>
+                                            <div style={{ display: 'flex', gap: 3, alignItems: 'center', marginTop: 1 }}>
+                                                <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{an.severity.toUpperCase()}</span>
+                                                <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${typeColor}10`, color: typeColor, border: `1px solid ${typeColor}15` }}>{typeInfo?.icon} {typeInfo?.label}</span>
+                                                <span style={{ fontSize: 7, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{an.confidence}%</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                            <div style={{ fontSize: 8, color: theme.textDim }}>{an.timeAgo}</div>
+                                            <div style={{ fontSize: 8, color: theme.textDim }}>{an.personName.split(' ')[1]}</div>
+                                        </div>
+                                    </div>
+                                    {/* Deviation bar */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: isExpanded ? 6 : 0 }}>
+                                        <span style={{ fontSize: 7, color: theme.textDim, width: 50, flexShrink: 0 }}>Deviation</span>
+                                        <div style={{ flex: 1, height: 4, borderRadius: 2, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${an.deviation}%`, height: '100%', borderRadius: 2, background: an.deviation >= 85 ? '#ef4444' : an.deviation >= 70 ? '#f59e0b' : '#22c55e', transition: 'width 0.5s' }} /></div>
+                                        <span style={{ fontSize: 8, fontWeight: 700, color: an.deviation >= 85 ? '#ef4444' : an.deviation >= 70 ? '#f59e0b' : '#22c55e', fontFamily: "'JetBrains Mono', monospace", width: 30, textAlign: 'right', flexShrink: 0 }}>{an.deviation}%</span>
+                                    </div>
+                                    {/* Expanded */}
+                                    {isExpanded && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        {/* Description */}
+                                        <div style={{ fontSize: 9, color: theme.text, lineHeight: 1.5, padding: '8px', borderRadius: 5, background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.1)' }}>{an.description}</div>
+                                        {/* Baseline vs Observed */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                                            <div style={{ padding: '6px 8px', borderRadius: 5, background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.1)' }}>
+                                                <div style={{ fontSize: 7, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>📊 Baseline</div>
+                                                <div style={{ fontSize: 8, color: theme.textDim, lineHeight: 1.4 }}>{an.baseline}</div>
+                                            </div>
+                                            <div style={{ padding: '6px 8px', borderRadius: 5, background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}>
+                                                <div style={{ fontSize: 7, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>⚠️ Observed</div>
+                                                <div style={{ fontSize: 8, color: theme.textDim, lineHeight: 1.4 }}>{an.observed}</div>
+                                            </div>
+                                        </div>
+                                        {/* Location + Time */}
+                                        <div style={{ display: 'flex', gap: 8, fontSize: 8, color: theme.textDim }}>
+                                            <span>📍 {mockAddress(an.lat, an.lng)}</span>
+                                            <span>📅 {an.timestamp}</span>
+                                        </div>
+                                        {/* Recommendation */}
+                                        <div style={{ padding: '8px', borderRadius: 5, background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.12)' }}>
+                                            <div style={{ fontSize: 7, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>💡 Recommendation</div>
+                                            <div style={{ fontSize: 9, color: theme.text, lineHeight: 1.5 }}>{an.recommendation}</div>
+                                        </div>
+                                    </div>}
+                                </div>;
+                            })}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <span style={{ fontSize: 8, color: theme.textDim }}>{anomalyResults.length} anomalies · ø{anomalyStats!.avgConf}% confidence · {anomalyStats!.types} types</span>
+                            <div style={{ flex: 1 }} />
+                            <span style={{ fontSize: 7, color: '#8b5cf6', fontWeight: 600 }}>AI: Ollama LLaMA 3.1</span>
+                        </div>
+                    </>}
+
+                    {/* Empty state */}
+                    {!anomalyResults && !anomalyRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' }}>
+                        <div style={{ fontSize: 36, marginBottom: 8 }}>🧠</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>AI Anomaly Detection</div>
+                        <div style={{ fontSize: 10, color: theme.textDim, maxWidth: 260, lineHeight: 1.5, marginBottom: 12 }}>Uses on-premise AI to analyze movement patterns, temporal behaviors, and communication changes to identify deviations from established baselines.</div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>{anomalyTypes.filter(t => t.id !== 'all').map(t => <span key={t.id} style={{ fontSize: 7, padding: '2px 5px', borderRadius: 3, background: `${t.color}08`, color: t.color, border: `1px solid ${t.color}15` }}>{t.icon} {t.label}</span>)}</div>
+                    </div>}
+
+                    {/* Loading */}
+                    {anomalyRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
+                        <div style={{ width: 32, height: 32, border: '3px solid rgba(139,92,246,0.2)', borderTopColor: '#8b5cf6', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite', marginBottom: 12 }} />
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', marginBottom: 4 }}>Analyzing Patterns</div>
+                        <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center', lineHeight: 1.5 }}>Running behavioral analysis on {anomalySubject ? '1 subject' : `${corrPersonOptions.length} subjects`}...<br/>Comparing against 30-day baseline profiles.</div>
                     </div>}
                     </>}
                 </div>}
