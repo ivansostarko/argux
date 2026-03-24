@@ -106,19 +106,86 @@ services:
     stdin_open: true
     logging: *default-logging
 
-  # Redis
-  redis:
+   # Redis Cache
+  redis-cache:
     image: redis:8.2-alpine
-    container_name: redis
-    hostname: redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    container_name: argux_redis_cache
+    hostname: argux_redis_cache
+    command: redis-server  --appendonly yes --requirepass ${REDIS_PASSWORD_CACHE}
     ports:
-      - "${REDIS_PORT}:6379"
+      - "${REDIS_PORT_CACHE}:6379"
     volumes:
-      - redis_data:/data
+      - redis_cache_data:/data
+    networks:
+      - app_network
+    #restart: always
+    tty: true
+    stdin_open: true
+    logging: *default-logging
+
+  # Redis Queue
+  redis-queue:
+    image: redis:8.2-alpine
+    container_name: argux_redis_queue
+    hostname: argux_redis_queue
+    command: redis-server  --appendonly yes --requirepass ${REDIS_PASSWORD_QUEUE:-cx54fdg@2}
+    ports:
+      - "${REDIS_PORT_QUEUE:-6388}:6379"
+    volumes:
+      - redis_queue_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "-p", "6379", "-a", "${REDIS_PASSWORD_QUEUE:-cx54fdg@2}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
     networks:
       - app_network
     restart: always
+    tty: true
+    stdin_open: true
+    logging: *default-logging
+
+  # Redis Session
+  redis-session:
+    image: redis:8.2-alpine
+    container_name: argux_redis_session
+    hostname: argux_redis_session
+    command: redis-server  --appendonly yes --requirepass ${REDIS_PASSWORD_SESSION:-cx54fdg@3}
+    ports:
+      - "${REDIS_PORT_SESSION:-6347}:6379"
+    volumes:
+      - redis_session_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "-p", "6379", "-a", "${REDIS_PASSWORD_SESSION:-cx54fdg@3}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks:
+      - app_network
+    restart: always
+    tty: true
+    stdin_open: true
+    logging: *default-logging
+
+
+  # Redis Broadcast
+  redis-broadcast:
+    image: redis:8.2-alpine
+    container_name: argux_redis_broadcast
+    hostname: argux_redis_broadcast
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD_BROADCAST:-cx54fdg@4}
+    ports:
+      - "${REDIS_PORT_BROADCAST:-6307}:6379"
+    volumes:
+      - redis_broadcast_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "-p", "6379", "-a", "${REDIS_PASSWORD_BROADCAST:-cx54fdg@4}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks:
+      - app_network
+    #restart: always
     tty: true
     stdin_open: true
     logging: *default-logging
@@ -133,4 +200,8 @@ volumes:
   storage:
   bootstrap_cache:
   node_modules:
+  redis_broadcast_data:
+  redis_cache_data:
   redis_data:
+  redis_queue_data:
+  redis_session_data:
