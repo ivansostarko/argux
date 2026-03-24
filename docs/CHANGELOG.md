@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.16.0 - 2026-03-24
+
+### Added — Alert Rules Page (/alerts)
+- **Surveillance Alert Engine**: Full alert rule management with 18 rules across 9 trigger types, per-entity targeting, 4 notification channels, and live alert feed.
+- **3 view tabs**: Rules (filterable list with inline status), Live Feed (12 recent alert events with acknowledgment state), Statistics (breakdown by trigger type, person, and operation).
+- **9 trigger types** from spec: Zone Entry (🛡️), Zone Exit (🚪), Co-location (🔗), Face Match (🧑), Photo/Video (📸), Speed Alert (🏎️), Signal Lost (📵), LPR Match (🚗), Keyword Detection (🔤). Each with icon, color, configurable fields.
+- **18 mock alert rules** across 3 operations: HAWK (15 rules: port intrusion, co-location pairs, face at airport, LPR watchlist, signal lost, speed, diplomatic zone, keyword audio, after-hours motion, SIM swap, unknown LPR), GLACIER (2: financial transactions >€50K, Al-Rashid face), PHOENIX (1: Shanghai camera, disabled pending legal auth).
+- **12 recent alert events** in live feed: zone breaches, face matches, LPR captures, co-location alerts, keyword detections, speed violations, signal loss, SIM swap — with acknowledged/unacknowledged state and "NEW" indicator.
+- **Left sidebar filters**: Trigger Type (9 types with counts), Severity (Critical/Warning/Info), Operation (HAWK/GLACIER/PHOENIX), Target Person (dropdown with all targeted persons), Enabled/Disabled status, text search. Stats bar: total rules, active, unacknowledged, total fired.
+- **Rule detail panel**: Trigger type icon + label, severity + enabled badges, description, fired count + cooldown stats, configuration key-value cards (zone/radius/threshold/plates/keywords/confidence etc.), notification channels (In-App 🔔, Email 📧, SMS 💬, Webhook 🔗), target persons linked to /persons/:id, target organizations linked to /organizations/:id, metadata (last fired, created by, operation), Enable/Disable toggle, navigation to /operations and /workflows.
+- **Statistics tab**: Alerts by trigger type (cards with rule count + fired count per type), Alert coverage by person (bar chart showing rules and fires per target), By operation (HAWK/GLACIER/PHOENIX comparison).
+- **Cross-linked**: Target persons to /persons/:id (Horvat, Mendoza, Babić, Hassan, Al-Rashid, Li Wei), target organizations to /organizations/:id (Alpha Security, Rashid Holdings, Falcon Trading, Dragon Tech), operations to /operations, workflows to /workflows, activity to /activity. Same trigger types used in Map live feed, Workflows engine, and Operations alert rules.
+
 ## 0.15.0 - 2026-03-24
 
 ### Added — Data Sources Page (/data-sources)
