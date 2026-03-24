@@ -551,8 +551,44 @@ export default function MapIndex() {
         return { total, critical, high, medium, avgConf, avgDev, subjects, types };
     }, [anomalyResults]);
 
+    // ═══ PREDICTIVE RISK ═══
+    const [showPredictivePanel, setShowPredictivePanel] = useState(false);
+    const [predTimeHorizon, setPredTimeHorizon] = useState<'6h' | '24h' | '72h' | '7d'>('24h');
+    const [predRunning, setPredRunning] = useState(false);
+    const [predResults, setPredResults] = useState<any[] | null>(null);
+    const [predSelectedId, setPredSelectedId] = useState<string | null>(null);
+
+    interface PredRiskEntry { id: string; personId: number; personName: string; personAvatar: string; currentRisk: 'Critical' | 'High' | 'Medium' | 'Low'; predictedRisk: 'Critical' | 'High' | 'Medium' | 'Low'; riskDelta: number; riskScore: number; confidence: number; predictedLat: number; predictedLng: number; predictedLocation: string; predictedTime: string; probability: number; factors: { label: string; weight: number; trend: 'up' | 'down' | 'stable'; icon: string }[]; nextLocations: { name: string; probability: number; lat: number; lng: number }[]; threatAssessment: string; recommendedActions: string[]; }
+
+    const mockPredictions: PredRiskEntry[] = useMemo(() => [
+        { id: 'pr-1', personId: 1, personName: 'Marko Horvat', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', currentRisk: 'Critical', predictedRisk: 'Critical', riskDelta: +12, riskScore: 94, confidence: 91, predictedLat: 45.8180, predictedLng: 15.9920, predictedLocation: 'Port Terminal Area', predictedTime: 'Tonight 20:00–23:00', probability: 78, factors: [{ label: 'Co-location frequency', weight: 92, trend: 'up', icon: '🔗' }, { label: 'Route anomalies', weight: 87, trend: 'up', icon: '🛤️' }, { label: 'Night activity increase', weight: 85, trend: 'up', icon: '🌙' }, { label: 'Counter-surveillance', weight: 78, trend: 'stable', icon: '🧠' }, { label: 'Financial connections', weight: 71, trend: 'up', icon: '💰' }], nextLocations: [{ name: 'Port Terminal', probability: 78, lat: 45.8180, lng: 15.9920 }, { name: 'Vukovarska Safe House', probability: 64, lat: 45.8020, lng: 15.9950 }, { name: 'Heinzelova Office', probability: 52, lat: 45.8095, lng: 15.9720 }], threatAssessment: 'Subject shows accelerating pattern of operational preparation. Increased co-location with Mendoza and Babić, combined with new route patterns to port area, suggest imminent logistics operation. Risk trajectory sharply upward.', recommendedActions: ['Deploy dedicated surveillance team for tonight', 'Position mobile LPR at port approaches', 'Activate IMSI catcher near port terminal', 'Brief tactical response unit on standby'] },
+        { id: 'pr-2', personId: 9, personName: 'Carlos Mendoza', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', currentRisk: 'Critical', predictedRisk: 'Critical', riskDelta: +8, riskScore: 89, confidence: 87, predictedLat: 45.8075, predictedLng: 15.9850, predictedLocation: 'Savska District', predictedTime: 'Tomorrow AM', probability: 65, factors: [{ label: 'Counter-surveillance behavior', weight: 95, trend: 'up', icon: '🧠' }, { label: 'Night movement pattern', weight: 88, trend: 'up', icon: '🌙' }, { label: 'New encrypted comms', weight: 82, trend: 'up', icon: '📡' }, { label: 'Vehicle speed anomalies', weight: 76, trend: 'stable', icon: '🏎️' }], nextLocations: [{ name: 'Savska Safe House', probability: 65, lat: 45.8075, lng: 15.9850 }, { name: 'Port Area', probability: 58, lat: 45.8180, lng: 15.9920 }, { name: 'Vlaška Residence', probability: 41, lat: 45.8138, lng: 15.9780 }], threatAssessment: 'Subject demonstrates increasing operational security awareness. Counter-surveillance techniques becoming more sophisticated. Likely aware of monitoring. High probability of rendezvous with Horvat within 24h.', recommendedActions: ['Switch to passive-only monitoring', 'Deploy technical surveillance at predicted locations', 'Monitor encrypted communication channel'] },
+        { id: 'pr-3', personId: 12, personName: 'Ivan Babić', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', currentRisk: 'High', predictedRisk: 'Critical', riskDelta: +22, riskScore: 81, confidence: 83, predictedLat: 45.8131, predictedLng: 15.9775, predictedLocation: 'Diplomatic Quarter', predictedTime: 'Tomorrow 14:00–16:00', probability: 71, factors: [{ label: 'New location pattern', weight: 100, trend: 'up', icon: '📍' }, { label: 'Diplomatic zone visits', weight: 94, trend: 'up', icon: '🏛️' }, { label: 'LPR checkpoint avoidance', weight: 68, trend: 'up', icon: '🚗' }, { label: 'Co-location with Horvat', weight: 65, trend: 'stable', icon: '🔗' }], nextLocations: [{ name: 'Diplomatic Quarter', probability: 71, lat: 45.8131, lng: 15.9775 }, { name: 'City Center', probability: 55, lat: 45.8131, lng: 15.9775 }, { name: 'Maksimir Area', probability: 38, lat: 45.8200, lng: 15.9600 }], threatAssessment: 'RISK ESCALATION: Subject transitioning from High to Critical. Unprecedented diplomatic zone activity suggests new operational dimension. Combined with checkpoint avoidance, indicates heightened awareness and possible new contacts.', recommendedActions: ['Upgrade subject to Critical classification', 'Deploy facial recognition at embassy cameras', 'Cross-reference with diplomatic intelligence'] },
+        { id: 'pr-4', personId: 7, personName: 'Omar Hassan', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', currentRisk: 'High', predictedRisk: 'High', riskDelta: +5, riskScore: 72, confidence: 79, predictedLat: 45.8050, predictedLng: 15.9680, predictedLocation: 'Storage Facility', predictedTime: 'Within 48h', probability: 62, factors: [{ label: 'Storage facility visits', weight: 83, trend: 'up', icon: '📦' }, { label: 'New encrypted channel', weight: 92, trend: 'up', icon: '📡' }, { label: 'Port area presence', weight: 64, trend: 'stable', icon: '🚢' }], nextLocations: [{ name: 'Storage Facility', probability: 62, lat: 45.8050, lng: 15.9680 }, { name: 'Port Terminal', probability: 48, lat: 45.8180, lng: 15.9920 }], threatAssessment: 'Subject maintaining elevated risk level. Repeated storage facility visits and encrypted communications suggest material staging or exchange operations. Pattern consistent with logistics support role.', recommendedActions: ['Identify specific storage unit', 'Physical surveillance on next visit', 'Coordinate with port security'] },
+    ], []);
+
+    const runPredictiveRisk = () => {
+        setPredRunning(true);
+        triggerTopLoader();
+        setTimeout(() => {
+            setPredResults([...mockPredictions]);
+            setPredRunning(false);
+        }, 2000 + Math.random() * 1000);
+    };
+
+    const predStats = useMemo(() => {
+        if (!predResults) return null;
+        const total = predResults.length;
+        const escalating = predResults.filter(r => r.riskDelta > 10).length;
+        const avgScore = total > 0 ? Math.round(predResults.reduce((s, r) => s + r.riskScore, 0) / total) : 0;
+        const avgConf = total > 0 ? Math.round(predResults.reduce((s, r) => s + r.confidence, 0) / total) : 0;
+        const critPredicted = predResults.filter(r => r.predictedRisk === 'Critical').length;
+        const totalActions = predResults.reduce((s, r) => s + r.recommendedActions.length, 0);
+        return { total, escalating, avgScore, avgConf, critPredicted, totalActions };
+    }, [predResults]);
+
     // ═══ FLOATING PANEL SYSTEM ═══
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive';
     interface PanelPos { x: number; y: number; }
     const defaultPanelPos: PanelPos = { x: 10, y: 10 };
     const [panelPositions, setPanelPositions] = useState<Record<string, PanelPos>>({});
@@ -2428,6 +2464,7 @@ export default function MapIndex() {
                 if (showLiveTracker) { setShowLiveTracker(false); return; }
                 if (showCorrelationPanel) { setShowCorrelationPanel(false); return; }
                 if (showAnomalyPanel) { setShowAnomalyPanel(false); return; }
+                if (showPredictivePanel) { setShowPredictivePanel(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
@@ -2439,7 +2476,7 @@ export default function MapIndex() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
+    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -3041,7 +3078,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'intelligence' ? ' dragging' : ''}${dragOverId === 'intelligence' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('intelligence') }} onDragOver={e => handleSectionDragOver(e, 'intelligence')} onDrop={() => handleSectionDrop('intelligence')}>
-                    <Section title="Intelligence" icon={Ico.intel} badge={liveTrackSessions.length + (corrResults ? corrResults.length : 0) + (anomalyResults ? anomalyResults.length : 0)} dragHandle={dragHandleEl('intelligence')}>
+                    <Section title="Intelligence" icon={Ico.intel} badge={liveTrackSessions.length + (corrResults ? corrResults.length : 0) + (anomalyResults ? anomalyResults.length : 0) + (predResults ? predResults.length : 0)} dragHandle={dragHandleEl('intelligence')}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {/* Live Tracker button */}
                             <button onClick={() => { setShowLiveTracker(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e30' : theme.border}`, background: liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.06)'; e.currentTarget.style.borderColor = '#22c55e40'; }} onMouseLeave={e => { e.currentTarget.style.background = liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.04)' : 'transparent'; e.currentTarget.style.borderColor = liveTrackSessions.length > 0 ? '#22c55e30' : theme.border; }}>
@@ -3090,8 +3127,18 @@ export default function MapIndex() {
                                 <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showAnomalyPanel ? '#8b5cf6' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
                             </button>)}
 
+                            {/* Predictive Risk button */}
+                            <button onClick={() => { setShowPredictivePanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${predResults && predResults.length > 0 ? '#ef444430' : showPredictivePanel ? '#ef444440' : theme.border}`, background: showPredictivePanel ? 'rgba(239,68,68,0.06)' : predResults && predResults.length > 0 ? 'rgba(239,68,68,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showPredictivePanel ? 'rgba(239,68,68,0.06)' : predResults && predResults.length > 0 ? 'rgba(239,68,68,0.03)' : 'transparent'; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: predResults && predResults.length > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.06)', border: `1px solid ${predResults && predResults.length > 0 ? '#ef444430' : '#ef444415'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📈</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: predResults && predResults.length > 0 ? '#ef4444' : theme.text }}>Predictive Risk</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>{predResults ? `${predResults.length} subjects · ${predResults.filter(r => r.riskDelta > 10).length} escalating` : 'Location & risk predictions'}</div>
+                                </div>
+                                {predResults && predResults.length > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#ef444415', color: '#ef4444', border: '1px solid #ef444425' }}>{predResults.length}</span>}
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showPredictivePanel ? '#ef4444' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+
                             {[
-                                { icon: '📈', label: 'Predictive Risk', desc: 'Location & risk predictions' },
                                 { icon: '🔄', label: 'Pattern Detection', desc: 'Frequency & regularity' },
                             ].map(p => <div key={p.label} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8, opacity: 0.5, cursor: 'not-allowed' }}>
                                 <span style={{ fontSize: 13 }}>{p.icon}</span>
@@ -3892,6 +3939,139 @@ export default function MapIndex() {
                         <div style={{ width: 32, height: 32, border: '3px solid rgba(139,92,246,0.2)', borderTopColor: '#8b5cf6', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite', marginBottom: 12 }} />
                         <div style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', marginBottom: 4 }}>Analyzing Patterns</div>
                         <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center', lineHeight: 1.5 }}>Running behavioral analysis on {anomalySubject ? '1 subject' : `${corrPersonOptions.length} subjects`}...<br/>Comparing against 30-day baseline profiles.</div>
+                    </div>}
+                    </>}
+                </div>}
+
+                {/* ═══ PREDICTIVE RISK PANEL ═══ */}
+                {showPredictivePanel && loaded && <div style={panelStyle('predictive', '420px', '#ef4444')}>
+                    <PanelHeader id="predictive" icon="📈" title="Predictive Risk" subtitle={predResults ? `${predResults.length} subjects · Horizon: ${predTimeHorizon}` : 'Risk trajectory & location prediction'} color="#ef4444" onClose={() => setShowPredictivePanel(false)} extra={predResults ? <button onClick={() => { setPredResults(null); setPredSelectedId(null); }} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>✕ Clear</button> : undefined} />
+
+                    {!isPanelMin('predictive') && <>
+                    {/* Config */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Prediction Horizon</div>
+                            <div style={{ display: 'flex', gap: 3 }}>
+                                {[{ id: '6h' as const, label: '6 Hours' }, { id: '24h' as const, label: '24 Hours' }, { id: '72h' as const, label: '3 Days' }, { id: '7d' as const, label: '7 Days' }].map(h => <button key={h.id} onClick={() => setPredTimeHorizon(h.id)} style={{ flex: 1, padding: '5px', borderRadius: 4, border: `1px solid ${predTimeHorizon === h.id ? '#ef444440' : theme.border}`, background: predTimeHorizon === h.id ? 'rgba(239,68,68,0.08)' : 'transparent', color: predTimeHorizon === h.id ? '#ef4444' : theme.textDim, fontSize: 9, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{h.label}</button>)}
+                            </div>
+                        </div>
+                        <button onClick={runPredictiveRisk} disabled={predRunning} style={{ padding: '8px', borderRadius: 6, border: 'none', background: predRunning ? theme.border : 'linear-gradient(135deg, #ef4444, #dc2626)', color: predRunning ? theme.textDim : '#fff', fontSize: 11, fontWeight: 800, cursor: predRunning ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, letterSpacing: '0.05em', opacity: predRunning ? 0.6 : 1, transition: 'all 0.2s' }}>
+                            {predRunning ? <><div style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite' }} />Generating Predictions...</> : <>📈 Run Predictive Analysis</>}
+                        </button>
+                    </div>
+
+                    {/* Results */}
+                    {predResults && <>
+                        {/* Stats */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                            {[
+                                { label: 'Avg Score', value: String(predStats!.avgScore), color: predStats!.avgScore >= 80 ? '#ef4444' : '#f59e0b' },
+                                { label: 'Escalating', value: String(predStats!.escalating), color: '#ef4444' },
+                                { label: 'Actions', value: String(predStats!.totalActions), color: '#3b82f6' },
+                            ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' }}>
+                                <div style={{ fontSize: 16, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
+                                <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
+                            </div>)}
+                        </div>
+
+                        {/* Subject list */}
+                        <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                            {predResults.map(pr => {
+                                const riskColor = pr.predictedRisk === 'Critical' ? '#ef4444' : pr.predictedRisk === 'High' ? '#f97316' : pr.predictedRisk === 'Medium' ? '#f59e0b' : '#22c55e';
+                                const curColor = pr.currentRisk === 'Critical' ? '#ef4444' : pr.currentRisk === 'High' ? '#f97316' : '#f59e0b';
+                                const isExp = predSelectedId === pr.id;
+                                const escalating = pr.riskDelta > 10;
+                                return <div key={pr.id} onClick={() => { setPredSelectedId(isExp ? null : pr.id); mapRef.current?.flyTo({ center: [pr.predictedLng, pr.predictedLat], zoom: 15, duration: 800 }); triggerTopLoader(); }} style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}08`, cursor: 'pointer', background: isExp ? '#ef444406' : 'transparent', transition: 'background 0.15s', borderLeft: `3px solid ${riskColor}` }} onMouseEnter={e => { if (!isExp) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isExp) e.currentTarget.style.background = 'transparent'; }}>
+                                    {/* Person header */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                        <div style={{ width: 32, height: 32, borderRadius: '50%', border: `2.5px solid ${riskColor}`, background: `url(${pr.personAvatar}) center/cover`, flexShrink: 0, position: 'relative' }}>
+                                            {escalating && <div style={{ position: 'absolute', top: -3, right: -3, width: 12, height: 12, borderRadius: '50%', background: '#ef4444', border: '1.5px solid rgba(13,18,32,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: '#fff', fontWeight: 900 }}>↑</div>}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>{pr.personName}</div>
+                                            <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}>
+                                                <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${curColor}12`, color: curColor, border: `1px solid ${curColor}20` }}>{pr.currentRisk}</span>
+                                                <span style={{ fontSize: 9, color: escalating ? '#ef4444' : '#22c55e' }}>→</span>
+                                                <span style={{ fontSize: 8, fontWeight: 800, padding: '1px 5px', borderRadius: 3, background: `${riskColor}15`, color: riskColor, border: `1px solid ${riskColor}25` }}>{pr.predictedRisk}</span>
+                                                <span style={{ fontSize: 8, fontWeight: 800, color: pr.riskDelta > 0 ? '#ef4444' : '#22c55e', fontFamily: "'JetBrains Mono', monospace" }}>{pr.riskDelta > 0 ? '+' : ''}{pr.riskDelta}%</span>
+                                            </div>
+                                        </div>
+                                        {/* Risk score gauge */}
+                                        <div style={{ width: 40, height: 40, borderRadius: '50%', border: `3px solid ${riskColor}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative', background: `conic-gradient(${riskColor} ${pr.riskScore * 3.6}deg, ${theme.border} ${pr.riskScore * 3.6}deg)` }}>
+                                            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(10,14,22,0.97)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 11, fontWeight: 900, color: riskColor, fontFamily: "'JetBrains Mono', monospace" }}>{pr.riskScore}</span></div>
+                                        </div>
+                                    </div>
+                                    {/* Predicted location */}
+                                    <div style={{ display: 'flex', gap: 8, fontSize: 8, color: theme.textDim, marginBottom: isExp ? 6 : 0 }}>
+                                        <span>📍 <span style={{ color: theme.text, fontWeight: 600 }}>{pr.predictedLocation}</span></span>
+                                        <span>🕐 <span style={{ color: theme.text, fontWeight: 600 }}>{pr.predictedTime}</span></span>
+                                        <span style={{ marginLeft: 'auto', fontWeight: 700, color: '#ef4444', fontFamily: "'JetBrains Mono', monospace" }}>{pr.probability}%</span>
+                                    </div>
+
+                                    {/* Expanded details */}
+                                    {isExp && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {/* Risk factors */}
+                                        <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(239,68,68,0.03)', border: '1px solid rgba(239,68,68,0.08)' }}>
+                                            <div style={{ fontSize: 8, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>Risk Factors</div>
+                                            {pr.factors.map((f: any, i: number) => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                                <span style={{ fontSize: 10 }}>{f.icon}</span>
+                                                <span style={{ fontSize: 9, color: theme.text, flex: 1 }}>{f.label}</span>
+                                                <span style={{ fontSize: 8, color: f.trend === 'up' ? '#ef4444' : f.trend === 'down' ? '#22c55e' : '#f59e0b' }}>{f.trend === 'up' ? '↑' : f.trend === 'down' ? '↓' : '→'}</span>
+                                                <div style={{ width: 60, height: 4, borderRadius: 2, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${f.weight}%`, height: '100%', borderRadius: 2, background: f.weight >= 85 ? '#ef4444' : f.weight >= 70 ? '#f59e0b' : '#3b82f6' }} /></div>
+                                                <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", width: 26, textAlign: 'right' }}>{f.weight}%</span>
+                                            </div>)}
+                                        </div>
+                                        {/* Next predicted locations */}
+                                        <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(59,130,246,0.03)', border: '1px solid rgba(59,130,246,0.08)' }}>
+                                            <div style={{ fontSize: 8, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>Predicted Locations</div>
+                                            {pr.nextLocations.map((loc: any, i: number) => <div key={i} onClick={e => { e.stopPropagation(); mapRef.current?.flyTo({ center: [loc.lng, loc.lat], zoom: 16, duration: 600 }); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, marginBottom: 2, cursor: 'pointer', border: `1px solid transparent` }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f625'; e.currentTarget.style.background = 'rgba(59,130,246,0.04)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'transparent'; }}>
+                                                <div style={{ width: 18, height: 18, borderRadius: '50%', background: `conic-gradient(#3b82f6 ${loc.probability * 3.6}deg, ${theme.border} ${loc.probability * 3.6}deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: '50%', background: 'rgba(10,14,22,0.97)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 6, fontWeight: 900, color: '#3b82f6' }}>{i + 1}</span></div></div>
+                                                <span style={{ fontSize: 9, color: theme.text, flex: 1 }}>{loc.name}</span>
+                                                <span style={{ fontSize: 9, fontWeight: 800, color: loc.probability >= 60 ? '#ef4444' : loc.probability >= 40 ? '#f59e0b' : '#3b82f6', fontFamily: "'JetBrains Mono', monospace" }}>{loc.probability}%</span>
+                                            </div>)}
+                                        </div>
+                                        {/* Threat assessment */}
+                                        <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)' }}>
+                                            <div style={{ fontSize: 8, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 4 }}>⚠️ Threat Assessment</div>
+                                            <div style={{ fontSize: 9, color: theme.text, lineHeight: 1.5 }}>{pr.threatAssessment}</div>
+                                        </div>
+                                        {/* Recommended actions */}
+                                        <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(34,197,94,0.03)', border: '1px solid rgba(34,197,94,0.1)' }}>
+                                            <div style={{ fontSize: 8, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 4 }}>💡 Recommended Actions</div>
+                                            {pr.recommendedActions.map((a: string, i: number) => <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 4, marginBottom: 3 }}>
+                                                <div style={{ width: 14, height: 14, borderRadius: 3, background: '#22c55e12', border: '1px solid #22c55e20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 800, color: '#22c55e', flexShrink: 0 }}>{i + 1}</div>
+                                                <span style={{ fontSize: 9, color: theme.text, lineHeight: 1.4 }}>{a}</span>
+                                            </div>)}
+                                        </div>
+                                    </div>}
+                                </div>;
+                            })}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <span style={{ fontSize: 8, color: theme.textDim }}>{predResults.length} subjects · ø{predStats!.avgConf}% conf · {predStats!.totalActions} actions</span>
+                            <div style={{ flex: 1 }} />
+                            <span style={{ fontSize: 7, color: '#ef4444', fontWeight: 600 }}>AI: XGBoost + scikit-learn</span>
+                        </div>
+                    </>}
+
+                    {/* Empty state */}
+                    {!predResults && !predRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30, textAlign: 'center' }}>
+                        <div style={{ fontSize: 36, marginBottom: 8 }}>📈</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Predictive Risk Analysis</div>
+                        <div style={{ fontSize: 10, color: theme.textDim, maxWidth: 260, lineHeight: 1.5, marginBottom: 12 }}>Uses on-premise ML models to predict risk trajectories, probable next locations, and threat assessments for persons of interest.</div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+                            {['Risk Trajectory', 'Location Prediction', 'Threat Assessment', 'Action Recommendations'].map(f => <span key={f} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, background: '#ef444408', color: '#ef4444', border: '1px solid #ef444415' }}>{f}</span>)}
+                        </div>
+                    </div>}
+
+                    {/* Loading */}
+                    {predRunning && <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
+                        <div style={{ width: 32, height: 32, border: '3px solid rgba(239,68,68,0.2)', borderTopColor: '#ef4444', borderRadius: '50%', animation: 'argux-spin 0.8s linear infinite', marginBottom: 12 }} />
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>Generating Predictions</div>
+                        <div style={{ fontSize: 9, color: theme.textDim, textAlign: 'center', lineHeight: 1.5 }}>Analyzing {predTimeHorizon} horizon across {corrPersonOptions.length} subjects...<br/>Processing behavioral data, network graphs, and location history.</div>
                     </div>}
                     </>}
                 </div>}
