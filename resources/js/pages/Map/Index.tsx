@@ -433,6 +433,7 @@ export default function MapIndex() {
     const [showRulerPanel, setShowRulerPanel] = useState(false);
     const [showZonePanel, setShowZonePanel] = useState(false);
     const [showPlacesPanel, setShowPlacesPanel] = useState(false);
+    const [showWorkspacesPanel, setShowWorkspacesPanel] = useState(false);
 
     const filteredObjects = mapObjects.filter(o => {
         if (objSearch && !o.name.toLowerCase().includes(objSearch.toLowerCase()) && !o.type.includes(objSearch.toLowerCase())) return false;
@@ -2251,13 +2252,14 @@ export default function MapIndex() {
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
                 if (showPlacesPanel) { setShowPlacesPanel(false); return; }
+                if (showWorkspacesPanel) { setShowWorkspacesPanel(false); return; }
                 if (activeLayerPanel) { setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); return; }
                 if (sidebarOpen) { setSidebarOpen(false); return; }
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, activeLayerPanel, sidebarOpen]);
+    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -2949,59 +2951,25 @@ export default function MapIndex() {
                     {/* SETTINGS */}
                     <div className={`tmap-section-wrap${dragSectionId === 'workspaces' ? ' dragging' : ''}${dragOverId === 'workspaces' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('workspaces') }} onDragOver={e => handleSectionDragOver(e, 'workspaces')} onDrop={() => handleSectionDrop('workspaces')}>
                     <Section title="Workspaces" icon={Ico.workspaces} badge={workspaces.length} dragHandle={dragHandleEl('workspaces')}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {/* Active indicator */}
-                            {wsActiveId && <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 2 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {/* Active workspace indicator */}
+                            {wsActiveId && <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
                                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
                                 <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{workspaces.find(w => w.id === wsActiveId)?.name || 'Active'}</span>
-                                <button onClick={() => { const ws = workspaces.find(w => w.id === wsActiveId); if (ws) updateWsState(ws); }} title="Update with current state" style={{ fontSize: 7, padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(59,130,246,0.25)', background: 'rgba(59,130,246,0.06)', color: theme.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>💾 Update</button>
+                                <button onClick={() => { const ws = workspaces.find(w => w.id === wsActiveId); if (ws) updateWsState(ws); }} title="Update" style={{ fontSize: 7, padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(59,130,246,0.25)', background: 'rgba(59,130,246,0.06)', color: theme.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>💾</button>
                             </div>}
-                            {/* Actions */}
-                            <div style={{ display: 'flex', gap: 4 }}>
-                                <button onClick={openSaveWs} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px', borderRadius: 5, border: `1px solid ${theme.accent}30`, background: `${theme.accent}08`, color: theme.accent, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>💾 Save Current</button>
-                            </div>
-                            {/* Search */}
-                            <input value={wsSearch} onChange={e => setWsSearch(e.target.value)} placeholder="Search workspaces..." style={{ padding: '5px 8px', background: theme.bgInput, color: theme.text, border: `1px solid ${wsSearch ? theme.accent + '50' : theme.border}`, borderRadius: 5, fontSize: 10, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
-                            {/* Workspace list */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto', scrollbarWidth: 'thin' }}>
-                                {workspaces.filter(ws => { if (!wsSearch.trim()) return true; const q = wsSearch.toLowerCase(); return ws.name.toLowerCase().includes(q) || ws.description.toLowerCase().includes(q) || ws.tags.some(t => t.toLowerCase().includes(q)); }).map(ws => {
-                                    const isActive = wsActiveId === ws.id;
-                                    const isDeleting = wsDeleteConfirm === ws.id;
-                                    return <div key={ws.id} style={{ padding: '6px 8px', borderRadius: 6, border: `1px solid ${isActive ? '#22c55e25' : isDeleting ? theme.danger + '25' : theme.border}`, background: isActive ? 'rgba(34,197,94,0.04)' : isDeleting ? 'rgba(239,68,68,0.04)' : 'transparent', transition: 'all 0.15s' }}>
-                                        {/* Header */}
-                                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 3 }}>
-                                            <div style={{ width: 24, height: 24, borderRadius: 5, background: isActive ? 'rgba(34,197,94,0.12)' : `${theme.accent}08`, border: `1px solid ${isActive ? '#22c55e30' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flexShrink: 0 }}>{isActive ? '✅' : '📋'}</div>
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontSize: 10, fontWeight: 700, color: isActive ? '#22c55e' : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ws.name}</div>
-                                                <div style={{ fontSize: 8, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginTop: 1 }}>{ws.description}</div>
-                                            </div>
-                                        </div>
-                                        {/* Tags */}
-                                        {ws.tags.length > 0 && <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginBottom: 4 }}>
-                                            {ws.tags.map(t => <span key={t} style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${theme.accent}08`, color: theme.accent, border: `1px solid ${theme.accent}15` }}>{t}</span>)}
-                                        </div>}
-                                        {/* Meta */}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 7, color: theme.textDim, marginBottom: 4 }}>
-                                            <span>📅 {ws.updatedAt.split(' ')[0]}</span>
-                                            <span>🕐 {ws.updatedAt.split(' ')[1]}</span>
-                                            <span>👤 {ws.state.selectedPersons.length}p</span>
-                                            <span>{ws.state.layerLPR ? '🚗' : ''}{ws.state.layerFace ? '🧑‍🦲' : ''}{ws.state.layerHeatmap ? '🔥' : ''}{ws.state.layerNetwork ? '🕸️' : ''}{ws.state.showZones ? '🛡️' : ''}</span>
-                                        </div>
-                                        {/* Delete confirmation */}
-                                        {isDeleting ? <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                                            <span style={{ fontSize: 8, color: theme.danger, flex: 1 }}>Delete this workspace?</span>
-                                            <button onClick={() => deleteWorkspace(ws.id)} style={{ padding: '3px 8px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: theme.danger, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Yes</button>
-                                            <button onClick={() => setWsDeleteConfirm(null)} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>No</button>
-                                        </div> : <div style={{ display: 'flex', gap: 3 }}>
-                                            <button onClick={() => { loadWorkspace(ws); triggerTopLoader(); }} style={{ flex: 1, padding: '4px', borderRadius: 4, border: `1px solid ${isActive ? '#22c55e25' : theme.accent + '25'}`, background: isActive ? 'rgba(34,197,94,0.06)' : `${theme.accent}06`, color: isActive ? '#22c55e' : theme.accent, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>{isActive ? '🔄 Reload' : '📂 Load'}</button>
-                                            <button onClick={() => openEditWs(ws)} style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>✏️</button>
-                                            <button onClick={() => { updateWsState(ws); }} title="Overwrite with current map state" style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>💾</button>
-                                            <button onClick={() => setWsDeleteConfirm(ws.id)} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.04)', color: theme.danger, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>🗑️</button>
-                                        </div>}
-                                    </div>;
-                                })}
-                                {workspaces.filter(ws => { if (!wsSearch.trim()) return true; const q = wsSearch.toLowerCase(); return ws.name.toLowerCase().includes(q) || ws.description.toLowerCase().includes(q) || ws.tags.some(t => t.toLowerCase().includes(q)); }).length === 0 && <div style={{ padding: 12, textAlign: 'center', fontSize: 10, color: theme.textDim }}>{wsSearch ? 'No workspaces match your search.' : 'No saved workspaces yet.'}</div>}
-                            </div>
+                            {/* Open panel button */}
+                            <button onClick={() => { setShowWorkspacesPanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${workspaces.length > 0 ? theme.accent + '25' : theme.border}`, background: showWorkspacesPanel ? `${theme.accent}06` : workspaces.length > 0 ? `${theme.accent}03` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = `${theme.accent}08`; }} onMouseLeave={e => { e.currentTarget.style.background = showWorkspacesPanel ? `${theme.accent}06` : workspaces.length > 0 ? `${theme.accent}03` : 'transparent'; }}>
+                                <div style={{ width: 24, height: 24, borderRadius: 5, background: `${theme.accent}08`, border: `1px solid ${theme.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>📋</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: theme.text }}>Workspaces</div>
+                                    <div style={{ fontSize: 7, color: theme.textDim }}>{workspaces.length} saved{wsActiveId ? ` · ${workspaces.find(w => w.id === wsActiveId)?.name || 'Active'}` : ''}</div>
+                                </div>
+                                {workspaces.length > 0 && <span style={{ fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: `${theme.accent}12`, color: theme.accent, border: `1px solid ${theme.accent}20` }}>{workspaces.length}</span>}
+                                <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showWorkspacesPanel ? theme.accent : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+                            {/* Quick save */}
+                            <button onClick={openSaveWs} style={{ padding: '5px', borderRadius: 4, border: `1px solid ${theme.accent}25`, background: `${theme.accent}04`, color: theme.accent, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, width: '100%' }}>💾 Save Current State</button>
                         </div>
                     </Section>
                     </div>
@@ -3435,6 +3403,85 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>{trackablePersons.filter(t => t.status === 'online').length}/{trackablePersons.length} online</span>
                         <div style={{ flex: 1 }} />
                         <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveTrackSessions.length > 0 ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6002</span></span>
+                    </div>
+                </div>}
+
+                {/* ═══ WORKSPACES PANEL ═══ */}
+                {showWorkspacesPanel && loaded && <div style={{ position: 'absolute', bottom: timelineOpen ? 290 : 16, right: activeLayerPanel ? 'calc(min(340px, 100vw - 20px) + 20px)' : 10, width: 'min(360px, calc(100vw - 20px))', maxHeight: timelineOpen ? 'calc(100% - 310px)' : 'calc(100% - 32px)', zIndex: 15, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${theme.accent}15`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out', transition: 'bottom 0.3s ease, max-height 0.3s ease' }}>
+                    {/* Header */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 7, background: `${theme.accent}08`, border: `1px solid ${theme.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📋</div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Workspaces</div>
+                            <div style={{ fontSize: 8, color: theme.textDim }}>{workspaces.length} saved{wsActiveId ? ` · Active: ${workspaces.find(w => w.id === wsActiveId)?.name}` : ''}</div>
+                        </div>
+                        <button onClick={openSaveWs} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>💾 Save</button>
+                        <button onClick={() => setShowWorkspacesPanel(false)} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
+                    </div>
+                    {/* Active workspace banner */}
+                    {wsActiveId && <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, background: 'rgba(34,197,94,0.03)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 6px #22c55e60' }} />
+                        <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 700, flex: 1 }}>{workspaces.find(w => w.id === wsActiveId)?.name}</span>
+                        <button onClick={() => { const ws = workspaces.find(w => w.id === wsActiveId); if (ws) { updateWsState(ws); triggerTopLoader(); } }} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(59,130,246,0.25)', background: 'rgba(59,130,246,0.06)', color: theme.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>💾 Update</button>
+                    </div>}
+                    {/* Search */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${wsSearch ? theme.accent + '50' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                            <input value={wsSearch} onChange={e => setWsSearch(e.target.value)} placeholder="Search workspaces..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '7px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
+                            {wsSearch && <button onClick={() => setWsSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }}><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
+                        </div>
+                    </div>
+                    {/* Workspace list */}
+                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                        {workspaces.filter(ws => { if (!wsSearch.trim()) return true; const q = wsSearch.toLowerCase(); return ws.name.toLowerCase().includes(q) || ws.description.toLowerCase().includes(q) || ws.tags.some(t => t.toLowerCase().includes(q)); }).length === 0 && <div style={{ padding: 30, textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>📋</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>{wsSearch ? 'No Matches' : 'No Workspaces'}</div><div style={{ fontSize: 10, color: theme.textDim }}>{wsSearch ? 'Try a different search.' : 'Save your current map state as a workspace.'}</div></div>}
+                        {workspaces.filter(ws => { if (!wsSearch.trim()) return true; const q = wsSearch.toLowerCase(); return ws.name.toLowerCase().includes(q) || ws.description.toLowerCase().includes(q) || ws.tags.some(t => t.toLowerCase().includes(q)); }).map(ws => {
+                            const isActive = wsActiveId === ws.id;
+                            const isDeleting = wsDeleteConfirm === ws.id;
+                            return <div key={ws.id} style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}08`, background: isActive ? 'rgba(34,197,94,0.03)' : isDeleting ? 'rgba(239,68,68,0.03)' : 'transparent', transition: 'background 0.15s' }} onMouseEnter={e => { if (!isActive && !isDeleting) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isActive && !isDeleting) e.currentTarget.style.background = 'transparent'; }}>
+                                {/* Header */}
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                                    <div style={{ width: 30, height: 30, borderRadius: 6, background: isActive ? 'rgba(34,197,94,0.12)' : `${theme.accent}08`, border: `1px solid ${isActive ? '#22c55e30' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>{isActive ? '✅' : '📋'}</div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: isActive ? '#22c55e' : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ws.name}</div>
+                                        <div style={{ fontSize: 9, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginTop: 1 }}>{ws.description}</div>
+                                    </div>
+                                    {isActive && <span style={{ fontSize: 7, fontWeight: 800, padding: '2px 5px', borderRadius: 3, background: '#22c55e15', color: '#22c55e', border: '1px solid #22c55e25', flexShrink: 0 }}>ACTIVE</span>}
+                                </div>
+                                {/* Tags */}
+                                {ws.tags.length > 0 && <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginBottom: 4 }}>
+                                    {ws.tags.map(t => <span key={t} style={{ fontSize: 7, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${theme.accent}08`, color: theme.accent, border: `1px solid ${theme.accent}15` }}>{t}</span>)}
+                                </div>}
+                                {/* Meta + state icons */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 8, color: theme.textDim, marginBottom: 6 }}>
+                                    <span>📅 {ws.updatedAt.split(' ')[0]}</span>
+                                    <span>🕐 {ws.updatedAt.split(' ')[1]}</span>
+                                    <span>👤 {ws.state.selectedPersons.length}</span>
+                                    <div style={{ display: 'flex', gap: 2 }}>
+                                        {ws.state.layerHeatmap && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 2, background: '#f59e0b10', color: '#f59e0b', border: '1px solid #f59e0b20' }}>🔥</span>}
+                                        {ws.state.layerNetwork && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 2, background: '#8b5cf610', color: '#8b5cf6', border: '1px solid #8b5cf620' }}>🕸️</span>}
+                                        {ws.state.layerLPR && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 2, background: '#10b98110', color: '#10b981', border: '1px solid #10b98120' }}>🚗</span>}
+                                        {ws.state.layerFace && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 2, background: '#ec489910', color: '#ec4899', border: '1px solid #ec489920' }}>🧑‍🦲</span>}
+                                        {ws.state.showZones && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 2, background: '#8b5cf610', color: '#8b5cf6', border: '1px solid #8b5cf620' }}>🛡️</span>}
+                                    </div>
+                                </div>
+                                {/* Actions */}
+                                {isDeleting ? <div style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '6px 0' }}>
+                                    <span style={{ fontSize: 9, color: theme.danger, flex: 1 }}>Delete this workspace?</span>
+                                    <button onClick={() => deleteWorkspace(ws.id)} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: theme.danger, fontSize: 9, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Delete</button>
+                                    <button onClick={() => setWsDeleteConfirm(null)} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                                </div> : <div style={{ display: 'flex', gap: 4 }}>
+                                    <button onClick={() => { loadWorkspace(ws); triggerTopLoader(); }} style={{ flex: 1, padding: '5px', borderRadius: 4, border: `1px solid ${isActive ? '#22c55e25' : theme.accent + '25'}`, background: isActive ? 'rgba(34,197,94,0.06)' : `${theme.accent}06`, color: isActive ? '#22c55e' : theme.accent, fontSize: 9, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{isActive ? '🔄 Reload' : '📂 Load'}</button>
+                                    <button onClick={() => openEditWs(ws)} title="Edit" style={{ width: 28, height: 28, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: theme.textDim, fontSize: 10 }} onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}>✏️</button>
+                                    <button onClick={() => { updateWsState(ws); triggerTopLoader(); }} title="Save current state" style={{ width: 28, height: 28, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: theme.textDim, fontSize: 10 }} onMouseEnter={e => (e.currentTarget.style.color = '#22c55e')} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}>💾</button>
+                                    <button onClick={() => setWsDeleteConfirm(ws.id)} title="Delete" style={{ width: 28, height: 28, borderRadius: 4, border: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.03)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: theme.textDim, fontSize: 10 }} onMouseEnter={e => (e.currentTarget.style.color = theme.danger)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}>🗑️</button>
+                                </div>}
+                            </div>;
+                        })}
+                    </div>
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}</span>
                     </div>
                 </div>}
 
