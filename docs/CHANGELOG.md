@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.23.0 - 2026-03-24
+
+### Added — Background Jobs Page (/jobs)
+- **Queue & Worker Dashboard**: Full job queue management with 30 mock jobs across 10 types, 6 workers, animated progress bars, and detailed job inspection.
+- **6 view tabs**: All Jobs (30), Running (4 with animated progress), Queued (5), Completed (15), Failed (3 failed + 1 cancelled + 2 retrying), Workers (6 worker cards with CPU/memory gauges).
+- **10 job types**: Data Sync (🔄), AI Inference (🤖), Report Generation (📊), Bulk Export (📦), Media Processing (🎬), Face Search (🧑), Scraper Run (📱), System Backup (💾), LPR Batch (🚗), Workflow Execution (⚡). Each with icon and color.
+- **30 mock jobs** linked to real features: INTERPOL sync (67% running), Horvat movement AI analysis (LLaMA 3.1, 43%), port camera video transcription (Faster-Whisper, 28%), Mendoza face search (InsightFace GPU, 55%), HAWK Weekly Report #5 (queued), Telegram batch scraper (queued), LPR batch A1 Highway (queued), OpenCorporates shell detection (queued), dark web crawl (queued), morning briefing #24 (completed 12.4s), co-location evidence #42 (workflow 1.5s), EU sanctions sync (4.2s), vehicle HAK sync, anomaly detection batch (XGBoost 47s), full backup (42m 2.4TB), social scraper batch (45s), news monitor (8s), port intrusion workflow (2.3s), LPR auto-track workflow (0.8s), audio keyword scan (Faster-Whisper 4.8s), PEP Dow Jones screening, Rashid shell report (22s), activity CSV export, Arabic translation (NLLB-200 13s), HROK credit bureau (failed, connection refused), dark web marketplace (failed, Tor circuit), Li Wei report (failed, insufficient data), bulk photo export (cancelled), Cairo camera reconnect (retrying), court records e-Spis (retrying partial timeout).
+- **6 workers**: Alpha (active, CPU 72%), Bravo (active, 45%), Charlie (active, 88%), GPU Delta (active, 34% CPU / 92% memory), Echo (idle), Foxtrot (offline). Cards with status dot, current job, jobs processed count, uptime, CPU/memory progress bars.
+- **Animated progress**: Running jobs show progress bars that animate every 3 seconds (+2% tick). Running status has pulsing dot indicator.
+- **Left sidebar 5 filters**: Search (job name, entity, tags), Job Type (10 types with counts), Priority (Critical/High/Normal/Low), Operation (HAWK/GLACIER/PHOENIX), stats bar (running/queued/done/failed).
+- **Job detail panel**: Type icon + name + label, status/priority/operation badges, animated progress bar with ETA (for running), Input Parameters section (model name, window, subjects, API details), Output section (results, record counts, file paths), Error Log section (red highlight with monospace error text, retry count), metadata (worker, queue, initiator, start/complete/duration, entity), tags, action buttons (Retry for failed, Cancel for running, View Entity link, Activity log).
+- **Cross-linked**: Persons → /persons/:id (Horvat, Mendoza, Hassan, Li Wei), Organizations → /organizations/:id (Rashid Holdings), Devices → /devices/:id (Port Terminal Cam, Al-Rashid Residence Mic, Cairo Office), Data Sources → /data-sources (INTERPOL, EU Sanctions, HAK, OpenCorporates, HROK, e-Spis, PEP Dow Jones), Workflows → /workflows (Nightly Sweep, Co-location Evidence, Port Intrusion, LPR Auto-Track), Reports → /reports (briefing #24, weekly #5, shell company), Activity → /activity, Social Scraper → /scraper, Face Recognition → /face-recognition.
+
 ## 0.22.1 - 2026-03-24
 
 ### Fixed — Map Page WebGL Error Handling
