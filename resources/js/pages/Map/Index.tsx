@@ -435,6 +435,68 @@ export default function MapIndex() {
     const [showPlacesPanel, setShowPlacesPanel] = useState(false);
     const [showWorkspacesPanel, setShowWorkspacesPanel] = useState(false);
 
+    // ═══ FLOATING PANEL SYSTEM ═══
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers';
+    interface PanelPos { x: number; y: number; }
+    const defaultPanelPos: PanelPos = { x: 10, y: 10 };
+    const [panelPositions, setPanelPositions] = useState<Record<string, PanelPos>>({});
+    const [panelMinimized, setPanelMinimized] = useState<Set<string>>(new Set());
+    const [panelMaximized, setPanelMaximized] = useState<string | null>(null);
+    const panelDragRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+    const getPanelPos = (id: PanelId) => panelPositions[id] || defaultPanelPos;
+    const isPanelMin = (id: PanelId) => panelMinimized.has(id);
+    const isPanelMax = (id: PanelId) => panelMaximized === id;
+
+    const togglePanelMin = (id: PanelId) => {
+        setPanelMinimized(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+        if (panelMaximized === id) setPanelMaximized(null);
+    };
+    const togglePanelMax = (id: PanelId) => {
+        setPanelMaximized(prev => prev === id ? null : id);
+        setPanelMinimized(prev => { const n = new Set(prev); n.delete(id); return n; });
+    };
+
+    const onPanelDragStart = (id: PanelId, e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('button, input, select, textarea, a')) return;
+        e.preventDefault();
+        const pos = getPanelPos(id);
+        panelDragRef.current = { id, startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
+        const onMove = (ev: MouseEvent) => {
+            if (!panelDragRef.current || panelDragRef.current.id !== id) return;
+            const dx = ev.clientX - panelDragRef.current.startX;
+            const dy = ev.clientY - panelDragRef.current.startY;
+            const container = mapContainerRef.current;
+            const maxX = container ? container.offsetWidth - 60 : window.innerWidth - 60;
+            const maxY = container ? container.offsetHeight - 30 : window.innerHeight - 30;
+            setPanelPositions(prev => ({ ...prev, [id]: { x: Math.max(0, Math.min(maxX, panelDragRef.current!.origX + dx)), y: Math.max(0, Math.min(maxY, panelDragRef.current!.origY + dy)) } }));
+        };
+        const onUp = () => { panelDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+    };
+    const mapContainerRef = useRef<HTMLDivElement>(null);
+
+    const panelStyle = (id: PanelId, width: string, color: string): React.CSSProperties => {
+        if (isPanelMax(id)) return { position: 'absolute', top: 4, left: 4, right: 4, bottom: timelineOpen ? 280 : 4, width: 'auto', maxHeight: 'none', zIndex: 18, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.98)', border: `1px solid ${color}25`, borderRadius: 10, boxShadow: '0 12px 48px rgba(0,0,0,0.6)', backdropFilter: 'blur(14px)', overflow: 'hidden', animation: 'argux-fadeIn 0.15s ease-out', transition: 'all 0.2s ease' };
+        const pos = getPanelPos(id);
+        return { position: 'absolute', top: pos.y, left: pos.x, width: `min(${width}, calc(100vw - 20px))`, maxHeight: isPanelMin(id) ? 'none' : `calc(100% - ${pos.y + 10}px)`, zIndex: 16, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${color}20`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.15s ease-out' };
+    };
+
+    const PanelHeader = ({ id, icon, title, subtitle, color, onClose, extra }: { id: PanelId; icon: string; title: string; subtitle: string; color: string; onClose: () => void; extra?: React.ReactNode }) => (
+        <div onMouseDown={e => onPanelDragStart(id, e)} style={{ padding: '8px 10px', borderBottom: isPanelMin(id) ? 'none' : `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, cursor: 'grab', userSelect: 'none' }}>
+            <span style={{ fontSize: 14 }}>{icon}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{title}</div>
+                {!isPanelMin(id) && <div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{subtitle}</div>}
+            </div>
+            {extra}
+            <button onClick={() => togglePanelMin(id)} title={isPanelMin(id) ? 'Expand' : 'Minimize'} style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 9, padding: 0, flexShrink: 0 }}>{isPanelMin(id) ? '🔽' : '🔼'}</button>
+            <button onClick={() => togglePanelMax(id)} title={isPanelMax(id) ? 'Restore' : 'Maximize'} style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 9, padding: 0, flexShrink: 0 }}>{isPanelMax(id) ? '🗗' : '🗖'}</button>
+            <button onClick={onClose} style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 10, padding: 0, flexShrink: 0 }}>✕</button>
+        </div>
+    );
+
     const filteredObjects = mapObjects.filter(o => {
         if (objSearch && !o.name.toLowerCase().includes(objSearch.toLowerCase()) && !o.type.includes(objSearch.toLowerCase())) return false;
         if (objPanelTab === 'markers' && o.type !== 'marker') return false;
@@ -3041,7 +3103,7 @@ export default function MapIndex() {
             </div>
 
             {/* Map */}
-            <div className="tmap-container">
+            <div className="tmap-container" ref={mapContainerRef}>
                 <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
                 {/* Top Loader Bar */}
@@ -3277,18 +3339,10 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Live Tracker Panel */}
-                {showLiveTracker && loaded && <div style={{ position: 'absolute', top: 10, left: 10, width: 'min(360px, calc(100vw - 20px))', maxHeight: 'calc(100% - 20px)', zIndex: 16, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e20' : theme.border}`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out' }}>
-                    {/* Header */}
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 7, background: liveTrackSessions.length > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.06)', border: `1px solid ${liveTrackSessions.length > 0 ? '#22c55e30' : '#22c55e15'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, position: 'relative' }}>🎯{liveTrackSessions.filter(s => s.status === 'tracking').length > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: 7, height: 7, borderRadius: '50%', background: '#22c55e', border: '1.5px solid rgba(13,18,32,0.9)', animation: 'tmap-tl-ring 1.5s infinite' }} />}</div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Live Tracker</div>
-                            <div style={{ fontSize: 8, color: theme.textDim }}>{liveTrackSessions.length > 0 ? `${liveTrackSessions.filter(s => s.status === 'tracking').length} tracking · ${trackablePersons.length} available` : `${trackablePersons.length} targets available`}</div>
-                        </div>
-                        <button onClick={() => { setShowLiveTracker(false); }} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
-                    </div>
+                {showLiveTracker && loaded && <div style={panelStyle('tracker', '360px', liveTrackSessions.length > 0 ? '#22c55e' : theme.border)}>
+                    <PanelHeader id="tracker" icon="🎯" title="Live Tracker" subtitle={liveTrackSessions.length > 0 ? `${liveTrackSessions.filter(s => s.status === 'tracking').length} tracking · ${trackablePersons.length} available` : `${trackablePersons.length} targets available`} color="#22c55e" onClose={() => setShowLiveTracker(false)} />
 
-                    {/* Tabs */}
+                    {!isPanelMin('tracker') && <>{/* Tabs */}
                     <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}20`, flexShrink: 0 }}>
                         {[{ id: 'sessions' as const, label: 'Sessions', count: liveTrackSessions.length }, { id: 'targets' as const, label: 'Targets', count: trackablePersons.length }, { id: 'history' as const, label: 'History', count: 0 }].map(t => <button key={t.id} onClick={() => setLiveTrackTab(t.id)} style={{ flex: 1, padding: '7px 0', background: 'transparent', border: 'none', borderBottom: `2px solid ${liveTrackTab === t.id ? '#22c55e' : 'transparent'}`, color: liveTrackTab === t.id ? '#22c55e' : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>{t.label}{t.count > 0 && <span style={{ fontSize: 7, fontWeight: 800, padding: '0 3px', borderRadius: 3, background: liveTrackTab === t.id ? '#22c55e15' : `${theme.border}`, color: liveTrackTab === t.id ? '#22c55e' : theme.textDim }}>{t.count}</span>}</button>)}
                     </div>
@@ -3404,21 +3458,13 @@ export default function MapIndex() {
                         <div style={{ flex: 1 }} />
                         <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveTrackSessions.length > 0 ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6002</span></span>
                     </div>
+                </>}
                 </div>}
 
                 {/* ═══ WORKSPACES PANEL ═══ */}
-                {showWorkspacesPanel && loaded && <div style={{ position: 'absolute', bottom: timelineOpen ? 290 : 16, right: activeLayerPanel ? 'calc(min(340px, 100vw - 20px) + 20px)' : 10, width: 'min(360px, calc(100vw - 20px))', maxHeight: timelineOpen ? 'calc(100% - 310px)' : 'calc(100% - 32px)', zIndex: 15, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${theme.accent}15`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out', transition: 'bottom 0.3s ease, max-height 0.3s ease' }}>
-                    {/* Header */}
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 7, background: `${theme.accent}08`, border: `1px solid ${theme.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📋</div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Workspaces</div>
-                            <div style={{ fontSize: 8, color: theme.textDim }}>{workspaces.length} saved{wsActiveId ? ` · Active: ${workspaces.find(w => w.id === wsActiveId)?.name}` : ''}</div>
-                        </div>
-                        <button onClick={openSaveWs} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>💾 Save</button>
-                        <button onClick={() => setShowWorkspacesPanel(false)} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
-                    </div>
-                    {/* Active workspace banner */}
+                {showWorkspacesPanel && loaded && <div style={panelStyle('workspaces', '360px', theme.accent)}>
+                    <PanelHeader id="workspaces" icon="📋" title="Workspaces" subtitle={`${workspaces.length} saved${wsActiveId ? ` · ${workspaces.find(w => w.id === wsActiveId)?.name}` : ''}`} color={theme.accent} onClose={() => setShowWorkspacesPanel(false)} extra={<button onClick={openSaveWs} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>💾 Save</button>} />
+                    {!isPanelMin('workspaces') && <>{/* Active workspace banner */}
                     {wsActiveId && <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, background: 'rgba(34,197,94,0.03)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 6px #22c55e60' }} />
                         <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 700, flex: 1 }}>{workspaces.find(w => w.id === wsActiveId)?.name}</span>
@@ -3483,22 +3529,13 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         <span style={{ fontSize: 8, color: theme.textDim }}>{workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}</span>
                     </div>
+                </>}
                 </div>}
 
                 {/* ═══ SAVED PLACES PANEL ═══ */}
-                {showPlacesPanel && loaded && <div style={{ position: 'absolute', bottom: timelineOpen ? 290 : 16, left: showObjectsPanel ? 'calc(min(380px, 100vw - 20px) + 20px)' : 10, width: 'min(320px, calc(100vw - 20px))', maxHeight: timelineOpen ? 'calc(100% - 310px)' : 'calc(100% - 32px)', zIndex: 15, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${theme.accent}15`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out', transition: 'bottom 0.3s ease, max-height 0.3s ease' }}>
-                    {/* Header */}
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 7, background: `${theme.accent}08`, border: `1px solid ${theme.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📍</div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Saved Places</div>
-                            <div style={{ fontSize: 8, color: theme.textDim }}>{savedPlaces.length} places</div>
-                        </div>
-                        <button onClick={openAddPlace} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>+ Add</button>
-                        <button onClick={addCurrentLocation} title="Save current view" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 10, padding: 0, flexShrink: 0 }}>📍</button>
-                        <button onClick={() => setShowPlacesPanel(false)} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
-                    </div>
-                    {/* Search */}
+                {showPlacesPanel && loaded && <div style={panelStyle('places', '320px', theme.accent)}>
+                    <PanelHeader id="places" icon="📍" title="Saved Places" subtitle={`${savedPlaces.length} places`} color={theme.accent} onClose={() => setShowPlacesPanel(false)} extra={<><button onClick={openAddPlace} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>+ Add</button><button onClick={addCurrentLocation} title="Save view" style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 9, padding: 0 }}>📍</button></>} />
+                    {!isPanelMin('places') && <>{/* Search */}
                     <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${placesSearch ? theme.accent + '50' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
                             <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
@@ -3560,18 +3597,14 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         <span style={{ fontSize: 8, color: theme.textDim }}>{filteredPlaces.length} of {savedPlaces.length} shown</span>
                     </div>
+                </>}
                 </div>}
 
                 {/* ═══ TOOL PANELS ═══ */}
                 {/* Ruler Panel */}
-                {showRulerPanel && loaded && <div style={{ position: 'absolute', top: showLiveTracker ? 'calc(50% + 10px)' : 10, left: 10, width: 'min(320px, calc(100vw - 20px))', maxHeight: showLiveTracker ? 'calc(50% - 20px)' : 'calc(100% - 20px)', zIndex: 15, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${rulerActive ? '#f59e0b20' : theme.border}`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out' }}>
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={rulerActive ? '#f59e0b' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 14L14 2"/><path d="M5 14L2 14L2 11"/><path d="M11 2L14 2L14 5"/><line x1="4" y1="10" x2="6" y2="12"/><line x1="6" y1="8" x2="8" y2="10"/></svg>
-                        <div style={{ flex: 1 }}><div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Ruler</div><div style={{ fontSize: 8, color: theme.textDim }}>{rulerActive ? `${rulerPoints.length} points · Click map to add` : 'Measure distances between points'}</div></div>
-                        <button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); triggerTopLoader(); setZoneDrawing(null); } }} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${rulerActive ? '#f59e0b40' : '#22c55e30'}`, background: rulerActive ? 'rgba(245,158,11,0.08)' : 'rgba(34,197,94,0.06)', color: rulerActive ? '#f59e0b' : '#22c55e', fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{rulerActive ? '⏹ Stop' : '▶ Start'}</button>
-                        <button onClick={() => setShowRulerPanel(false)} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
-                    </div>
-                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0, padding: '10px 14px' }}>
+                {showRulerPanel && loaded && <div style={panelStyle('ruler', '320px', rulerActive ? '#f59e0b' : theme.border)}>
+                    <PanelHeader id="ruler" icon="📏" title="Ruler" subtitle={rulerActive ? `${rulerPoints.length} points · Click map to add` : 'Measure distances'} color="#f59e0b" onClose={() => setShowRulerPanel(false)} extra={<button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); triggerTopLoader(); setZoneDrawing(null); } }} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${rulerActive ? '#f59e0b40' : '#22c55e30'}`, background: rulerActive ? 'rgba(245,158,11,0.08)' : 'rgba(34,197,94,0.06)', color: rulerActive ? '#f59e0b' : '#22c55e', fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{rulerActive ? '⏹ Stop' : '▶ Start'}</button>} />
+                    {!isPanelMin('ruler') && <><div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0, padding: '10px 14px' }}>
                         {/* Total distance card */}
                         {rulerPoints.length >= 2 && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 10 }}>
                             <div><div style={{ fontSize: 8, color: theme.textDim, marginBottom: 1 }}>Total Distance</div><div style={{ fontSize: 16, fontWeight: 800, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace" }}>{formatDist(calcDistance(rulerPoints))}</div></div>
@@ -3593,17 +3626,13 @@ export default function MapIndex() {
                         <button onClick={undoRulerPoint} style={{ flex: 1, padding: '6px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>↩ Undo</button>
                         <button onClick={clearRuler} style={{ flex: 1, padding: '6px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)', color: theme.danger, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>🗑️ Clear All</button>
                     </div>}
+                </>}
                 </div>}
 
                 {/* Zone Editor Panel */}
-                {showZonePanel && loaded && <div style={{ position: 'absolute', top: showLiveTracker ? 'calc(50% + 10px)' : 10, left: 10, width: 'min(340px, calc(100vw - 20px))', maxHeight: showLiveTracker ? 'calc(50% - 20px)' : 'calc(100% - 20px)', zIndex: 15, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${zoneDrawing ? '#8b5cf620' : theme.border}`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out' }}>
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={zoneDrawing ? '#8b5cf6' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>
-                        <div style={{ flex: 1 }}><div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Zone Editor</div><div style={{ fontSize: 8, color: theme.textDim }}>{zones.length} zones · {zones.length - hiddenZones.size} visible{zoneDrawing ? ' · Drawing...' : ''}</div></div>
-                        <button onClick={openAddZone} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>+ Add</button>
-                        <button onClick={() => setShowZonePanel(false)} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
-                    </div>
-                    {/* Draw zone buttons */}
+                {showZonePanel && loaded && <div style={panelStyle('zone', '340px', zoneDrawing ? '#8b5cf6' : theme.border)}>
+                    <PanelHeader id="zone" icon="🛡️" title="Zone Editor" subtitle={`${zones.length} zones · ${zones.length - hiddenZones.size} visible${zoneDrawing ? ' · Drawing...' : ''}`} color="#8b5cf6" onClose={() => setShowZonePanel(false)} extra={<button onClick={openAddZone} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>+ Add</button>} />
+                    {!isPanelMin('zone') && <>{/* Draw zone buttons */}
                     {!zoneDrawing && <div style={{ display: 'flex', gap: 4, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
                         <button onClick={() => startDrawZone('circle')} style={{ flex: 1, padding: '6px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf650'; e.currentTarget.style.color = '#8b5cf6'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}>⭕ Circle</button>
                         <button onClick={() => startDrawZone('polygon')} style={{ flex: 1, padding: '6px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf650'; e.currentTarget.style.color = '#8b5cf6'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}>⬡ Polygon</button>
@@ -3642,32 +3671,15 @@ export default function MapIndex() {
                         <div style={{ flex: 1 }} />
                         {hiddenZones.size > 0 && <button onClick={() => { setHiddenZones(new Set()); triggerTopLoader(); }} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: '1px solid #22c55e20', background: '#22c55e06', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>👁️ Show All ({hiddenZones.size})</button>}
                     </div>
+                </>}
                 </div>}
 
                 {/* ═══ LAYER PANELS ═══ */}
                 {/* Only one layer panel open at a time — positioned bottom-right */}
-                {activeLayerPanel && loaded && <div style={{ position: 'absolute', bottom: timelineOpen ? 290 : 16, right: 10, width: 'min(340px, calc(100vw - 20px))', maxHeight: timelineOpen ? 'calc(100% - 310px)' : 'calc(100% - 32px)', zIndex: 16, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899'}20`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out', transition: 'bottom 0.3s ease, max-height 0.3s ease' }}>
-                    {/* Panel Header */}
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <span style={{ fontSize: 16 }}>{activeLayerPanel === 'heatmap' ? '🔥' : activeLayerPanel === 'network' ? '🕸️' : activeLayerPanel === 'lpr' ? '🚗' : '🧑‍🦲'}</span>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>{activeLayerPanel === 'heatmap' ? 'Activity Heatmap' : activeLayerPanel === 'network' ? 'Network Graph' : activeLayerPanel === 'lpr' ? 'Plate Recognition' : 'Face Recognition'}</div>
-                            <div style={{ fontSize: 8, color: theme.textDim }}>
-                                {activeLayerPanel === 'heatmap' && `${heatmapPoints.length} points · ${layerHeatmap ? 'Active' : 'Inactive'}`}
-                                {activeLayerPanel === 'network' && `${netNodes.length} nodes · ${netFilteredEdges.length} connections`}
-                                {activeLayerPanel === 'lpr' && `${mockLPR.length} sightings · ${new Set(mockLPR.map(l => l.plate)).size} plates`}
-                                {activeLayerPanel === 'face' && `${mockFaces.length} captures · ${mockFaces.filter(f => f.personId > 0).length} matched`}
-                            </div>
-                        </div>
-                        {/* Layer toggle */}
-                        <button onClick={() => { if (activeLayerPanel === 'heatmap') { setLayerHeatmap(!layerHeatmap); } else if (activeLayerPanel === 'network') { setLayerNetwork(!layerNetwork); } else if (activeLayerPanel === 'lpr') { setLayerLPR(!layerLPR); } else { setLayerFace(!layerFace); } triggerTopLoader(); }} style={{ width: 32, height: 16, borderRadius: 8, border: 'none', background: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? (activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899') : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
-                            <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute', top: 2, left: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
-                        </button>
-                        <button onClick={() => { setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); }} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
-                    </div>
+                {activeLayerPanel && loaded && <div style={panelStyle('layers', '340px', activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899')}>
+                    <PanelHeader id="layers" icon={activeLayerPanel === 'heatmap' ? '🔥' : activeLayerPanel === 'network' ? '🕸️' : activeLayerPanel === 'lpr' ? '🚗' : '🧑‍🦲'} title={activeLayerPanel === 'heatmap' ? 'Activity Heatmap' : activeLayerPanel === 'network' ? 'Network Graph' : activeLayerPanel === 'lpr' ? 'Plate Recognition' : 'Face Recognition'} subtitle={activeLayerPanel === 'heatmap' ? `${heatmapPoints.length} points · ${layerHeatmap ? 'Active' : 'Inactive'}` : activeLayerPanel === 'network' ? `${netNodes.length} nodes · ${netFilteredEdges.length} connections` : activeLayerPanel === 'lpr' ? `${mockLPR.length} sightings · ${new Set(mockLPR.map(l => l.plate)).size} plates` : `${mockFaces.length} captures · ${mockFaces.filter(f => f.personId > 0).length} matched`} color={activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899'} onClose={() => { setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); }} extra={<button onClick={() => { if (activeLayerPanel === 'heatmap') setLayerHeatmap(!layerHeatmap); else if (activeLayerPanel === 'network') setLayerNetwork(!layerNetwork); else if (activeLayerPanel === 'lpr') setLayerLPR(!layerLPR); else setLayerFace(!layerFace); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? (activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899') : theme.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute', top: 2, left: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? 16 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></button>} />
 
-                    {/* Panel Content */}
-                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                    {!isPanelMin('layers') && <><div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
 
                         {/* ── HEATMAP PANEL ── */}
                         {activeLayerPanel === 'heatmap' && <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -3752,22 +3764,14 @@ export default function MapIndex() {
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{[['🟢', '≥90%'], ['🟡', '75-89%'], ['🔴', '<75%'], ['⚫', 'Unknown']].map(([ico, lbl]) => <span key={lbl} style={{ fontSize: 8, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}>{ico} {lbl}</span>)}</div>
                         </div>}
                     </div>
+                </>}
                 </div>}
 
                 {/* Objects Panel */}
-                {showObjectsPanel && loaded && <div style={{ position: 'absolute', bottom: timelineOpen ? 290 : 16, left: 10, width: 'min(380px, calc(100vw - 20px))', maxHeight: timelineOpen ? 'calc(100% - 310px)' : 'calc(100% - 32px)', zIndex: 16, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.97)', border: `1px solid ${theme.accent}15`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.2s ease-out', transition: 'bottom 0.3s ease, max-height 0.3s ease' }}>
-                    {/* Header */}
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 7, background: `${theme.accent}08`, border: `1px solid ${theme.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📋</div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>Map Objects</div>
-                            <div style={{ fontSize: 8, color: theme.textDim }}>{mapObjects.length} objects · {mapObjects.filter(o => o.visible).length} visible · {mapObjects.filter(o => !o.visible).length} hidden</div>
-                        </div>
-                        {mapObjects.some(o => !o.visible) && <button onClick={() => setMapObjects(prev => prev.map(o => ({ ...o, visible: true })))} style={{ fontSize: 7, padding: '3px 6px', borderRadius: 3, border: '1px solid #22c55e25', background: '#22c55e08', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>Show All</button>}
-                        <button onClick={() => setShowObjectsPanel(false)} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 11, padding: 0, flexShrink: 0 }}>✕</button>
-                    </div>
+                {showObjectsPanel && loaded && <div style={panelStyle('objects', '380px', theme.accent)}>
+                    <PanelHeader id="objects" icon="📋" title="Map Objects" subtitle={`${mapObjects.length} objects · ${mapObjects.filter(o => o.visible).length} visible · ${mapObjects.filter(o => !o.visible).length} hidden`} color={theme.accent} onClose={() => setShowObjectsPanel(false)} extra={mapObjects.some(o => !o.visible) ? <button onClick={() => setMapObjects(prev => prev.map(o => ({ ...o, visible: true })))} style={{ fontSize: 7, padding: '2px 5px', borderRadius: 3, border: '1px solid #22c55e25', background: '#22c55e08', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>Show All</button> : undefined} />
 
-                    {/* Tabs */}
+                    {!isPanelMin('objects') && <>{/* Tabs */}
                     <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}20`, flexShrink: 0 }}>
                         {[{ id: 'all' as const, label: 'All', count: mapObjects.length }, { id: 'markers' as const, label: 'Markers', count: mapObjects.filter(o => o.type === 'marker').length }, { id: 'shapes' as const, label: 'Shapes', count: mapObjects.filter(o => o.type !== 'marker').length }].map(t => <button key={t.id} onClick={() => setObjPanelTab(t.id)} style={{ flex: 1, padding: '7px 0', background: 'transparent', border: 'none', borderBottom: `2px solid ${objPanelTab === t.id ? theme.accent : 'transparent'}`, color: objPanelTab === t.id ? theme.accent : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>{t.label}{t.count > 0 && <span style={{ fontSize: 7, fontWeight: 800, padding: '0 3px', borderRadius: 3, background: objPanelTab === t.id ? `${theme.accent}15` : theme.border, color: objPanelTab === t.id ? theme.accent : theme.textDim }}>{t.count}</span>}</button>)}
                     </div>
@@ -3825,6 +3829,7 @@ export default function MapIndex() {
                         {mapObjects.length > 0 && <button onClick={() => { setMapObjects(prev => prev.map(o => ({ ...o, visible: true }))); triggerTopLoader(); }} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: '1px solid #22c55e20', background: '#22c55e06', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>👁️ Show All</button>}
                         {mapObjects.length > 0 && <button onClick={() => { setMapObjects(prev => prev.map(o => ({ ...o, visible: false }))); triggerTopLoader(); }} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🚫 Hide All</button>}
                     </div>
+                </>}
                 </div>}
 
                 {/* Timeline Lightbox */}
@@ -3884,28 +3889,14 @@ export default function MapIndex() {
                 </button>}
 
                 {/* Live Feed Widget */}
-                {showLiveFeed && loaded && <div style={{ position: 'absolute', top: 10, right: 10, width: 'min(320px, calc(100vw - 20px))', maxHeight: 'calc(100% - 20px)', zIndex: 14, display: 'flex', flexDirection: 'column', background: 'rgba(10,14,22,0.96)', border: `1px solid ${liveFeedRunning ? '#ef444425' : theme.border}`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden' }}>
-                    {/* Header */}
-                    <div style={{ padding: '8px 12px', borderBottom: `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: liveFeedRunning ? '#ef4444' : theme.textDim, boxShadow: liveFeedRunning ? '0 0 8px #ef444460' : 'none', animation: liveFeedRunning ? 'tmap-tl-ring 1.5s infinite' : 'none' }} />
-                            <span style={{ fontSize: 11, fontWeight: 800, color: liveFeedRunning ? '#ef4444' : theme.textDim, letterSpacing: '0.08em' }}>LIVE FEED</span>
-                        </div>
-                        <span style={{ fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{liveFeedEvents.length} events</span>
-                        <div style={{ flex: 1 }} />
-                        {/* Mute */}
-                        <button onClick={() => setLiveFeedMuted(!liveFeedMuted)} title={liveFeedMuted ? 'Unmute alerts' : 'Mute alerts'} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${liveFeedMuted ? '#f59e0b30' : theme.border}`, background: liveFeedMuted ? 'rgba(245,158,11,0.08)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: liveFeedMuted ? '#f59e0b' : theme.textDim, fontSize: 10, padding: 0, flexShrink: 0 }}>{liveFeedMuted ? '🔇' : '🔔'}</button>
-                        {/* Start/Stop */}
-                        <button onClick={() => setLiveFeedRunning(!liveFeedRunning)} style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${liveFeedRunning ? '#ef444430' : '#22c55e30'}`, background: liveFeedRunning ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)', cursor: 'pointer', fontSize: 8, fontWeight: 700, color: liveFeedRunning ? '#ef4444' : '#22c55e', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                            {liveFeedRunning ? <><svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="4" height="10" rx="1"/><rect x="9" y="3" width="4" height="10" rx="1"/></svg>Pause</> : <><svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor"><polygon points="4,2 14,8 4,14"/></svg>Resume</>}
-                        </button>
-                        {/* Clear */}
-                        <button onClick={() => { setLiveFeedEvents([]); if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; } if (liveFeedPopupRef.current) { liveFeedPopupRef.current.remove(); liveFeedPopupRef.current = null; } }} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 9, padding: 0, flexShrink: 0 }} title="Clear feed">🗑️</button>
-                        {/* Close */}
-                        <button onClick={() => { setShowLiveFeed(false); if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; } if (liveFeedPopupRef.current) { liveFeedPopupRef.current.remove(); liveFeedPopupRef.current = null; } }} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 10, padding: 0, flexShrink: 0 }}>✕</button>
-                    </div>
+                {showLiveFeed && loaded && <div style={panelStyle('feed', '320px', liveFeedRunning ? '#ef4444' : theme.border)}>
+                    <PanelHeader id="feed" icon={liveFeedRunning ? '🔴' : '⏸️'} title="LIVE FEED" subtitle={`${liveFeedEvents.length} events`} color={liveFeedRunning ? '#ef4444' : theme.border} onClose={() => { setShowLiveFeed(false); if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; } if (liveFeedPopupRef.current) { liveFeedPopupRef.current.remove(); liveFeedPopupRef.current = null; } }} extra={<>
+                        <button onClick={() => setLiveFeedMuted(!liveFeedMuted)} title={liveFeedMuted ? 'Unmute' : 'Mute'} style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${liveFeedMuted ? '#f59e0b30' : theme.border}`, background: liveFeedMuted ? 'rgba(245,158,11,0.08)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: liveFeedMuted ? '#f59e0b' : theme.textDim, fontSize: 9, padding: 0 }}>{liveFeedMuted ? '🔇' : '🔔'}</button>
+                        <button onClick={() => setLiveFeedRunning(!liveFeedRunning)} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${liveFeedRunning ? '#ef444430' : '#22c55e30'}`, background: liveFeedRunning ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)', cursor: 'pointer', fontSize: 7, fontWeight: 700, color: liveFeedRunning ? '#ef4444' : '#22c55e', fontFamily: 'inherit' }}>{liveFeedRunning ? '⏸' : '▶'}</button>
+                        <button onClick={() => { setLiveFeedEvents([]); if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; } if (liveFeedPopupRef.current) { liveFeedPopupRef.current.remove(); liveFeedPopupRef.current = null; } }} style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 8, padding: 0 }} title="Clear">🗑️</button>
+                    </>} />
 
-                    {/* Severity summary strip */}
+                    {!isPanelMin('feed') && <>{/* Severity summary strip */}
                     <div style={{ display: 'flex', gap: 6, padding: '5px 12px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0 }}>
                         {[{ sev: 'critical', color: '#ef4444', label: 'CRIT' }, { sev: 'high', color: '#f97316', label: 'HIGH' }, { sev: 'medium', color: '#f59e0b', label: 'MED' }, { sev: 'info', color: '#3b82f6', label: 'INFO' }, { sev: 'low', color: '#6b7280', label: 'LOW' }].map(s => {
                             const count = liveFeedEvents.filter(e => e.sev === s.sev).length;
@@ -3969,6 +3960,7 @@ export default function MapIndex() {
                         <div style={{ flex: 1 }} />
                         <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveFeedRunning ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6001</span></span>
                     </div>
+                </>}
                 </div>}
 
                 {/* Zone Context Menu (right-click on zone) */}
