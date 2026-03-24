@@ -1,5 +1,5 @@
 import PageMeta from '../../components/layout/PageMeta';
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
@@ -2775,10 +2775,23 @@ export default function MapIndex() {
     }, [showLiveFeed, liveFeedRunning]);
 
     // ═══ KEYBOARD SHORTCUTS ═══
+    const [showShortcuts, setShowShortcuts] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [exportStatus, setExportStatus] = useState<{ type: 'idle' | 'exporting' | 'done' | 'error'; msg: string }>({ type: 'idle', msg: '' });
+    const [shareUrl, setShareUrl] = useState('');
+    const [shareCopied, setShareCopied] = useState(false);
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
+            const tag = (e.target as HTMLElement).tagName;
+            const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+            // CTRL+Q — toggle shortcuts overlay
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'q') { e.preventDefault(); setShowShortcuts(prev => !prev); return; }
+
+            // Escape — close things in priority order
             if (e.key === 'Escape') {
-                // Close in priority order: lightbox → context menu → workspace modal → zone modal → place modal → timeline → sidebar (mobile)
+                if (showExportModal) { setShowExportModal(false); return; }
+                if (showShortcuts) { setShowShortcuts(false); return; }
                 if (tlLightbox) { setTlLightbox(null); return; }
                 if (tlMarkerCtx) { setTlMarkerCtx(null); return; }
                 if (markerCtxMenu) { setMarkerCtxMenu(null); return; }
@@ -2808,10 +2821,46 @@ export default function MapIndex() {
                 if (activeLayerPanel) { setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); return; }
                 if (sidebarOpen) { setSidebarOpen(false); return; }
             }
+
+            // Skip all other shortcuts when typing in inputs
+            if (inInput) return;
+
+            // / — Focus search
+            if (e.key === '/' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); const el = document.querySelector('.tmap-container input[type="text"], .tmap-container input:not([type])') as HTMLInputElement; if (el) el.focus(); return; }
+
+            // Navigation & View
+            if (e.key === '+' || e.key === '=') { handleZoomIn(); return; }
+            if (e.key === '-') { handleZoomOut(); return; }
+            if (e.key === 'n' || e.key === 'N') { handleResetNorth(); return; }
+            if (e.key === '[') { handleRotateCCW(); return; }
+            if (e.key === ']') { handleRotateCW(); return; }
+            if (e.key === 'f' && !e.ctrlKey) { handleFullscreen(); return; }
+
+            // Sidebar
+            if (e.key === 's' && !e.ctrlKey) { setSidebarOpen(prev => !prev); return; }
+
+            // Timeline
+            if (e.key === 't' && !e.ctrlKey) { setTimelineOpen(prev => !prev); return; }
+
+            // Intelligence Panels
+            if (e.key === '1' && e.altKey) { e.preventDefault(); setShowLiveTracker(prev => !prev); triggerTopLoader(); return; }
+            if (e.key === '2' && e.altKey) { e.preventDefault(); setShowCorrelationPanel(prev => !prev); triggerTopLoader(); return; }
+            if (e.key === '3' && e.altKey) { e.preventDefault(); setShowAnomalyPanel(prev => !prev); triggerTopLoader(); return; }
+            if (e.key === '4' && e.altKey) { e.preventDefault(); setShowPredictivePanel(prev => !prev); triggerTopLoader(); return; }
+            if (e.key === '5' && e.altKey) { e.preventDefault(); setShowPatternPanel(prev => !prev); triggerTopLoader(); return; }
+            if (e.key === '6' && e.altKey) { e.preventDefault(); setShowIncidentPanel(prev => !prev); triggerTopLoader(); return; }
+
+            // Tools
+            if (e.key === 'r' && !e.ctrlKey) { setRulerActive(prev => !prev); return; }
+            if (e.key === 'l' && !e.ctrlKey) { setShowLiveFeed(prev => !prev); return; }
+            if (e.key === 'm' && !e.ctrlKey) { setShowMinimap(prev => !prev); return; }
+            if (e.key === 'g' && !e.ctrlKey) { setShowCoords(prev => !prev); return; }
+            if (e.key === 'p' && !e.ctrlKey) { setPlacingMarker(prev => !prev); return; }
+            if (e.key === 'e' && !e.ctrlKey) { setShowExportModal(prev => !prev); return; }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showPatternPanel, showIncidentPanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
+    }, [showExportModal, showShortcuts, tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showPatternPanel, showIncidentPanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -3775,6 +3824,8 @@ export default function MapIndex() {
                     <MapBtn onClick={handleRotateCCW} title="Rotate Left"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 7a5 5 0 019 1"/><polyline points="2,4 4,7 7,5"/></svg></MapBtn>
                     <MapBtn onClick={handleResetNorth} title="Reset North" active={Math.abs(bearing) > 1}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="8,2 13,14 8,10 3,14"/></svg></MapBtn>
                     <MapBtn onClick={handleRotateCW} title="Rotate Right"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 7a5 5 0 00-9 1"/><polyline points="14,4 12,7 9,5"/></svg></MapBtn>
+                    <div style={{ height: 1, background: theme.border, margin: '2px 4px' }} />
+                    <MapBtn onClick={() => setShowExportModal(true)} title="Export / Share (E)" active={showExportModal}><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 12v2h8v-2"/><path d="M8 2v8"/><polyline points="5,5 8,2 11,5"/></svg></MapBtn>
                 </div>}
 
                 {/* Timeline Toggle */}
@@ -5254,6 +5305,227 @@ export default function MapIndex() {
                         <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveFeedRunning ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6001</span></span>
                     </div>
                 </>}
+                </div>}
+
+                {/* ═══ KEYBOARD SHORTCUTS OVERLAY ═══ */}
+                {showShortcuts && <div onClick={() => setShowShortcuts(false)} style={{ position: 'fixed' as const, inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'argux-fadeIn 0.15s ease-out' }}>
+                    <div onClick={e => e.stopPropagation()} style={{ background: 'rgba(13,18,32,0.98)', border: `1px solid ${theme.border}`, borderRadius: 14, boxShadow: '0 24px 64px rgba(0,0,0,0.7)', padding: 0, width: 'min(680px, calc(100vw - 40px))', maxHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
+                        {/* Header */}
+                        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: `${theme.accent}12`, border: `1px solid ${theme.accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>⌨️</div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 15, fontWeight: 800, color: theme.text }}>Keyboard Shortcuts</div>
+                                <div style={{ fontSize: 10, color: theme.textDim }}>ARGUX Tactical Map — Quick Reference</div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 4, background: `${theme.border}40`, fontSize: 9, color: theme.textDim }}>
+                                <span style={{ padding: '1px 5px', borderRadius: 3, background: `${theme.border}`, fontSize: 8, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>Ctrl</span>+<span style={{ padding: '1px 5px', borderRadius: 3, background: `${theme.border}`, fontSize: 8, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>Q</span>
+                                <span style={{ marginLeft: 4 }}>to toggle</span>
+                            </div>
+                            <button onClick={() => setShowShortcuts(false)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 14, flexShrink: 0 }}>✕</button>
+                        </div>
+                        {/* Shortcuts grid */}
+                        <div style={{ overflowY: 'auto', padding: '16px 20px', scrollbarWidth: 'thin', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                            {/* General */}
+                            {[
+                                { title: 'General', color: theme.accent, items: [
+                                    { keys: ['Ctrl', 'Q'], desc: 'Toggle shortcuts overlay' },
+                                    { keys: ['Esc'], desc: 'Close topmost panel / modal / menu' },
+                                    { keys: ['/'], desc: 'Focus map search' },
+                                    { keys: ['S'], desc: 'Toggle sidebar' },
+                                    { keys: ['F'], desc: 'Toggle fullscreen' },
+                                ]},
+                                { title: 'Navigation', color: '#22c55e', items: [
+                                    { keys: ['+'], desc: 'Zoom in' },
+                                    { keys: ['-'], desc: 'Zoom out' },
+                                    { keys: ['N'], desc: 'Reset north bearing' },
+                                    { keys: ['['], desc: 'Rotate map left 45°' },
+                                    { keys: [']'], desc: 'Rotate map right 45°' },
+                                ]},
+                                { title: 'Intelligence Panels', color: '#f59e0b', items: [
+                                    { keys: ['Alt', '1'], desc: 'Toggle Live Tracker' },
+                                    { keys: ['Alt', '2'], desc: 'Toggle Event Correlation' },
+                                    { keys: ['Alt', '3'], desc: 'Toggle Anomaly Detection' },
+                                    { keys: ['Alt', '4'], desc: 'Toggle Predictive Risk' },
+                                    { keys: ['Alt', '5'], desc: 'Toggle Pattern Detection' },
+                                    { keys: ['Alt', '6'], desc: 'Toggle Incident Timeline' },
+                                ]},
+                                { title: 'Tools & Overlays', color: '#8b5cf6', items: [
+                                    { keys: ['T'], desc: 'Toggle timeline panel' },
+                                    { keys: ['R'], desc: 'Toggle ruler / measure tool' },
+                                    { keys: ['L'], desc: 'Toggle live event feed' },
+                                    { keys: ['M'], desc: 'Toggle minimap' },
+                                    { keys: ['G'], desc: 'Toggle coordinates bar' },
+                                    { keys: ['P'], desc: 'Place marker on map' },
+                                    { keys: ['E'], desc: 'Export / Share map view' },
+                                ]},
+                            ].map(group => <div key={group.title}>
+                                <div style={{ fontSize: 10, fontWeight: 800, color: group.color, textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <div style={{ width: 3, height: 12, borderRadius: 2, background: group.color }} />
+                                    {group.title}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+                                    {group.items.map(item => <div key={item.desc} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 5, transition: 'background 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                        <div style={{ display: 'flex', gap: 3, flexShrink: 0, minWidth: 80, justifyContent: 'flex-end' }}>
+                                            {item.keys.map((k, i) => <Fragment key={i}><span style={{ padding: '2px 7px', borderRadius: 4, background: `${theme.border}60`, border: `1px solid ${theme.border}`, fontSize: 9, fontWeight: 700, color: theme.text, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.4, minWidth: 20, textAlign: 'center' as const }}>{k}</span>{i < item.keys.length - 1 && <span style={{ fontSize: 8, color: theme.textDim, alignSelf: "center" }}>+</span>}</Fragment>)}
+                                        </div>
+                                        <span style={{ fontSize: 11, color: theme.textSecondary }}>{item.desc}</span>
+                                    </div>)}
+                                </div>
+                            </div>)}
+                        </div>
+                        {/* Footer */}
+                        <div style={{ padding: '10px 20px', borderTop: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                            <span style={{ fontSize: 9, color: theme.textDim }}>Shortcuts disabled while typing in input fields</span>
+                            <span style={{ fontSize: 9, color: theme.textDim }}>Press <span style={{ padding: '1px 5px', borderRadius: 3, background: `${theme.border}`, fontSize: 8, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>Esc</span> to close</span>
+                        </div>
+                    </div>
+                </div>}
+
+                {/* ═══ EXPORT / SHARE MODAL ═══ */}
+                {showExportModal && <div onClick={() => setShowExportModal(false)} style={{ position: 'fixed' as const, inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'argux-fadeIn 0.15s ease-out' }}>
+                    <div onClick={e => e.stopPropagation()} style={{ background: 'rgba(13,18,32,0.98)', border: `1px solid ${theme.border}`, borderRadius: 14, boxShadow: '0 24px 64px rgba(0,0,0,0.7)', width: 'min(520px, calc(100vw - 40px))', maxHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
+                        {/* Header */}
+                        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📤</div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 15, fontWeight: 800, color: theme.text }}>Export & Share</div>
+                                <div style={{ fontSize: 10, color: theme.textDim }}>Download map view or share workspace link</div>
+                            </div>
+                            <button onClick={() => setShowExportModal(false)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 14, flexShrink: 0 }}>✕</button>
+                        </div>
+
+                        <div style={{ overflowY: 'auto', scrollbarWidth: 'thin', padding: '16px 20px', display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+                            {/* Current viewport info */}
+                            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${theme.border}15`, border: `1px solid ${theme.border}30`, display: 'flex', gap: 12, flexWrap: 'wrap' as const }}>
+                                {[
+                                    { label: 'Center', value: `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`, icon: '📍' },
+                                    { label: 'Zoom', value: zoom.toFixed(1), icon: '🔍' },
+                                    { label: 'Bearing', value: `${bearing.toFixed(0)}°`, icon: '🧭' },
+                                    { label: 'Tile', value: activeTile, icon: '🗺️' },
+                                ].map(v => <div key={v.label} style={{ display: 'flex', alignItems: 'center', gap: 5, flex: '1 1 100px' }}>
+                                    <span style={{ fontSize: 12 }}>{v.icon}</span>
+                                    <div><div style={{ fontSize: 7, color: theme.textDim, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{v.label}</div><div style={{ fontSize: 10, color: theme.text, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{v.value}</div></div>
+                                </div>)}
+                            </div>
+
+                            {/* Export PNG */}
+                            <div style={{ padding: '12px', borderRadius: 8, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#22c55e40'; e.currentTarget.style.background = 'rgba(34,197,94,0.03)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'transparent'; }} onClick={() => {
+                                setExportStatus({ type: 'exporting', msg: 'Rendering map to PNG...' });
+                                setTimeout(() => {
+                                    try {
+                                        const canvas = mapContainerRef.current?.querySelector('canvas');
+                                        if (canvas) {
+                                            const link = document.createElement('a');
+                                            link.download = `argux-map-${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.png`;
+                                            link.href = canvas.toDataURL('image/png');
+                                            link.click();
+                                            setExportStatus({ type: 'done', msg: 'PNG downloaded successfully' });
+                                        } else {
+                                            setExportStatus({ type: 'error', msg: 'Map canvas not available' });
+                                        }
+                                    } catch { setExportStatus({ type: 'error', msg: 'Export failed — canvas may be tainted by cross-origin tiles' }); }
+                                    setTimeout(() => setExportStatus({ type: 'idle', msg: '' }), 3000);
+                                }, 500);
+                            }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🖼️</div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>Export as PNG</div>
+                                    <div style={{ fontSize: 10, color: theme.textDim }}>High-resolution screenshot of current map view with all visible layers and markers</div>
+                                </div>
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round"><path d="M4 12v2h8v-2"/><path d="M8 2v8"/><polyline points="11,7 8,10 5,7"/></svg>
+                            </div>
+
+                            {/* Export PDF */}
+                            <div style={{ padding: '12px', borderRadius: 8, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef444440'; e.currentTarget.style.background = 'rgba(239,68,68,0.03)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = 'transparent'; }} onClick={() => {
+                                setExportStatus({ type: 'exporting', msg: 'Generating PDF report...' });
+                                setTimeout(() => {
+                                    try {
+                                        const canvas = mapContainerRef.current?.querySelector('canvas');
+                                        if (canvas) {
+                                            const imgData = canvas.toDataURL('image/png');
+                                            // Create a simple print-friendly page
+                                            const w = window.open('', '_blank');
+                                            if (w) {
+                                                w.document.write(`<!DOCTYPE html><html><head><title>ARGUX Map Export</title><style>@page{size:landscape;margin:10mm}body{margin:0;font-family:system-ui,sans-serif;background:#0a0e16;color:#fff}header{padding:12px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1e293b}header h1{font-size:14px;margin:0}header span{font-size:10px;color:#94a3b8}.meta{padding:8px 20px;font-size:9px;color:#64748b;display:flex;gap:16px}img{width:100%;display:block}.footer{padding:6px 20px;font-size:8px;color:#475569;border-top:1px solid #1e293b;display:flex;justify-content:space-between}</style></head><body><header><h1>ARGUX — Tactical Map Export</h1><span>${new Date().toLocaleString()}</span></header><div class="meta"><span>Center: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}</span><span>Zoom: ${zoom.toFixed(1)}</span><span>Bearing: ${bearing.toFixed(0)}°</span><span>Tile: ${activeTile}</span></div><img src="${imgData}"/><div class="footer"><span>ARGUX Surveillance Platform — CLASSIFIED // NOFORN</span><span>Generated ${new Date().toISOString()}</span></div></body></html>`);
+                                                w.document.close();
+                                                setTimeout(() => { w.print(); }, 500);
+                                                setExportStatus({ type: 'done', msg: 'PDF print dialog opened' });
+                                            }
+                                        } else { setExportStatus({ type: 'error', msg: 'Map canvas not available' }); }
+                                    } catch { setExportStatus({ type: 'error', msg: 'PDF export failed' }); }
+                                    setTimeout(() => setExportStatus({ type: 'idle', msg: '' }), 3000);
+                                }, 800);
+                            }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>📄</div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>Export as PDF</div>
+                                    <div style={{ fontSize: 10, color: theme.textDim }}>Opens print dialog with map image, metadata header, and CLASSIFIED footer. Save as PDF from browser.</div>
+                                </div>
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round"><path d="M4 12v2h8v-2"/><path d="M8 2v8"/><polyline points="11,7 8,10 5,7"/></svg>
+                            </div>
+
+                            {/* Share Workspace URL */}
+                            <div style={{ padding: '12px', borderRadius: 8, border: `1px solid ${theme.border}` }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                                    <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🔗</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>Share Workspace Link</div>
+                                        <div style={{ fontSize: 10, color: theme.textDim }}>Generate a URL that restores this exact map view — center, zoom, bearing, tile, layers, and filters.</div>
+                                    </div>
+                                </div>
+                                {/* Generate URL */}
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                    <button onClick={() => {
+                                        const params = new URLSearchParams();
+                                        params.set('lat', coords.lat.toFixed(5));
+                                        params.set('lng', coords.lng.toFixed(5));
+                                        params.set('z', zoom.toFixed(1));
+                                        params.set('b', bearing.toFixed(0));
+                                        params.set('tile', activeTile);
+                                        if (active3D) params.set('3d', active3D);
+                                        if (layerHeatmap) params.set('heat', '1');
+                                        if (layerNetwork) params.set('net', '1');
+                                        if (layerLPR) params.set('lpr', '1');
+                                        if (layerFace) params.set('face', '1');
+                                        if (selectedPersons.length) params.set('p', selectedPersons.join(','));
+                                        if (selectedOrgs.length) params.set('o', selectedOrgs.join(','));
+                                        if (dateFrom) params.set('from', dateFrom);
+                                        if (dateTo) params.set('to', dateTo);
+                                        const url = `${window.location.origin}/map?${params.toString()}`;
+                                        setShareUrl(url);
+                                        setShareCopied(false);
+                                    }} style={{ flex: 1, padding: '8px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Generate Share Link</button>
+                                </div>
+                                {shareUrl && <div style={{ marginTop: 8 }}>
+                                    <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+                                        <div style={{ flex: 1, padding: '8px 10px', background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 9, color: theme.accent, fontFamily: "'JetBrains Mono', monospace", wordBreak: 'break-all', lineHeight: 1.4, maxHeight: 60, overflowY: 'auto', scrollbarWidth: 'thin' }}>{shareUrl}</div>
+                                        <button onClick={() => { navigator.clipboard.writeText(shareUrl).then(() => { setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); }); }} style={{ padding: '0 14px', borderRadius: 6, border: `1px solid ${shareCopied ? '#22c55e30' : theme.border}`, background: shareCopied ? 'rgba(34,197,94,0.08)' : 'transparent', color: shareCopied ? '#22c55e' : theme.text, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, transition: 'all 0.2s' }}>{shareCopied ? '✓ Copied!' : '📋 Copy'}</button>
+                                    </div>
+                                    {/* URL params breakdown */}
+                                    <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
+                                        {shareUrl.split('?')[1]?.split('&').map(p => {
+                                            const [k, v] = p.split('=');
+                                            return <span key={k} style={{ fontSize: 7, padding: '1px 5px', borderRadius: 3, background: `${theme.border}40`, color: theme.textDim }}><span style={{ color: '#8b5cf6', fontWeight: 700 }}>{k}</span>={decodeURIComponent(v || '')}</span>;
+                                        })}
+                                    </div>
+                                </div>}
+                            </div>
+
+                            {/* Export status */}
+                            {exportStatus.type !== 'idle' && <div style={{ padding: '8px 12px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${exportStatus.type === 'done' ? '#22c55e30' : exportStatus.type === 'error' ? '#ef444430' : theme.accent + '30'}`, background: exportStatus.type === 'done' ? 'rgba(34,197,94,0.06)' : exportStatus.type === 'error' ? 'rgba(239,68,68,0.06)' : `${theme.accent}06` }}>
+                                {exportStatus.type === 'exporting' && <div style={{ width: 12, height: 12, border: `2px solid ${theme.border}`, borderTopColor: theme.accent, borderRadius: '50%', animation: 'argux-spin 0.6s linear infinite', flexShrink: 0 }} />}
+                                {exportStatus.type === 'done' && <span style={{ fontSize: 12 }}>✅</span>}
+                                {exportStatus.type === 'error' && <span style={{ fontSize: 12 }}>⚠️</span>}
+                                <span style={{ fontSize: 10, color: exportStatus.type === 'done' ? '#22c55e' : exportStatus.type === 'error' ? '#ef4444' : theme.text }}>{exportStatus.msg}</span>
+                            </div>}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ padding: '10px 20px', borderTop: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                            <span style={{ fontSize: 9, color: theme.textDim }}>ARGUX Surveillance Platform — CLASSIFIED // NOFORN</span>
+                            <span style={{ fontSize: 9, color: theme.textDim }}>Press <span style={{ padding: '1px 5px', borderRadius: 3, background: `${theme.border}`, fontSize: 8, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>E</span> to toggle</span>
+                        </div>
+                    </div>
                 </div>}
 
                 {/* Zone Context Menu (right-click on zone) */}
