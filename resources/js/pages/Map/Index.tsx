@@ -763,9 +763,81 @@ export default function MapIndex() {
         ];
     }, [compareA, compareB]);
 
+    // ═══ ROUTE REPLAY ═══
+    const [showRouteReplay, setShowRouteReplay] = useState(false);
+    const [rrPerson, setRrPerson] = useState<string>('1');
+    const [rrPlaying, setRrPlaying] = useState(false);
+    const [rrSpeed, setRrSpeed] = useState<number>(1);
+    const [rrCursor, setRrCursor] = useState<number>(0);
+    const rrIntervalRef = useRef<any>(null);
+
+    interface RoutePoint { lat: number; lng: number; ts: string; speed: number; bearing: number; event?: string; eventType?: string; }
+    const mockRoutes: Record<string, RoutePoint[]> = useMemo(() => ({
+        '1': [
+            { lat: 45.8025, lng: 15.9710, ts: '06:00', speed: 0, bearing: 0, event: 'Home — device activated', eventType: 'phone' },
+            { lat: 45.8032, lng: 15.9735, ts: '06:12', speed: 28, bearing: 45 },
+            { lat: 45.8055, lng: 15.9760, ts: '06:18', speed: 42, bearing: 30 },
+            { lat: 45.8078, lng: 15.9792, ts: '06:25', speed: 52, bearing: 35, event: 'LPR capture — Vukovarska', eventType: 'lpr' },
+            { lat: 45.8095, lng: 15.9810, ts: '06:30', speed: 38, bearing: 50 },
+            { lat: 45.8110, lng: 15.9830, ts: '06:35', speed: 45, bearing: 40 },
+            { lat: 45.8128, lng: 15.9780, ts: '06:42', speed: 35, bearing: 310 },
+            { lat: 45.8140, lng: 15.9750, ts: '06:48', speed: 22, bearing: 290, event: 'Entered industrial zone', eventType: 'zone' },
+            { lat: 45.8158, lng: 15.9730, ts: '06:55', speed: 18, bearing: 340 },
+            { lat: 45.8172, lng: 15.9760, ts: '07:02', speed: 12, bearing: 60 },
+            { lat: 45.8180, lng: 15.9800, ts: '07:08', speed: 8, bearing: 80 },
+            { lat: 45.8185, lng: 15.9850, ts: '07:15', speed: 5, bearing: 90, event: 'Stopped at port terminal — 22min', eventType: 'alert' },
+            { lat: 45.8185, lng: 15.9850, ts: '07:37', speed: 0, bearing: 90 },
+            { lat: 45.8178, lng: 15.9820, ts: '07:42', speed: 15, bearing: 250 },
+            { lat: 45.8160, lng: 15.9790, ts: '07:50', speed: 32, bearing: 220 },
+            { lat: 45.8140, lng: 15.9770, ts: '07:56', speed: 40, bearing: 200, event: 'Face match — Camera 07', eventType: 'face' },
+            { lat: 45.8120, lng: 15.9760, ts: '08:02', speed: 35, bearing: 190 },
+            { lat: 45.8095, lng: 15.9750, ts: '08:10', speed: 28, bearing: 200 },
+            { lat: 45.8070, lng: 15.9740, ts: '08:18', speed: 22, bearing: 210 },
+            { lat: 45.8045, lng: 15.9730, ts: '08:25', speed: 15, bearing: 200, event: 'Arrived at office', eventType: 'gps' },
+        ],
+        '9': [
+            { lat: 45.8200, lng: 15.9600, ts: '03:15', speed: 0, bearing: 0, event: 'GPS activated after 6h dark', eventType: 'alert' },
+            { lat: 45.8190, lng: 15.9630, ts: '03:18', speed: 22, bearing: 120 },
+            { lat: 45.8175, lng: 15.9660, ts: '03:22', speed: 35, bearing: 140 },
+            { lat: 45.8160, lng: 15.9690, ts: '03:25', speed: 40, bearing: 150, event: 'Speed 118km/h — evasive', eventType: 'alert' },
+            { lat: 45.8130, lng: 15.9720, ts: '03:27', speed: 118, bearing: 160 },
+            { lat: 45.8100, lng: 15.9740, ts: '03:28', speed: 95, bearing: 170 },
+            { lat: 45.8080, lng: 15.9750, ts: '03:29', speed: 65, bearing: 180 },
+            { lat: 45.8075, lng: 15.9755, ts: '03:30', speed: 8, bearing: 180, event: 'Stopped — Savska 41', eventType: 'gps' },
+            { lat: 45.8075, lng: 15.9755, ts: '03:34', speed: 0, bearing: 180 },
+            { lat: 45.8080, lng: 15.9770, ts: '03:35', speed: 18, bearing: 60 },
+            { lat: 45.8095, lng: 15.9800, ts: '03:37', speed: 30, bearing: 40, event: 'Phone powered off', eventType: 'phone' },
+        ],
+    }), []);
+
+    useEffect(() => {
+        if (rrPlaying && showRouteReplay) {
+            const route = mockRoutes[rrPerson] || [];
+            if (route.length === 0) return;
+            rrIntervalRef.current = setInterval(() => {
+                setRrCursor(prev => {
+                    const next = prev + 1;
+                    if (next >= route.length) { setRrPlaying(false); return route.length - 1; }
+                    return next;
+                });
+            }, 800 / rrSpeed);
+            return () => clearInterval(rrIntervalRef.current);
+        }
+        return () => { if (rrIntervalRef.current) clearInterval(rrIntervalRef.current); };
+    }, [rrPlaying, rrSpeed, rrPerson, showRouteReplay]);
+
+    // Fly to current route point
+    useEffect(() => {
+        if (!showRouteReplay) return;
+        const route = mockRoutes[rrPerson] || [];
+        if (route.length === 0 || rrCursor >= route.length) return;
+        const pt = route[rrCursor];
+        mapRef.current?.easeTo({ center: [pt.lng, pt.lat], duration: 600 });
+    }, [rrCursor, rrPerson, showRouteReplay]);
+
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -789,6 +861,7 @@ export default function MapIndex() {
         layers: { x: 10, y: 10 },
         heatcal: { x: 10, y: 10 },
         compare: { x: 10, y: 10 },
+        routereplay: { x: 10, y: 10 },
     };
 
     const [panelPositions, setPanelPositions] = useState<Record<string, PanelPos>>({});
@@ -2811,9 +2884,10 @@ export default function MapIndex() {
         const templates = [
             { type: 'lpr', icon: '🚗', titles: ['LPR: ZG-1234-AB detected', 'LPR: SA-9012-RH captured', 'LPR: ZG-5678-CD spotted', 'LPR: EG-4567-FT flagged', 'LPR: CO-MEND-99 tracked'], sev: ['high', 'medium', 'critical', 'high', 'medium'], color: '#10b981', persons: ['Marko Horvat', 'Ahmed Al-Rashid', 'Ivan Babić', 'Omar Hassan', 'Carlos Mendoza'], cameras: ['Ban Jelačić Cam', 'Savska Intersection', 'Maksimir Entrance', 'Dubrava Overpass', 'Črnomerec Junction'] },
             { type: 'face', icon: '🧑‍🦲', titles: ['Face match: Marko Horvat', 'Face match: Ivan Babić', 'Face detected: Unknown', 'Face match: Ahmed Al-Rashid', 'Face match: Ana Kovačević'], sev: ['critical', 'high', 'medium', 'critical', 'high'], color: '#ec4899', persons: ['Marko Horvat', 'Ivan Babić', 'Unknown Subject', 'Ahmed Al-Rashid', 'Ana Kovačević'], cameras: ['OP-HAWK Alpha', 'Maksimir Entrance', 'OP-HAWK Charlie', 'Main Station', 'ASG HQ Interior'] },
-            { type: 'zone', icon: '🛡️', titles: ['Zone breach: Restricted Area A', 'Zone entry: Surveillance Zone B', 'Zone exit: Monitored C', 'Zone alert: Operations Zone', 'Zone patrol check: Buffer D'], sev: ['critical', 'info', 'info', 'high', 'low'], color: '#f59e0b', persons: ['Marko Horvat', 'Ivan Babić', 'Unknown', '', 'Patrol Unit 3'], cameras: [] },
+            { type: 'zone', icon: '🛡️', titles: ['⚠️ ZONE ENTRY: Horvat → Restricted Alpha', '⚠️ ZONE EXIT: Hassan → Monitored Bravo', '⚠️ ZONE ENTRY: Babić → Diplomatic Quarter', '⚠️ ZONE ENTRY: Mendoza → Port Terminal', '⚠️ ZONE EXIT: Horvat → Safe House'], sev: ['critical', 'high', 'medium', 'critical', 'high'], color: '#f59e0b', persons: ['Marko Horvat', 'Omar Hassan', 'Ivan Babić', 'Carlos Mendoza', 'Marko Horvat'], cameras: ['Zone Engine', 'Zone Engine', 'Zone Engine', 'Zone Engine', 'Zone Engine'] },
             { type: 'source', icon: '📡', titles: ['GPS: Speed alert triggered', 'Camera: Motion detected', 'Audio: Keyword flagged', 'Mobile: Signal lost', 'Sensor: Anomaly detected'], sev: ['high', 'info', 'high', 'critical', 'medium'], color: '#3b82f6', persons: ['Omar Hassan', '', 'Marko Horvat', 'Carlos Mendoza', ''], cameras: ['GPS-004', 'Ban Jelačić Cam', 'MIC-ALPHA', 'APP-LOC', 'Sensor Grid'] },
-            { type: 'alert', icon: '🚨', titles: ['ALERT: Co-location detected', 'ALERT: Geofence breach', 'ALERT: Pattern anomaly', 'ALERT: Signal intercept', 'ALERT: Surveillance gap'], sev: ['critical', 'critical', 'high', 'high', 'medium'], color: '#ef4444', persons: ['Horvat + Al-Rashid', 'Omar Hassan', 'Ivan Babić', 'Carlos Mendoza', ''], cameras: [] },
+            { type: 'alert', icon: '🚨', titles: ['ALERT: Co-location detected', 'ALERT: Geofence breach — critical', 'ALERT: Pattern anomaly', 'ALERT: Signal intercept', 'ALERT: Surveillance gap'], sev: ['critical', 'critical', 'high', 'high', 'medium'], color: '#ef4444', persons: ['Horvat + Al-Rashid', 'Omar Hassan', 'Ivan Babić', 'Carlos Mendoza', ''], cameras: [] },
+            { type: 'zone', icon: '🚪', titles: ['ZONE EXIT: Hassan → Storage Facility', 'ZONE ENTRY: Mendoza → Savska Perimeter', 'ZONE EXIT: Babić → Checkpoint Zone', 'ZONE ENTRY: Hassan → Port Loading Area', 'ZONE EXIT: Mendoza → Industrial Block'], sev: ['medium', 'high', 'medium', 'critical', 'high'], color: '#f97316', persons: ['Omar Hassan', 'Carlos Mendoza', 'Ivan Babić', 'Omar Hassan', 'Carlos Mendoza'], cameras: ['Zone Engine', 'Zone Engine', 'Zone Engine', 'Zone Engine', 'Zone Engine'] },
         ];
         const interval = setInterval(() => {
             const tpl = templates[Math.floor(Math.random() * templates.length)];
@@ -2876,6 +2950,7 @@ export default function MapIndex() {
                 if (showIncidentPanel) { setShowIncidentPanel(false); return; }
                 if (showHeatCalPanel) { setShowHeatCalPanel(false); return; }
                 if (showComparePanel) { setShowComparePanel(false); return; }
+                if (showRouteReplay) { setShowRouteReplay(false); setRrPlaying(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
@@ -2914,6 +2989,7 @@ export default function MapIndex() {
             if (e.key === '6' && e.altKey) { e.preventDefault(); setShowIncidentPanel(prev => !prev); triggerTopLoader(); return; }
             if (e.key === '7' && e.altKey) { e.preventDefault(); setShowHeatCalPanel(prev => !prev); triggerTopLoader(); return; }
             if (e.key === '8' && e.altKey) { e.preventDefault(); setShowComparePanel(prev => !prev); triggerTopLoader(); return; }
+            if (e.key === '9' && e.altKey) { e.preventDefault(); setShowRouteReplay(prev => !prev); triggerTopLoader(); return; }
 
             // Tools
             if (e.key === 'r' && !e.ctrlKey) { setRulerActive(prev => !prev); return; }
@@ -2925,7 +3001,7 @@ export default function MapIndex() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [showExportModal, showShortcuts, tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showPatternPanel, showIncidentPanel, showHeatCalPanel, showComparePanel, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
+    }, [showExportModal, showShortcuts, tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showPatternPanel, showIncidentPanel, showHeatCalPanel, showComparePanel, showRouteReplay, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -3627,6 +3703,17 @@ export default function MapIndex() {
                                     <div style={{ fontSize: 8, color: theme.textDim }}>Side-by-side activity analysis</div>
                                 </div>
                                 <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showComparePanel ? '#a855f7' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+
+                            {/* Route Replay button */}
+                            <button onClick={() => { setShowRouteReplay(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${showRouteReplay ? '#ec489940' : theme.border}`, background: showRouteReplay ? 'rgba(236,72,153,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(236,72,153,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showRouteReplay ? 'rgba(236,72,153,0.06)' : 'transparent'; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: rrPlaying ? 'rgba(236,72,153,0.15)' : 'rgba(236,72,153,0.06)', border: `1px solid ${rrPlaying ? '#ec489940' : '#ec489915'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>🎬</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: showRouteReplay ? '#ec4899' : theme.text }}>Route Replay</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>{rrPlaying ? `Playing · ${rrSpeed}x speed` : 'Animate historical movement'}</div>
+                                </div>
+                                {rrPlaying && <span style={{ fontSize: 7, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#ec489915', color: '#ec4899', border: '1px solid #ec489925', animation: 'argux-fadeIn 0.3s' }}>▶ LIVE</span>}
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showRouteReplay ? '#ec4899' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
                             </button>
                         </div>
                     </Section>
@@ -5097,6 +5184,94 @@ export default function MapIndex() {
                     </>}
                 </div>}
 
+                {/* ═══ ROUTE REPLAY PANEL ═══ */}
+                {showRouteReplay && loaded && <div data-panel="routereplay" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('routereplay' as PanelId); }} style={panelStyle('routereplay', '380px', '#ec4899')}>
+                    <PanelHeader id="routereplay" icon="🎬" title="Route Replay" subtitle={`${heatCalPersonInfo[parseInt(rrPerson)]?.name || 'Select'} · ${(mockRoutes[rrPerson] || []).length} points`} color="#ec4899" onClose={() => { setShowRouteReplay(false); setRrPlaying(false); }} extra={rrPlaying ? <span style={{ fontSize: 7, fontWeight: 800, padding: '2px 5px', borderRadius: 3, background: '#ec489920', color: '#ec4899', border: '1px solid #ec489930', animation: 'argux-fadeIn 0.3s' }}>▶ PLAYING</span> : undefined} />
+                    <PanelResizeGrip id="routereplay" />
+
+                    {!isPanelMin('routereplay') && <>
+                    {/* Person selector */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Subject</div>
+                        <div style={{ display: 'flex', gap: 3 }}>
+                            {Object.entries(mockRoutes).map(([pid, route]) => {
+                                const on = rrPerson === pid;
+                                const info = heatCalPersonInfo[parseInt(pid)];
+                                return <button key={pid} onClick={() => { setRrPerson(pid); setRrCursor(0); setRrPlaying(false); }} style={{ flex: 1, padding: '5px', borderRadius: 5, border: `1px solid ${on ? '#ec489940' : theme.border}`, background: on ? 'rgba(236,72,153,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' as const }}>
+                                    <div style={{ fontSize: 9, fontWeight: 700, color: on ? '#ec4899' : theme.text }}>{info?.name.split(' ')[1] || pid}</div>
+                                    <div style={{ fontSize: 7, color: theme.textDim }}>{route.length} pts</div>
+                                </button>;
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Transport controls */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {/* Rewind */}
+                            <button onClick={() => { setRrCursor(0); setRrPlaying(false); }} style={{ width: 28, height: 28, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 10, flexShrink: 0 }}>⏮</button>
+                            {/* Step back */}
+                            <button onClick={() => setRrCursor(prev => Math.max(0, prev - 1))} style={{ width: 28, height: 28, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 10, flexShrink: 0 }}>⏪</button>
+                            {/* Play/Pause */}
+                            <button onClick={() => { if (rrCursor >= (mockRoutes[rrPerson] || []).length - 1) setRrCursor(0); setRrPlaying(prev => !prev); }} style={{ width: 36, height: 28, borderRadius: 5, border: `1px solid ${rrPlaying ? '#ec489950' : theme.border}`, background: rrPlaying ? 'rgba(236,72,153,0.1)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: rrPlaying ? '#ec4899' : theme.textDim, fontSize: 12, flexShrink: 0 }}>{rrPlaying ? '⏸' : '▶️'}</button>
+                            {/* Step forward */}
+                            <button onClick={() => setRrCursor(prev => Math.min((mockRoutes[rrPerson] || []).length - 1, prev + 1))} style={{ width: 28, height: 28, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 10, flexShrink: 0 }}>⏩</button>
+                            {/* End */}
+                            <button onClick={() => { setRrCursor((mockRoutes[rrPerson] || []).length - 1); setRrPlaying(false); }} style={{ width: 28, height: 28, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 10, flexShrink: 0 }}>⏭</button>
+                            <div style={{ flex: 1 }} />
+                            {/* Speed */}
+                            {[0.5, 1, 2, 4].map(s => <button key={s} onClick={() => setRrSpeed(s)} style={{ padding: '3px 6px', borderRadius: 3, border: `1px solid ${rrSpeed === s ? '#ec489940' : theme.border}`, background: rrSpeed === s ? 'rgba(236,72,153,0.08)' : 'transparent', color: rrSpeed === s ? '#ec4899' : theme.textDim, fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}>{s}×</button>)}
+                        </div>
+
+                        {/* Progress bar */}
+                        <div style={{ marginTop: 6 }}>
+                            <input type="range" min={0} max={Math.max(0, (mockRoutes[rrPerson] || []).length - 1)} value={rrCursor} onChange={e => { setRrCursor(parseInt(e.target.value)); setRrPlaying(false); }} style={{ width: '100%', height: 4, accentColor: '#ec4899' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: theme.textDim, marginTop: 2 }}>
+                                <span>{(mockRoutes[rrPerson] || [])[rrCursor]?.ts || '--:--'}</span>
+                                <span>{rrCursor + 1}/{(mockRoutes[rrPerson] || []).length}</span>
+                                <span>{(mockRoutes[rrPerson] || [])[(mockRoutes[rrPerson] || []).length - 1]?.ts || '--:--'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Current position info */}
+                    {(() => {
+                        const route = mockRoutes[rrPerson] || [];
+                        const pt = route[rrCursor];
+                        if (!pt) return null;
+                        return <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
+                                <div style={{ padding: '4px 6px', borderRadius: 4, background: `${theme.border}15`, textAlign: 'center' as const }}><div style={{ fontSize: 7, color: theme.textDim }}>Speed</div><div style={{ fontSize: 12, fontWeight: 800, color: pt.speed > 80 ? '#ef4444' : pt.speed > 0 ? '#22c55e' : theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{pt.speed}<span style={{ fontSize: 7, fontWeight: 400 }}> km/h</span></div></div>
+                                <div style={{ padding: '4px 6px', borderRadius: 4, background: `${theme.border}15`, textAlign: 'center' as const }}><div style={{ fontSize: 7, color: theme.textDim }}>Bearing</div><div style={{ fontSize: 12, fontWeight: 800, color: theme.text, fontFamily: "'JetBrains Mono', monospace" }}>{pt.bearing}°</div></div>
+                                <div style={{ padding: '4px 6px', borderRadius: 4, background: `${theme.border}15`, textAlign: 'center' as const }}><div style={{ fontSize: 7, color: theme.textDim }}>Time</div><div style={{ fontSize: 12, fontWeight: 800, color: '#ec4899', fontFamily: "'JetBrains Mono', monospace" }}>{pt.ts}</div></div>
+                            </div>
+                            <div style={{ marginTop: 4, fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", textAlign: 'center' as const }}>{pt.lat.toFixed(5)}, {pt.lng.toFixed(5)}</div>
+                        </div>;
+                    })()}
+
+                    {/* Event log — scrollable list of points */}
+                    <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
+                        {(mockRoutes[rrPerson] || []).map((pt, i) => {
+                            const isCurrent = i === rrCursor;
+                            const isPast = i < rrCursor;
+                            const evtColors: Record<string, string> = { alert: '#ef4444', lpr: '#10b981', zone: '#f97316', face: '#ec4899', phone: '#06b6d4', gps: '#22c55e' };
+                            return <div key={i} onClick={() => { setRrCursor(i); setRrPlaying(false); }} style={{ padding: '5px 14px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', background: isCurrent ? 'rgba(236,72,153,0.06)' : 'transparent', borderLeft: `3px solid ${isCurrent ? '#ec4899' : isPast ? '#ec489930' : 'transparent'}`, transition: 'background 0.1s', opacity: isPast && !isCurrent ? 0.5 : 1 }} onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = 'transparent'; }}>
+                                <span style={{ fontSize: 9, fontWeight: 700, color: isCurrent ? '#ec4899' : theme.textDim, fontFamily: "'JetBrains Mono', monospace", width: 34, flexShrink: 0 }}>{pt.ts}</span>
+                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: isCurrent ? '#ec4899' : isPast ? '#ec489940' : `${theme.border}40`, flexShrink: 0, boxShadow: isCurrent ? '0 0 8px #ec489960' : 'none' }} />
+                                {pt.event ? <span style={{ fontSize: 9, color: evtColors[pt.eventType || ''] || theme.text, fontWeight: 600, flex: 1 }}>{pt.event}</span> : <span style={{ fontSize: 8, color: theme.textDim, flex: 1 }}>{pt.speed} km/h · {pt.bearing}°</span>}
+                            </div>;
+                        })}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{(mockRoutes[rrPerson] || []).length} waypoints · {(mockRoutes[rrPerson] || []).filter(p => p.event).length} events</span>
+                        <div style={{ flex: 1 }} />
+                        <span style={{ fontSize: 7, color: '#ec4899', fontWeight: 600 }}>GPS + Kafka</span>
+                    </div>
+                    </>}
+                </div>}
+
                 {/* ═══ WORKSPACES PANEL ═══ */}
                 {showWorkspacesPanel && loaded && <div data-panel="workspaces" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('workspaces' as PanelId); }} style={panelStyle('workspaces', '360px', theme.accent)}>
                     <PanelHeader id="workspaces" icon="📋" title="Workspaces" subtitle={`${workspaces.length} saved${wsActiveId ? ` · ${workspaces.find(w => w.id === wsActiveId)?.name}` : ''}`} color={theme.accent} onClose={() => setShowWorkspacesPanel(false)} extra={<button onClick={openSaveWs} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>💾 Save</button>} />
@@ -5649,6 +5824,7 @@ export default function MapIndex() {
                                     { keys: ['Alt', '6'], desc: 'Toggle Incident Timeline' },
                                     { keys: ['Alt', '7'], desc: 'Toggle Heat Calendar' },
                                     { keys: ['Alt', '8'], desc: 'Toggle Entity Comparison' },
+                                    { keys: ['Alt', '9'], desc: 'Toggle Route Replay' },
                                 ]},
                                 { title: 'Tools & Overlays', color: '#8b5cf6', items: [
                                     { keys: ['T'], desc: 'Toggle timeline panel' },
