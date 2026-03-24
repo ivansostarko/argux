@@ -705,17 +705,72 @@ export default function MapIndex() {
     }), [mockIncidents]);
 
     // ═══ FLOATING PANEL SYSTEM ═══
+    const mapContainerRef = useRef<HTMLDivElement>(null);
     type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents';
     interface PanelPos { x: number; y: number; }
-    const defaultPanelPos: PanelPos = { x: 10, y: 10 };
+    interface PanelSize { w: number; h: number; }
+    const SNAP_THRESHOLD = 24;
+    const MIN_PANEL_W = 240;
+    const MIN_PANEL_H = 120;
+
+    // Default positions — spread panels so they don't overlap when multiple open
+    const defaultPanelPositions: Record<string, PanelPos> = {
+        tracker: { x: 10, y: 10 },
+        correlation: { x: 10, y: 10 },
+        anomaly: { x: 10, y: 10 },
+        predictive: { x: 10, y: 10 },
+        pattern: { x: 10, y: 10 },
+        incidents: { x: 10, y: 10 },
+        feed: { x: 10, y: 10 },
+        ruler: { x: 10, y: 10 },
+        zone: { x: 10, y: 10 },
+        objects: { x: 10, y: 10 },
+        places: { x: 10, y: 10 },
+        workspaces: { x: 10, y: 10 },
+        layers: { x: 10, y: 10 },
+    };
+
     const [panelPositions, setPanelPositions] = useState<Record<string, PanelPos>>({});
+    const [panelSizes, setPanelSizes] = useState<Record<string, PanelSize>>({});
     const [panelMinimized, setPanelMinimized] = useState<Set<string>>(new Set());
     const [panelMaximized, setPanelMaximized] = useState<string | null>(null);
+    const [panelZStack, setPanelZStack] = useState<string[]>([]);
     const panelDragRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+    const panelResizeRef = useRef<{ id: string; edge: string; startX: number; startY: number; origX: number; origY: number; origW: number; origH: number } | null>(null);
 
-    const getPanelPos = (id: PanelId) => panelPositions[id] || defaultPanelPos;
+    // Auto-position: when a panel opens at default pos, cascade it if another panel is already there
+    const getAutoPosition = (id: PanelId): PanelPos => {
+        if (panelPositions[id]) return panelPositions[id];
+        const base = defaultPanelPositions[id] || { x: 10, y: 10 };
+        const occupiedPositions = Object.entries(panelPositions).filter(([k]) => k !== id).map(([, v]) => v);
+        let pos = { ...base };
+        let attempts = 0;
+        while (attempts < 8 && occupiedPositions.some(op => Math.abs(op.x - pos.x) < 30 && Math.abs(op.y - pos.y) < 30)) {
+            pos = { x: pos.x + 30, y: pos.y + 30 };
+            attempts++;
+        }
+        // Clamp to container
+        const cw = mapContainerRef.current ? mapContainerRef.current.offsetWidth : window.innerWidth;
+        const ch = mapContainerRef.current ? mapContainerRef.current.offsetHeight : window.innerHeight;
+        pos.x = Math.max(0, Math.min(pos.x, cw - 280));
+        pos.y = Math.max(0, Math.min(pos.y, ch - 120));
+        return pos;
+    };
+
+    const getPanelPos = (id: PanelId) => panelPositions[id] || getAutoPosition(id);
+    const getPanelSize = (id: PanelId, defaultW: number) => panelSizes[id] || { w: defaultW, h: 0 };
     const isPanelMin = (id: PanelId) => panelMinimized.has(id);
     const isPanelMax = (id: PanelId) => panelMaximized === id;
+    const getPanelZ = (id: PanelId) => { const idx = panelZStack.indexOf(id); return idx >= 0 ? 16 + idx : 16; };
+
+    const bringToFront = (id: PanelId) => {
+        setPanelZStack(prev => { if (prev.length > 0 && prev[prev.length - 1] === id) return prev; const n = prev.filter(p => p !== id); n.push(id); return n; });
+        // Auto-set position on first open so cascade takes effect
+        if (!panelPositions[id]) {
+            const pos = getAutoPosition(id);
+            setPanelPositions(prev => ({ ...prev, [id]: pos }));
+        }
+    };
 
     const togglePanelMin = (id: PanelId) => {
         setPanelMinimized(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -724,36 +779,121 @@ export default function MapIndex() {
     const togglePanelMax = (id: PanelId) => {
         setPanelMaximized(prev => prev === id ? null : id);
         setPanelMinimized(prev => { const n = new Set(prev); n.delete(id); return n; });
+        bringToFront(id);
     };
 
+    // Snap-to-edge logic — uses actual panel size for right/bottom edge
+    const snapPosition = (x: number, y: number, panelEl: HTMLElement | null): PanelPos => {
+        const container = mapContainerRef.current;
+        const cw = container ? container.offsetWidth : window.innerWidth;
+        const ch = container ? container.offsetHeight : window.innerHeight;
+        const pw = panelEl ? panelEl.offsetWidth : 360;
+        const ph = panelEl ? panelEl.offsetHeight : 300;
+        let sx = x, sy = y;
+        // Left edge snap
+        if (x < SNAP_THRESHOLD) sx = 4;
+        // Right edge snap — panel's right side aligns to container right
+        else if (x + pw > cw - SNAP_THRESHOLD) sx = Math.max(4, cw - pw - 4);
+        // Top edge snap
+        if (y < SNAP_THRESHOLD) sy = 4;
+        // Bottom edge snap — panel's bottom side aligns to container bottom
+        else if (y + ph > ch - SNAP_THRESHOLD) sy = Math.max(4, ch - ph - 4);
+        // Clamp so panel is always reachable
+        sx = Math.max(0, Math.min(sx, cw - 40));
+        sy = Math.max(0, Math.min(sy, ch - 30));
+        return { x: sx, y: sy };
+    };
+
+    // Mouse drag
     const onPanelDragStart = (id: PanelId, e: React.MouseEvent) => {
         if ((e.target as HTMLElement).closest('button, input, select, textarea, a')) return;
         e.preventDefault();
+        bringToFront(id);
         const pos = getPanelPos(id);
+        const panelEl = (e.target as HTMLElement).closest('[data-panel]') as HTMLElement | null;
         panelDragRef.current = { id, startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y };
         const onMove = (ev: MouseEvent) => {
             if (!panelDragRef.current || panelDragRef.current.id !== id) return;
             const dx = ev.clientX - panelDragRef.current.startX;
             const dy = ev.clientY - panelDragRef.current.startY;
-            const container = mapContainerRef.current;
-            const maxX = container ? container.offsetWidth - 60 : window.innerWidth - 60;
-            const maxY = container ? container.offsetHeight - 30 : window.innerHeight - 30;
-            setPanelPositions(prev => ({ ...prev, [id]: { x: Math.max(0, Math.min(maxX, panelDragRef.current!.origX + dx)), y: Math.max(0, Math.min(maxY, panelDragRef.current!.origY + dy)) } }));
+            const raw = { x: panelDragRef.current.origX + dx, y: panelDragRef.current.origY + dy };
+            const snapped = snapPosition(raw.x, raw.y, panelEl);
+            setPanelPositions(prev => ({ ...prev, [id]: snapped }));
         };
         const onUp = () => { panelDragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
     };
-    const mapContainerRef = useRef<HTMLDivElement>(null);
+
+    // Touch drag
+    const onPanelTouchStart = (id: PanelId, e: React.TouchEvent) => {
+        if ((e.target as HTMLElement).closest('button, input, select, textarea, a')) return;
+        bringToFront(id);
+        const touch = e.touches[0];
+        const pos = getPanelPos(id);
+        const panelEl = (e.target as HTMLElement).closest('[data-panel]') as HTMLElement | null;
+        panelDragRef.current = { id, startX: touch.clientX, startY: touch.clientY, origX: pos.x, origY: pos.y };
+        const onMove = (ev: TouchEvent) => {
+            if (!panelDragRef.current || panelDragRef.current.id !== id) return;
+            ev.preventDefault();
+            const t = ev.touches[0];
+            const dx = t.clientX - panelDragRef.current.startX;
+            const dy = t.clientY - panelDragRef.current.startY;
+            const raw = { x: panelDragRef.current.origX + dx, y: panelDragRef.current.origY + dy };
+            const snapped = snapPosition(raw.x, raw.y, panelEl);
+            setPanelPositions(prev => ({ ...prev, [id]: snapped }));
+        };
+        const onEnd = () => { panelDragRef.current = null; window.removeEventListener('touchmove', onMove); window.removeEventListener('touchend', onEnd); };
+        window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('touchend', onEnd);
+    };
+
+    // Resize
+    const onPanelResizeStart = (id: PanelId, edge: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        bringToFront(id);
+        const pos = getPanelPos(id);
+        const el = (e.target as HTMLElement).closest('[data-panel]') as HTMLElement | null;
+        const origW = el ? el.offsetWidth : 360;
+        const origH = el ? el.offsetHeight : 400;
+        panelResizeRef.current = { id, edge, startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y, origW, origH };
+        const onMove = (ev: MouseEvent) => {
+            if (!panelResizeRef.current || panelResizeRef.current.id !== id) return;
+            const ref = panelResizeRef.current;
+            const dx = ev.clientX - ref.startX;
+            const dy = ev.clientY - ref.startY;
+            let newW = ref.origW, newH = ref.origH, newX = ref.origX, newY = ref.origY;
+            if (edge.includes('e')) newW = Math.max(MIN_PANEL_W, ref.origW + dx);
+            if (edge.includes('w')) { newW = Math.max(MIN_PANEL_W, ref.origW - dx); newX = ref.origX + (ref.origW - newW); }
+            if (edge.includes('s')) newH = Math.max(MIN_PANEL_H, ref.origH + dy);
+            if (edge.includes('n')) { newH = Math.max(MIN_PANEL_H, ref.origH - dy); newY = ref.origY + (ref.origH - newH); }
+            setPanelSizes(prev => ({ ...prev, [id]: { w: newW, h: newH } }));
+            if (edge.includes('w') || edge.includes('n')) setPanelPositions(prev => ({ ...prev, [id]: { x: newX, y: newY } }));
+        };
+        const onUp = () => { panelResizeRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); document.body.style.cursor = ''; };
+        document.body.style.cursor = edge === 'e' || edge === 'w' ? 'ew-resize' : edge === 'n' || edge === 's' ? 'ns-resize' : edge.includes('n') && edge.includes('e') || edge.includes('s') && edge.includes('w') ? 'nesw-resize' : 'nwse-resize';
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+    };
+
 
     const panelStyle = (id: PanelId, width: string, color: string): React.CSSProperties => {
-        if (isPanelMax(id)) return { position: 'absolute' as const, top: 4, left: 4, right: 4, bottom: timelineOpen ? 280 : 4, width: 'auto', maxHeight: 'none', zIndex: 18, display: 'flex', flexDirection: 'column' as const, background: 'rgba(10,14,22,0.98)', border: `1px solid ${color}25`, borderRadius: 10, boxShadow: '0 12px 48px rgba(0,0,0,0.6)', backdropFilter: 'blur(14px)', overflow: 'hidden', animation: 'argux-fadeIn 0.15s ease-out', transition: 'all 0.2s ease' };
+        if (isPanelMax(id)) return { position: 'absolute' as const, top: 4, left: 4, right: 4, bottom: timelineOpen ? 280 : 4, width: 'auto', maxHeight: 'none', zIndex: 20, display: 'flex', flexDirection: 'column' as const, background: 'rgba(10,14,22,0.98)', border: `1px solid ${color}25`, borderRadius: 10, boxShadow: '0 12px 48px rgba(0,0,0,0.6)', backdropFilter: 'blur(14px)', overflow: 'hidden', animation: 'argux-fadeIn 0.15s ease-out', transition: 'all 0.2s ease' };
         const pos = getPanelPos(id);
-        return { position: 'absolute' as const, top: pos.y, left: pos.x, width: `min(${width}, calc(100vw - 20px))`, maxHeight: isPanelMin(id) ? 'none' : `calc(100% - ${pos.y + 10}px)`, zIndex: 16, display: 'flex', flexDirection: 'column' as const, background: 'rgba(10,14,22,0.97)', border: `1px solid ${color}20`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.15s ease-out' };
+        const size = getPanelSize(id, parseInt(width) || 360);
+        const hasCustomSize = panelSizes[id];
+        return { position: 'absolute' as const, top: pos.y, left: pos.x, width: hasCustomSize ? size.w : `min(${width}, calc(100vw - 20px))`, height: hasCustomSize && size.h > 0 && !isPanelMin(id) ? size.h : undefined, maxHeight: isPanelMin(id) ? 'none' : hasCustomSize ? undefined : `calc(100% - ${pos.y + 10}px)`, zIndex: getPanelZ(id), display: 'flex', flexDirection: 'column' as const, background: 'rgba(10,14,22,0.97)', border: `1px solid ${color}20`, borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', overflow: 'hidden', animation: 'argux-fadeIn 0.15s ease-out' };
+    };
+
+    // Resize grip — single visible handle at bottom-right corner, does not block content
+    const PanelResizeGrip = ({ id }: { id: PanelId }) => {
+        if (isPanelMax(id) || isPanelMin(id)) return null;
+        return <div onMouseDown={e => onPanelResizeStart(id, 'se', e)} style={{ position: 'absolute' as const, bottom: 2, right: 2, width: 12, height: 12, cursor: 'nwse-resize', zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.3, transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity = '0.7'} onMouseLeave={e => e.currentTarget.style.opacity = '0.3'}><svg width="8" height="8" viewBox="0 0 8 8" fill="none"><line x1="7" y1="1" x2="1" y2="7" stroke="currentColor" strokeWidth="1"/><line x1="7" y1="4" x2="4" y2="7" stroke="currentColor" strokeWidth="1"/><line x1="7" y1="6.5" x2="6.5" y2="7" stroke="currentColor" strokeWidth="1"/></svg></div>;
     };
 
     const PanelHeader = ({ id, icon, title, subtitle, color, onClose, extra }: { id: PanelId; icon: string; title: string; subtitle: string; color: string; onClose: () => void; extra?: React.ReactNode }) => (
-        <div onMouseDown={e => onPanelDragStart(id, e)} style={{ padding: '8px 10px', borderBottom: isPanelMin(id) ? 'none' : `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, cursor: 'grab', userSelect: 'none' }}>
+        <div onMouseDown={e => onPanelDragStart(id, e)} onTouchStart={e => onPanelTouchStart(id, e)} style={{ padding: '8px 10px', borderBottom: isPanelMin(id) ? 'none' : `1px solid ${theme.border}30`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, cursor: 'grab', userSelect: 'none', touchAction: 'none' }}>
             <span style={{ fontSize: 14 }}>{icon}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 800, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{title}</div>
@@ -3785,8 +3925,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Live Tracker Panel */}
-                {showLiveTracker && loaded && <div style={panelStyle('tracker', '360px', liveTrackSessions.length > 0 ? '#22c55e' : theme.border)}>
+                {showLiveTracker && loaded && <div data-panel="tracker" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('tracker' as PanelId); }} style={panelStyle('tracker', '360px', liveTrackSessions.length > 0 ? '#22c55e' : theme.border)}>
                     <PanelHeader id="tracker" icon="🎯" title="Live Tracker" subtitle={liveTrackSessions.length > 0 ? `${liveTrackSessions.filter(s => s.status === 'tracking').length} tracking · ${trackablePersons.length} available` : `${trackablePersons.length} targets available`} color="#22c55e" onClose={() => setShowLiveTracker(false)} />
+                    <PanelResizeGrip id="tracker" />
 
                     {!isPanelMin('tracker') && <>{/* Tabs */}
                     <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}20`, flexShrink: 0 }}>
@@ -3908,8 +4049,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* ═══ EVENT CORRELATION PANEL ═══ */}
-                {showCorrelationPanel && loaded && <div style={panelStyle('correlation', '400px', '#f59e0b')}>
+                {showCorrelationPanel && loaded && <div data-panel="correlation" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('correlation' as PanelId); }} style={panelStyle('correlation', '400px', '#f59e0b')}>
                     <PanelHeader id="correlation" icon="🔗" title="Event Correlation" subtitle={corrResults ? `${corrResults.length} co-locations · ${corrStats?.uniquePairs || 0} pairs` : 'Configure and run co-location analysis'} color="#f59e0b" onClose={() => setShowCorrelationPanel(false)} extra={corrResults ? <button onClick={() => { setCorrResults(null); setCorrSelectedEvent(null); }} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>✕ Clear</button> : undefined} />
+                    <PanelResizeGrip id="correlation" />
 
                     {!isPanelMin('correlation') && <>
                     {/* Config section */}
@@ -4056,8 +4198,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* ═══ ANOMALY DETECTION PANEL ═══ */}
-                {showAnomalyPanel && loaded && <div style={panelStyle('anomaly', '400px', '#8b5cf6')}>
+                {showAnomalyPanel && loaded && <div data-panel="anomaly" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('anomaly' as PanelId); }} style={panelStyle('anomaly', '400px', '#8b5cf6')}>
                     <PanelHeader id="anomaly" icon="🧠" title="Anomaly Detection" subtitle={anomalyResults ? `${anomalyResults.length} anomalies · ${anomalyStats?.subjects || 0} subjects` : 'AI-powered movement pattern analysis'} color="#8b5cf6" onClose={() => setShowAnomalyPanel(false)} extra={anomalyResults ? <button onClick={() => { setAnomalyResults(null); setAnomalySelectedId(null); }} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>✕ Clear</button> : undefined} />
+                    <PanelResizeGrip id="anomaly" />
 
                     {!isPanelMin('anomaly') && <>
                     {/* Config */}
@@ -4204,8 +4347,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* ═══ PREDICTIVE RISK PANEL ═══ */}
-                {showPredictivePanel && loaded && <div style={panelStyle('predictive', '420px', '#ef4444')}>
+                {showPredictivePanel && loaded && <div data-panel="predictive" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('predictive' as PanelId); }} style={panelStyle('predictive', '420px', '#ef4444')}>
                     <PanelHeader id="predictive" icon="📈" title="Predictive Risk" subtitle={predResults ? `${predResults.length} subjects · Horizon: ${predTimeHorizon}` : 'Risk trajectory & location prediction'} color="#ef4444" onClose={() => setShowPredictivePanel(false)} extra={predResults ? <button onClick={() => { setPredResults(null); setPredSelectedId(null); }} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>✕ Clear</button> : undefined} />
+                    <PanelResizeGrip id="predictive" />
 
                     {!isPanelMin('predictive') && <>
                     {/* Config */}
@@ -4337,8 +4481,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* ═══ PATTERN DETECTION PANEL ═══ */}
-                {showPatternPanel && loaded && <div style={panelStyle('pattern', '420px', '#06b6d4')}>
+                {showPatternPanel && loaded && <div data-panel="pattern" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('pattern' as PanelId); }} style={panelStyle('pattern', '420px', '#06b6d4')}>
                     <PanelHeader id="pattern" icon="🔄" title="Pattern Detection" subtitle={patternResults ? `${patternResults.length} patterns · ${patternStats?.totalOcc || 0} occurrences` : 'Frequency & regularity analysis'} color="#06b6d4" onClose={() => setShowPatternPanel(false)} extra={patternResults ? <button onClick={() => { setPatternResults(null); setPatternSelectedId(null); }} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>✕ Clear</button> : undefined} />
+                    <PanelResizeGrip id="pattern" />
 
                     {!isPanelMin('pattern') && <>
                     {/* Config */}
@@ -4488,8 +4633,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* ═══ INCIDENT TIMELINE PANEL ═══ */}
-                {showIncidentPanel && loaded && <div style={panelStyle('incidents', '420px', '#f97316')}>
+                {showIncidentPanel && loaded && <div data-panel="incidents" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('incidents' as PanelId); }} style={panelStyle('incidents', '420px', '#f97316')}>
                     <PanelHeader id="incidents" icon="📋" title="Incident Timeline" subtitle={`${filteredIncidents.length} of ${mockIncidents.length} events · ${incidentStats.subjects} subjects`} color="#f97316" onClose={() => setShowIncidentPanel(false)} extra={<button onClick={() => setIncidentSortAsc(!incidentSortAsc)} title={incidentSortAsc ? 'Oldest first' : 'Newest first'} style={{ padding: '3px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{incidentSortAsc ? '↑ Old' : '↓ New'}</button>} />
+                    <PanelResizeGrip id="incidents" />
 
                     {!isPanelMin('incidents') && <>
                     {/* Severity summary */}
@@ -4602,8 +4748,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* ═══ WORKSPACES PANEL ═══ */}
-                {showWorkspacesPanel && loaded && <div style={panelStyle('workspaces', '360px', theme.accent)}>
+                {showWorkspacesPanel && loaded && <div data-panel="workspaces" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('workspaces' as PanelId); }} style={panelStyle('workspaces', '360px', theme.accent)}>
                     <PanelHeader id="workspaces" icon="📋" title="Workspaces" subtitle={`${workspaces.length} saved${wsActiveId ? ` · ${workspaces.find(w => w.id === wsActiveId)?.name}` : ''}`} color={theme.accent} onClose={() => setShowWorkspacesPanel(false)} extra={<button onClick={openSaveWs} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>💾 Save</button>} />
+                    <PanelResizeGrip id="workspaces" />
                     {!isPanelMin('workspaces') && <>{/* Active workspace banner */}
                     {wsActiveId && <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, background: 'rgba(34,197,94,0.03)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 6px #22c55e60' }} />
@@ -4673,8 +4820,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* ═══ SAVED PLACES PANEL ═══ */}
-                {showPlacesPanel && loaded && <div style={panelStyle('places', '320px', theme.accent)}>
+                {showPlacesPanel && loaded && <div data-panel="places" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('places' as PanelId); }} style={panelStyle('places', '320px', theme.accent)}>
                     <PanelHeader id="places" icon="📍" title="Saved Places" subtitle={`${savedPlaces.length} places`} color={theme.accent} onClose={() => setShowPlacesPanel(false)} extra={<><button onClick={openAddPlace} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>+ Add</button><button onClick={addCurrentLocation} title="Save view" style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 9, padding: 0 }}>📍</button></>} />
+                    <PanelResizeGrip id="places" />
                     {!isPanelMin('places') && <>{/* Search */}
                     <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${placesSearch ? theme.accent + '50' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
@@ -4742,8 +4890,9 @@ export default function MapIndex() {
 
                 {/* ═══ TOOL PANELS ═══ */}
                 {/* Ruler Panel */}
-                {showRulerPanel && loaded && <div style={panelStyle('ruler', '320px', rulerActive ? '#f59e0b' : theme.border)}>
+                {showRulerPanel && loaded && <div data-panel="ruler" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('ruler' as PanelId); }} style={panelStyle('ruler', '320px', rulerActive ? '#f59e0b' : theme.border)}>
                     <PanelHeader id="ruler" icon="📏" title="Ruler" subtitle={rulerActive ? `${rulerPoints.length} points · Click map to add` : 'Measure distances'} color="#f59e0b" onClose={() => setShowRulerPanel(false)} extra={<button onClick={() => { if (rulerActive) { stopRuler(); } else { setRulerPoints([]); setRulerActive(true); triggerTopLoader(); setZoneDrawing(null); } }} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${rulerActive ? '#f59e0b40' : '#22c55e30'}`, background: rulerActive ? 'rgba(245,158,11,0.08)' : 'rgba(34,197,94,0.06)', color: rulerActive ? '#f59e0b' : '#22c55e', fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>{rulerActive ? '⏹ Stop' : '▶ Start'}</button>} />
+                    <PanelResizeGrip id="ruler" />
                     {!isPanelMin('ruler') && <><div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0, padding: '10px 14px' }}>
                         {/* Total distance card */}
                         {rulerPoints.length >= 2 && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', marginBottom: 10 }}>
@@ -4770,8 +4919,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Zone Editor Panel */}
-                {showZonePanel && loaded && <div style={panelStyle('zone', '340px', zoneDrawing ? '#8b5cf6' : theme.border)}>
+                {showZonePanel && loaded && <div data-panel="zone" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('zone' as PanelId); }} style={panelStyle('zone', '340px', zoneDrawing ? '#8b5cf6' : theme.border)}>
                     <PanelHeader id="zone" icon="🛡️" title="Zone Editor" subtitle={`${zones.length} zones · ${zones.length - hiddenZones.size} visible${zoneDrawing ? ' · Drawing...' : ''}`} color="#8b5cf6" onClose={() => setShowZonePanel(false)} extra={<button onClick={openAddZone} style={{ padding: '3px 8px', borderRadius: 3, border: `1px solid ${theme.accent}30`, background: `${theme.accent}06`, color: theme.accent, fontSize: 8, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>+ Add</button>} />
+                    <PanelResizeGrip id="zone" />
                     {!isPanelMin('zone') && <>{/* Draw zone buttons */}
                     {!zoneDrawing && <div style={{ display: 'flex', gap: 4, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
                         <button onClick={() => startDrawZone('circle')} style={{ flex: 1, padding: '6px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf650'; e.currentTarget.style.color = '#8b5cf6'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}>⭕ Circle</button>
@@ -4816,8 +4966,9 @@ export default function MapIndex() {
 
                 {/* ═══ LAYER PANELS ═══ */}
                 {/* Only one layer panel open at a time — positioned bottom-right */}
-                {activeLayerPanel && loaded && <div style={panelStyle('layers', '340px', activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899')}>
+                {activeLayerPanel && loaded && <div data-panel="layers" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('layers' as PanelId); }} style={panelStyle('layers', '340px', activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899')}>
                     <PanelHeader id="layers" icon={activeLayerPanel === 'heatmap' ? '🔥' : activeLayerPanel === 'network' ? '🕸️' : activeLayerPanel === 'lpr' ? '🚗' : '🧑‍🦲'} title={activeLayerPanel === 'heatmap' ? 'Activity Heatmap' : activeLayerPanel === 'network' ? 'Network Graph' : activeLayerPanel === 'lpr' ? 'Plate Recognition' : 'Face Recognition'} subtitle={activeLayerPanel === 'heatmap' ? `${heatmapPoints.length} points · ${layerHeatmap ? 'Active' : 'Inactive'}` : activeLayerPanel === 'network' ? `${netNodes.length} nodes · ${netFilteredEdges.length} connections` : activeLayerPanel === 'lpr' ? `${mockLPR.length} sightings · ${new Set(mockLPR.map(l => l.plate)).size} plates` : `${mockFaces.length} captures · ${mockFaces.filter(f => f.personId > 0).length} matched`} color={activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899'} onClose={() => { setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); }} extra={<button onClick={() => { if (activeLayerPanel === 'heatmap') setLayerHeatmap(!layerHeatmap); else if (activeLayerPanel === 'network') setLayerNetwork(!layerNetwork); else if (activeLayerPanel === 'lpr') setLayerLPR(!layerLPR); else setLayerFace(!layerFace); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? (activeLayerPanel === 'heatmap' ? '#f59e0b' : activeLayerPanel === 'network' ? '#8b5cf6' : activeLayerPanel === 'lpr' ? '#10b981' : '#ec4899') : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: (activeLayerPanel === 'heatmap' ? layerHeatmap : activeLayerPanel === 'network' ? layerNetwork : activeLayerPanel === 'lpr' ? layerLPR : layerFace) ? 16 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></button>} />
+                    <PanelResizeGrip id="layers" />
 
                     {!isPanelMin('layers') && <><div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
 
@@ -4908,8 +5059,9 @@ export default function MapIndex() {
                 </div>}
 
                 {/* Objects Panel */}
-                {showObjectsPanel && loaded && <div style={panelStyle('objects', '380px', theme.accent)}>
+                {showObjectsPanel && loaded && <div data-panel="objects" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('objects' as PanelId); }} style={panelStyle('objects', '380px', theme.accent)}>
                     <PanelHeader id="objects" icon="📋" title="Map Objects" subtitle={`${mapObjects.length} objects · ${mapObjects.filter(o => o.visible).length} visible · ${mapObjects.filter(o => !o.visible).length} hidden`} color={theme.accent} onClose={() => setShowObjectsPanel(false)} extra={mapObjects.some(o => !o.visible) ? <button onClick={() => setMapObjects(prev => prev.map(o => ({ ...o, visible: true })))} style={{ fontSize: 7, padding: '2px 5px', borderRadius: 3, border: '1px solid #22c55e25', background: '#22c55e08', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>Show All</button> : undefined} />
+                    <PanelResizeGrip id="objects" />
 
                     {!isPanelMin('objects') && <>{/* Tabs */}
                     <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}20`, flexShrink: 0 }}>
@@ -5029,12 +5181,13 @@ export default function MapIndex() {
                 </button>}
 
                 {/* Live Feed Widget */}
-                {showLiveFeed && loaded && <div style={panelStyle('feed', '320px', liveFeedRunning ? '#ef4444' : theme.border)}>
+                {showLiveFeed && loaded && <div data-panel="feed" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('feed' as PanelId); }} style={panelStyle('feed', '320px', liveFeedRunning ? '#ef4444' : theme.border)}>
                     <PanelHeader id="feed" icon={liveFeedRunning ? '🔴' : '⏸️'} title="LIVE FEED" subtitle={`${liveFeedEvents.length} events`} color={liveFeedRunning ? '#ef4444' : theme.border} onClose={() => { setShowLiveFeed(false); if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; } if (liveFeedPopupRef.current) { liveFeedPopupRef.current.remove(); liveFeedPopupRef.current = null; } }} extra={<>
                         <button onClick={() => setLiveFeedMuted(!liveFeedMuted)} title={liveFeedMuted ? 'Unmute' : 'Mute'} style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${liveFeedMuted ? '#f59e0b30' : theme.border}`, background: liveFeedMuted ? 'rgba(245,158,11,0.08)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: liveFeedMuted ? '#f59e0b' : theme.textDim, fontSize: 9, padding: 0 }}>{liveFeedMuted ? '🔇' : '🔔'}</button>
                         <button onClick={() => setLiveFeedRunning(!liveFeedRunning)} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${liveFeedRunning ? '#ef444430' : '#22c55e30'}`, background: liveFeedRunning ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)', cursor: 'pointer', fontSize: 7, fontWeight: 700, color: liveFeedRunning ? '#ef4444' : '#22c55e', fontFamily: 'inherit' }}>{liveFeedRunning ? '⏸' : '▶'}</button>
                         <button onClick={() => { setLiveFeedEvents([]); if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; } if (liveFeedPopupRef.current) { liveFeedPopupRef.current.remove(); liveFeedPopupRef.current = null; } }} style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 8, padding: 0 }} title="Clear">🗑️</button>
                     </>} />
+                    <PanelResizeGrip id="feed" />
 
                     {!isPanelMin('feed') && <>{/* Severity summary strip */}
                     <div style={{ display: 'flex', gap: 6, padding: '5px 12px', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0 }}>
