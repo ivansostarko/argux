@@ -45,8 +45,7 @@ createInertiaApp({
             root.render(<App {...props} />);
         }
     },
-    progress: {
-        color: '#1d6fef',
-        showSpinner: true,
-    },
+    // Inertia built-in progress bar disabled — replaced by global TopLoaderProvider
+    // which hooks into router.on('start') and router.on('finish') automatically
+    progress: false,
 });

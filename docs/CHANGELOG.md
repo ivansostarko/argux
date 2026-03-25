@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.25.5 - 2026-03-25
+
+### Changed — Global Top Loader on Every Page Navigation
+- **Automatic Inertia integration**: TopLoaderProvider now hooks into `router.on('start')` and `router.on('finish')` events. Every page navigation (sidebar clicks, `router.visit()`, form submissions, back/forward) automatically shows the top loader bar — no manual code needed per page.
+- **Realistic progress behavior**: On navigation start, bar jumps to 30% then slowly crawls toward 90% (random +2-5% every 300ms). On navigation finish, bar jumps to 100% and fades out. This feels natural regardless of actual load time.
+- **Disabled Inertia built-in progress**: Set `progress: false` in `createInertiaApp()` since our TopLoader replaces it entirely with a better visual (gradient bar with shimmer vs. Inertia's solid line).
+- **Backward compatible**: `useTopLoader().trigger()` still works for in-page actions (tab switches, button clicks). New `start()` and `finish()` methods exposed for advanced control.
+- **Transition tuning**: Initial jump (0→30%) uses fast 0.1s transition. Crawl phase uses slow 0.6s. Completion (→100%) uses 0.2s + 0.4s opacity fade.
+
+### How it works:
+```
+Click sidebar link → router.on('start') fires → bar appears at 30%
+                   → crawls slowly toward 90% while page loads
+                   → router.on('finish') fires → bar hits 100% → fades out
+```
+
+No code changes needed in any page component. All 27+ pages get the loader automatically.
+
 ## 0.25.4 - 2026-03-25
 
 ### Updated — Download Client Page (/download)
