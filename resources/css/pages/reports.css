@@ -1,0 +1,35 @@
+/* ═══════════════════════════════════════════════════════════════
+   ARGUX — Reports  ·  Custom Styles
+   ═══════════════════════════════════════════════════════════════ */
+
+.rpt-skeleton { background: linear-gradient(90deg, var(--ax-border) 25%, rgba(255,255,255,0.06) 50%, var(--ax-border) 75%); background-size: 200% 100%; animation: rpt-skel 1.5s ease-in-out infinite; border-radius: 6px; }
+@keyframes rpt-skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.rpt-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--ax-border); background: rgba(128,128,128,0.06); color: var(--ax-text-dim); font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+
+.rpt-page { display: flex; height: calc(100vh - 122px); margin: 0 -24px -80px 0; overflow: hidden; }
+.rpt-left { width: 230px; flex-shrink: 0; overflow-y: auto; scrollbar-width: thin; }
+.rpt-center { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.rpt-right { width: 300px; flex-shrink: 0; overflow-y: auto; scrollbar-width: thin; }
+.rpt-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; }
+.rpt-event:hover { background: rgba(128,128,128,0.03) !important; }
+.rpt-mobile-bar { display: none !important; }
+
+.rpt-table-head { display: grid; grid-template-columns: 3fr 80px 80px 1fr 90px; }
+.rpt-table-row { display: grid; grid-template-columns: 3fr 80px 80px 1fr 90px; }
+
+@media (max-width: 1024px) {
+    .rpt-left { width: 200px; }
+    .rpt-right { width: 260px; }
+    .rpt-table-head { display: none !important; }
+    .rpt-table-row { display: flex !important; flex-direction: column !important; gap: 4px !important; }
+}
+
+@media (max-width: 768px) {
+    .rpt-page { flex-direction: column; height: auto; min-height: calc(100vh - 100px); margin: 0 -16px -80px -16px; }
+    .rpt-left { display: none; }
+    .rpt-right { display: none; }
+    .rpt-mobile-bar { display: flex !important; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--ax-border); gap: 6px; align-items: center; }
+    .rpt-preview-content { padding: 16px !important; }
+    .rpt-preview-stats { flex-direction: column !important; }
+}

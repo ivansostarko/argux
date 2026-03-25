@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.25.9 - 2026-03-25
+
+### Updated — Reports Page (/reports)
+- **Responsive mobile**: Sidebar hidden ≤768px with inline mobile filter bar. Right detail panel hidden on mobile. Tables collapse to stacked layout ≤1024px. Preview content padding reduced. Stats flex to column.
+- **Breadcrumbs fixed**: Added `'reports': 'Reports'` to Breadcrumbs.tsx.
+- **Footer removed**: Removed CLASSIFIED // NOFORN status bar.
+- **Larger fonts**: Sidebar title 13→16px, search 10→13px, filters 7-9→10-12px, stats 13→16px. Table titles 10→13px, status 8→11px, pages 9→12px, operation 8→11px. Generate form all bumped: headings 14→18px, labels 9→12px, inputs 10→13px, sections 8→11px, button 11→14px. Preview report title 18→20px, AI summary 9→12px, sections 13→15px, stats 16→18px. Detail panel stats 12→14px, info 7→10px, sections 7→9px.
+- **Skeleton loader**: 8 skeleton rows during 700ms initial load.
+- **Mock data separated** (`resources/js/mock/reports.ts`): 12 reports (10 completed, 1 generating, 1 failed), statusColors/Icons, personSections (18), orgSections (11), allOps, keyboardShortcuts (6). Typed interfaces exported.
+- **CSS separated** (`resources/css/pages/reports.css`): Skeleton, kbd, 3-panel layout, table grid, responsive ≤1024px (tables collapse, panels shrink), ≤768px (sidebar/detail hidden, mobile bar, preview padding).
+- **Tests** (`resources/js/tests/Reports.test.ts`): 24 tests across 7 describe blocks: statusColors/Icons, sections (counts, required), mockReports (IDs unique, fields, stats, statuses, entity types), allOps, shortcuts, ViewMode.
+- **Keyboard shortcuts**: `1` History view, `2` Generate view, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal (capture phase).
+
 ## 0.25.8 - 2026-03-25
 
 ### Updated — Risks Dashboard (/risks)

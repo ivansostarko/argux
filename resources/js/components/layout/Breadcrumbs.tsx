@@ -13,6 +13,7 @@ const routeLabels: Record<string, string> = {
     'download': 'Download Client',
     'activity': 'Activity Log',
     'risks': 'Risks Dashboard',
+    'reports': 'Reports',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',
