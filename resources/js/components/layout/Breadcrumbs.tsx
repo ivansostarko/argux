@@ -12,6 +12,7 @@ const routeLabels: Record<string, string> = {
     'chat': 'AI Assistant',
     'download': 'Download Client',
     'activity': 'Activity Log',
+    'risks': 'Risks Dashboard',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',

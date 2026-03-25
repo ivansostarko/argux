@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.25.8 - 2026-03-25
+
+### Updated — Risks Dashboard (/risks)
+- **Responsive mobile**: Sidebar hidden ≤768px, replaced by inline mobile filter bar (search + risk select). KPIs stack vertically. Threat/factor grids go single-column. Tables collapse to stacked cards on ≤1024px. Tab labels hidden on mobile (icons + kbd only).
+- **Breadcrumbs fixed**: Added `'risks': 'Risks Dashboard'` to Breadcrumbs.tsx.
+- **Footer removed**: Removed CLASSIFIED // NOFORN status bar.
+- **Larger fonts**: KPI totals 16→20px, labels 11→13px, breakdown 14→16px. Tab buttons 10→13px. Sidebar title 13→16px, search 10→13px, filters 9→12px. Persons table names 10→13px, risk labels 8→11px, scores 8→11px, factors 9→10px. Org cards 11→14px name, 8→11px details. Vehicle plates 10→13px. Matrix factors 10→13px label, 8→11px detail, score 16→18px. Threat cards name 12→14px, nationality 8→11px. Factor distribution label 9→12px, stats 8→11px. Expanded factor labels 9→12px, detail 8→11px.
+- **Skeleton loader**: KPI skeleton (3 cards with breakdown placeholders) + row skeleton (5 rows with avatar + text) during 700ms initial load.
+- **Mock data separated** (`resources/js/mock/risks.ts`): personRiskFactors (21 factors across 5 persons), factorCategories (8), ViewTab type, RiskFactor interface, keyboardShortcuts (9).
+- **CSS separated** (`resources/css/pages/risks.css`, 44 lines): Skeleton, kbd, layout, responsive ≤1024px (tables collapse), ≤768px (sidebar hidden, mobile bar shown, grids single-column).
+- **Tests** (`resources/js/tests/Risks.test.ts`): 28 tests across 6 describe blocks: factorCategories (8 cats, unique IDs, required fields), personRiskFactors (unique IDs, valid categories, person ID cross-ref, score ranges, critical count), cross-entity (persons/orgs/vehicles risk fields, riskColors coverage), keyboard shortcuts (1-5, F, R, Ctrl+Q), ViewTab type.
+- **Keyboard shortcuts**: `1-5` switch tabs, `F` focus search, `R` reset filters, `Esc` close expanded/modal, `Ctrl+Q` shortcuts modal (capture phase).
+
 ## 0.25.7 - 2026-03-25
 
 ### Updated — Activity Log Page (/activity)
