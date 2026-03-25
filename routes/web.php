@@ -72,6 +72,7 @@ Route::get('/storage', fn () => \Inertia\Inertia::render('Storage/Index'))->name
 Route::get('/reports', fn () => \Inertia\Inertia::render('Reports/Index'))->name('reports');
 Route::get('/jobs', fn () => \Inertia\Inertia::render('Jobs/Index'))->name('jobs');
 Route::get('/profile', fn () => \Inertia\Inertia::render('Profile/Index'))->name('profile');
+Route::get('/download', fn () => \Inertia\Inertia::render('Download/Index'))->name('download');
 Route::get('/settings', fn () => \Inertia\Inertia::render('Dashboard/Index'))->name('settings');
 
 /*

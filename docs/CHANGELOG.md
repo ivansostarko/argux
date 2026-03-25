@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.25.0 - 2026-03-25
+
+### Updated — Download Client Page (/download)
+- **Complete rebuild** of the Download Client page with 4 tabs, deployment modes, MDM support, release notes, and enhanced QR codes.
+- **4 view tabs**: Desktop (7 packages with auto-detect banner), Mobile (2 packages with QR codes + store badges + MDM), Deployment (3 modes + system requirements + integrity verification), Release Notes (version history with timeline).
+- **Deployment tab**: 3 deployment modes — Standalone (single workstation), Managed Server (enterprise multi-operator), Air-Gapped (classified, offline). System requirements matrix for all 5 platforms. SHA-256 verification commands (PowerShell + sha256sum).
+- **Mobile MDM support**: Microsoft Intune, Jamf Pro, VMware Workspace ONE, MobileIron enterprise deployment.
+- **Store badges**: Google Play + Direct APK (Android), App Store + TestFlight (iOS). Enterprise distribution notes.
+- **Release Notes tab**: Version timeline v0.24.2→v0.21.0 with dates and summaries. Latest release highlighted with glow dot + LATEST badge.
+- **Header profile dropdown**: "Download Client" item with download icon between "My Profile" and "Settings".
+
 ## 0.24.2 - 2026-03-25
 
 ### Added — Tauri v2 Multi-Platform Native App
