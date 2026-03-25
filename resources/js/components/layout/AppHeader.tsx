@@ -20,10 +20,15 @@ function CityClocks() {
 
     return (
         <div ref={ref} style={{ position: 'relative' }}>
-            <button onClick={() => setOpen(!open)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(128,128,128,0.06)', border: `1px solid ${th.border}`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: th.text, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, transition: 'all 0.15s' }}>
+            {/* Desktop: full clock button */}
+            <button onClick={() => setOpen(!open)} className="ax-clock-full" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(128,128,128,0.06)', border: `1px solid ${th.border}`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: th.text, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, transition: 'all 0.15s' }}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6.5"/><polyline points="8,4 8,8 11,10"/></svg>
                 <span>{cities[0].name}</span><span style={{ color: th.accent, fontWeight: 600 }}>{fmt(cities[0].tz)}</span>
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }}><polyline points="2,4 5,7 8,4"/></svg>
+            </button>
+            {/* Mobile: icon-only clock button */}
+            <button onClick={() => setOpen(!open)} className="ax-clock-icon" style={{ display: 'none', background: 'none', border: `1px solid ${th.border}`, borderRadius: 8, padding: 7, cursor: 'pointer', color: th.textSecondary, alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6.5"/><polyline points="8,4 8,8 11,10"/></svg>
             </button>
             {open && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, background: th.sidebarBg, border: `1px solid ${th.border}`, borderRadius: 10, padding: 6, minWidth: 230, zIndex: 100, boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
@@ -67,7 +72,7 @@ function NotificationDropdown() {
                 {unread > 0 && <span style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, background: th.danger, borderRadius: '50%', fontSize: 9, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${th.headerBg}` }}>{unread}</span>}
             </button>
             {open && (
-                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, background: th.sidebarBg, border: `1px solid ${th.border}`, borderRadius: 10, width: 360, maxHeight: 460, display: 'flex', flexDirection: 'column', zIndex: 100, boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, background: th.sidebarBg, border: `1px solid ${th.border}`, borderRadius: 10, width: 360, maxWidth: 'calc(100vw - 20px)', maxHeight: 460, display: 'flex', flexDirection: 'column', zIndex: 100, boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
                     <div style={{ padding: '12px 16px', borderBottom: `1px solid ${th.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: th.text }}>Notifications</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -111,10 +116,15 @@ function UserDropdown() {
 
     return (
         <div ref={ref} style={{ position: 'relative' }}>
-            <button onClick={() => setOpen(!open)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: `1px solid ${th.border}`, borderRadius: 8, padding: '4px 10px 4px 4px', cursor: 'pointer', color: th.text, fontFamily: 'inherit', transition: 'all 0.15s' }}>
-                <div style={{ width: 28, height: 28, borderRadius: 6, background: `linear-gradient(135deg, ${th.accent}, ${th.accent}99)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>JM</div>
+            {/* Desktop: full profile button with name */}
+            <button onClick={() => setOpen(!open)} className="ax-profile-full" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: `1px solid ${th.border}`, borderRadius: 8, padding: '4px 10px 4px 4px', cursor: 'pointer', color: th.text, fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: `linear-gradient(135deg, ${th.accent}, ${th.accent}99)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>JM</div>
                 <div style={{ textAlign: 'left' }}><div style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.2 }}>J. Mitchell</div><div style={{ fontSize: 9, color: th.textDim, letterSpacing: '0.05em' }}>OPERATOR</div></div>
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ marginLeft: 2, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }}><polyline points="2,4 5,7 8,4"/></svg>
+            </button>
+            {/* Mobile: icon-only profile button */}
+            <button onClick={() => setOpen(!open)} className="ax-profile-icon" style={{ display: 'none', width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, ${th.accent}, ${th.accent}99)`, border: 'none', cursor: 'pointer', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: 'inherit' }}>
+                JM
             </button>
             {open && (
                 <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, background: th.sidebarBg, border: `1px solid ${th.border}`, borderRadius: 10, padding: 6, minWidth: 180, zIndex: 100, boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
@@ -145,11 +155,24 @@ export default function AppHeader({ onMenuToggle }: { onMenuToggle: () => void }
     const { currentTheme: th } = useAppSettings();
     return (
         <header style={{ height: 56, background: th.headerBg, borderBottom: `1px solid ${th.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0, position: 'sticky', top: 0, zIndex: 30 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <button onClick={onMenuToggle} className="mobile-menu-btn" style={{ background: 'none', border: 'none', color: th.textSecondary, cursor: 'pointer', padding: 4, display: 'none', alignItems: 'center' }}>
-                    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg>
+            {/* Responsive styles for header elements */}
+            <style>{`
+                @media(min-width:769px) {
+                    .ax-hamburger { display: none !important; }
+                }
+                @media(max-width:768px) {
+                    .ax-hamburger { display: flex !important; }
+                    .ax-clock-full { display: none !important; }
+                    .ax-clock-icon { display: flex !important; }
+                    .ax-profile-full { display: none !important; }
+                    .ax-profile-icon { display: flex !important; }
+                }
+            `}</style>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {/* Single hamburger — mobile only, opens sidebar */}
+                <button onClick={onMenuToggle} className="ax-hamburger" style={{ display: 'none', background: 'none', border: `1px solid ${th.border}`, borderRadius: 8, padding: 7, cursor: 'pointer', color: th.textSecondary, alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg>
                 </button>
-                <style>{`@media(max-width:768px){.mobile-menu-btn{display:flex!important}}`}</style>
                 <CityClocks />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

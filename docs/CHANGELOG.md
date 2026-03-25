@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.25.1 - 2026-03-25
+
+### Fixed — Responsive App Header & Sidebar
+- **Single hamburger menu**: Removed duplicate hamburger buttons. On mobile (≤768px), only one hamburger icon appears in the app header. On desktop (>768px), the hamburger is hidden and the sidebar has its own collapse toggle.
+- **Profile dropdown responsive**: On desktop shows full button with avatar + "J. Mitchell" + "OPERATOR" text. On mobile shows only the round avatar icon (JM). Click opens the same dropdown menu on both.
+- **Clock dropdown responsive**: On desktop shows full button with city name + time. On mobile shows only the clock icon. Click opens the same timezone dropdown on both.
+- **Sidebar hidden on mobile by default**: The left sidebar is completely hidden on mobile. It only appears when clicking the hamburger icon in the header. Shows as a slide-over panel with backdrop overlay and close (✕) button.
+- **Desktop sidebar unchanged**: Collapse/expand toggle still works as before on desktop. Collapsed mode shows icon-only navigation.
+- **Sidebar rendered once per context**: Desktop sidebar and mobile sidebar are separate DOM elements controlled by CSS media queries. No duplicate rendering. Mobile sidebar always renders expanded (260px) with a close button instead of collapse toggle.
+
 ## 0.25.0 - 2026-03-25
 
 ### Updated — Download Client Page (/download)

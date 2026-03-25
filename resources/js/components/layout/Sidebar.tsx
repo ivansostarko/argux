@@ -49,25 +49,34 @@ export default function Sidebar({ collapsed, onToggle, currentPath, mobileOpen, 
     const sidebarWidth = collapsed ? 62 : 240;
     const nav = (route: string) => { router.visit(route); onMobileClose(); };
 
-    const content = (
-        <div style={{ width: sidebarWidth, height: '100vh', background: th.sidebarBg, borderRight: `1px solid ${th.border}`, display: 'flex', flexDirection: 'column', transition: 'all 0.2s ease', overflow: 'hidden', flexShrink: 0, color: th.text }}>
-            <div style={{ padding: collapsed ? '16px 8px' : '16px 16px', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', borderBottom: `1px solid ${th.border}`, minHeight: 56 }}>
-                {!collapsed && <Logo size="sm" />}
-                <button onClick={onToggle} style={{ background: 'none', border: 'none', color: th.textSecondary, cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 4 }}>
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg>
-                </button>
+    const sidebarContent = (width: number, showLabels: boolean, showClose?: boolean) => (
+        <div style={{ width, height: '100vh', background: th.sidebarBg, borderRight: `1px solid ${th.border}`, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0, color: th.text }}>
+            <div style={{ padding: showLabels ? '16px 16px' : '16px 8px', display: 'flex', alignItems: 'center', justifyContent: showLabels ? 'space-between' : 'center', borderBottom: `1px solid ${th.border}`, minHeight: 56 }}>
+                {showLabels && <Logo size="sm" />}
+                {/* Desktop: collapse toggle. Mobile: close X button */}
+                {showClose ? (
+                    <button onClick={onMobileClose} style={{ background: 'none', border: `1px solid ${th.border}`, borderRadius: 6, color: th.textSecondary, cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>
+                    </button>
+                ) : (
+                    <button onClick={onToggle} style={{ background: 'none', border: 'none', color: th.textSecondary, cursor: 'pointer', padding: 4, display: 'flex', borderRadius: 4 }}>
+                        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                            {collapsed ? <><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></> : <><line x1="3" y1="4" x2="13" y2="4"/><line x1="3" y1="8" x2="10" y2="8"/><line x1="3" y1="12" x2="13" y2="12"/></>}
+                        </svg>
+                    </button>
+                )}
             </div>
             <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 0' }}>
                 {sections.map(section => (
                     <div key={section.title} style={{ marginBottom: 4 }}>
-                        {!collapsed && <div style={{ padding: '10px 16px 4px', fontSize: 10, fontWeight: 700, color: th.textDim, letterSpacing: '0.12em', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' }}>{section.title}</div>}
-                        {collapsed && <div style={{ height: 8 }} />}
+                        {showLabels && <div style={{ padding: '10px 16px 4px', fontSize: 10, fontWeight: 700, color: th.textDim, letterSpacing: '0.12em', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' }}>{section.title}</div>}
+                        {!showLabels && <div style={{ height: 8 }} />}
                         {section.items.map(item => {
                             const active = currentPath === item.route || currentPath.startsWith(item.route + '/');
                             return (
-                                <button key={item.route} onClick={() => nav(item.route)} title={collapsed ? item.label : undefined} style={{
+                                <button key={item.route} onClick={() => nav(item.route)} title={!showLabels ? item.label : undefined} style={{
                                     display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                                    padding: collapsed ? '8px 0' : '7px 16px', justifyContent: collapsed ? 'center' : 'flex-start',
+                                    padding: showLabels ? '7px 16px' : '8px 0', justifyContent: showLabels ? 'flex-start' : 'center',
                                     background: active ? th.accentDim : 'transparent', border: 'none', borderRadius: 0, cursor: 'pointer',
                                     color: active ? th.accent : th.textSecondary, fontSize: 13, fontFamily: 'var(--ax-font, inherit)', fontWeight: active ? 600 : 400,
                                     transition: 'all 0.15s ease', whiteSpace: 'nowrap',
@@ -77,22 +86,43 @@ export default function Sidebar({ collapsed, onToggle, currentPath, mobileOpen, 
                                     onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = th.textSecondary; } }}
                                 >
                                     <span style={{ display: 'flex', flexShrink: 0 }}>{item.icon}</span>
-                                    {!collapsed && <span>{item.label}</span>}
+                                    {showLabels && <span>{item.label}</span>}
                                 </button>
                             );
                         })}
                     </div>
                 ))}
             </div>
-            {!collapsed && <div style={{ padding: '10px 16px', borderTop: `1px solid ${th.border}`, fontSize: 10, color: th.textDim, letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace" }}>ARGUX v0.8.1</div>}
+            {showLabels && <div style={{ padding: '10px 16px', borderTop: `1px solid ${th.border}`, fontSize: 10, color: th.textDim, letterSpacing: '0.1em', fontFamily: "'JetBrains Mono', monospace" }}>ARGUX v0.8.1</div>}
         </div>
     );
 
     return (
         <>
-            {mobileOpen && <div onClick={onMobileClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }}><style>{`@media(min-width:769px){div[data-sidebar-overlay]{display:none!important}}`}</style></div>}
-            <div style={{ position: 'fixed', top: 0, left: mobileOpen ? 0 : -260, width: 240, height: '100vh', zIndex: 50, transition: 'left 0.25s ease' }}><style>{`@media(min-width:769px){.sidebar-mobile{display:none!important}}`}</style>{content}</div>
-            <div style={{ flexShrink: 0 }}><style>{`@media(max-width:768px){.sidebar-desktop{display:none!important}}`}</style>{content}</div>
+            {/* Responsive CSS */}
+            <style>{`
+                .ax-sidebar-desktop { display: flex; flex-shrink: 0; }
+                .ax-sidebar-mobile-overlay { display: none; }
+                .ax-sidebar-mobile { display: none; }
+                @media(max-width:768px) {
+                    .ax-sidebar-desktop { display: none !important; }
+                    .ax-sidebar-mobile-overlay { display: ${mobileOpen ? 'block' : 'none'} !important; }
+                    .ax-sidebar-mobile { display: ${mobileOpen ? 'flex' : 'none'} !important; }
+                }
+            `}</style>
+
+            {/* Desktop sidebar — always visible, supports collapse */}
+            <div className="ax-sidebar-desktop" style={{ transition: 'width 0.2s ease' }}>
+                {sidebarContent(sidebarWidth, !collapsed)}
+            </div>
+
+            {/* Mobile overlay backdrop */}
+            <div className="ax-sidebar-mobile-overlay" onClick={onMobileClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }} />
+
+            {/* Mobile sidebar — slides in from left, always expanded, with close button */}
+            <div className="ax-sidebar-mobile" style={{ position: 'fixed', top: 0, left: 0, width: 260, height: '100vh', zIndex: 50 }}>
+                {sidebarContent(260, true, true)}
+            </div>
         </>
     );
 }
