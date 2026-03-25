@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.25.6 - 2026-03-25
+
+### Updated — Profile Page (/profile)
+- **Responsive mobile**: CSS media queries ≤768px — tab bar shows icons only (labels hidden), audit log table stacks to single column with inline labels, session cards stack vertically, theme grid shrinks to 120px min, font grid to 1 column, filter bar stacks, TOTP QR section centers vertically, backup codes grid to 2 columns. Keyboard shortcut badges hidden on ≤1024px.
+- **Mock data separated** (`resources/js/mock/profile.ts`): Extracted mockUser, mockSessions (4), mockAuditLog (20), mockIpData (5 IPs), backupCodes (8), languages (5 with RTL), dateFormats (10), timezones (23), actionColors (13 action types), keyboardShortcuts (8). All fully typed with exported interfaces.
+- **CSS already at** `resources/css/pages/profile.css` — appended 40 lines of responsive mobile styles and keyboard badge styles. Total 247 lines.
+- **React tests** (`resources/js/tests/Profile.test.ts`): 38 test cases across 9 describe blocks — mockUser fields + initials, sessions (unique IDs, one current, IP cross-ref), audit log (chronological order, action colors, IP cross-ref), IP data (key-value match), backup codes (format, uniqueness), languages (RTL check), settings (date formats, timezones), keyboard shortcuts (1-5 + Ctrl+Q), Tab type.
+- **Keyboard shortcuts**: `1-5` switch tabs (Personal/Password/Security/Settings/Audit), `Esc` close modal, `Ctrl+Q` toggle shortcuts modal. Event listener uses capture phase for Ctrl+Q interception. Tab buttons show keyboard number badges on desktop.
+- **Ctrl+Q modal**: Fixed-position overlay with all 8 shortcuts listed, close ✕ button, backdrop click close, Esc close. Styled consistently with Download page modal.
+- **Top loader integration**: Tab switches trigger global top loader via `useTopLoader().trigger()`.
+
 ## 0.25.5 - 2026-03-25
 
 ### Changed — Global Top Loader on Every Page Navigation
