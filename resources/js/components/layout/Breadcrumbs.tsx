@@ -10,6 +10,7 @@ const routeLabels: Record<string, string> = {
     'devices': 'Devices',
     'connections': 'Connections',
     'chat': 'AI Assistant',
+    'download': 'Download Client',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',

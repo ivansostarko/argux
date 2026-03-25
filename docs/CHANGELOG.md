@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.25.2 - 2026-03-25
+
+### Updated — Download Client Page (/download)
+- **Responsive mobile design**: 3 breakpoints — desktop (>1024px, 3-panel), tablet (≤1024px, hides left sidebar), mobile (≤768px, stacked single column). Cards, banners, system requirements table, and QR sections all reflow properly.
+- **Larger fonts**: Headings bumped to 14-18px (from 7-13px), body text 10-13px (from 7-10px), sidebar labels 10-11px, tab labels 13px, detail panel 10px. All text now legible on high-DPI and mobile screens.
+- **Top loader bar**: Animated gradient bar (accent→purple) with shimmer effect. Triggers on tab switch, download click, and keyboard shortcut actions. 3-phase animation: 30%→70%→100%→fade.
+- **Skeleton loader**: Pulsing skeleton cards during 800ms initial load. Matches card layout with avatar, title, tags, and button placeholders.
+- **Keyboard shortcuts**: `1`-`4` switch tabs, `D` triggers recommended download, `Esc` closes detail panel, `?` toggles shortcuts overlay dialog. Shortcuts shown in sidebar and as `<kbd>` badges on tab buttons.
+- **Separated CSS** (`download.css`): All custom styles extracted — loader animations, skeleton pulse, keyboard hint badges, responsive breakpoints, card hover effects, download button animations. 65 lines.
+- **Separated mock data** (`mockData.ts`): All constants, types, releases array, release notes, deployment types, system requirements, platform colors, and detectCurrentPlatform() extracted. 80 lines. Fully typed with exported interfaces.
+- **React tests** (`Download.test.ts`): 38 test cases across 9 describe blocks — mock data integrity (constants, releases, release notes, deployment types, system requirements, platform colors), platform detection, data consistency cross-references, keyboard shortcut mapping. Run: `npx vitest run resources/js/pages/Download/Download.test.ts`.
+- **Breadcrumbs fixed**: Added `'download': 'Download Client'` to Breadcrumbs route labels. Removed negative top margin from page layout so breadcrumbs are visible above page content.
+- **Notification dropdown** max-width capped at `calc(100vw - 20px)` to prevent overflow on mobile.
+
+### Files
+- `resources/js/pages/Download/Index.tsx` — refactored page (307 lines, down from 372)
+- `resources/js/pages/Download/mockData.ts` — NEW: extracted mock data + types
+- `resources/js/pages/Download/download.css` — NEW: extracted custom styles
+- `resources/js/pages/Download/Download.test.ts` — NEW: 38 test cases
+- `resources/js/components/layout/Breadcrumbs.tsx` — added download label
+
 ## 0.25.1 - 2026-03-25
 
 ### Fixed — Responsive App Header & Sidebar
