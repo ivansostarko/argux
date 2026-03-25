@@ -1,7 +1,8 @@
 import PageMeta from '../../components/layout/PageMeta';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
+import { useTopLoader } from '../../components/ui/TopLoader';
 import { releases, releaseNotes, deploymentTypes, systemRequirements, platformColors, detectCurrentPlatform, APP_VERSION, BUILD_DATE, BUILD_NUMBER } from './mockData';
 import type { Platform, Tab } from './mockData';
 import './download.css';
@@ -36,8 +37,7 @@ function DownloadIndex() {
     const [selRelease, setSelRelease] = useState<string | null>(null);
     const [copiedHash, setCopiedHash] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const [topLoader, setTopLoader] = useState(0);
-    const topTimer = useRef<number | null>(null);
+    const { trigger } = useTopLoader();
     const currentPlatform = detectCurrentPlatform();
     const rel = selRelease ? releases.find(r => r.filename === selRelease) : null;
     const desktopReleases = releases.filter(r => ['windows', 'linux', 'macos'].includes(r.platform));
@@ -46,14 +46,7 @@ function DownloadIndex() {
     // Simulate loading
     useEffect(() => { const t = setTimeout(() => setLoading(false), 800); return () => clearTimeout(t); }, []);
 
-    // Top loader
-    const triggerLoader = useCallback(() => {
-        if (topTimer.current) clearTimeout(topTimer.current);
-        setTopLoader(30);
-        topTimer.current = window.setTimeout(() => { setTopLoader(70); topTimer.current = window.setTimeout(() => { setTopLoader(100); topTimer.current = window.setTimeout(() => setTopLoader(0), 400); }, 200); }, 150);
-    }, []);
-
-    const switchTab = useCallback((t: Tab) => { setTab(t); triggerLoader(); setSelRelease(null); }, [triggerLoader]);
+    const switchTab = useCallback((t: Tab) => { setTab(t); trigger(); setSelRelease(null); }, [trigger]);
     const copyHash = (hash: string, filename: string) => { navigator.clipboard.writeText(hash).then(() => { setCopiedHash(filename); setTimeout(() => setCopiedHash(null), 2000); }); };
 
     // ═══ Keyboard Shortcuts ═══
@@ -69,7 +62,7 @@ function DownloadIndex() {
                 case 'd': case 'D': {
                     // Download recommended package
                     const rec = releases.find(r => r.platform === currentPlatform);
-                    if (rec) { triggerLoader(); }
+                    if (rec) { trigger(); }
                     break;
                 }
                 case 'Escape': setSelRelease(null); break;
@@ -83,7 +76,7 @@ function DownloadIndex() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [switchTab, currentPlatform, triggerLoader]);
+    }, [switchTab, currentPlatform, trigger]);
 
     const pc = (p: Platform) => platformColors[p];
 
@@ -136,7 +129,7 @@ function DownloadIndex() {
             {/* CENTER */}
             <div className="dl-center" style={{ position: 'relative' as const }}>
                 {/* Top Loader */}
-                {topLoader > 0 && <div className="dl-loader"><div className={`dl-loader-bar${topLoader===100?' done':''}`} style={{ width: `${topLoader}%`, background: `linear-gradient(90deg, ${theme.accent}, #8b5cf6)`, boxShadow: `0 0 10px ${theme.accent}60`, opacity: topLoader===100?0:1 }}><div className="dl-loader-shimmer" /></div></div>}
+                {/* Top loader is now global via AppLayout TopLoaderProvider */}
 
                 {/* Tab bar */}
                 <div className="dl-tab-bar" style={{ display: 'flex', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
@@ -174,7 +167,7 @@ function DownloadIndex() {
                                 <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 10 }}>📐 {r.arch} · 💻 {r.minOS}</div>
                                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 12 }}>{r.features.map(f => <span key={f} style={{ fontSize: 9, padding: '3px 7px', borderRadius: 4, background: `${theme.border}15`, color: theme.textSecondary }}>{f}</span>)}</div>
                                 <div style={{ display: 'flex', gap: 8 }}>
-                                    <button onClick={e => { e.stopPropagation(); triggerLoader(); }} className="dl-btn-download" style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: c, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>⬇️ Download</button>
+                                    <button onClick={e => { e.stopPropagation(); trigger(); }} className="dl-btn-download" style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: c, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>⬇️ Download</button>
                                     <button onClick={e => { e.stopPropagation(); copyHash(r.sha256, r.filename); }} style={{ padding: '10px 12px', borderRadius: 8, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>{copiedHash===r.filename?'✅ Copied':'🔒 SHA256'}</button>
                                 </div>
                             </div>; })}
@@ -200,7 +193,7 @@ function DownloadIndex() {
                                         <div style={{ fontSize: 13, fontWeight: 700, color: theme.text, marginBottom: 6 }}>Scan to install</div>
                                         <div style={{ fontSize: 10, color: theme.textDim, lineHeight: 1.6, marginBottom: 10 }}>{r.platform==='android'?'Scan with your Android camera. APK downloads directly.':'Scan with iPhone camera to open TestFlight.'}</div>
                                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-                                            <button className="dl-btn-download" onClick={() => triggerLoader()} style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: c, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{r.platform==='android'?'⬇️ Download APK':'🍎 TestFlight'}</button>
+                                            <button className="dl-btn-download" onClick={() => trigger()} style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: c, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{r.platform==='android'?'⬇️ Download APK':'🍎 TestFlight'}</button>
                                             <button onClick={() => copyHash(r.sha256, r.filename)} style={{ padding: '9px 12px', borderRadius: 8, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>{copiedHash===r.filename?'✅':'🔒'} SHA256</button>
                                         </div>
                                     </div>
@@ -288,7 +281,7 @@ function DownloadIndex() {
                     <button onClick={() => copyHash(rel.sha256, rel.filename)} style={{ marginTop: 6, width: '100%', padding: '6px', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 10, cursor: 'pointer', fontFamily: 'inherit' }}>{copiedHash===rel.filename?'✅ Copied to clipboard':'📋 Copy checksum'}</button>
                 </div>
                 <div style={{ padding: '10px 16px', marginTop: 'auto' }}>
-                    <button className="dl-btn-download" onClick={() => triggerLoader()} style={{ width: '100%', padding: '10px', borderRadius: 8, border: 'none', background: pc(rel.platform), color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>⬇️ Download {rel.label}</button>
+                    <button className="dl-btn-download" onClick={() => trigger()} style={{ width: '100%', padding: '10px', borderRadius: 8, border: 'none', background: pc(rel.platform), color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>⬇️ Download {rel.label}</button>
                 </div>
             </div>}
 

@@ -6,6 +6,7 @@ import Breadcrumbs from '../components/layout/Breadcrumbs';
 import PermissionPrompt from '../components/layout/PermissionPrompt';
 import { usePermissions } from '../hooks/usePermissions';
 import { ToastProvider } from '../components/ui/Toast';
+import { TopLoaderProvider } from '../components/ui/TopLoader';
 import type { SharedProps } from '../types/shared';
 
 /* ─── Theme definitions ─── */
@@ -95,6 +96,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return (
         <AppSettingsContext.Provider value={{ currentTheme: t, setThemeId, currentFont: f, setFontId, dir, setDir }}>
         <ToastProvider>
+        <TopLoaderProvider accentColor={t.accent}>
         <div dir={dir} className="ax-app-shell" style={{ fontFamily: f.family, background: t.bg, color: t.text }}>
             <style>{`
                 :root {
@@ -124,6 +126,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
             {showPrompt && <PermissionPrompt permissions={permissions} requesting={requesting} onAccept={requestAll} onDismiss={dismissPrompt} />}
         </div>
+        </TopLoaderProvider>
         </ToastProvider>
         </AppSettingsContext.Provider>
     );

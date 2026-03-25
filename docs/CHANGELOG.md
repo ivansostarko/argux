@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.25.3 - 2026-03-25
+
+### Changed — Global Top Loader
+- **New `TopLoaderProvider`** (`components/ui/TopLoader.tsx`): Global top loader bar rendered at `position: fixed; top: 0; z-index: 9999`. Any page can trigger it via `useTopLoader()` hook. Animated gradient (accent→purple→pink) with shimmer effect. Theme-aware via `accentColor` prop.
+- **AppLayout integration**: `TopLoaderProvider` wraps all app content inside `ToastProvider`. Passes current theme accent color.
+- **Download page refactored**: Removed per-page `topLoader` state, `topTimer` ref, `triggerLoader` callback, and `dl-loader` JSX. Now uses `const { trigger } = useTopLoader()` — 5 trigger calls converted.
+- **Download CSS cleaned**: Removed `.dl-loader`, `.dl-loader-bar`, `.dl-loader-shimmer`, `@keyframes dl-shimmer` (now handled globally).
+- **Map page unchanged**: Map's in-container top loader (z-index 60 inside `.tmap-container`) is a map-specific UX element for 60+ map operations — intentionally kept separate from the global page loader.
+
+### Usage for any page:
+```tsx
+import { useTopLoader } from '@/components/ui/TopLoader';
+const { trigger } = useTopLoader();
+trigger(); // fires the global loader animation
+```
+
 ## 0.25.2 - 2026-03-25
 
 ### Updated — Download Client Page (/download)
