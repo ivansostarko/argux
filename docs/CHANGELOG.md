@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.24.1 - 2026-03-25
+
+### Added — React Developer Tools Integration
+- **React StrictMode** enabled in development builds. Wraps the entire app in `<StrictMode>` to enable: double-rendering checks for side effects, deprecated API warnings, better React DevTools component highlighting and state inspection.
+- **Production bypasses StrictMode** — no performance overhead in `npm run build` output.
+- **Console DevTools banner** — development mode prints styled ARGUX DevTools message with link to React Developer Tools installation page.
+- **Source maps enabled** — `css.devSourcemap: true` for CSS source mapping, `build.sourcemap: 'hidden'` for production profiling. In React DevTools Components tab, clicking `<>` on any component jumps directly to its source file.
+- **Fast Refresh preserved** — `@vitejs/plugin-react` fast refresh keeps component state during hot edits, visible in DevTools as preserved state tree.
+- **Vite config upgraded** to function mode `defineConfig(({ mode }) => ...)` for environment-aware source map and plugin configuration.
+- **Server source maps** — `server.sourcemapIgnoreList: false` ensures all source maps are served to browser DevTools.
+
+### How to use React DevTools with ARGUX:
+1. Install the browser extension: [Chrome](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi) or [Firefox](https://addons.mozilla.org/en-US/firefox/addon/react-devtools/)
+2. Run `npm run dev` (development mode enables all DevTools features)
+3. Open browser DevTools → "Components" tab to inspect React component tree
+4. Open browser DevTools → "Profiler" tab to record and analyze render performance
+5. Click any component → see props, state, hooks, and source location
+6. For production profiling: `npm run build` generates hidden source maps for the Profiler
+
 ## 0.24.0 - 2026-03-25
 
 ### Added — Surveillance Apps Page (/apps)
