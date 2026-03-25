@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.25.7 - 2026-03-25
+
+### Updated — Activity Log Page (/activity)
+- **Fixed breadcrumbs**: Removed negative margins (`margin: 0 -24px -80px 0`) from `.act-page` layout. Page now uses `border-radius: 10px` container with `border: 1px solid` instead of bleeding to edges. Breadcrumbs are fully visible above the page content.
+- **Removed footer**: No footer bar in the page.
+- **Larger fonts**: Event title 13→14px, description 11→12px, meta links 10→11px, header count 14→16px, badges 8→10px, sidebar labels 10→12px, search input 12→13px, stat numbers 16→18px, expanded metadata 10→11px, action buttons 10→11px, empty state text 15→16px, load more button 12→13px, icon sizes 16→18px, type icons 14px in sidebar.
+- **Skeleton loader**: Enhanced skeleton with badge placeholders, larger icon (38px), multi-line content blocks with realistic proportions. Shows 8 skeleton rows on initial load.
+- **Responsive mobile**: Left sidebar hidden on ≤768px. Mobile filter bar appears with search input, severity dropdown, and person dropdown for quick filtering. Event meta stacks vertically on mobile. Keyboard badges hidden on ≤1024px.
+- **Mock data already at** `resources/js/mock/activity.ts` — 20 events, 12 types, 5 severities, filter helpers.
+- **CSS already at** `resources/css/pages/activity.css` — Rewritten with fixed layout, mobile filter bar, responsive breakpoints. 49 lines.
+- **Tests already at** `resources/js/tests/Activity.test.ts` — 237 lines covering events, type configs, severity configs, filter helpers, keyboard shortcuts, cross-references.
+- **Keyboard shortcuts**: F (focus search), C (toggle critical), R (reset filters), Esc (close), Ctrl+Q (shortcuts modal). All use capture phase for Ctrl+Q interception.
+
 ## 0.25.6 - 2026-03-25
 
 ### Updated — Profile Page (/profile)
