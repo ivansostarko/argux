@@ -8,7 +8,7 @@ export const BUILD_DATE = '2026-03-25';
 export const BUILD_NUMBER = '20260325.2';
 
 export type Platform = 'windows' | 'linux' | 'macos' | 'android' | 'ios';
-export type Tab = 'desktop' | 'mobile' | 'releases' | 'deployment';
+export type Tab = 'desktop' | 'mobile';
 
 export interface ClientRelease {
     platform: Platform; label: string; icon: string; version: string;

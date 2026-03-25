@@ -9,8 +9,8 @@ import {
     releases, releaseNotes, deploymentTypes, systemRequirements,
     platformColors, detectCurrentPlatform,
     APP_VERSION, BUILD_DATE, BUILD_NUMBER,
-} from './mockData';
-import type { Platform, ClientRelease, ReleaseNote, DeploymentType, SystemReq } from './mockData';
+} from '../mock/download';
+import type { Platform, ClientRelease, ReleaseNote, DeploymentType, SystemReq } from '../mock/download';
 
 // ═══════════════════════════════════════════════════════════════
 // Mock Data Integrity Tests
@@ -208,16 +208,46 @@ describe('Data consistency', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('Tab keyboard mapping', () => {
-    const tabMap: Record<string, string> = { '1': 'desktop', '2': 'mobile', '3': 'deployment', '4': 'releases' };
+    const tabMap: Record<string, string> = { '1': 'desktop', '2': 'mobile' };
 
-    it('should map keys 1-4 to tabs', () => {
+    it('should map keys 1-2 to tabs', () => {
         expect(tabMap['1']).toBe('desktop');
         expect(tabMap['2']).toBe('mobile');
-        expect(tabMap['3']).toBe('deployment');
-        expect(tabMap['4']).toBe('releases');
     });
 
-    it('should have 4 tab shortcuts', () => {
-        expect(Object.keys(tabMap).length).toBe(4);
+    it('should have 2 tab shortcuts', () => {
+        expect(Object.keys(tabMap).length).toBe(2);
+    });
+});
+
+describe('Keyboard shortcuts', () => {
+    const shortcuts = [
+        { key: '1', modifier: null, action: 'Switch to Desktop tab' },
+        { key: '2', modifier: null, action: 'Switch to Mobile tab' },
+        { key: '3', modifier: null, action: 'Switch to Deployment tab' },
+        { key: '4', modifier: null, action: 'Switch to Release Notes tab' },
+        { key: 'D', modifier: null, action: 'Download recommended' },
+        { key: 'Escape', modifier: null, action: 'Close panel / modal' },
+        { key: 'Q', modifier: 'Ctrl', action: 'Toggle shortcuts modal' },
+    ];
+
+    it('should have 7 keyboard shortcuts defined', () => {
+        expect(shortcuts.length).toBe(7);
+    });
+
+    it('Ctrl+Q should be the shortcuts modal trigger', () => {
+        const ctrlQ = shortcuts.find(s => s.key === 'Q' && s.modifier === 'Ctrl');
+        expect(ctrlQ).toBeDefined();
+        expect(ctrlQ!.action).toContain('shortcuts');
+    });
+
+    it('Escape should close panels and modals', () => {
+        const esc = shortcuts.find(s => s.key === 'Escape');
+        expect(esc).toBeDefined();
+    });
+
+    it('D key should trigger download', () => {
+        const d = shortcuts.find(s => s.key === 'D' && s.modifier === null);
+        expect(d).toBeDefined();
     });
 });

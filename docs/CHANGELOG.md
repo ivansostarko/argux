@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.25.4 - 2026-03-25
+
+### Updated — Download Client Page (/download)
+- **Removed footer bar** (CLASSIFIED // NOFORN status bar at bottom).
+- **Fixed Ctrl+Q keyboard shortcut**: Event listener now uses capture phase (`addEventListener('keydown', handler, true)`) and calls both `preventDefault()` and `stopPropagation()` to intercept Ctrl+Q before the browser can close the tab. Modal toggles correctly on repeat press.
+- **Removed tabs**: Deploy and Release Notes tabs removed. Only Desktop and Mobile tabs remain.
+- **Mobile tab — Android cleaned**: Removed feature labels (Biometric unlock, Push notifications, Offline mode, Background tracking). Removed Google Play, Direct APK buttons. Removed "Also via MDM" text.
+- **Mobile tab — iOS cleaned**: Removed feature labels (Face ID / Touch ID, Push notifications, Offline mode, Background location). Removed App Store, TestFlight buttons. Removed "Enterprise dist." text.
+- **QR Code lightbox**: Clicking any QR code opens a fullscreen lightbox with enlarged 260px QR code, platform label, and close instructions. Closes on Esc, backdrop click.
+- **Removed MDM widget** from mobile tab.
+- **Desktop tab — features removed**: Feature label chips removed from desktop release cards.
+- **Left sidebar cleaned**: Removed Platforms/Packages/Installs stats row. Removed Shortcuts section. Removed Profile, Dashboard, Jobs links.
+- **Tab type updated**: `Tab` type narrowed to `'desktop' | 'mobile'` in mock data.
+
 ## 0.25.3 - 2026-03-25
 
 ### Changed — Global Top Loader
