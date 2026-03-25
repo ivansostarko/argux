@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.25.10 - 2026-03-25
+
+### Updated — Background Jobs (/jobs)
+- **Responsive mobile**: Sidebar + detail panel hidden ≤768px. Mobile filter bar (search + priority). Worker grid single-column. Tab labels hidden (icons + kbd only).
+- **Breadcrumbs fixed**: Added `'jobs': 'Background Jobs'`.
+- **Footer removed**.
+- **Larger fonts**: Sidebar 16px title, 13px search, 12px type list/filters, 16px stats. Tabs 13px. Job names 13px, status 11px, details 10px, progress 10px. Workers 14px name, 11-12px details. Detail panel 13px name, 10-11px fields. Shortcuts modal 13px descriptions.
+- **Skeleton loader**: 8 skeleton rows (icon + title + progress bar + meta) during 700ms.
+- **Mock data separated** (`resources/js/mock/jobs.ts`): 20 jobs (trimmed from 30 for clarity), 6 workers, typeConfig (10), statusColors/Icons (6), prioColors (4), allOps, keyboardShortcuts (10).
+- **CSS separated** (`resources/css/pages/jobs.css`): Skeleton, kbd, 3-panel layout, responsive ≤1024px/≤768px.
+- **Tests** (`resources/js/tests/Jobs.test.ts`): 30 tests across 7 describe blocks — typeConfig, statusColors, prioColors, mockJobs (IDs, fields, types, statuses, priorities, progress, output/errors), mockWorkers (IDs, fields, cpu/mem, active→currentJob), allOps, shortcuts.
+- **Keyboard shortcuts**: `1-6` tabs, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal (capture phase).
+
 ## 0.25.9 - 2026-03-25
 
 ### Updated — Reports Page (/reports)

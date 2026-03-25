@@ -14,6 +14,7 @@ const routeLabels: Record<string, string> = {
     'activity': 'Activity Log',
     'risks': 'Risks Dashboard',
     'reports': 'Reports',
+    'jobs': 'Background Jobs',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',
