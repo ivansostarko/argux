@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-utils/schema.json",
+  "identifier": "desktop",
+  "description": "ARGUX desktop-only capabilities",
+  "windows": ["main"],
+  "platforms": ["linux", "macOS", "windows"],
+  "permissions": [
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered",
+    "updater:default",
+    "window-state:allow-save",
+    "window-state:allow-restore"
+  ]
+}

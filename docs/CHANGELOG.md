@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.24.2 - 2026-03-25
+
+### Added — Tauri v2 Multi-Platform Native App
+- **Tauri v2 integration** for building ARGUX as a native application on 5 platforms: Windows (.msi/.exe), Linux (.deb/.rpm/.AppImage), macOS (.dmg/.app), Android (.apk/.aab), iOS (.ipa).
+- **`src-tauri/tauri.conf.json`** — Main configuration: app window (1440×900, min 1024×700), CSP policy for MapLibre + tile providers, bundle targets for all platforms, NSIS installer with English/Croatian, macOS minimum 10.15, Linux deb/rpm/AppImage, iOS/Android settings.
+- **`src-tauri/Cargo.toml`** — Rust dependencies: tauri v2 core, 8 cross-platform plugins (shell, notification, clipboard, dialog, process, os, http, opener), 4 desktop-only plugins (single-instance, window-state, updater, global-shortcut). Release profile: LTO, strip symbols, panic=abort.
+- **`src-tauri/src/lib.rs`** — Shared app logic: 4 Tauri commands (get_platform_info, set_window_title, toggle_fullscreen, minimize_to_tray), platform-conditional plugin registration, macOS title bar overlay, startup banner, minimum window size enforcement.
+- **`src-tauri/src/main.rs`** — Desktop entry point with Windows subsystem flag.
+- **`src-tauri/capabilities/default.json`** — Cross-platform permissions: window management, shell open, notifications, clipboard, dialogs, process control, OS info, HTTP, opener.
+- **`src-tauri/capabilities/desktop.json`** — Desktop-only permissions: global shortcuts, updater, window state persistence.
+- **`src-tauri/icons/icon.svg`** — ARGUX branded app icon with targeting reticle + gradient.
+- **`resources/js/lib/tauri.ts`** — Frontend Tauri bridge with graceful browser fallback: platform detection (isTauri/isBrowser/isDesktop/isMobile), tauriInvoke() generic command caller, sendNotification() (falls back to Web Notification API), copyToClipboard() (falls back to navigator.clipboard), openExternal() (system browser in Tauri, new tab in browser), confirmDialog() (native dialog in Tauri, window.confirm in browser), saveFileDialog(), tauriFetch() (bypasses CORS in Tauri), getPlatformInfo().
+- **`resources/js/types/tauri.d.ts`** — TypeScript declarations for TAURI_ENV_* variables and window.__TAURI_INTERNALS__.
+- **`vite.config.ts`** — Tauri-aware: TAURI_ENV_PLATFORM detection, clearScreen:false, envPrefix includes TAURI_ENV_, modern build targets (es2021/chrome100/safari15), vendor-tauri chunk splitting, mobile dev server host 0.0.0.0, conditional HMR for mobile.
+- **`package.json`** — 12 npm scripts: tauri, tauri:dev, tauri:build, platform-specific builds (windows/linux/macos/macos-arm/macos-intel), mobile init/dev/build (android/ios), icon generation. Dependencies: @tauri-apps/api v2, 7 plugin packages. DevDependencies: @tauri-apps/cli v2.
+- **`TAURI-SETUP.md`** — Comprehensive build guide: prerequisites per platform, step-by-step build commands, development mode instructions, icon generation, architecture diagram, plugin matrix, CI/CD targets, troubleshooting table.
+
+### Build Commands
+```
+npm run tauri:dev              # Desktop development
+npm run tauri:build            # Build for current platform
+npm run tauri:build:windows    # Windows .msi + .exe
+npm run tauri:build:linux      # Linux .deb + .rpm + .AppImage
+npm run tauri:build:macos      # macOS universal .dmg
+npm run tauri:android:dev      # Android development
+npm run tauri:android:build    # Android .apk + .aab
+npm run tauri:ios:dev          # iOS simulator
+npm run tauri:ios:build        # iOS .ipa
+```
+
 ## 0.24.1 - 2026-03-25
 
 ### Added — React Developer Tools Integration
