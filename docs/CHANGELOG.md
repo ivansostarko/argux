@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.25.12 - 2026-03-26
+
+### Updated — Face Recognition (/face-recognition)
+- **Responsive mobile**: Sidebar + detail panel hidden ≤768px. Mobile bar (search + status select). Capture grid adapts (minmax 150px). Tab labels hidden (icons + kbd). Stat grid single-column.
+- **Breadcrumbs fixed**: Added `'face-recognition': 'Face Recognition'`.
+- **Footer removed**.
+- **Larger fonts**: Sidebar 16px title, 13px search, 12px status/filters, 16px stats. Tabs 13px. Capture cards: 13px name, 10-11px location/badges/confidence. Face search: 18px heading, 12-14px labels, 13px inputs/buttons. Statistics: 14px headings, 13px person names, 18px camera counts. Detail panel: 13px name, 10px fields, 16px confidence gauge.
+- **Skeleton loader**: 8 skeleton capture cards (image area + text) during 700ms.
+- **Mock data** (`resources/js/mock/faceRecognition.ts`, 67 lines): 15 captures (10 confirmed, 3 possible, 1 no-match, 2 pending), 9 cameras, statusColors/Icons, allCameras, allMatchedPersons, allOps, keyboardShortcuts (7).
+- **CSS** (`resources/css/pages/face-recognition.css`, 22 lines): Skeleton, kbd, 3-panel layout, capture grid responsive, mobile bar, stat grid collapse.
+- **Tests** (`resources/js/tests/FaceRecognition.test.ts`): 28 tests across 7 describe blocks — statusColors/Icons, cameras (IDs/fields), mockCaptures (IDs/fields/confirmed/possible/unmatched/disguises/multi-camera/multi-person), derived lists (sorted cameras, unique persons, allOps), shortcuts, ViewTab.
+- **Keyboard shortcuts**: `1` Captures, `2` Face Search, `3` Statistics, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
+
 ## 0.25.11 - 2026-03-26
 
 ### Updated — Alert Rules (/alerts)
