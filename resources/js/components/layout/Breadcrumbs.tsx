@@ -22,6 +22,7 @@ const routeLabels: Record<string, string> = {
     'data-sources': 'Data Sources',
     'plate-recognition': 'Plate Recognition',
     'surveillance-apps': 'Surveillance Apps',
+    'workflows': 'Workflows',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',

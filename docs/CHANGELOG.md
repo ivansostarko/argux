@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.25.18 - 2026-03-26
+
+### Updated — Workflows (/workflows)
+- **Responsive mobile**: Detail panel hidden ≤768px. Mobile bar (search + New). Kanban columns stack vertically. List table head hidden ≤1024px, rows flex-wrap. Template grid single-column. View labels hidden. Header stats hidden.
+- **Breadcrumbs fixed**: Added `'workflows': 'Workflows'`.
+- **Footer removed**.
+- **Larger fonts**: Title 16px, search 12px, status badges 10px. Kanban column headers 12px, card names 12px, triggers/actions 8-9px, stats 9px. List names 12px, meta 9-10px. Template names 13px, descriptions 11px, triggers/actions 9px. Detail panel name 13px, description 10px, stats 15px, triggers 11px, actions 11px, subjects 10px, meta 10px, exec log 10px.
+- **Skeleton loader**: Kanban skeleton (5 columns × 2 cards), List skeleton (6 rows), Templates skeleton (4 cards), all 700ms.
+- **New Workflow modal**: Name (required), description textarea, priority (4 levels), status (5 columns), operation selector, trigger type (10 types as 5×2 icon grid), action type (8 types as 4×2 icon grid). Create disabled without name.
+- **Mock data** (`resources/js/mock/workflows.ts`, 122 lines): 9 workflows (4 Active, 1 Draft, 1 Paused, 1 Completed, 1 Archived) across 3 operations. 6 templates across 5 categories. statusColors/Icons, prioColors, triggerIcons (10), actionIcons (8), kanbanCols (5), allTriggerTypes (10), allActionTypes (8), keyboardShortcuts (8).
+- **CSS** (`resources/css/pages/workflows.css`, 26 lines): Skeleton, kbd, kanban/list/template layouts, responsive breakpoints.
+- **Tests** (`resources/js/tests/Workflows.test.ts`): 32 tests across 9 describe blocks — statuses, priorities, triggerIcons/allTriggerTypes, actionIcons/allActionTypes, kanbanCols, mockWorkflows (IDs/fields/statuses/operations/active/exec logs/trigger types/action types), templates (IDs/fields/categories), shortcuts.
+- **Keyboard shortcuts**: `1` Kanban, `2` List, `3` Templates, `N` new workflow, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
+
 ## 0.25.17 - 2026-03-26
 
 ### Updated — Surveillance Apps (/surveillance-apps)
