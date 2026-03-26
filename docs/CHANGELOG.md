@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.25.15 - 2026-03-26
+
+### Updated — Data Sources (/data-sources)
+- **Responsive mobile**: Sidebar + detail hidden ≤768px. Mobile bar (search + category select + New).
+- **Breadcrumbs fixed**: Added `'data-sources': 'Data Sources'`.
+- **Footer removed**.
+- **Larger fonts**: Sidebar 16px title, 13px search, 11-12px category/status filters, 16px stats. Source header 13px country, source name 13px, provider 10px, status 10px, protocol 9px, category badge 9px. Detail panel 13px name, 10px provider/tags, 16px health/error/records, 11px connection details/sync log, notes 11px. Modal 18px heading, 12-13px labels/inputs.
+- **Skeleton loader**: 10 skeleton rows (health ring + text + tags + status) during 700ms.
+- **New Data Source modal**: Full form with source name, provider, category (6 types as icon grid), protocol (9 options), schedule (8 intervals), endpoint URL, authentication (10 auth methods), country. Create disabled without name + endpoint.
+- **Mock data** (`resources/js/mock/dataSources.ts`, 60 lines): 19 sources across 6 categories (Government ×5, Law Enforcement ×3, Financial ×2, OSINT ×2, Technical ×3, Commercial ×4), statusColors/Icons, catColors/Icons, allCategories, allProtocols (9), allCountries, keyboardShortcuts (6).
+- **CSS** (`resources/css/pages/data-sources.css`, 20 lines): Skeleton, kbd, 3-panel, responsive.
+- **Tests** (`resources/js/tests/DataSources.test.ts`): 26 tests across 6 describe blocks — statuses, categories, protocols, mockDS (IDs/fields/categories/status/countries/syncLog/tags/protocols), allCountries sorted, shortcuts.
+- **Keyboard shortcuts**: `N` new source, `F` search, `R` reset, `S` sync all, `Esc` close, `Ctrl+Q` modal.
+
 ## 0.25.14 - 2026-03-26
 
 ### Updated — Social Scraper (/scraper)

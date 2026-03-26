@@ -19,6 +19,7 @@ const routeLabels: Record<string, string> = {
     'face-recognition': 'Face Recognition',
     'web-scraper': 'Web Scraper',
     'scraper': 'Social Scraper',
+    'data-sources': 'Data Sources',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',
