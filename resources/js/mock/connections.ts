@@ -136,3 +136,12 @@ export const edges: ConnectionEdge[] = [
     { id:'c34', source:'p-1', target:'p-4', type:'Travel Companion', relationship:'Unknown', strength:2, notes:'Moscow trip detected — 2 days overlap at Metropol Hotel.', firstSeen:'2025-09-10', lastSeen:'2025-09-12' },
     { id:'c35', source:'o-6', target:'o-9', type:'Financial Transaction', relationship:'Bad', strength:3, notes:'$2.4M transfer via Panama shell company.', firstSeen:'2024-08-15', lastSeen:'2024-08-15' },
 ];
+
+export const keyboardShortcuts = [
+    { key: 'N', description: 'New Connection' },
+    { key: 'T', description: 'Toggle Types panel' },
+    { key: 'F', description: 'Focus search' },
+    { key: 'R', description: 'Reset filters & zoom' },
+    { key: 'Esc', description: 'Close detail / modal' },
+    { key: 'Ctrl+Q', description: 'Keyboard shortcuts' },
+];

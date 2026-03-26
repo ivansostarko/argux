@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.25.20 - 2026-03-26
+
+### Updated — Connections (/connections)
+- **Responsive mobile**: Toolbar hidden ≤768px. Mobile bar (Types + New + Reset buttons). Info panel becomes bottom sheet (50vh). Types panel becomes bottom sheet (60vh). Legend hidden. Canvas remains full-width interactive.
+- **Breadcrumbs**: Already existed.
+- **Connection Types panel**: New slide-in panel (left side, 260px) showing all 7 categories with their types, edge counts per type, and summary stats. Toggle via toolbar button or `T` key.
+- **Skeleton loader**: 5 node placeholders + text during 700ms loading.
+- **New Connection modal**: Entity A and B selectors (all persons + organizations with 🧑/🏢 icons), connection type (55+ types), relationship (Good/Bad/Neutral/Unknown), strength (1-5 dot selector), notes textarea. Create disabled without both entities.
+- **Keyboard shortcuts**: `N` new connection, `T` toggle types panel, `F` focus search, `R` reset all, `Esc` close, `Ctrl+Q` shortcuts modal.
+- **Canvas improvements**: Node initials 11-12px (was 10-11), edge labels 9px (was 8), node labels 10-11px (was 9-10), relationship labels 8px (was 7). Right-click node navigates directly to profile.
+- **CSS** (`resources/css/pages/connections.css`): Fully rewritten (36 lines, was 226). Skeleton, kbd, types panel, responsive bottom sheets, mobile bar.
+- **Tests** (`resources/js/tests/Connections.test.ts`): 30 tests across 8 describe blocks — connectionTypes (≥50, core types), connectionCategories (7 cats, types+colors, all types mapped), getConnectionColor/Category (known types, fallbacks), relationships (4, colors), nodes (≥15, unique IDs, fields, person+org counts), edges (≥25, unique IDs, valid node refs, valid types, valid relationships, strength 1-5, ≥4 categories), shortcuts.
+- **Mock data**: Added `keyboardShortcuts` to existing mock (now 147 lines).
+- Page reduced from 449 → 276 lines (39% smaller).
+
 ## 0.25.19 - 2026-03-26
 
 ### Updated — Operations (/operations)
