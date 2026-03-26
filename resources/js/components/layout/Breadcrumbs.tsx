@@ -21,6 +21,7 @@ const routeLabels: Record<string, string> = {
     'scraper': 'Social Scraper',
     'data-sources': 'Data Sources',
     'plate-recognition': 'Plate Recognition',
+    'surveillance-apps': 'Surveillance Apps',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.25.17 - 2026-03-26
+
+### Updated — Surveillance Apps (/surveillance-apps)
+- **Responsive mobile**: Sidebar hidden ≤768px. Mobile bar (search + agent selector dropdown). Header IMEI/phone hidden. Stats bar wraps. Tab labels hidden (icons only). Remote grid single-column. Screenshot grid single-column.
+- **Breadcrumbs fixed**: Added `'surveillance-apps': 'Surveillance Apps'`.
+- **Footer removed**.
+- **Larger fonts**: Sidebar 16px title, 13px search, 12px status/platform filters, 16px stats, 12px app names, 9px device info. Header 15px name, 10px device. Stats 15px numbers. Tabs 11px. SMS 12px body, 11px numbers, 10px flags. Calls 12px name, 10px number, 11px duration. Contacts 12px name, 10px phone. Calendar 13px title, 11px details. Notifications 11px. Network 11px. Location 13px/12px. Remote 14px heading, 12px labels, 10px desc.
+- **Skeleton loader**: 5 sidebar skeleton items (avatar + text). Empty state skeleton (circle + text).
+- **Mock data** (`resources/js/mock/surveillanceApps.ts`, 186 lines): 6 deployed apps (Horvat Full Monitor Active, Mendoza Stealth Suite, Hassan Comms Intercept Active, Babić GPS Tracker Active, Al-Rashid Full Monitor Offline, Petrova Comms Intercept Paused). SMS with CRITICAL flags, calls with recordings, contacts, calendar, notifications, screenshots, photos, network info. 10 remote commands. statusColors/Icons, typeIcons, tabConfig (10 tabs), keyboardShortcuts (10).
+- **CSS** (`resources/css/pages/surveillance-apps.css`, 24 lines): Skeleton, kbd, 2-panel, remote grid, screenshot grid, responsive breakpoints, mobile bar.
+- **Tests** (`resources/js/tests/SurveillanceApps.test.ts`): 30 tests across 7 describe blocks — statuses, typeIcons, tabConfig (10 tabs), remoteCommands (10), mockApps (IDs/fields/status/platforms/SMS data/calls/contacts/flagged SMS/recorded calls/networkInfo/stats/GPS tracker empty comms), shortcuts.
+- **Keyboard shortcuts**: `1` SMS, `2` Calls, `3` Contacts, `4` Calendar, `5` Network, `0` Remote, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
+
 ## 0.25.16 - 2026-03-26
 
 ### Updated — Plate Recognition (/plate-recognition)
