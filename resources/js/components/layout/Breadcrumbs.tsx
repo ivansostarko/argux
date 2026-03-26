@@ -17,6 +17,7 @@ const routeLabels: Record<string, string> = {
     'jobs': 'Background Jobs',
     'alerts': 'Alert Rules',
     'face-recognition': 'Face Recognition',
+    'web-scraper': 'Web Scraper',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',

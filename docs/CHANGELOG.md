@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.25.13 - 2026-03-26
+
+### Updated — Web Scraper (/web-scraper)
+- **Responsive mobile**: Sidebar + detail hidden ≤768px. Mobile bar (search + New button). Tab labels hidden. Source grid single-column.
+- **Breadcrumbs fixed**: Added `'web-scraper': 'Web Scraper'`.
+- **Footer removed**.
+- **Larger fonts**: Sidebar 16px title, 13px search, 11-12px filters, 16px stats. Tabs 13px. Article titles 13px, excerpts 11px, badges 9px, entity links 9px. Source cards 13px name, 11px details, 10px URL. Detail panel 13px title, 12px excerpt, 11px AI assessment, 10px metadata.
+- **Skeleton loader**: 8 skeleton article rows (icon + badge + title + excerpt + tags) during 700ms.
+- **New Web Scraper modal**: Full form with source name, URL, category (8 types), schedule (9 intervals), CSS selector, URL pattern, keywords. **Target Entity section**: toggle Person/Organization, select from mockPersons/mockOrganizations, auto-tag description. Create button disabled without name+URL.
+- **Mock data** (`resources/js/mock/webScraper.ts`, 87 lines): 15 sources (trimmed from 16), 12 articles (trimmed from 15/20), catConfig (8), statusCol (4), relColors (4), contentIcons (8), allCategories, allCountries, allOps, keyboardShortcuts (8).
+- **CSS** (`resources/css/pages/web-scraper.css`, 22 lines): Skeleton, kbd, 3-panel, source grid responsive, mobile bar.
+- **Tests** (`resources/js/tests/WebScraper.test.ts`): 32 tests across 8 describe blocks — catConfig, statusCol, relColors, contentIcons, mockSources (IDs/fields/status/categories/countries), mockArticles (IDs/fields/critical/AI-flagged/entities/sourceId cross-ref/content types), derived lists, shortcuts.
+- **Keyboard shortcuts**: `1` Articles, `2` Critical Intel, `3` Sources, `N` new scraper, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
+
 ## 0.25.12 - 2026-03-26
 
 ### Updated — Face Recognition (/face-recognition)
