@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.25.24 - 2026-03-26
+
+### Updated — Persons (/persons)
+- **Responsive mobile**: Already had mobile card view (≤860px). Moved inline `<style>` media query to `persons.css` for clean separation. Desktop table hidden, mobile cards shown on small screens.
+- **Keyboard shortcuts**: `N` add person, `F` toggle filters, `S` focus search, `R` reset all, `←/→` pagination, `Esc` close modal/menu, `Ctrl+Q` shortcuts modal.
+- **Mock data**: Added `personsKeyboardShortcuts` (8 items) to existing `resources/js/mock/persons.ts` (now 78 lines).
+- **CSS**: Added desktop/mobile toggle media query to `resources/css/pages/persons.css` (now 325 lines), replacing inline `<style>` tag.
+- **Tests** (`resources/js/tests/Persons.test.ts`, 120 lines): 32 tests across 9 describe blocks — risks (5 levels, colors), statuses (5, colors), genders (3), nationalities (≥100, includes key nations, sorted), countries (≥100), allLanguages (≥50), religions (≥20), mockPersons (≥20, unique IDs/UUIDs, required fields, ≥4 risk levels, ≥3 statuses, ≥10 nationalities, male+female, Critical risk, key subjects Horvat+Mendoza, avatars, valid emails), keyboardShortcuts (≥6, N/F/S/R/Esc/Ctrl+Q).
+- Page: 275 lines (was 243, +32 from keyboard handler and shortcuts modal).
+
 ## 0.25.23 - 2026-03-26
 
 ### Updated — Vision Camera Wall (/vision)

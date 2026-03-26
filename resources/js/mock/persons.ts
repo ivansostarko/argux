@@ -65,3 +65,14 @@ export const mockPersons: Person[] = [
 
 export function getPersonById(id: number): Person | undefined { return mockPersons.find(p => p.id === id); }
 export function generateId(): string { return Math.random().toString(36).slice(2, 10); }
+
+export const personsKeyboardShortcuts = [
+    { key: 'N', description: 'Add new person' },
+    { key: 'F', description: 'Toggle filters panel' },
+    { key: 'S', description: 'Focus search' },
+    { key: 'R', description: 'Reset all filters' },
+    { key: '←', description: 'Previous page' },
+    { key: '→', description: 'Next page' },
+    { key: 'Esc', description: 'Close modal / menu' },
+    { key: 'Ctrl+Q', description: 'Keyboard shortcuts' },
+];

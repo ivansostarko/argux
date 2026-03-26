@@ -317,3 +317,9 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
 }
+
+/* ─── Desktop/Mobile toggle (moved from inline) ─── */
+@media (max-width: 860px) {
+    .persons-desktop { display: none !important; }
+    .persons-mobile { display: flex !important; }
+}

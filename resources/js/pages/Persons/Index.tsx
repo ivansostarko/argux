@@ -5,7 +5,8 @@ import AppLayout from '../../layouts/AppLayout';
 import { Button, Skeleton, Icons } from '../../components/ui';
 import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
-import { mockPersons, risks, riskColors, statusColors, genders, nationalities, countries, allLanguages, religions, statuses, type Risk, type Status } from '../../mock/persons';
+import { mockPersons, risks, riskColors, statusColors, genders, nationalities, countries, allLanguages, religions, statuses, personsKeyboardShortcuts, type Risk, type Status } from '../../mock/persons';
+import { useTopLoader } from '../../components/ui/TopLoader';
 
 /* ═══ MULTISELECT ═══ */
 function MS({ selected, onChange, options, placeholder }: { selected: string[]; onChange: (v: string[]) => void; options: string[]; placeholder: string }) {
@@ -76,6 +77,7 @@ function ContextMenu({ x, y, personId, onClose, onDelete }: { x: number; y: numb
 /* ═══ MAIN ═══ */
 export default function PersonsIndex() {
     const toast = useToast();
+    const { trigger } = useTopLoader();
     const [loading, setLoading] = useState(true);
     const [persons, setPersons] = useState(mockPersons);
     const [showFilters, setShowFilters] = useState(false);
@@ -85,9 +87,29 @@ export default function PersonsIndex() {
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
     const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
     const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: number } | null>(null);
+    const [showShortcuts, setShowShortcuts] = useState(false);
+    const searchRef = useRef<HTMLInputElement>(null);
     const perPage = 10;
 
     useEffect(() => { const t = setTimeout(() => setLoading(false), 900); return () => clearTimeout(t); }, []);
+
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName) && e.key !== 'Escape') return;
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'q' || e.key === 'Q')) { e.preventDefault(); e.stopPropagation(); setShowShortcuts(prev => !prev); return; }
+            switch (e.key) {
+                case 'n': case 'N': if (!e.ctrlKey && !e.metaKey) router.visit('/persons/create'); break;
+                case 'f': case 'F': if (!e.ctrlKey && !e.metaKey) setShowFilters(p => !p); break;
+                case 's': case 'S': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); searchRef.current?.focus(); } break;
+                case 'r': case 'R': if (!e.ctrlKey && !e.metaKey) clearAll(); break;
+                case 'ArrowLeft': setPage(p => Math.max(1, p - 1)); break;
+                case 'ArrowRight': setPage(p => Math.min(totalPages || 1, p + 1)); break;
+                case 'Escape': setShowShortcuts(false); setCtxMenu(null); setDeleteTarget(null); break;
+            }
+        };
+        window.addEventListener('keydown', handler, true);
+        return () => window.removeEventListener('keydown', handler, true);
+    }, []);
 
     const [fName, setFName] = useState(''); const [fNick, setFNick] = useState(''); const [fEmail, setFEmail] = useState(''); const [fPhone, setFPhone] = useState('');
     const [fUuid, setFUuid] = useState(''); const [fGender, setFGender] = useState<string[]>([]); const [fDobFrom, setFDobFrom] = useState(''); const [fDobTo, setFDobTo] = useState(''); const [fTax, setFTax] = useState('');
@@ -120,7 +142,7 @@ export default function PersonsIndex() {
     return (
         <>
         <PageMeta title="Persons" section="persons" />
-        <div>
+        <div data-testid="persons-page">
             <ConfirmModal open={deleteTarget !== null} title="Delete Person" message={`Are you sure you want to permanently delete ${persons.find(p => p.id === deleteTarget)?.firstName} ${persons.find(p => p.id === deleteTarget)?.lastName}? This action cannot be undone.`} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
             {ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} personId={ctxMenu.id} onClose={() => setCtxMenu(null)} onDelete={id => { setCtxMenu(null); setDeleteTarget(id); }} />}
 
@@ -132,7 +154,7 @@ export default function PersonsIndex() {
             <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '0 14px' }}>
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="14" y2="14"/></svg>
-                    <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search name, email, phone, UUID..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '10px 0', color: theme.text, fontSize: 13, fontFamily: 'inherit', minWidth: 0 }} />
+                    <input ref={searchRef} value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search name, email, phone, UUID..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '10px 0', color: theme.text, fontSize: 13, fontFamily: 'inherit', minWidth: 0 }} />
                 </div>
                 <button onClick={() => setShowFilters(!showFilters)} style={{ background: showFilters ? theme.accentDim : 'rgba(255,255,255,0.03)', border: `1px solid ${showFilters ? theme.accent : theme.border}`, borderRadius: 8, padding: '0 14px', cursor: 'pointer', color: showFilters ? theme.accent : theme.textSecondary, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' as const }}>
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="12" y2="8"/><line x1="6" y1="12" x2="10" y2="12"/></svg>Filters{filterCount > 0 && <span style={{ background: theme.accent, color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 8, minWidth: 16, textAlign: 'center' as const }}>{filterCount}</span>}
@@ -162,7 +184,6 @@ export default function PersonsIndex() {
             {loading ? <TableSkeleton /> : <>
                 {/* Desktop table */}
                 <div className="persons-desktop" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const }}>
-                    <style>{`@media(max-width:860px){.persons-desktop{display:none!important}.persons-mobile{display:flex!important}}`}</style>
                     <div style={{ background: 'rgba(10,14,22,0.5)', border: `1px solid ${theme.border}`, borderRadius: 12, overflow: 'hidden', minWidth: 1050 }}>
                         <div style={{ display: 'grid', gridTemplateColumns: gridCols, padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderBottom: `1px solid ${theme.border}`, fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, alignItems: 'center', gap: 6 }}>
                             <span style={{ cursor: 'pointer' }} onClick={() => toggleSort('uuid')}>UUID<SI col="uuid"/></span><span></span>
@@ -235,6 +256,15 @@ export default function PersonsIndex() {
                     </div>
                 </div>
             )}
+
+            {/* Ctrl+Q */}
+            {showShortcuts && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={e => { if (e.target === e.currentTarget) setShowShortcuts(false); }}>
+                <div style={{ background: theme.bgAlt, border: `1px solid ${theme.border}`, borderRadius: 14, padding: 24, width: '100%', maxWidth: 340, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}><div style={{ fontSize: 16, fontWeight: 800, color: theme.text }}>⌨️ Keyboard Shortcuts</div><button onClick={() => setShowShortcuts(false)} style={{ width: 26, height: 26, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', color: theme.textDim, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button></div>
+                    {personsKeyboardShortcuts.map(s => <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '9px 0', borderBottom: `1px solid ${theme.border}08` }}><span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 56, height: 22, padding: '0 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'rgba(128,128,128,0.06)', color: theme.textDim, fontSize: 11, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", textAlign: 'center' as const }}>{s.key}</span><span style={{ fontSize: 13, color: theme.textSecondary }}>{s.description}</span></div>)}
+                    <div style={{ marginTop: 16, fontSize: 11, color: theme.textDim, textAlign: 'center' as const }}>Press <strong>Esc</strong> or <strong>Ctrl+Q</strong> to close</div>
+                </div>
+            </div>}
         </div>
     </>
     );
