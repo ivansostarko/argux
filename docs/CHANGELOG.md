@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.25.16 - 2026-03-26
+
+### Updated — Plate Recognition (/plate-recognition)
+- **Responsive mobile**: Sidebar + detail hidden ≤768px. Mobile bar (search + status select). Table head hidden ≤1024px, rows flex-wrap. Reader/watchlist grids single-column. Tab labels hidden.
+- **Breadcrumbs fixed**: Added `'plate-recognition': 'Plate Recognition'`.
+- **Footer removed**.
+- **Larger fonts**: Sidebar 16px title, 13px search, 12px status/filters, 16px stats. Tabs 13px. Plate numbers 13px, reader names 11px, vehicle/person 10px, status 10px, confidence 9px, speed 10px. Watchlist plates 17px, details 11px. Reader names 13px, details 10px. Detail panel plate 18px/22px, vehicle/owner 10-12px, capture details 10px.
+- **Skeleton loader**: 10 skeleton rows (plate + reader + vehicle + status) during 700ms.
+- **Mock data** (`resources/js/mock/plateRecognition.ts`, 59 lines): 10 readers, 15 scans (trimmed from 24), statusColors/Icons, allReaders, allPersons, allOrgs, allPlates, keyboardShortcuts (7).
+- **CSS** (`resources/css/pages/plate-recognition.css`, 15 lines): Skeleton, kbd, 3-panel, table grid responsive, reader/watchlist grids, mobile bar.
+- **Tests** (`resources/js/tests/PlateRecognition.test.ts`): 28 tests across 5 describe blocks — statuses, readers (IDs/fields/online/offline), mockScans (IDs/fields/watchlist/unknown/partial/speed/readerIds/plates), derived lists, shortcuts.
+- **Keyboard shortcuts**: `1` Scans, `2` Watchlist, `3` Readers, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
+
 ## 0.25.15 - 2026-03-26
 
 ### Updated — Data Sources (/data-sources)

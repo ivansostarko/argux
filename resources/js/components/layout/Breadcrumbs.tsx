@@ -20,6 +20,7 @@ const routeLabels: Record<string, string> = {
     'web-scraper': 'Web Scraper',
     'scraper': 'Social Scraper',
     'data-sources': 'Data Sources',
+    'plate-recognition': 'Plate Recognition',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',
