@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.25.21 - 2026-03-26
+
+### Updated — Storage Browser (/storage)
+- **Responsive mobile**: Sidebar (folder tree) + detail hidden ≤768px. Mobile bar (search + upload). Column headers hidden. File rows flex-wrap.
+- **Breadcrumbs fixed**: Added `'storage': 'Storage Browser'`.
+- **Footer removed**.
+- **Larger fonts**: Sidebar 16px title, 13px search, 12px tree nodes, 10px file type filters, 12px upload button. Breadcrumb path 11px. Column headers 10px. File names 11px, folder 9px, entity links 10px, type 9px, tags 8px, size 10px. Detail panel name 12px, type 9px, info rows 10px, tags 9px, transcript 11px, actions 11px.
+- **Skeleton loader**: 10 skeleton file rows (icon + name + entity + size) during 700ms.
+- **Mock data** (`resources/js/mock/storage.ts`, 80 lines): 22 files across 7 persons + 4 orgs. 10 file types with config. buildTree() function. 9 default subfolders per entity. keyboardShortcuts (5).
+- **CSS** (`resources/css/pages/storage.css`, 22 lines): Skeleton, kbd, 3-panel, file grid responsive, mobile bar.
+- **Tests** (`resources/js/tests/Storage.test.ts`): 26 tests across 4 describe blocks — typeConfig (10 types, icon/color/label, core types), mockFiles (≥20, unique IDs, required fields, ≥6 types, person+org files, transcriptions, duration, pages, resolution, ≥4 entities, size consistency), buildTree (2 roots, person/org children, 9 subfolders, subfolder names), shortcuts.
+- **Keyboard shortcuts**: `U` upload, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
+
 ## 0.25.20 - 2026-03-26
 
 ### Updated — Connections (/connections)

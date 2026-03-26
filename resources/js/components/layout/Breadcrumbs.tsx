@@ -24,6 +24,7 @@ const routeLabels: Record<string, string> = {
     'surveillance-apps': 'Surveillance Apps',
     'workflows': 'Workflows',
     'operations': 'Operations',
+    'storage': 'Storage Browser',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',
