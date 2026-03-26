@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.25.19 - 2026-03-26
+
+### Updated — Operations (/operations)
+- **Responsive mobile**: Sidebar hidden ≤768px. Mobile bar (operation selector + New). Tab labels hidden (icons only). Risk gauge hidden. Grids single-column. Header extras hidden.
+- **Breadcrumbs fixed**: Added `'operations': 'Operations'`.
+- **Footer removed**.
+- **Larger fonts**: Sidebar 16px title, 13px search/codename, 10px phase/priority/description, 9px stats. Header 17px codename, 12px subtitle, 10px meta. Stats 20px numbers. Tabs 11px+13px icons. Overview 12px description, 12px checklist, 11px threat. Targets 12px names, 10px details. Resources 11px device/vehicle names. Teams 12px names, 10px members. Zones 12px names, 10px details. Alerts 11px type, 10px description. Timeline 12px labels, 10px dates. Briefing 12px notes+comms.
+- **Skeleton loader**: 4 sidebar skeleton items, content area skeleton (4 stat blocks + description + checklist), 700ms.
+- **New Operation modal**: Codename (monospace, uppercase, red, required), name (required), description textarea, phase (5 phases as icon grid), priority (4 levels), classification (5 levels: SECRET through CONFIDENTIAL), commander. Create disabled without codename + name.
+- **Mock data** (`resources/js/mock/operations.ts`, 142 lines): 5 operations (HAWK Active/Critical, GLACIER Planning/High, PHOENIX Preparation/Medium, CERBERUS Debrief/High, SHADOW Closed/Critical). HAWK has 6 teams, 4 zones, 5 alert rules, 6 timeline events, 7 checklist items. phaseColors/Icons, prioColors, allPhases, tabList (8), keyboardShortcuts (5).
+- **CSS** (`resources/css/pages/operations.css`, 23 lines): Skeleton, kbd, 2-panel, grid responsive, mobile bar.
+- **Tests** (`resources/js/tests/Operations.test.ts`): 28 tests across 5 describe blocks — phases, priorities, tabList (8), mockOps (IDs/codenames/fields/phases/active/teams/zones/alerts/timeline/checklists/team structure/zone coords/HAWK complexity), shortcuts.
+- **Keyboard shortcuts**: `N` new, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
+
 ## 0.25.18 - 2026-03-26
 
 ### Updated — Workflows (/workflows)

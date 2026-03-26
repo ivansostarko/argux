@@ -23,6 +23,7 @@ const routeLabels: Record<string, string> = {
     'plate-recognition': 'Plate Recognition',
     'surveillance-apps': 'Surveillance Apps',
     'workflows': 'Workflows',
+    'operations': 'Operations',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',
