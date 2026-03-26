@@ -25,6 +25,7 @@ const routeLabels: Record<string, string> = {
     'workflows': 'Workflows',
     'operations': 'Operations',
     'storage': 'Storage Browser',
+    'vision': 'Vision — Camera Wall',
     'notifications': 'Notifications',
     'profile': 'My Profile',
     'create': 'Create',

@@ -3,57 +3,15 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { mockDevices, deviceTypeIcons, deviceTypeColors, type Device } from '../../mock/devices';
+import { useTopLoader } from '../../components/ui/TopLoader';
+import { VIDEO_SRC, allCams, PTZ_IDS, camGroups, defaultPresets, mockFaces, tlSegs, defaultMotionZones, keyboardShortcuts as visShortcuts } from '../../mock/vision';
+import type { AiBox, CamAlert, CamState, FaceHit, MotionZone, Preset, Grid, SidePanel } from '../../mock/vision';
 
 /* ═══════════════════════════════════════════════════════════════
    ARGUX — Vision · Camera Surveillance Wall
    SINGLE shared <video> → canvas-per-tile (avoids WebMediaPlayer limit)
    ═══════════════════════════════════════════════════════════════ */
 
-const VIDEO_SRC = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/rtl_direkt.mp4';
-const allCams: Device[] = mockDevices.filter(d => d.type === 'Public Camera' || d.type === 'Hidden Camera' || d.type === 'Private Camera');
-const PTZ_IDS = [5, 17, 19];
-
-interface AiBox { id: string; type: 'face' | 'person' | 'vehicle' | 'lpr'; label: string; conf: number; x: number; y: number; w: number; h: number; color: string; personName?: string; }
-interface CamAlert { id: string; sev: 'critical' | 'high' | 'medium'; title: string; time: string; icon: string; }
-interface CamState { dets: AiBox[]; rec: boolean; nv: boolean; paused: boolean; muted: boolean; vol: number; audioLv: number; fps: number; bitrate: string; bw: number; alerts: CamAlert[]; zoom: number; playbackRate: number; }
-interface FaceHit { id: string; camId: number; camName: string; conf: number; personName: string; time: string; }
-interface MotionZone { id: string; camId: number; type: 'include' | 'exclude'; x: number; y: number; w: number; h: number; }
-interface Preset { id: string; name: string; layout: string; group: string; }
-type Grid = '1x1' | '2x2' | '3x3' | '4x4';
-type SidePanel = 'detail' | 'faces' | 'bandwidth' | 'presets' | 'ptz' | 'timeline' | 'motionZones' | null;
-
-const camGroups = [
-    { id: 'all', label: 'All Cameras', icon: '🔍' },
-    { id: 'zagreb', label: 'Zagreb', icon: '🏙️', ids: [1, 8, 14, 17] },
-    { id: 'intl', label: 'International', icon: '🌍', ids: [3, 5, 7, 11, 12, 18, 19] },
-    { id: 'hawk', label: 'OP HAWK', icon: '🦅', ids: [1, 5, 8, 14, 18] },
-    { id: 'ptz', label: 'PTZ', icon: '🎛️', ids: PTZ_IDS },
-    { id: 'covert', label: 'Covert', icon: '🕵️', ids: [3, 7, 12] },
-];
-
-const defaultPresets: Preset[] = [
-    { id: 'p1', name: 'Zagreb Only', layout: '2x2', group: 'zagreb' },
-    { id: 'p2', name: 'Port Surveillance', layout: '2x2', group: 'intl' },
-    { id: 'p3', name: 'Operation HAWK', layout: '3x3', group: 'hawk' },
-    { id: 'p4', name: 'All 4×4', layout: '4x4', group: 'all' },
-    { id: 'p5', name: 'Covert Ops', layout: '2x2', group: 'covert' },
-];
-
-const mockFaces: FaceHit[] = [
-    { id: 'fh1', camId: 1, camName: 'Zagreb HQ', conf: 94, personName: 'Marko Horvat', time: '10:12' },
-    { id: 'fh2', camId: 8, camName: 'Street A1', conf: 87, personName: 'Ivan Babić', time: '10:08' },
-    { id: 'fh3', camId: 14, camName: 'Airport', conf: 91, personName: 'Unknown #247', time: '10:05' },
-    { id: 'fh4', camId: 5, camName: 'Dubai Port', conf: 78, personName: 'Omar Hassan', time: '09:58' },
-    { id: 'fh5', camId: 18, camName: 'A1 Highway', conf: 82, personName: 'Carlos Mendoza', time: '09:52' },
-    { id: 'fh6', camId: 1, camName: 'Zagreb HQ', conf: 96, personName: 'Ana Kovačević', time: '09:45' },
-    { id: 'fh7', camId: 11, camName: 'Rashid Parking', conf: 73, personName: 'Unknown #312', time: '09:38' },
-    { id: 'fh8', camId: 8, camName: 'Street A1', conf: 88, personName: 'Marko Horvat', time: '09:30' },
-];
-
-const tlSegs = [
-    { s: 0, e: 15, c: '#22c55e' }, { s: 20, e: 45, c: '#22c55e' }, { s: 45, e: 50, c: '#ef4444' },
-    { s: 50, e: 70, c: '#22c55e' }, { s: 70, e: 75, c: '#f59e0b' }, { s: 75, e: 100, c: '#22c55e' },
-];
 
 function VisionIndex() {
     const [layout, setLayout] = useState<Grid>('3x3');
@@ -73,17 +31,17 @@ function VisionIndex() {
     const [tlCursor, setTlCursor] = useState(65);
     const [sideP, setSideP] = useState<SidePanel>(null);
     const [presets, setPresets] = useState(defaultPresets);
-    const [motionZones] = useState<MotionZone[]>([
-        { id: 'mz1', camId: 1, type: 'include', x: 10, y: 20, w: 40, h: 50 },
-        { id: 'mz2', camId: 8, type: 'exclude', x: 60, y: 60, w: 30, h: 30 },
-    ]);
+    const [motionZones] = useState<MotionZone[]>(defaultMotionZones);
     const [ptzPan, setPtzPan] = useState(0);
     const [ptzTilt, setPtzTilt] = useState(0);
     const [ptzZoom, setPtzZoom] = useState(1);
     const [viewMap, setViewMap] = useState(false);
     const [clock, setClock] = useState(new Date().toLocaleTimeString('en-GB'));
     const [leftOpen, setLeftOpen] = useState(true);
+    const [loading, setLoading] = useState(true);
+    const [showShortcuts, setShowShortcuts] = useState(false);
     const waveRef = useRef<number[]>(Array(10).fill(0));
+    const { trigger } = useTopLoader();
 
     // ═══ SHARED VIDEO SOURCE (single <video> element) ═══
     const sharedVideoRef = useRef<HTMLVideoElement>(null);
@@ -143,6 +101,28 @@ function VisionIndex() {
 
     useEffect(() => { const t = setInterval(() => setClock(new Date().toLocaleTimeString('en-GB')), 1000); return () => clearInterval(t); }, []);
     useEffect(() => { const t = setInterval(() => { waveRef.current = waveRef.current.map(() => Math.random() * 80 + 5); }, 150); return () => clearInterval(t); }, []);
+
+    useEffect(() => { const t = setTimeout(() => setLoading(false), 800); return () => clearTimeout(t); }, []);
+
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName) && e.key !== 'Escape') return;
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'q' || e.key === 'Q')) { e.preventDefault(); e.stopPropagation(); setShowShortcuts(prev => !prev); return; }
+            switch (e.key) {
+                case '1': setLayout('1x1'); setViewMap(false); trigger(); break;
+                case '2': setLayout('2x2'); setViewMap(false); trigger(); break;
+                case '3': setLayout('3x3'); setViewMap(false); trigger(); break;
+                case '4': setLayout('4x4'); setViewMap(false); trigger(); break;
+                case 'b': case 'B': if (!e.ctrlKey && !e.metaKey) setLeftOpen(p => !p); break;
+                case 'a': case 'A': if (!e.ctrlKey && !e.metaKey) setShowAi(p => !p); break;
+                case 'i': case 'I': if (!e.ctrlKey && !e.metaKey) setShowInfo(p => !p); break;
+                case 'n': case 'N': if (!e.ctrlKey && !e.metaKey) setGNV(p => !p); break;
+                case 'Escape': if (fsCam) setFsCam(null); else { setShowShortcuts(false); setSideP(null); } break;
+            }
+        };
+        window.addEventListener('keydown', handler, true);
+        return () => window.removeEventListener('keydown', handler, true);
+    }, [fsCam, trigger]);
 
     // Cam state
     const [cams, setCams] = useState<Record<number, CamState>>({});
@@ -221,18 +201,18 @@ function VisionIndex() {
             {/* Canvas stream (painted from shared video) */}
             {on ? <canvas ref={setCanvasRef} style={{ width: '100%', height: '100%', display: 'block', filter: nv ? 'brightness(1.5) contrast(1.2)' : 'none', opacity: cam?.paused ? 0.25 : 1, transition: 'opacity 0.3s, filter 0.3s' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#080c14,#111827)' }}>
                 <div style={{ fontSize: 18, opacity: 0.2 }}>{dev.status === 'Offline' ? '📵' : dev.status === 'Maintenance' ? '🔧' : '💤'}</div>
-                <div style={{ fontSize: 7, fontWeight: 700, color: stc, marginTop: 3 }}>{dev.status.toUpperCase()}</div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: stc, marginTop: 3 }}>{dev.status.toUpperCase()}</div>
             </div>}
 
             {on && cam?.paused && <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3, pointerEvents: 'none' as const }}><div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>⏸</div></div>}
 
             {/* AI boxes */}
             {showAi && on && !cam?.paused && cam?.dets.map(d => <div key={d.id} style={{ position: 'absolute' as const, left: `${d.x}%`, top: `${d.y}%`, width: `${d.w}%`, height: `${d.h}%`, border: `1.5px solid ${d.color}70`, borderRadius: 2, zIndex: 3, pointerEvents: 'none' as const }}>
-                <div style={{ position: 'absolute' as const, top: -11, left: -1, padding: '0 3px', borderRadius: '2px 2px 0 0', background: `${d.color}cc`, fontSize: 5, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' as const, lineHeight: '10px' }}>{d.type === 'lpr' ? `🚗 ${d.label}` : d.type === 'face' ? `🧑 ${d.conf}%` : d.type === 'vehicle' ? `🚗 ${d.conf}%` : `👤 ${d.conf}%`}</div>
+                <div style={{ position: 'absolute' as const, top: -11, left: -1, padding: '0 3px', borderRadius: '2px 2px 0 0', background: `${d.color}cc`, fontSize: 9, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' as const, lineHeight: '10px' }}>{d.type === 'lpr' ? `🚗 ${d.label}` : d.type === 'face' ? `🧑 ${d.conf}%` : d.type === 'vehicle' ? `🚗 ${d.conf}%` : `👤 ${d.conf}%`}</div>
             </div>)}
 
             {/* Motion zones */}
-            {motionZones.filter(mz => mz.camId === dev.id).map(mz => <div key={mz.id} style={{ position: 'absolute' as const, left: `${mz.x}%`, top: `${mz.y}%`, width: `${mz.w}%`, height: `${mz.h}%`, border: `1.5px dashed ${mz.type === 'include' ? '#22c55e' : '#ef4444'}60`, background: `${mz.type === 'include' ? '#22c55e' : '#ef4444'}08`, borderRadius: 2, zIndex: 2, pointerEvents: 'none' as const }}><div style={{ position: 'absolute' as const, bottom: -10, left: 0, fontSize: 5, padding: '0 2px', borderRadius: 1, background: mz.type === 'include' ? '#22c55e99' : '#ef444499', color: '#fff', fontWeight: 700 }}>{mz.type === 'include' ? 'MOTION' : 'EXCLUDE'}</div></div>)}
+            {motionZones.filter(mz => mz.camId === dev.id).map(mz => <div key={mz.id} style={{ position: 'absolute' as const, left: `${mz.x}%`, top: `${mz.y}%`, width: `${mz.w}%`, height: `${mz.h}%`, border: `1.5px dashed ${mz.type === 'include' ? '#22c55e' : '#ef4444'}60`, background: `${mz.type === 'include' ? '#22c55e' : '#ef4444'}08`, borderRadius: 2, zIndex: 2, pointerEvents: 'none' as const }}><div style={{ position: 'absolute' as const, bottom: -10, left: 0, fontSize: 9, padding: '0 2px', borderRadius: 1, background: mz.type === 'include' ? '#22c55e99' : '#ef444499', color: '#fff', fontWeight: 700 }}>{mz.type === 'include' ? 'MOTION' : 'EXCLUDE'}</div></div>)}
 
             {/* Waveform */}
             {showWave && on && !cam?.paused && cam && cam.audioLv > 10 && <div style={{ position: 'absolute' as const, bottom: 13, left: 4, zIndex: 4, display: 'flex', gap: 1, alignItems: 'flex-end', height: 10, opacity: 0.5 }}>
@@ -244,29 +224,29 @@ function VisionIndex() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <div style={{ width: 4, height: 4, borderRadius: '50%', background: stc, boxShadow: on ? `0 0 3px ${stc}50` : 'none', animation: on && !cam?.paused ? 'argux-pulse 2s ease-in-out infinite' : 'none', flexShrink: 0 }} />
                     <span style={{ fontSize: fs ? 13 : 7, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{dev.name}</span>
-                    {isPtz && <span style={{ fontSize: 5, padding: '0 2px', borderRadius: 1, background: '#06b6d4aa', color: '#fff', fontWeight: 700 }}>PTZ</span>}
+                    {isPtz && <span style={{ fontSize: 9, padding: '0 2px', borderRadius: 1, background: '#06b6d4aa', color: '#fff', fontWeight: 700 }}>PTZ</span>}
                 </div>
                 <div style={{ fontSize: fs ? 9 : 5, color: 'rgba(255,255,255,0.4)', textShadow: '0 1px 2px rgba(0,0,0,0.9)', marginTop: 1 }}>{dev.locationName.split(',')[0]}</div>
             </div>}
 
             {/* Top-right: badges */}
             <div style={{ position: 'absolute' as const, top: 3, right: 3, zIndex: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                {on && !cam?.paused && <span style={{ fontSize: 5, fontWeight: 800, padding: '1px 3px', borderRadius: 2, background: 'rgba(239,68,68,0.85)', color: '#fff', display: 'flex', alignItems: 'center', gap: 2 }}><div style={{ width: 3, height: 3, borderRadius: '50%', background: '#fff', animation: 'argux-pulse 1.5s ease-in-out infinite' }} />LIVE</span>}
-                {(gRec || cam?.rec) && on && <span style={{ fontSize: 5, fontWeight: 700, padding: '1px 3px', borderRadius: 2, background: 'rgba(239,68,68,0.65)', color: '#fff' }}>REC</span>}
-                {nv && <span style={{ fontSize: 5, fontWeight: 700, padding: '1px 3px', borderRadius: 2, background: 'rgba(34,197,94,0.65)', color: '#fff' }}>NV</span>}
-                <span style={{ fontSize: 5, fontWeight: 700, padding: '1px 3px', borderRadius: 2, background: `${tc}aa`, color: '#fff' }}>{dev.type.replace(' Camera', '')}</span>
+                {on && !cam?.paused && <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 3px', borderRadius: 2, background: 'rgba(239,68,68,0.85)', color: '#fff', display: 'flex', alignItems: 'center', gap: 2 }}><div style={{ width: 3, height: 3, borderRadius: '50%', background: '#fff', animation: 'argux-pulse 1.5s ease-in-out infinite' }} />LIVE</span>}
+                {(gRec || cam?.rec) && on && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 3px', borderRadius: 2, background: 'rgba(239,68,68,0.65)', color: '#fff' }}>REC</span>}
+                {nv && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 3px', borderRadius: 2, background: 'rgba(34,197,94,0.65)', color: '#fff' }}>NV</span>}
+                <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 3px', borderRadius: 2, background: `${tc}aa`, color: '#fff' }}>{dev.type.replace(' Camera', '')}</span>
             </div>
 
             {/* Bottom-right: stats */}
             {showInfo && on && cam && !cam.paused && <div style={{ position: 'absolute' as const, bottom: 3, right: 3, zIndex: 4, display: 'flex', gap: 2 }}>
-                <span style={{ fontSize: 5, fontWeight: 700, color: 'rgba(255,255,255,0.5)', padding: '0 2px', borderRadius: 1, background: 'rgba(0,0,0,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>{cam.fps}fps</span>
-                <span style={{ fontSize: 5, fontWeight: 700, color: 'rgba(255,255,255,0.5)', padding: '0 2px', borderRadius: 1, background: 'rgba(0,0,0,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>{cam.bw.toFixed(1)}M</span>
-                <span style={{ fontSize: 5, fontWeight: 700, color: 'rgba(255,255,255,0.4)', padding: '0 2px', borderRadius: 1, background: 'rgba(0,0,0,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>{clock}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.5)', padding: '0 2px', borderRadius: 1, background: 'rgba(0,0,0,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>{cam.fps}fps</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.5)', padding: '0 2px', borderRadius: 1, background: 'rgba(0,0,0,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>{cam.bw.toFixed(1)}M</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', padding: '0 2px', borderRadius: 1, background: 'rgba(0,0,0,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>{clock}</span>
             </div>}
 
             {/* Alert */}
             {showAlerts && cam?.alerts.length > 0 && <div style={{ position: 'absolute' as const, bottom: fs ? 26 : 13, right: 3, zIndex: 4 }}>
-                {cam.alerts.slice(0, 1).map(a => <div key={a.id} style={{ padding: '1px 4px', borderRadius: 2, background: `${a.sev === 'critical' ? '#ef4444' : a.sev === 'high' ? '#f97316' : '#f59e0b'}dd`, color: '#fff', fontSize: 5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 2 }}><span>{a.icon}</span><span>{a.title}</span></div>)}
+                {cam.alerts.slice(0, 1).map(a => <div key={a.id} style={{ padding: '1px 4px', borderRadius: 2, background: `${a.sev === 'critical' ? '#ef4444' : a.sev === 'high' ? '#f97316' : '#f59e0b'}dd`, color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 2 }}><span>{a.icon}</span><span>{a.title}</span></div>)}
             </div>}
 
             {/* Hover controls */}
@@ -286,7 +266,7 @@ function VisionIndex() {
     };
 
     // Section header helper
-    const Sec = ({ label }: { label: string }) => <div style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '6px 10px 2px' }}>{label}</div>;
+    const Sec = ({ label }: { label: string }) => <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '6px 10px 2px' }}>{label}</div>;
     const LBtn = ({ icon, label, active, fn }: { icon: string; label: string; active?: boolean; fn: () => void }) => <button onClick={fn} style={{ display: 'flex', alignItems: 'center', gap: 5, width: '100%', padding: '3px 10px', border: 'none', borderRadius: 0, background: active ? `${theme.accent}08` : 'transparent', color: active ? theme.accent : theme.textDim, cursor: 'pointer', fontSize: 8, fontWeight: active ? 700 : 500, fontFamily: 'inherit', textAlign: 'left' as const, borderLeft: `2px solid ${active ? theme.accent : 'transparent'}`, transition: 'all 0.1s' }}><span style={{ fontSize: 10, width: 14, textAlign: 'center' as const }}>{icon}</span>{label}</button>;
 
     return (<>
@@ -294,14 +274,21 @@ function VisionIndex() {
         {/* Hidden shared video — single WebMediaPlayer */}
         <video ref={sharedVideoRef} src={VIDEO_SRC} muted loop playsInline preload="auto" style={{ position: 'fixed' as const, top: -9999, left: -9999, width: 1, height: 1, opacity: 0, pointerEvents: 'none' as const }} />
 
-        <div style={{ display: 'flex', height: 'calc(100vh - 56px)', margin: '-24px -24px -80px', background: '#060810', overflow: 'hidden' }}>
+        <div className="vis-page" data-testid="vision-page">
+
+            {/* Mobile bar */}
+            <div className="vis-mobile-bar">
+                <select value={layout} onChange={e => { setLayout(e.target.value as Grid); setViewMap(false); trigger(); }} style={{ padding: '7px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: 'inherit' }}>{(['1x1', '2x2', '3x3', '4x4'] as Grid[]).map(l => <option key={l} value={l}>{l}</option>)}</select>
+                <select value={groupF} onChange={e => { setGroupF(e.target.value); trigger(); }} style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: theme.bgInput, color: theme.text, fontSize: 12, fontFamily: 'inherit' }}>{camGroups.map(g => <option key={g.id} value={g.id}>{g.icon} {g.label}</option>)}</select>
+                <button onClick={() => setShowAi(p => !p)} style={{ padding: '7px 10px', borderRadius: 6, border: `1px solid ${showAi ? theme.accent + '40' : theme.border}`, background: showAi ? `${theme.accent}08` : 'transparent', color: showAi ? theme.accent : theme.textDim, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>🤖</button>
+            </div>
 
             {/* ═══ LEFT SIDEBAR ═══ */}
-            {leftOpen && <div style={{ width: 170, flexShrink: 0, borderRight: `1px solid ${theme.border}`, background: theme.bg, overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column' as const }}>
+            {leftOpen && <div className="vis-left" style={{ borderRight: `1px solid ${theme.border}`, background: theme.bg }}>
                 {/* Header */}
                 <div style={{ padding: '8px 10px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 22, height: 22, borderRadius: 4, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>📹</div>
-                    <div><div style={{ fontSize: 10, fontWeight: 800, color: theme.text, letterSpacing: '0.06em' }}>VISION</div><div style={{ fontSize: 6, color: theme.textDim }}>SURVEILLANCE WALL</div></div>
+                    <div><div style={{ fontSize: 10, fontWeight: 800, color: theme.text, letterSpacing: '0.06em' }}>VISION</div><div style={{ fontSize: 8, color: theme.textDim }}>SURVEILLANCE WALL</div></div>
                 </div>
 
                 {/* Status chips */}
@@ -354,21 +341,20 @@ function VisionIndex() {
                 <LBtn icon="🎯" label="Motion Zones" active={sideP === 'motionZones'} fn={() => setSideP(p => p === 'motionZones' ? null : 'motionZones')} />
                 <LBtn icon="🎛️" label="PTZ Control" active={sideP === 'ptz'} fn={() => setSideP(p => p === 'ptz' ? null : 'ptz')} />
 
-                {/* Footer */}
-                <div style={{ marginTop: 'auto', padding: '4px 10px', borderTop: `1px solid ${theme.border}`, fontSize: 6, color: theme.textDim }}>
-                    <div>{filtered.length}/{allCams.length} cameras</div>
-                    <div style={{ color: '#ef4444', fontWeight: 600, marginTop: 1 }}>CLASSIFIED // NOFORN</div>
+                <div style={{ marginTop: 'auto', padding: '6px 12px', borderTop: `1px solid ${theme.border}`, fontSize: 9, color: theme.textDim }}>
+                    {filtered.length}/{allCams.length} cameras
                 </div>
             </div>}
 
             {/* ═══ CENTER: GRID or MAP ═══ */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden', minWidth: 0 }}>
+            <div className="vis-center">
                 {/* Collapse toggle */}
                 <div style={{ position: 'absolute' as const, top: 'calc(50% + 28px)', left: leftOpen ? 170 : 0, zIndex: 50, transform: 'translateY(-50%)' }}>
                     <button onClick={() => setLeftOpen(p => !p)} style={{ width: 14, height: 28, borderRadius: '0 4px 4px 0', border: `1px solid ${theme.border}`, borderLeft: 'none', background: theme.bgCard, color: theme.textDim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8 }}>{leftOpen ? '◀' : '▶'}</button>
                 </div>
 
-                {!viewMap ? <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 2, padding: 2, overflow: 'auto', alignContent: 'start', background: '#060810' }}>
+                {loading ? <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 2, padding: 2, alignContent: 'start', background: '#060810' }}>{Array.from({ length: cols * cols }).map((_, i) => <div key={i} className="vis-skeleton" style={{ aspectRatio: '16/9', borderRadius: 4 }} />)}</div>
+                : !viewMap ? <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 2, padding: 2, overflow: 'auto', alignContent: 'start', background: '#060810' }}>
                     {filtered.length === 0 && <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', padding: 40 }}><div style={{ fontSize: 24, opacity: 0.2 }}>📹</div><div style={{ fontSize: 11, fontWeight: 700, color: theme.textSecondary, marginTop: 4 }}>No cameras match</div></div>}
                     {filtered.map(d => <Tile key={d.id} dev={d} />)}
                 </div> : <div style={{ flex: 1, background: '#0a0e16', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -394,16 +380,16 @@ function VisionIndex() {
 
                 {/* Sync timeline */}
                 {syncPlay && <div style={{ padding: '3px 10px', borderTop: `1px solid ${theme.border}`, background: theme.bg, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 7, color: theme.textDim }}>00:00</span>
+                    <span style={{ fontSize: 9, color: theme.textDim }}>00:00</span>
                     <div style={{ flex: 1, height: 8, borderRadius: 3, background: `${theme.border}30`, position: 'relative' as const, overflow: 'hidden', cursor: 'pointer' }} onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setTlCursor(Math.round(((e.clientX - r.left) / r.width) * 100)); }}>
                         {tlSegs.map((seg, i) => <div key={i} style={{ position: 'absolute' as const, left: `${seg.s}%`, width: `${seg.e - seg.s}%`, height: '100%', background: seg.c, opacity: 0.5 }} />)}
                         <div style={{ position: 'absolute' as const, left: `${tlCursor}%`, top: 0, bottom: 0, width: 2, background: '#fff', borderRadius: 1, transform: 'translateX(-1px)', boxShadow: '0 0 4px rgba(255,255,255,0.5)' }} />
                     </div>
-                    <span style={{ fontSize: 7, color: theme.textDim }}>24:00</span>
+                    <span style={{ fontSize: 9, color: theme.textDim }}>24:00</span>
                 </div>}
 
                 {/* Bottom bar */}
-                <div style={{ padding: '2px 10px', borderTop: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, fontSize: 7, color: theme.textDim, background: theme.bg }}>
+                <div style={{ padding: '2px 10px', borderTop: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, fontSize: 9, color: theme.textDim, background: theme.bg }}>
                     <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 3px #22c55e50' }} /><span style={{ fontWeight: 600, color: '#22c55e' }}>Online</span>
                     <span>·</span><span>{sc.on} live · {Object.values(cams).filter(m => m.rec).length} rec · BW: {totalBw.toFixed(0)}M/120M</span>
                     <div style={{ flex: 1 }} /><span>RTSP/ONVIF · AES-256</span>
@@ -411,7 +397,7 @@ function VisionIndex() {
             </div>
 
             {/* ═══ RIGHT PANEL ═══ */}
-            {sideP && <div style={{ width: 220, flexShrink: 0, borderLeft: `1px solid ${theme.border}`, background: theme.bgCard, overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column' as const }}>
+            {sideP && <div className="vis-right" style={{ borderLeft: `1px solid ${theme.border}`, background: theme.bgCard }}>
                 <div style={{ padding: '6px 10px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                     <span style={{ fontSize: 10 }}>{sideP === 'detail' ? '📹' : sideP === 'faces' ? '🧑' : sideP === 'bandwidth' ? '📊' : sideP === 'presets' ? '💾' : sideP === 'ptz' ? '🎛️' : sideP === 'timeline' ? '⏱️' : '🎯'}</span>
                     <span style={{ fontSize: 9, fontWeight: 700, color: theme.text, flex: 1 }}>{sideP === 'detail' ? (allCams.find(c => c.id === selCam)?.name || 'Select cam') : sideP === 'faces' ? 'Face Queue' : sideP === 'bandwidth' ? 'Bandwidth' : sideP === 'presets' ? 'Presets' : sideP === 'ptz' ? 'PTZ Control' : sideP === 'timeline' ? 'Recording' : 'Motion Zones'}</span>
@@ -423,20 +409,20 @@ function VisionIndex() {
                     <div style={{ padding: '4px 10px', borderBottom: `1px solid ${theme.border}`, display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 2 }}>
                         {[{ i: m.paused ? '▶' : '⏸', fn: () => upCam(d.id, { paused: !m.paused }) }, { i: m.muted ? '🔇' : '🔊', fn: () => upCam(d.id, { muted: !m.muted }) }, { i: '⏺', fn: () => upCam(d.id, { rec: !m.rec }) }, { i: '🌙', fn: () => upCam(d.id, { nv: !m.nv }) }, { i: '⛶', fn: () => setFsCam(d.id) }, { i: '🪟', fn: () => openPopup(d) }].map((a, i) => <button key={i} onClick={a.fn} style={{ padding: '2px', borderRadius: 2, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, cursor: 'pointer' }}>{a.i}</button>)}
                     </div>
-                    <div style={{ padding: '3px 10px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 6, color: theme.textDim }}>Vol</span><input type="range" min={0} max={100} value={m.vol} onChange={e => upCam(d.id, { vol: parseInt(e.target.value) })} style={{ flex: 1, height: 2, accentColor: '#3b82f6' }} /><span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono',monospace", width: 20 }}>{m.vol}%</span></div>
+                    <div style={{ padding: '3px 10px', borderBottom: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 8, color: theme.textDim }}>Vol</span><input type="range" min={0} max={100} value={m.vol} onChange={e => upCam(d.id, { vol: parseInt(e.target.value) })} style={{ flex: 1, height: 2, accentColor: '#3b82f6' }} /><span style={{ fontSize: 9, color: theme.textDim, fontFamily: "'JetBrains Mono',monospace", width: 20 }}>{m.vol}%</span></div>
                     <div style={{ padding: '5px 10px', borderBottom: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
-                        {[{ l: 'Location', v: d.locationName }, { l: 'Device', v: `${d.manufacturer} ${d.model}` }, { l: 'Resolution', v: d.resolution || '—' }, { l: 'Protocol', v: d.protocol }, { l: 'IP', v: d.ipAddress }, { l: 'Signal', v: `${d.signalStrength}%` }, { l: 'Stream', v: `${m.fps}fps · ${m.bw.toFixed(1)}M` }, { l: 'Storage', v: d.storageCapacity || '—' }].map(r => <div key={r.l} style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}><span style={{ fontSize: 7, color: theme.textDim }}>{r.l}</span><span style={{ fontSize: 7, color: theme.text, textAlign: 'right' as const }}>{r.v}</span></div>)}
+                        {[{ l: 'Location', v: d.locationName }, { l: 'Device', v: `${d.manufacturer} ${d.model}` }, { l: 'Resolution', v: d.resolution || '—' }, { l: 'Protocol', v: d.protocol }, { l: 'IP', v: d.ipAddress }, { l: 'Signal', v: `${d.signalStrength}%` }, { l: 'Stream', v: `${m.fps}fps · ${m.bw.toFixed(1)}M` }, { l: 'Storage', v: d.storageCapacity || '—' }].map(r => <div key={r.l} style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}><span style={{ fontSize: 9, color: theme.textDim }}>{r.l}</span><span style={{ fontSize: 9, color: theme.text, textAlign: 'right' as const }}>{r.v}</span></div>)}
                     </div>
-                    {m.dets.length > 0 && <div style={{ padding: '5px 10px', borderBottom: `1px solid ${theme.border}` }}><div style={{ fontSize: 7, fontWeight: 700, color: theme.accent, marginBottom: 2 }}>🤖 AI</div>{m.dets.map(det => <div key={det.id} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '1px 0', fontSize: 7 }}><span>{det.type === 'face' ? '🧑' : det.type === 'vehicle' ? '🚗' : det.type === 'lpr' ? '🔢' : '👤'}</span><span style={{ color: theme.text, flex: 1 }}>{det.personName || det.type}</span><span style={{ fontWeight: 700, color: det.conf >= 90 ? '#22c55e' : '#f59e0b', fontFamily: "'JetBrains Mono',monospace" }}>{det.conf}%</span></div>)}</div>}
-                    {m.alerts.length > 0 && <div style={{ padding: '5px 10px', borderBottom: `1px solid ${theme.border}` }}><div style={{ fontSize: 7, fontWeight: 700, color: '#ef4444', marginBottom: 2 }}>🚨 Alerts</div>{m.alerts.map(a => <div key={a.id} style={{ padding: '2px 3px', marginBottom: 1, borderRadius: 2, background: `${a.sev === 'critical' ? '#ef4444' : '#f97316'}08`, fontSize: 6, color: theme.text, display: 'flex', gap: 2 }}><span>{a.icon}</span>{a.title}</div>)}</div>}
-                    <div style={{ padding: '5px 10px', marginTop: 'auto', display: 'flex', gap: 2 }}><a href={`/devices/${d.id}`} style={{ fontSize: 6, padding: '2px 5px', borderRadius: 2, border: `1px solid ${theme.accent}25`, color: theme.accent, textDecoration: 'none' }}>📡 Device</a><a href="/map" style={{ fontSize: 6, padding: '2px 5px', borderRadius: 2, border: `1px solid ${theme.border}`, color: theme.textDim, textDecoration: 'none' }}>🗺️ Map</a></div>
+                    {m.dets.length > 0 && <div style={{ padding: '5px 10px', borderBottom: `1px solid ${theme.border}` }}><div style={{ fontSize: 9, fontWeight: 700, color: theme.accent, marginBottom: 2 }}>🤖 AI</div>{m.dets.map(det => <div key={det.id} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '1px 0', fontSize: 9 }}><span>{det.type === 'face' ? '🧑' : det.type === 'vehicle' ? '🚗' : det.type === 'lpr' ? '🔢' : '👤'}</span><span style={{ color: theme.text, flex: 1 }}>{det.personName || det.type}</span><span style={{ fontWeight: 700, color: det.conf >= 90 ? '#22c55e' : '#f59e0b', fontFamily: "'JetBrains Mono',monospace" }}>{det.conf}%</span></div>)}</div>}
+                    {m.alerts.length > 0 && <div style={{ padding: '5px 10px', borderBottom: `1px solid ${theme.border}` }}><div style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', marginBottom: 2 }}>🚨 Alerts</div>{m.alerts.map(a => <div key={a.id} style={{ padding: '2px 3px', marginBottom: 1, borderRadius: 2, background: `${a.sev === 'critical' ? '#ef4444' : '#f97316'}08`, fontSize: 8, color: theme.text, display: 'flex', gap: 2 }}><span>{a.icon}</span>{a.title}</div>)}</div>}
+                    <div style={{ padding: '5px 10px', marginTop: 'auto', display: 'flex', gap: 2 }}><a href={`/devices/${d.id}`} style={{ fontSize: 8, padding: '2px 5px', borderRadius: 2, border: `1px solid ${theme.accent}25`, color: theme.accent, textDecoration: 'none' }}>📡 Device</a><a href="/map" style={{ fontSize: 8, padding: '2px 5px', borderRadius: 2, border: `1px solid ${theme.border}`, color: theme.textDim, textDecoration: 'none' }}>🗺️ Map</a></div>
                 </>; })()}
 
                 {/* Faces */}
                 {sideP === 'faces' && <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin' }}>
                     {mockFaces.map(f => <div key={f.id} onClick={() => { setSelCam(f.camId); setSideP('detail'); }} style={{ padding: '4px 10px', borderBottom: `1px solid ${theme.border}08`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                         <div style={{ width: 20, height: 20, borderRadius: '50%', background: `${f.conf >= 90 ? '#22c55e' : '#f59e0b'}15`, border: `1.5px solid ${f.conf >= 90 ? '#22c55e' : '#f59e0b'}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, flexShrink: 0 }}>🧑</div>
-                        <div style={{ flex: 1 }}><div style={{ fontSize: 8, fontWeight: 700, color: theme.text }}>{f.personName}</div><div style={{ fontSize: 6, color: theme.textDim }}>{f.camName} · {f.time}</div></div>
+                        <div style={{ flex: 1 }}><div style={{ fontSize: 8, fontWeight: 700, color: theme.text }}>{f.personName}</div><div style={{ fontSize: 8, color: theme.textDim }}>{f.camName} · {f.time}</div></div>
                         <span style={{ fontSize: 8, fontWeight: 800, color: f.conf >= 90 ? '#22c55e' : '#f59e0b', fontFamily: "'JetBrains Mono',monospace" }}>{f.conf}%</span>
                     </div>)}
                 </div>}
@@ -446,12 +432,12 @@ function VisionIndex() {
                     <div style={{ padding: '6px 10px', borderBottom: `1px solid ${theme.border}` }}>
                         <div style={{ fontSize: 18, fontWeight: 800, color: totalBw > 80 ? '#ef4444' : '#22c55e', fontFamily: "'JetBrains Mono',monospace" }}>{totalBw.toFixed(1)} <span style={{ fontSize: 8, color: theme.textDim }}>Mbps</span></div>
                         <div style={{ height: 4, borderRadius: 2, background: `${theme.border}30`, marginTop: 3, overflow: 'hidden' }}><div style={{ width: `${Math.min(100, (totalBw / 120) * 100)}%`, height: '100%', background: totalBw > 80 ? '#ef4444' : '#22c55e', borderRadius: 2 }} /></div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 6, color: theme.textDim, marginTop: 1 }}><span>0</span><span>120 Mbps</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: theme.textDim, marginTop: 1 }}><span>0</span><span>120 Mbps</span></div>
                     </div>
                     {allCams.filter(d => d.status === 'Online').sort((a, b) => (cams[b.id]?.bw || 0) - (cams[a.id]?.bw || 0)).map(d => { const m = cams[d.id]; return m ? <div key={d.id} style={{ padding: '2px 10px', display: 'flex', alignItems: 'center', gap: 3, borderBottom: `1px solid ${theme.border}06` }}>
-                        <span style={{ fontSize: 7, color: theme.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{d.name}</span>
+                        <span style={{ fontSize: 9, color: theme.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{d.name}</span>
                         <div style={{ width: 35, height: 3, borderRadius: 1, background: `${theme.border}30`, overflow: 'hidden' }}><div style={{ width: `${(m.bw / 20) * 100}%`, height: '100%', background: m.bw > 15 ? '#ef4444' : '#22c55e' }} /></div>
-                        <span style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono',monospace", width: 28, textAlign: 'right' as const }}>{m.bw.toFixed(1)}M</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono',monospace", width: 28, textAlign: 'right' as const }}>{m.bw.toFixed(1)}M</span>
                     </div> : null; })}
                 </div>}
 
@@ -459,47 +445,56 @@ function VisionIndex() {
                 {sideP === 'presets' && <div style={{ flex: 1, overflowY: 'auto' }}>
                     {presets.map(p => <div key={p.id} onClick={() => { setLayout(p.layout as Grid); setGroupF(p.group); setViewMap(false); }} style={{ padding: '5px 10px', borderBottom: `1px solid ${theme.border}08`, cursor: 'pointer', display: 'flex', gap: 5, alignItems: 'center' }}>
                         <span style={{ fontSize: 10 }}>💾</span>
-                        <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.text }}>{p.name}</div><div style={{ fontSize: 6, color: theme.textDim }}>{p.layout} · {camGroups.find(g => g.id === p.group)?.label}</div></div>
+                        <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.text }}>{p.name}</div><div style={{ fontSize: 8, color: theme.textDim }}>{p.layout} · {camGroups.find(g => g.id === p.group)?.label}</div></div>
                     </div>)}
-                    <div style={{ padding: '6px 10px' }}><button onClick={() => setPresets(p => [...p, { id: `p-${Date.now()}`, name: `Custom ${presets.length + 1}`, layout, group: groupF }])} style={{ width: '100%', padding: '4px', borderRadius: 3, border: `1px dashed ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 7, cursor: 'pointer', fontFamily: 'inherit' }}>+ Save Current</button></div>
+                    <div style={{ padding: '6px 10px' }}><button onClick={() => setPresets(p => [...p, { id: `p-${Date.now()}`, name: `Custom ${presets.length + 1}`, layout, group: groupF }])} style={{ width: '100%', padding: '4px', borderRadius: 3, border: `1px dashed ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, cursor: 'pointer', fontFamily: 'inherit' }}>+ Save Current</button></div>
                 </div>}
 
                 {/* PTZ */}
                 {sideP === 'ptz' && <div style={{ flex: 1, padding: 10, display: 'flex', flexDirection: 'column' as const, gap: 8, alignItems: 'center' }}>
-                    <div style={{ fontSize: 7, color: theme.textDim }}>{allCams.find(c => c.id === selCam)?.name || 'Select PTZ cam'}</div>
+                    <div style={{ fontSize: 9, color: theme.textDim }}>{allCams.find(c => c.id === selCam)?.name || 'Select PTZ cam'}</div>
                     <div style={{ width: 100, height: 100, borderRadius: '50%', border: `2px solid ${theme.border}`, background: `${theme.border}10`, position: 'relative' as const, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {[{ d: 'up', x: 50, y: 10, i: '▲' }, { d: 'dn', x: 50, y: 80, i: '▼' }, { d: 'lt', x: 10, y: 50, i: '◀' }, { d: 'rt', x: 80, y: 50, i: '▶' }].map(b => <button key={b.d} onMouseDown={() => { if (b.d === 'up') setPtzTilt(p => Math.min(90, p + 10)); if (b.d === 'dn') setPtzTilt(p => Math.max(-90, p - 10)); if (b.d === 'lt') setPtzPan(p => p - 15); if (b.d === 'rt') setPtzPan(p => p + 15); }} style={{ position: 'absolute' as const, left: `${b.x}%`, top: `${b.y}%`, transform: 'translate(-50%,-50%)', width: 20, height: 20, borderRadius: 3, border: `1px solid ${theme.border}`, background: '#06b6d408', color: '#06b6d4', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7 }}>{b.i}</button>)}
-                        <span style={{ fontSize: 7, fontWeight: 700, color: '#06b6d4' }}>PTZ</span>
+                        {[{ d: 'up', x: 50, y: 10, i: '▲' }, { d: 'dn', x: 50, y: 80, i: '▼' }, { d: 'lt', x: 10, y: 50, i: '◀' }, { d: 'rt', x: 80, y: 50, i: '▶' }].map(b => <button key={b.d} onMouseDown={() => { if (b.d === 'up') setPtzTilt(p => Math.min(90, p + 10)); if (b.d === 'dn') setPtzTilt(p => Math.max(-90, p - 10)); if (b.d === 'lt') setPtzPan(p => p - 15); if (b.d === 'rt') setPtzPan(p => p + 15); }} style={{ position: 'absolute' as const, left: `${b.x}%`, top: `${b.y}%`, transform: 'translate(-50%,-50%)', width: 20, height: 20, borderRadius: 3, border: `1px solid ${theme.border}`, background: '#06b6d408', color: '#06b6d4', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>{b.i}</button>)}
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#06b6d4' }}>PTZ</span>
                     </div>
                     <div style={{ fontSize: 8, color: theme.textDim }}>P: <span style={{ color: '#06b6d4', fontWeight: 700 }}>{ptzPan}°</span> T: <span style={{ color: '#06b6d4', fontWeight: 700 }}>{ptzTilt}°</span></div>
-                    <div style={{ width: '100%' }}><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 7, color: theme.textDim, marginBottom: 2 }}><span>Zoom</span><span style={{ color: '#a855f7', fontWeight: 700 }}>{ptzZoom.toFixed(1)}×</span></div><input type="range" min={1} max={30} step={0.5} value={ptzZoom} onChange={e => setPtzZoom(parseFloat(e.target.value))} style={{ width: '100%', height: 3, accentColor: '#a855f7' }} /></div>
+                    <div style={{ width: '100%' }}><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: theme.textDim, marginBottom: 2 }}><span>Zoom</span><span style={{ color: '#a855f7', fontWeight: 700 }}>{ptzZoom.toFixed(1)}×</span></div><input type="range" min={1} max={30} step={0.5} value={ptzZoom} onChange={e => setPtzZoom(parseFloat(e.target.value))} style={{ width: '100%', height: 3, accentColor: '#a855f7' }} /></div>
                     <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 2 }}>
-                        {['Home', 'Gate', 'Dock', 'Road', 'Fence', 'Custom'].map(p => <button key={p} onClick={() => { setPtzPan(0); setPtzTilt(0); setPtzZoom(1); }} style={{ padding: '3px', borderRadius: 2, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 7, cursor: 'pointer' }}>{p}</button>)}
+                        {['Home', 'Gate', 'Dock', 'Road', 'Fence', 'Custom'].map(p => <button key={p} onClick={() => { setPtzPan(0); setPtzTilt(0); setPtzZoom(1); }} style={{ padding: '3px', borderRadius: 2, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, cursor: 'pointer' }}>{p}</button>)}
                     </div>
                 </div>}
 
                 {/* Timeline */}
                 {sideP === 'timeline' && <div style={{ flex: 1, padding: 10, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
-                    <div style={{ fontSize: 7, color: theme.textDim }}>24h Recording</div>
+                    <div style={{ fontSize: 9, color: theme.textDim }}>24h Recording</div>
                     {allCams.filter(d => d.status === 'Online').slice(0, 6).map(d => <div key={d.id}>
-                        <div style={{ fontSize: 6, color: theme.textDim, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{d.name}</div>
+                        <div style={{ fontSize: 8, color: theme.textDim, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{d.name}</div>
                         <div style={{ height: 5, borderRadius: 2, background: `${theme.border}20`, position: 'relative' as const, overflow: 'hidden' }}>
                             {tlSegs.map((seg, i) => <div key={i} style={{ position: 'absolute' as const, left: `${seg.s}%`, width: `${seg.e - seg.s}%`, height: '100%', background: seg.c, opacity: 0.5 }} />)}
                         </div>
                     </div>)}
-                    <div style={{ marginTop: 'auto', fontSize: 6, color: theme.textDim }}>
+                    <div style={{ marginTop: 'auto', fontSize: 8, color: theme.textDim }}>
                         {[{ c: '#22c55e', l: 'Rec' }, { c: '#ef4444', l: 'Alert' }, { c: '#f59e0b', l: 'Motion' }].map(lg => <div key={lg.l} style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 1 }}><div style={{ width: 6, height: 3, borderRadius: 1, background: lg.c, opacity: 0.5 }} /><span>{lg.l}</span></div>)}
                     </div>
                 </div>}
 
                 {/* Motion zones */}
                 {sideP === 'motionZones' && <div style={{ flex: 1, overflowY: 'auto' }}>
-                    <div style={{ padding: '3px 10px', borderBottom: `1px solid ${theme.border}`, fontSize: 7, color: theme.textDim }}>{motionZones.length} zones</div>
+                    <div style={{ padding: '3px 10px', borderBottom: `1px solid ${theme.border}`, fontSize: 9, color: theme.textDim }}>{motionZones.length} zones</div>
                     {motionZones.map(mz => <div key={mz.id} style={{ padding: '4px 10px', borderBottom: `1px solid ${theme.border}08`, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <div style={{ width: 14, height: 14, borderRadius: 2, border: `1.5px dashed ${mz.type === 'include' ? '#22c55e' : '#ef4444'}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 6 }}>{mz.type === 'include' ? '✓' : '✕'}</div>
-                        <div style={{ flex: 1 }}><div style={{ fontSize: 7, color: theme.text }}>{allCams.find(c => c.id === mz.camId)?.name}</div><div style={{ fontSize: 6, color: theme.textDim }}>{mz.type} · {mz.w}×{mz.h}%</div></div>
+                        <div style={{ width: 14, height: 14, borderRadius: 2, border: `1.5px dashed ${mz.type === 'include' ? '#22c55e' : '#ef4444'}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8 }}>{mz.type === 'include' ? '✓' : '✕'}</div>
+                        <div style={{ flex: 1 }}><div style={{ fontSize: 9, color: theme.text }}>{allCams.find(c => c.id === mz.camId)?.name}</div><div style={{ fontSize: 8, color: theme.textDim }}>{mz.type} · {mz.w}×{mz.h}%</div></div>
                     </div>)}
                 </div>}
+            </div>}
+
+            {/* Ctrl+Q */}
+            {showShortcuts && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={e => { if (e.target === e.currentTarget) setShowShortcuts(false); }}>
+                <div style={{ background: theme.bgAlt, border: `1px solid ${theme.border}`, borderRadius: 14, padding: 24, width: '100%', maxWidth: 340, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}><div style={{ fontSize: 16, fontWeight: 800, color: theme.text }}>⌨️ Keyboard Shortcuts</div><button onClick={() => setShowShortcuts(false)} style={{ width: 26, height: 26, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', color: theme.textDim, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button></div>
+                    {visShortcuts.map(s => <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '9px 0', borderBottom: `1px solid ${theme.border}08` }}><span className="vis-kbd" style={{ minWidth: 56, textAlign: 'center' as const, fontSize: 11, height: 22, padding: '0 8px' }}>{s.key}</span><span style={{ fontSize: 13, color: theme.textSecondary }}>{s.description}</span></div>)}
+                    <div style={{ marginTop: 16, fontSize: 11, color: theme.textDim, textAlign: 'center' as const }}>Press <strong>Esc</strong> or <strong>Ctrl+Q</strong> to close</div>
+                </div>
             </div>}
         </div>
     </>);

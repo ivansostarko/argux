@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.25.23 - 2026-03-26
+
+### Updated — Vision Camera Wall (/vision)
+- **Responsive mobile**: Sidebar + right panel hidden ≤768px. Mobile bar (grid selector + group selector + AI toggle).
+- **Breadcrumbs fixed**: Added `'vision': 'Vision — Camera Wall'`.
+- **Footer removed**: Removed "CLASSIFIED // NOFORN" from sidebar footer.
+- **Larger fonts**: All fontSize:5 → 7, fontSize:6 → 8, fontSize:7 → 9 (42 occurrences). Camera HUD labels, sidebar section headers, status chips, search input, camera group/overlay/panel labels all bumped.
+- **Skeleton loader**: Grid of skeleton tiles matching current layout (cols × cols) with 16:9 aspect ratio during 800ms.
+- **Keyboard shortcuts**: `1/2/3/4` grid layouts, `B` sidebar, `A` AI detections, `I` camera info, `N` night vision, `Esc` exit fullscreen/close, `Ctrl+Q` shortcuts modal.
+- **Mock data** (`resources/js/mock/vision.ts`, 69 lines): VIDEO_SRC, allCams (filtered from devices), PTZ_IDS, 6 camGroups, 5 defaultPresets, 8 mockFaces, 6 tlSegs, 2 defaultMotionZones, 10 keyboardShortcuts. 8 interfaces + 2 types exported.
+- **CSS** (`resources/css/pages/vision.css`, 18 lines): Rewritten — skeleton, kbd, vis-page/left/center/right layout classes, mobile bar, responsive breakpoints.
+- **Tests** (`resources/js/tests/Vision.test.ts`): 30 tests across 9 describe blocks — VIDEO_SRC, allCams (≥8, camera types, IDs, names, online/offline), PTZ_IDS (≥2, valid refs), camGroups (≥5, "all" first, required fields, includes zagreb/hawk/ptz/covert, valid camera refs), defaultPresets (≥4, IDs, name/layout/group valid), mockFaces (≥6, IDs, fields, valid cam refs, known+unknown), tlSegs (≥4, s/e/c, 0-100 span), defaultMotionZones (≥2, include+exclude, valid dims), keyboardShortcuts (≥8, includes grid/sidebar/AI/NV/Esc/Ctrl+Q).
+
+## 0.25.22 - 2026-03-26
+
+### Updated — Tactical Map (/map)
+- **Mock data extracted** to `resources/js/mock/map.ts` (160 lines). Moved from `pages/Map/mockData.ts` (kept as re-export shim). Contains: 6 interfaces (AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint), anomalyTypes (7), patternCategories (6), incidentTypes (10), heatCalPersonInfo (4), MOCK_ANOMALIES (9), MOCK_PREDICTIONS (4), MOCK_PATTERNS (8), MOCK_INCIDENTS (15), MOCK_ROUTES (2 traces), cityCoords (24 cities), keyboardShortcuts (10).
+- **CSS**: Already existed at `resources/css/pages/map.css` (226 lines, imported).
+- **Larger fonts**: Bumped all fontSize:6 → 8 and fontSize:7 → 9 across entire 6275-line page (156 occurrences total). Bumped sidebar icon SVGs from 11×11 → 13×13 (36 occurrences). All sidebar labels, filter chips, stat values, panel headers, timeline entries, anomaly cards, pattern details, prediction factors, incident metadata now more readable.
+- **Tests** (`resources/js/tests/Map.test.ts`, 130 lines): 42 tests across 10 describe blocks:
+  - `anomalyTypes` — 7 types, "all" first, colors on non-all
+  - `patternCategories` — 6 categories, includes meeting/schedule/location/communication/movement
+  - `incidentTypes` — 10 types, all with id/icon/label/color, covers all 10 expected types
+  - `heatCalPersonInfo` — 4 persons, key subjects 1/7/9/12
+  - `MOCK_ANOMALIES` — ≥8, unique IDs, required fields (type/severity/confidence/coords/recommendation), ≥5 anomaly types, ≥3 persons
+  - `MOCK_PREDICTIONS` — ≥4, unique IDs, required fields (risk/factors/nextLocations/threatAssessment/recommendedActions), factor weights+trends, location coordinates+probability
+  - `MOCK_PATTERNS` — ≥7, unique IDs, required fields (category/frequency/occurrences/heatmap[7]/details/assessment), ≥4 categories, non-negative heatmap values
+  - `MOCK_INCIDENTS` — ≥12, unique IDs, required fields (type/severity/coords/source/metadata), ≥7 incident types, critical ≥3 + high ≥3
+  - `MOCK_ROUTES` — ≥2 traces, ≥5 points per route, ≥5 events total, Horvat route ≥15 points
+  - `cityCoords` — ≥20 cities, Zagreb coordinates, [lng,lat] tuples, Croatian + foreign cities
+  - `keyboardShortcuts` — ≥8, includes S/L/T/M/Esc/Ctrl+Q
+
 ## 0.25.21 - 2026-03-26
 
 ### Updated — Storage Browser (/storage)
