@@ -1,0 +1,22 @@
+/* ═══ ARGUX — Social Scraper Styles ═══ */
+.sc-skeleton { background: linear-gradient(90deg, var(--ax-border) 25%, rgba(255,255,255,0.06) 50%, var(--ax-border) 75%); background-size: 200% 100%; animation: sc-skel 1.5s ease-in-out infinite; border-radius: 6px; }
+@keyframes sc-skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.sc-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--ax-border); background: rgba(128,128,128,0.06); color: var(--ax-text-dim); font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+
+.sc-page { display: flex; height: calc(100vh - 122px); margin: 0 -24px -80px 0; overflow: hidden; }
+.sc-left { width: 230px; flex-shrink: 0; overflow-y: auto; scrollbar-width: thin; }
+.sc-center { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.sc-right { width: 300px; flex-shrink: 0; overflow-y: auto; scrollbar-width: thin; }
+.sc-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; }
+.sc-row:hover { background: rgba(128,128,128,0.03) !important; }
+.sc-mobile-bar { display: none !important; }
+
+@media (max-width: 1024px) { .sc-left { width: 200px; } .sc-right { width: 260px; } .sc-scraper-grid { grid-template-columns: 1fr !important; } }
+@media (max-width: 768px) {
+    .sc-page { flex-direction: column; height: auto; min-height: calc(100vh - 100px); margin: 0 -16px -80px -16px; }
+    .sc-left { display: none; }
+    .sc-right { display: none; }
+    .sc-mobile-bar { display: flex !important; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--ax-border); gap: 6px; align-items: center; }
+    .sc-tab-label { display: none; }
+    .sc-scraper-grid { grid-template-columns: 1fr !important; }
+}

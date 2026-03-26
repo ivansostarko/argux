@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.25.14 - 2026-03-26
+
+### Updated — Social Scraper (/scraper)
+- **Responsive mobile**: Sidebar + detail hidden ≤768px. Mobile bar (search + New). Tab labels hidden. Scraper grid single-column.
+- **Breadcrumbs fixed**: Added `'scraper': 'Social Scraper'`.
+- **Footer removed**.
+- **Larger fonts**: Sidebar 16px title, 13px search, 12px platform list, 16px stats. Tabs 13px. Post names 12px, content 12px, engagement 9px, badges 9px. Scraper cards 13px handle, 11px details, 10px links. Detail panel 12px name/content, 11px AI assessment, 14px engagement, 10px meta. Modal 18px heading, 12-13px labels/inputs.
+- **Skeleton loader**: 8 skeleton post rows (icon + header + content + badges) during 700ms.
+- **New Social Scraper modal**: Platform selector (10 platforms as 5×2 icon grid), profile URL, handle, interval (6 options), keywords. **Target Entity section**: toggle Person/Organization, select from mockPersons/mockOrganizations, auto-tag description. Operation selector. Create disabled without URL.
+- **Mock data** (`resources/js/mock/scraper.ts`, 68 lines): 12 scrapers (trimmed from 18), 12 posts (trimmed from 17), platformConfig (10), statusColors (4), sentimentColors (4), contentIcons (8), allPlatforms, allPersonsInScrapers, allOrgsInScrapers, keyboardShortcuts (8).
+- **CSS** (`resources/css/pages/scraper.css`, 22 lines): Skeleton, kbd, 3-panel, scraper grid responsive, mobile bar.
+- **Tests** (`resources/js/tests/Scraper.test.ts`): 30 tests across 8 describe blocks — platformConfig (10 platforms), statusColors, sentimentColors, contentIcons, mockScrapers (IDs/fields/active/platforms/entity links), mockPosts (IDs/fields/AI-flagged/scraperIds cross-ref/media/platforms), derived lists, shortcuts.
+- **Keyboard shortcuts**: `1` Feed, `2` AI Flagged, `3` Scrapers, `N` new scraper, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
+
 ## 0.25.13 - 2026-03-26
 
 ### Updated — Web Scraper (/web-scraper)
