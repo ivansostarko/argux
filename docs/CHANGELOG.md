@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.25.11 - 2026-03-26
+
+### Updated — Alert Rules (/alerts)
+- **Responsive mobile**: Sidebar + detail hidden ≤768px. Mobile bar (search + New button). Tab labels hidden (icons + kbd). Stat grid stacks.
+- **Breadcrumbs fixed**: Added `'alerts': 'Alert Rules'`.
+- **Footer removed**.
+- **Larger fonts**: Sidebar 16px title, 13px search, 12px filters, 16px stats. Tabs 13px. Rule names 13px, severity/channel badges 9px, targets 10px, fired count 16px. Feed titles 13px, details 10px. Stats headings 14px, values 18-22px. Detail panel 13px name, 12px description, 18px stats, 11px config/channels/targets, 10px meta.
+- **Skeleton loader**: 8 skeleton rows during 700ms.
+- **New Alert modal**: Full form with rule name, trigger type selector (9 types as grid), severity dropdown, cooldown input, notification channels (toggle buttons), operation select, dynamic config fields per trigger type. Create button disabled without name. Opens via `N` key or `+ New Alert` button.
+- **Mock data** (`resources/js/mock/alerts.ts`, 80 lines): 13 rules (trimmed), 8 events, triggerConfig (9 types), sevColors, allOps, allPersons, keyboardShortcuts (8).
+- **CSS** (`resources/css/pages/alerts.css`, 25 lines): Skeleton, kbd, 3-panel layout, responsive.
+- **Tests** (`resources/js/tests/Alerts.test.ts`): 24 tests: triggerConfig, sevColors, mockRules (IDs/fields/types/channels/enabled), mockAlertEvents (IDs/fields/ruleId cross-ref/unack), helpers, shortcuts.
+- **Keyboard shortcuts**: `1-3` tabs, `N` new alert, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
+
 ## 0.25.10 - 2026-03-25
 
 ### Updated — Background Jobs (/jobs)
