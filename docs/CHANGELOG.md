@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.25.26 - 2026-03-27
+
+### Added — Records / AI Processing (/records)
+- **New page**: Full AI processing center showing all media files processed by on-premise AI models.
+- **5 AI process types**: Video Transcription (Faster-Whisper), Audio Transcription (Faster-Whisper), Translation (NLLB-200), File Summary (LLaMA 3.1), Photo OCR (LLaVA Vision). Plus manual Document and Evidence types.
+- **Responsive table**: 7-column sortable grid (icon, title+source, type, status, priority, entity, date). Sorts by title/type/status/priority/date. Mobile view (≤768px): sidebar hidden, mobile bar with tab/type/search selectors.
+- **3-panel layout**: Left sidebar (tabs, type filter, priority filter), center table, right detail panel.
+- **Detail panel** (340px): Type badge, status/priority/operation/confidence badges, progress bar for processing items, source info (file, size, duration, AI model, languages, word count, timestamps), linked entity, description, full result with preview quote, tags, download/entity actions.
+- **Tabs**: All (15), Processing (2), Completed (10), Failed (1) — with counts.
+- **Skeleton loader**: 10 skeleton rows during 700ms.
+- **Keyboard shortcuts**: `1` all, `2` processing, `3` completed, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
+- **Breadcrumbs**: Added `'records': 'Records — AI Processing'`.
+- **CSS import**: Added `@import './pages/records.css'` to app.css.
+- **Mock data** (`resources/js/mock/records.ts`, 143 lines): 15 records across 7 types, 5 statuses (completed/processing/queued/failed/draft), 4 priorities, 5 AI models. Linked to persons (Horvat, Mendoza, Hassan, Babić, Al-Rashid) and orgs (Rashid Holdings, Dragon Tech). Operations: HAWK, GLACIER, PHOENIX, CERBERUS. Includes confidence scores, word counts, processing times, result previews, language pairs.
+- **CSS** (`resources/css/pages/records.css`, 20 lines): Already existed — skeleton, kbd, 3-panel layout, responsive.
+- **Tests** (`resources/js/tests/Records.test.ts`, 130 lines): 38 tests across 8 describe blocks — typeConfig (7 types, 5 AI types, icon/color/label/aiModel, correct AI models), statusConfig (5 statuses, color+label), priorityConfig (4 priorities, colors), languages (≥10, includes auto/en/hr/ar), entityOptions (≥15, persons+orgs), mockRecords (≥12, unique IDs, required fields, all 5 AI types, ≥4 statuses, ≥3 priorities, completed→results, processing→progress, confidence scores ≥5, entity links ≥8, operation codes, translation languages, audio/video durations, failed→error info), keyboardShortcuts (≥6, 1/2/3/F/R/Esc/Ctrl+Q).
+- Page: 263 lines.
+
+## 0.25.25 - 2026-03-26
+
+### Updated — Organizations (/organizations)
+- **Responsive mobile**: Already had mobile card view. Replaced `persons-table-wrap`/`persons-mobile-cards` classes with `orgs-table-wrap`/`orgs-mobile-cards`. Desktop table hidden ≤860px, mobile cards shown.
+- **Keyboard shortcuts**: `N` add org, `F` toggle filters, `S` focus search, `R` reset all, `←/→` pagination, `Esc` close modal/menu, `Ctrl+Q` shortcuts modal.
+- **Mock data**: Added `orgsKeyboardShortcuts` (8 items) to existing `resources/js/mock/organizations.ts` (now 51 lines).
+- **CSS** (`resources/css/pages/organizations.css`, 12 lines): New file with orgs-kbd, orgs-table-wrap, orgs-table-row, orgs-mobile-cards/card, ≤860px media query. Added `@import` in app.css.
+- **Tests** (`resources/js/tests/Organizations.test.ts`, 109 lines): 26 tests across 6 describe blocks — risks (5 levels, colors), industries (≥30, key industries, includes Other), countries (≥100), mockOrganizations (≥10, unique IDs/UUIDs, required fields, ≥3 risk levels, ≥5 countries, ≥5 industries, CEOs, VATs, websites, linked persons, key orgs Alpha Security + Rashid, valid URLs), getOrgById (found/not found), keyboardShortcuts (≥6, N/F/S/R/Esc/Ctrl+Q).
+
 ## 0.25.24 - 2026-03-26
 
 ### Updated — Persons (/persons)
