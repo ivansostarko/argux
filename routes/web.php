@@ -28,6 +28,40 @@ Route::post('/2fa/resend', [AuthController::class, 'resendTwoFactor'])->name('2f
 
 /*
 |--------------------------------------------------------------------------
+| Admin Auth Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/admin/login', fn () => \Inertia\Inertia::render('Admin/Login'))->name('admin.login');
+Route::post('/admin/login', function (\Illuminate\Http\Request $request) {
+    $request->validate(['email' => 'required|email', 'password' => 'required|string|min:8']);
+    \Illuminate\Support\Facades\Log::info('Mock admin login attempt', ['email' => $request->email]);
+    usleep(800_000);
+    session(['pending_admin_2fa' => true, 'admin_email' => $request->email]);
+    return redirect()->route('admin.2fa')->with('success', 'Admin credentials verified. Proceed to 2FA.');
+})->name('admin.login.authenticate');
+
+Route::get('/admin/2fa', fn () => \Inertia\Inertia::render('Admin/TwoFactor', [
+    'maskedEmail' => 'a••••n@argux.mil',
+    'maskedPhone' => '••••12',
+]))->name('admin.2fa');
+Route::post('/admin/2fa', function (\Illuminate\Http\Request $request) {
+    $request->validate(['code' => 'required|string|size:6', 'method' => 'required|in:app,sms,email']);
+    \Illuminate\Support\Facades\Log::info('Mock admin 2FA verification', ['method' => $request->method]);
+    usleep(600_000);
+    if ($request->code === '000000') {
+        return back()->withErrors(['code' => 'Invalid admin verification code.']);
+    }
+    session()->forget('pending_admin_2fa');
+    return redirect('/admin/dashboard')->with('success', 'Admin authenticated successfully.');
+})->name('admin.2fa.verify');
+Route::post('/admin/2fa/resend', function (\Illuminate\Http\Request $request) {
+    \Illuminate\Support\Facades\Log::info('Mock admin 2FA code resent', ['method' => $request->input('method')]);
+    return back()->with('success', 'Admin verification code resent.');
+})->name('admin.2fa.resend');
+
+/*
+|--------------------------------------------------------------------------
 | App Routes (mock — all render Dashboard placeholder)
 |--------------------------------------------------------------------------
 */

@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.25.27 - 2026-03-27
+
+### Added — Admin Login (/admin/login)
+- New admin login page matching user login visual style with red admin accent.
+- Red admin badge ("Admin Authentication"), red checkbox, red "Forgot password" link, red submit button.
+- Posts to `/admin/login`, validates email+password, redirects to `/admin/2fa`.
+- Mock: always succeeds, 800ms delay, stores `pending_admin_2fa` session.
+- "Back to operator login" link to `/login`.
+- Classification footer: "ADMIN PANEL — RESTRICTED ACCESS".
+- Full i18n (en/hr) under `admin_login.*` namespace.
+
+### Added — Admin 2FA (/admin/2fa)
+- New admin 2FA page matching user TwoFactor visual style with red admin accent.
+- Red admin badge ("Admin 2FA Verification"), red verify button, red resend link.
+- 3 methods: Auth App, SMS, Email — same MethodSelector + OtpInput components as user 2FA.
+- Posts to `/admin/2fa`, validates 6-digit code. Code `000000` fails, anything else succeeds → redirects to `/admin/dashboard`.
+- Resend code via `/admin/2fa/resend` with 30s cooldown.
+- "Back to admin login" link.
+- Classification footer: "ADMIN PANEL — RESTRICTED ACCESS".
+- Full i18n (en/hr) under `admin_2fa.*` namespace.
+
+### Routes added
+- `GET /admin/login` → `Admin/Login` (admin.login)
+- `POST /admin/login` → validate + redirect to admin.2fa (admin.login.authenticate)
+- `GET /admin/2fa` → `Admin/TwoFactor` (admin.2fa)
+- `POST /admin/2fa` → validate 2FA code (admin.2fa.verify)
+- `POST /admin/2fa/resend` → resend code (admin.2fa.resend)
+
+### Translations added
+- `en/auth.json`: `admin_login.*` (11 keys), `admin_2fa.*` (14 keys)
+- `hr/auth.json`: `admin_login.*` (11 keys), `admin_2fa.*` (14 keys)
+
 ## 0.25.26 - 2026-03-27
 
 ### Added — Records / AI Processing (/records)
