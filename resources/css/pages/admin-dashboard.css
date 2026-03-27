@@ -1,0 +1,12 @@
+/* ═══ ARGUX — Admin Dashboard ═══ */
+.adm-skeleton { background: linear-gradient(90deg, var(--ax-border) 25%, rgba(255,255,255,0.06) 50%, var(--ax-border) 75%); background-size: 200% 100%; animation: adm-skel 1.5s ease-in-out infinite; border-radius: 6px; }
+@keyframes adm-skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.adm-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--ax-border); background: rgba(128,128,128,0.06); color: var(--ax-text-dim); font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.adm-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+.adm-kpi:hover { border-color: rgba(255,255,255,0.08) !important; }
+.adm-body { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+.adm-services-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.adm-actions-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.adm-action:hover { border-color: rgba(255,255,255,0.1) !important; transform: translateY(-1px); }
+@media (max-width: 1280px) { .adm-kpi-grid { grid-template-columns: repeat(2, 1fr); } .adm-body { grid-template-columns: 1fr; } .adm-actions-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { .adm-kpi-grid { grid-template-columns: 1fr; } .adm-services-grid { grid-template-columns: 1fr; } .adm-actions-grid { grid-template-columns: 1fr 1fr; } }

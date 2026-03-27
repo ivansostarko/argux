@@ -40,8 +40,8 @@ chore: bump version to 0.4.3
 Every meaningful release gets a git tag:
 
 ```bash
-git tag -a v0.25.27 -m "v0.25.27"
-git push origin v0.25.27
+git tag -a v0.25.28 -m "v0.25.28"
+git push origin v0.25.28
 ```
 
 ## Pull Request Template

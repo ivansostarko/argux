@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.25.29 - 2026-03-27
+
+### Implemented — Admin Dashboard (/admin/dashboard)
+- **8 KPI cards** with sparkline charts: Total Users (147), Active Sessions (34), System Uptime (99.97%), Storage Used (2.4/8 TB), Kafka Queue (1,247), Tracked Entities (12,847), Active Alerts (23), AI Queue (8). Each card shows trend (up/down/stable), trend value, and 8-point SVG sparkline.
+- **12 service health monitors**: PostgreSQL+PostGIS, Redis Cluster, Apache Kafka, ClickHouse, Typesense, MinIO, Ollama (LLaMA 3.1), InsightFace, Faster-Whisper (degraded), Keycloak SSO, Nginx, Camera Network (degraded). Each shows status dot, latency, uptime, CPU%, MEM%.
+- **8 quick actions**: Clear Cache, Restart Workers, Force Sync, System Report, Backup Now, Rebuild Index, Purge Logs (dangerous), Kill Sessions (dangerous). Dangerous actions require confirm modal.
+- **10 recent activity events**: login, alert, sync, deploy, user registration, config change, backup, error, failed login, sanctions update. Each with icon, title, description, user, time.
+- **Storage breakdown**: 7 categories (Video 1.2TB, Camera 480GB, Audio 220GB, Documents 180GB, Photos 160GB, Backups 120GB, AI Models 45GB) with stacked bar chart. 30.2% of 8TB used.
+- **Responsive**: KPI grid 4→2→1 columns. Body 2-col→1-col. Actions grid 4→2→2 columns. Services grid responsive.
+- **Skeleton loader**: 8 KPI skeletons, 6 service skeletons, 4 action skeletons, 6 activity skeletons, storage skeleton. 700ms.
+- **Keyboard shortcuts**: `R` refresh, `Esc` close, `Ctrl+Q` shortcuts modal.
+- **Mock data** (`resources/js/mock/admin-dashboard.ts`, 93 lines): kpiCards (8), services (12), quickActions (8), recentEvents (10), storageBreakdown (7), statusColors, keyboardShortcuts (3). Full TypeScript interfaces.
+- **CSS** (`resources/css/pages/admin-dashboard.css`, 10 lines): KPI grid, body grid, services grid, actions grid, responsive breakpoints.
+- **Tests** (`resources/js/tests/AdminDashboard.test.ts`, 109 lines): 30 tests across 7 describe blocks — kpiCards (8, unique IDs, fields, key KPIs), services (≥10, IDs, fields, mostly healthy, some degraded, key infra), quickActions (≥6, IDs, fields, dangerous with confirmText, includes cache/restart/sync), recentEvents (≥8, IDs, fields, ≥5 types), storageBreakdown (≥5, fields, total <8TB, sorted by size), statusColors (4), shortcuts (R/Esc/Ctrl+Q).
+- Page: 196 lines.
+
 ## 0.25.28 - 2026-03-27
 
 ### Added — Admin Panel Layout & Pages
