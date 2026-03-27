@@ -1,0 +1,21 @@
+/* ═══ ARGUX — Admin Support Tickets ═══ */
+.sup-skeleton { background: linear-gradient(90deg, var(--ax-border) 25%, rgba(255,255,255,0.06) 50%, var(--ax-border) 75%); background-size: 200% 100%; animation: sup-skel 1.5s ease-in-out infinite; border-radius: 6px; }
+@keyframes sup-skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.sup-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--ax-border); background: rgba(128,128,128,0.06); color: var(--ax-text-dim); font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.sup-page { display: flex; height: calc(100vh - 122px); margin: 0 -24px -80px 0; overflow: hidden; }
+.sup-list { width: 420px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--ax-border); }
+.sup-detail { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.sup-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; }
+.sup-kpi-row { display: flex; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--ax-border); overflow-x: auto; flex-shrink: 0; }
+.sup-ticket:hover { background: rgba(128,128,128,0.03) !important; }
+.sup-msg-user { border-left: 3px solid #3b82f6; }
+.sup-msg-admin { border-left: 3px solid #22c55e; }
+.sup-msg-system { border-left: 3px solid var(--ax-border); }
+.sup-mobile-bar { display: none !important; }
+@media (max-width: 900px) {
+    .sup-page { flex-direction: column; height: auto; min-height: calc(100vh - 100px); margin: 0 -16px -80px -16px; }
+    .sup-list { width: 100%; max-height: 50vh; border-right: none !important; border-bottom: 1px solid var(--ax-border); }
+    .sup-detail { min-height: 50vh; }
+    .sup-kpi-row { flex-wrap: wrap; }
+    .sup-mobile-bar { display: flex !important; }
+}

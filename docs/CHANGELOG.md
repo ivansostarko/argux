@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.25.31 - 2026-03-27
+
+### Implemented — Support Tickets (/admin/support)
+- **Split-panel layout**: Left panel (420px) — ticket list with search, status filter KPI row, sortable list. Right panel — ticket detail with conversation thread and reply.
+- **KPI status filters**: All (12), Open (3), In Progress (2), Waiting (2), Resolved (3), Closed (2). Click to filter. Counts update dynamically.
+- **12 mock tickets** across 8 categories (bug, feature, access, hardware, network, training, data, security), 4 priorities (critical/high/medium/low), 5 statuses. Each ticket has full conversation thread with user/admin/system messages.
+- **Ticket detail panel**: Ticket number, priority badge, category badge, status dropdown (change in-place), subject, reporter info (name, email, assignee, created date), tags, full conversation thread with color-coded messages (blue=user, green=admin, gray=system), reply textarea with Ctrl+Enter to send.
+- **New Ticket modal**: Subject, Category (8 options with icons), Priority (4 levels), Description. Creates ticket with auto-generated TKT number, system message, and selects it.
+- **Reply functionality**: Type reply, send adds admin message to thread, updates timestamp, shows toast confirmation.
+- **Status changes**: Dropdown in detail header. Changes add system message to thread. Resolved/closed tickets auto-set resolvedAt.
+- **Search**: Full-text across subject, ticket number, reporter, tags. `F` shortcut.
+- **Responsive**: ≤900px panels stack vertically (list 50vh + detail 50vh). KPI row wraps.
+- **Skeleton loader**: 8 ticket skeletons during 600ms.
+- **Keyboard shortcuts**: `N` new ticket, `F` search, `R` reset, `Esc` close, `Ctrl+Q` shortcuts modal.
+- **Sidebar badge**: 3 open tickets matches mock data count.
+- **Mock data** (`resources/js/mock/admin-support.ts`, 112 lines): 12 tickets with 35 messages total. Realistic scenarios: GPU crash, camera offline, feature request, onboarding, Kafka lag, graph performance, i18n request, model regression, training session, LPR diacritics, print dark mode, SSH intrusion. 5 statuses, 8 categories, 4 priorities, 8 assignees. Full TypeScript types.
+- **CSS** (`resources/css/pages/admin-support.css`, 19 lines): Split panel, scroll, KPI row, ticket hover, message type borders, responsive.
+- **Tests** (`resources/js/tests/AdminSupport.test.ts`, 117 lines): 30 tests across 7 describe blocks — statusConfig (5, fields), priorityConfig (4, fields), categoryConfig (8, fields), assignees (≥5, Unassigned), mockTickets (≥10, unique IDs/numbers, fields, all 5 statuses, ≥3 priorities, ≥5 categories, resolved→resolvedAt, message types, conversation threads ≥3 msgs, all 3 message types, critical tickets, open count=3), shortcuts (N/F/Esc/Ctrl+Q).
+- Page: 234 lines (was 11 placeholder).
+
 ## 0.25.30 - 2026-03-27
 
 ### Implemented — Knowledge Base (/admin/kb)
