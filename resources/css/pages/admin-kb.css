@@ -1,0 +1,12 @@
+/* ═══ ARGUX — Admin Knowledge Base ═══ */
+.kb-skeleton { background: linear-gradient(90deg, var(--ax-border) 25%, rgba(255,255,255,0.06) 50%, var(--ax-border) 75%); background-size: 200% 100%; animation: kb-skel 1.5s ease-in-out infinite; border-radius: 6px; }
+@keyframes kb-skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.kb-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--ax-border); background: rgba(128,128,128,0.06); color: var(--ax-text-dim); font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.kb-cats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.kb-cat-card:hover { border-color: rgba(255,255,255,0.1) !important; transform: translateY(-1px); }
+.kb-articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.kb-article-card:hover { border-color: rgba(255,255,255,0.1) !important; }
+.kb-article-detail { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+@media (max-width: 1024px) { .kb-article-detail { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .kb-cats-grid { grid-template-columns: 1fr 1fr; } .kb-articles-grid { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .kb-cats-grid { grid-template-columns: 1fr; } }

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.25.30 - 2026-03-27
+
+### Implemented — Knowledge Base (/admin/kb)
+- **7 categories** with color-coded cards: Getting Started, Map & Tracking, Intelligence, Devices & Cameras, Administration, Security & Compliance, Troubleshooting. Each shows article count and description.
+- **19 articles** across all categories. Each article has: title, summary, full content (multi-paragraph), author, updated date, view count, helpful percentage, read time, tags, related article links.
+- **Search**: Full-text search across title, summary, content, and tags. Keyboard shortcut `F` to focus. Clear button.
+- **Category filter**: Click a category card to filter. Active category header with icon, name, description, and filtered count. Clear button to reset.
+- **Article detail view**: Full article content, category badge, read time, article info sidebar (author, date, views, helpful %), helpful voting buttons (Yes/No with progress bar), related articles list. Back button.
+- **Responsive**: Category grid 4→2→1 columns. Article grid auto-fill (320px min). Article detail 2-col→1-col on ≤1024px.
+- **Skeleton loader**: 7 category skeletons + 6 article skeletons during 600ms.
+- **Keyboard shortcuts**: `F` search, `Esc` back/close, `Ctrl+Q` shortcuts modal.
+- **Read-only**: No add, edit, or delete functionality (as requested).
+- **Mock data** (`resources/js/mock/admin-kb.ts`, 100 lines): 7 categories, 19 articles with full content covering all platform features. Articles per category: Getting Started (4), Map & Tracking (4), Intelligence (3), Devices (2), Admin (2), Security (2), Troubleshooting (2).
+- **CSS** (`resources/css/pages/admin-kb.css`, 10 lines): Skeleton, kbd, category grid, article grid, detail layout, responsive.
+- **Tests** (`resources/js/tests/AdminKB.test.ts`, 69 lines): 17 tests across 3 describe blocks — categories (7, unique IDs, fields, expected IDs), articles (≥15, unique IDs, fields, valid category refs, all categories covered, content >100 chars, valid related refs, helpful >70%, varied views, multi-tag), shortcuts (F/Esc/Ctrl+Q).
+- Page: 190 lines (was 11 placeholder).
+
 ## 0.25.29 - 2026-03-27
 
 ### Implemented — Admin Dashboard (/admin/dashboard)
