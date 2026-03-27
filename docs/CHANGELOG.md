@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.25.33 - 2026-03-27
+
+### Implemented — Admin Management (/admin/admins)
+- **Full CRUD** for administrator accounts. Create, edit, view detail, suspend/activate, force password reset, delete with confirmation.
+- **12 mock admins** across 5 roles, 4 statuses, 8 departments. Each admin: name, email, phone, role, status, MFA method + enrollment, department, last login/IP, login count, created date/by, failed attempts, locked until, active sessions (device/IP/location/time), permissions list, notes.
+- **5 admin roles** with level hierarchy: Super Admin (L5), Admin (L4), Security Officer (L3), Audit Reader (L2), Support Agent (L1). Each role shows description in create/edit form.
+- **4 statuses**: Active (7), Suspended (1), Pending (2), Locked (1). Clickable KPI chips for quick filtering.
+- **8-column sortable table**: Avatar (initials in role color), Name (+department), Email, Role badge, Status dot+label, Last Login (monospace), MFA status, Actions (edit/suspend/delete buttons).
+- **Advanced filters** (4 dimensions): Role dropdown (5 roles), Department dropdown (8 depts), MFA (enrolled/not enrolled), plus status KPI chips. Filter count badge. Clear all.
+- **Full-text search** across name, email, department.
+- **Create Admin modal**: First/last name, email, phone, role selector (with level + description preview), department, notes. Creates with status=pending, mfa=none.
+- **Edit Admin modal**: Pre-filled form. Updates in-place with toast.
+- **Detail modal**: Full admin profile with avatar, role/status/MFA badges, info grid (phone, last login, last IP, login count, created, failed attempts, locked until), notes, active sessions list (device, IP, location, time, current session indicator), action buttons (edit, reset password, suspend/activate, delete).
+- **Delete confirmation modal**: Shows name, email, role, active session count. Irreversible.
+- **Status toggle**: Suspend active admins or activate suspended ones. Direct from table or detail modal.
+- **Password reset**: Mock toast notification.
+- **Responsive**: Table → mobile cards at ≤960px. Filter grid collapses.
+- **Skeleton loader**: 8 rows during 600ms.
+- **Pagination**: 10 per page, prev/next, ←/→ keyboard.
+- **Keyboard shortcuts**: `N` new, `F` search, `R` reset, `←/→` pagination, `Esc` close, `Ctrl+Q` modal.
+- **Mock data** (`resources/js/mock/admin-admins.ts`, 72 lines): 12 admins with realistic scenarios (super admin pair, suspended for security review, pending MFA enrollment, locked after brute force, night shift security officer). 5 roles, 4 statuses, 8 departments. Sessions with devices/IPs/locations.
+- **CSS** (`resources/css/pages/admin-admins.css`, 14 lines): Skeleton, kbd, table, row hover, KPI chips, mobile cards, filter grid, responsive.
+- **Tests** (`resources/js/tests/AdminAdmins.test.ts`, 120 lines): 35 tests across 6 describe blocks — statusConfig (4, fields), roleConfig (5, fields, unique levels), departments (≥6, key depts), mockAdmins (≥10, unique IDs, unique emails, required fields, all 4 statuses, all 5 roles, ≥2 super_admins, majority active, sessions with fields, pending→no MFA, locked→failed attempts, suspended→notes, ≥5 departments, varied login counts, super_admins→all permissions), shortcuts (N/F/R/Esc/Ctrl+Q).
+- Page: 328 lines (was 11 placeholder).
+
 ## 0.25.32 - 2026-03-27
 
 ### Implemented — Audit Log (/admin/audit)
