@@ -1,5 +1,56 @@
 # Changelog
 
+## 0.25.35 - 2026-03-27
+
+### Implemented — Statistics (/admin/statistics)
+- **6 tab dashboards** with pure SVG charts (zero external dependencies). Tab switching with skeleton transition. Keyboard shortcuts 1-6 for tabs.
+- **7 reusable SVG chart components**: BarChart (grouped), LineChart (multi-series), AreaChart (stacked), DonutChart (ring with legend), HBar (horizontal bars), Heatmap (day×hour matrix), data tables.
+
+#### Tab 1: Overview
+- 6 KPI cards: Total Events (1.2M), Tracked Entities (12,847), Active Operations (5), AI Jobs (8,432), Storage (2.4 TB), Uptime (99.97%).
+- Event Trend line chart (6 months, ascending from 82k to 134k).
+- Entity Growth multi-line chart (persons/orgs/vehicles, 6 months).
+- Storage Breakdown donut chart (7 categories: Video 1.2TB, Camera 480GB, Audio 220GB, etc.).
+- Event Types horizontal bar chart (8 types: GPS 412k, Phone 287k, Camera 198k, LPR 89k, Face 42k, Audio 28k, Video 18k, Web 12k).
+
+#### Tab 2: Activity
+- Activity Heatmap (7 days × 24 hours, color-coded Low/Med/High/Peak). Shows peak at weekday mornings 08:00-16:00, quiet weekends.
+- Top 8 Subjects by Activity horizontal bar chart (Horvat 4,823 → Tanaka 987).
+- Event Type Distribution donut chart (8 types with percentages).
+
+#### Tab 3: Devices
+- Devices by Type grouped bar chart (online vs offline: 47 cameras, 34 GPS, 28 phones, 18 LPR, 12 microphones, 8 face cameras).
+- Battery Distribution bar chart (6 ranges: 0-20% through N/A).
+- Sync Rate line chart (cameras/GPS/phones by hour, all >88%).
+- Device Fleet Summary: 6 stat cards with total/online/offline per type.
+
+#### Tab 4: Alerts
+- Alert Frequency stacked bar chart (7 days × 3 severities). Friday peak (67 total).
+- Severity Distribution donut chart (Critical 19, Warning 71, Info 172).
+- Response Time histogram (5 ranges: <5s through >60s, majority 5-15s).
+- Top 8 Triggered Rules ranked list with severity badges (Zone Entry 89, Co-location 34, LPR Match 28...).
+
+#### Tab 5: Media & AI
+- Upload Volume stacked area chart (5 weeks × 4 types: video/audio/photos/docs, growing trend).
+- AI Model Performance: 6 models (Faster-Whisper, LLaVA, NLLB-200, LLaMA 3.1, InsightFace, PaddleOCR) with jobs, avg time, GPU%, queue.
+- Face Recognition Match Rate line chart (6 months, improving from 26.3% to 34.6%).
+
+#### Tab 6: Subjects
+- Top 10 Persons table (name, risk badge, events, connections, devices). Horvat leads with 4,823 events.
+- Top 8 Organizations horizontal bar chart (by connection count, risk-colored).
+- Risk Distribution grouped bar chart (persons vs orgs across 5 risk levels).
+- New Entities stacked area chart (6 months × persons/orgs/vehicles).
+
+### Technical
+- All charts are pure SVG — no Recharts, Chart.js, or D3 dependency. Renders instantly.
+- Charts include gridlines, axis labels, legends, tooltips (via `<title>`), and responsive viewBox scaling.
+- Tab switching triggers 400ms skeleton transition.
+- **Mock data** (`resources/js/mock/admin-statistics.ts`, 143 lines): Comprehensive datasets for all 6 tabs. Realistic values matching platform scale.
+- **CSS** (`resources/css/pages/admin-statistics.css`, 22 lines): Tab styles, chart grids (2-col/3-col), KPI row (6-col), responsive breakpoints.
+- **Tests** (`resources/js/tests/AdminStatistics.test.ts`, 82 lines): 34 tests across 9 describe blocks covering all data integrity.
+- **Keyboard shortcuts**: `1-6` tab switch, `R` refresh, `Esc` close, `Ctrl+Q` shortcuts modal.
+- Page: 147 lines (compact due to inline SVG chart components).
+
 ## 0.25.34 - 2026-03-27
 
 ### Implemented — User Management (/admin/users)

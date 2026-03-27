@@ -1,0 +1,16 @@
+/* ═══ ARGUX — Admin Statistics ═══ */
+.stat-skeleton { background: linear-gradient(90deg, var(--ax-border) 25%, rgba(255,255,255,0.06) 50%, var(--ax-border) 75%); background-size: 200% 100%; animation: stat-skel 1.5s ease-in-out infinite; border-radius: 6px; }
+@keyframes stat-skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.stat-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--ax-border); background: rgba(128,128,128,0.06); color: var(--ax-text-dim); font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.stat-tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+.stat-tab { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--ax-border); background: transparent; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 500; color: var(--ax-text-dim); display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+.stat-tab:hover { background: rgba(128,128,128,0.04); color: var(--ax-text); }
+.stat-tab.active { background: rgba(139,92,246,0.08); border-color: rgba(139,92,246,0.3); color: #8b5cf6; font-weight: 700; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.stat-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.stat-card { padding: 18px; border-radius: 12px; border: 1px solid var(--ax-border); background: var(--ax-bg-card); }
+.stat-card h3 { font-size: 13px; font-weight: 700; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+.stat-kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 20px; }
+@media (max-width: 1200px) { .stat-grid-3 { grid-template-columns: 1fr 1fr; } .stat-kpi-row { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px) { .stat-grid { grid-template-columns: 1fr; } .stat-grid-3 { grid-template-columns: 1fr; } .stat-kpi-row { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .stat-kpi-row { grid-template-columns: 1fr; } .stat-tabs { gap: 2px; } .stat-tab { padding: 6px 10px; font-size: 11px; } }
