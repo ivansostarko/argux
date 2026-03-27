@@ -1,0 +1,10 @@
+/* ═══ ARGUX — Role Management ═══ */
+.rolm-skeleton { background: linear-gradient(90deg, var(--ax-border) 25%, rgba(255,255,255,0.06) 50%, var(--ax-border) 75%); background-size: 200% 100%; animation: rolm-skel 1.5s ease-in-out infinite; border-radius: 6px; }
+@keyframes rolm-skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.rolm-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--ax-border); background: rgba(128,128,128,0.06); color: var(--ax-text-dim); font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.rolm-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.rolm-card:hover { border-color: rgba(255,255,255,0.1) !important; transform: translateY(-1px); }
+.rolm-perm-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.rolm-perm-cell { width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.1s; font-size: 9px; font-weight: 700; }
+.rolm-perm-cell:hover { transform: scale(1.15); }
+@media (max-width: 768px) { .rolm-cards { grid-template-columns: 1fr; } }

@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.25.34 - 2026-03-27
+
+### Implemented — User Management (/admin/users)
+- **Full CRUD** for 15 operator accounts. Create, edit, view detail, suspend/activate, delete.
+- **8-column sortable table**: Avatar, Name (+dept+unit), Email, Role badge, Status dot, Last Login, MFA, Actions.
+- **5 statuses**: Active (9), Suspended (1), Pending (2), Locked (1), Archived (1). Clickable KPI chips.
+- **5 filters**: Status, Role, Department (10), Unit (9), MFA (enrolled/not). Full-text search.
+- **Create/Edit modal**: First/last name, email, phone, role (from user roles), department, unit, notes.
+- **Detail modal**: Full profile, role/status/MFA/session badges, info grid, notes, edit/suspend/delete.
+- **15 mock users** across 5 roles (Senior Operator, Intelligence Analyst, Operator, Viewer, Trainee), 10 departments, 9 units.
+- Responsive mobile cards at ≤960px. Pagination 10/page. Keyboard shortcuts.
+
+### Implemented — Role Management (/admin/roles)
+- **Full CRUD** for 10 roles (5 admin + 5 user) with interactive permission matrix.
+- **32 modules** across 8 sections: Command (3), Subjects (4), Intelligence (5), Analysis (3), Monitoring (4), Tools (4), System (1), Admin (8). Covers all user-facing pages.
+- **6 permission types** per module: View, Create, Edit, Delete, Export, Manage.
+- **Permission matrix** (interactive in create/edit, read-only in detail): Click individual cells to toggle. Click module row toggle-all. Click section header to toggle entire section. Visual checkmarks with green highlights.
+- **Role cards**: Color bar, name, scope (Admin/User), level, system badge, description, permission count, user count, created date. Duplicate/edit/delete actions.
+- **Scope filter**: All / Admin Roles (5) / User Roles (5).
+- **Duplicate role**: One-click copy with "(Copy)" suffix for quick creation.
+- **System roles**: Protected from deletion (🔒 badge). Can still be edited.
+- **Create/Edit modal**: Name, scope (admin/user), level (1-10), color picker, description, full interactive permission matrix.
+- **Read-only matrix view**: Click any role card to expand permission matrix below.
+- **10 mock roles**: Super Admin (all access), Admin (all except admin management), Security Officer (audit+security), Audit Reader (read-only audit), Support Agent (tickets+KB), Senior Operator (full operational), Intelligence Analyst (intel+analysis), Operator (standard), Viewer (read-only), Trainee (minimal).
+
 ## 0.25.33 - 2026-03-27
 
 ### Implemented — Admin Management (/admin/admins)

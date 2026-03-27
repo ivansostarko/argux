@@ -1,0 +1,10 @@
+/* ═══ ARGUX — User Management ═══ */
+.usrm-skeleton { background: linear-gradient(90deg, var(--ax-border) 25%, rgba(255,255,255,0.06) 50%, var(--ax-border) 75%); background-size: 200% 100%; animation: usrm-skel 1.5s ease-in-out infinite; border-radius: 6px; }
+@keyframes usrm-skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.usrm-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--ax-border); background: rgba(128,128,128,0.06); color: var(--ax-text-dim); font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.usrm-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.usrm-row:hover { background: rgba(128,128,128,0.03) !important; }
+.usrm-mobile-cards { display: none; flex-direction: column; gap: 8px; }
+.usrm-filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+@media (max-width: 960px) { .usrm-table-wrap { display: none !important; } .usrm-mobile-cards { display: flex !important; } .usrm-filters { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .usrm-filters { grid-template-columns: 1fr; } }
