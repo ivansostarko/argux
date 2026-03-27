@@ -1,0 +1,14 @@
+/* ═══ ARGUX — Admin Audit Log ═══ */
+.aud-skeleton { background: linear-gradient(90deg, var(--ax-border) 25%, rgba(255,255,255,0.06) 50%, var(--ax-border) 75%); background-size: 200% 100%; animation: aud-skel 1.5s ease-in-out infinite; border-radius: 6px; }
+@keyframes aud-skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.aud-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--ax-border); background: rgba(128,128,128,0.06); color: var(--ax-text-dim); font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.aud-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.aud-row:hover { background: rgba(128,128,128,0.03) !important; }
+.aud-filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.aud-mobile-cards { display: none; flex-direction: column; gap: 8px; }
+@media (max-width: 900px) {
+    .aud-table-wrap { display: none !important; }
+    .aud-mobile-cards { display: flex !important; }
+    .aud-filters { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) { .aud-filters { grid-template-columns: 1fr; } }

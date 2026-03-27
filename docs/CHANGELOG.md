@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.25.32 - 2026-03-27
+
+### Implemented — Audit Log (/admin/audit)
+- **30 mock audit entries** forming an immutable SHA-256 hash chain. Each entry: timestamp, user, role, action type, severity, module, target, description, IP address, user agent, session ID, integrity hash, previous hash, optional metadata.
+- **20 action types**: login, logout, view, create, update, delete, export, import, config, alert, assign, revoke, search, ai_query, sync, deploy, failed_login, mfa_verify, session_kill, backup.
+- **4 severity levels** with KPI chips: Info (12), Success (8), Warning (6), Critical (4). Click to filter.
+- **20 modules**: auth, persons, organizations, vehicles, devices, map, operations, alerts, connections, face_recognition, lpr, scraper, ai_assistant, reports, storage, admin, config, data_sources, workflows, system.
+- **7-column sortable table**: Timestamp, User (+ role), Action (icon + label), Severity (badge), Module (icon + label), Description (target + text), IP address (suspicious IPs highlighted red). Sortable by timestamp/user/action/severity/module.
+- **Advanced filter panel** (6 filters): Action type dropdown (20 options), Module dropdown (20 options), User dropdown (9 users), IP address text input, Date From, Date To. Filter count badge. Clear all button.
+- **Entry detail modal**: Full info grid (user, target, IP, user agent, session ID, timestamp), description, metadata table (key-value pairs for config changes, sync stats, AI tokens, etc.), cryptographic integrity verification block (SHA-256 hash + previous hash, green "Integrity Verified" badge).
+- **Export buttons**: CSV and PDF (mock with toast notification).
+- **Pagination**: 15 entries per page, page numbers, prev/next, ←/→ keyboard navigation.
+- **Responsive**: Table → mobile cards at ≤900px. Filter grid 6→2→1 columns.
+- **Skeleton loader**: 10 table row skeletons during 600ms.
+- **Keyboard shortcuts**: `F` search, `R` reset, `←/→` pagination, `Esc` close, `Ctrl+Q` modal.
+- **Mock data highlights**: 9 users (Col. Tomić, Maj. Novak, Cpt. Horvat, Sgt. Matić, Lt. Perić, IT Support, AI Team, Security Team, System). Events: admin login, AI queries, co-location alert, operation phase change, INTERPOL sync, report export, config changes, face recognition search, user creation, backup, LPR alerts, failed SSH intrusion, model deploy, session kill, access revocation.
+- **Mock** (`resources/js/mock/admin-audit.ts`, 148 lines): 30 entries, 20 action types, 4 severities, 20 modules, 9 users, integrity hash chain.
+- **CSS** (`resources/css/pages/admin-audit.css`, 14 lines): Skeleton, kbd, table wrap, row hover, filter grid, mobile cards, responsive.
+- **Tests** (`resources/js/tests/AdminAudit.test.ts`, 110 lines): 27 tests across 7 describe blocks — actionConfig (20 types, fields, core actions), severityConfig (4, fields), moduleConfig (20, core modules), users (≥8, fields, System), mockAuditEntries (≥25, unique IDs, fields, all 4 severities, ≥8 action types, ≥6 modules, ≥5 users, ≥5 IPs, hash chain integrity, metadata ≥8, critical security events, automated system entries, descending timestamps, descriptions >30 chars), shortcuts (F/R/←/→/Esc/Ctrl+Q).
+- Page: 251 lines (was 11 placeholder).
+
 ## 0.25.31 - 2026-03-27
 
 ### Implemented — Support Tickets (/admin/support)
