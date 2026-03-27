@@ -62,6 +62,22 @@ Route::post('/admin/2fa/resend', function (\Illuminate\Http\Request $request) {
 
 /*
 |--------------------------------------------------------------------------
+| Admin Panel Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/admin/dashboard', fn () => \Inertia\Inertia::render('Admin/Dashboard'))->name('admin.dashboard');
+Route::get('/admin/admins', fn () => \Inertia\Inertia::render('Admin/Admins'))->name('admin.admins');
+Route::get('/admin/users', fn () => \Inertia\Inertia::render('Admin/Users'))->name('admin.users');
+Route::get('/admin/roles', fn () => \Inertia\Inertia::render('Admin/Roles'))->name('admin.roles');
+Route::get('/admin/statistics', fn () => \Inertia\Inertia::render('Admin/Statistics'))->name('admin.statistics');
+Route::get('/admin/audit', fn () => \Inertia\Inertia::render('Admin/Audit'))->name('admin.audit');
+Route::get('/admin/config', fn () => \Inertia\Inertia::render('Admin/Config'))->name('admin.config');
+Route::get('/admin/support', fn () => \Inertia\Inertia::render('Admin/Support'))->name('admin.support');
+Route::get('/admin/kb', fn () => \Inertia\Inertia::render('Admin/KnowledgeBase'))->name('admin.kb');
+
+/*
+|--------------------------------------------------------------------------
 | App Routes (mock — all render Dashboard placeholder)
 |--------------------------------------------------------------------------
 */

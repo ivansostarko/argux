@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.25.28 - 2026-03-27
+
+### Added — Admin Panel Layout & Pages
+- **AdminLayout** (`resources/js/layouts/AdminLayout.tsx`): Mirrors AppLayout with red admin accent (`#ef4444`). Uses AdminSidebar, shared AppHeader, Breadcrumbs. CSS variables overridden for admin accent color. TopLoader uses red accent.
+- **AdminSidebar** (`resources/js/components/layout/AdminSidebar.tsx`): Full sidebar matching user Sidebar design. Red accent for active items. ADMIN badge next to logo. Collapsible (desktop), slide-in (mobile). "Back to Platform" link at bottom. 4 sections with 9 menu items:
+  - **Administration**: Dashboard, Admins, Users, Roles
+  - **Analytics**: Statistics, Audit Log
+  - **Configuration**: Config
+  - **Support**: Support Tickets (badge: 3), Knowledge Base
+- **9 Admin placeholder pages** — all empty with icon, title, description, and "under development" placeholder:
+  - `/admin/dashboard` → `Admin/Dashboard.tsx` — 📊 Admin Dashboard
+  - `/admin/admins` → `Admin/Admins.tsx` — 🛡️ Admin Management
+  - `/admin/users` → `Admin/Users.tsx` — 👥 User Management
+  - `/admin/roles` → `Admin/Roles.tsx` — 🔑 Role Management
+  - `/admin/statistics` → `Admin/Statistics.tsx` — 📈 Statistics
+  - `/admin/audit` → `Admin/Audit.tsx` — 📋 Audit Log
+  - `/admin/config` → `Admin/Config.tsx` — ⚙️ Configuration
+  - `/admin/support` → `Admin/Support.tsx` — 🎫 Support Tickets
+  - `/admin/kb` → `Admin/KnowledgeBase.tsx` — 📚 Knowledge Base
+- **Routes**: 9 GET routes added under `/admin/*`.
+- **Breadcrumbs**: Added admin labels (admin, dashboard, admins, users, roles, statistics, audit, config, support, kb).
+
 ## 0.25.27 - 2026-03-27
 
 ### Added — Admin Login (/admin/login)
