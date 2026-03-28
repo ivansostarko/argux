@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.25.40 - 2026-03-28
+
+### Implemented — Cinema Mode for 3D Globe (/map)
+- **Cinema Mode** — full cinematic experience for the 3D Globe tile with professional HUD overlay, auto-rotation, waypoint navigation, and telemetry display.
+
+#### Cinema Mode Controls (Tiles Section)
+- Toggle Cinema Mode ON/OFF with animated switch (activates 3D Globe automatically if not already active).
+- **Play/Pause** button to freeze or resume globe rotation.
+- **Rotation Speed** slider (0.02–0.50 degrees/frame) with live numeric readout.
+- **HUD toggle** — show/hide the heads-up display overlay.
+- **Auto-Fly toggle** — cycle through waypoints every 12 seconds automatically.
+- **6 Waypoints** with fly-to: Zagreb HQ, Port Area Zone Alpha, Eastern Europe Overview, Mediterranean Theater, Middle East SIGINT, Global Full View. Each with custom zoom, pitch, and bearing.
+
+#### Cinema HUD Overlay
+- **Top-Left**: CLASSIFIED // NOFORN badge (pulsing red), ARGUX branding with glow effect, current time (UTC offset), full date.
+- **Top-Right**: Telemetry readout — LAT, LNG, ZOOM, BRG in monospace with real-time values from map state.
+- **Bottom-Left**: Current waypoint name, rotation speed, status (ROTATING/PAUSED), auto-fly indicator.
+- **Bottom-Right**: Platform stats — Entities (12,847), Events/Day (134K), Operations (5 Active), Uptime (99.97%).
+- **Center-Bottom**: Floating control orbs — Play/Pause, Previous Waypoint, Next Waypoint, Exit Cinema.
+- **Visual Effects**: Scanline overlay (subtle CRT effect), corner bracket decorations, pulsing status indicator, backdrop blur on controls.
+
+#### Technical Details
+- Cinema Mode state: cinemaMode, cinemaSpeed, cinemaHud, cinemaAutoFly, cinemaPaused, cinemaWaypointIdx.
+- Spin speed is dynamically updatable — changing the slider immediately updates rotation velocity.
+- Fly-to waypoints temporarily pause spin, then resume after 4.5s transition.
+- Auto-Fly cycles through all 6 waypoints with 12s interval, then loops.
+- Exiting Cinema Mode cleanly stops all timers and animation frames.
+- CSS: cinema-pulse keyframe, scanlines gradient, corner SVG brackets, transition animations.
+
 ## 0.25.39 - 2026-03-28
 
 ### Implemented — Admin Profile (/admin/profile)

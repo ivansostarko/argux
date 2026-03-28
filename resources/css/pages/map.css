@@ -224,3 +224,10 @@
     .tmap-container { flex: 1; }
     .tmap-page { height: auto; margin: 0; }
 }
+
+/* ═══ CINEMA MODE ═══ */
+@keyframes cinema-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.cinema-hud { font-family: 'JetBrains Mono', monospace; }
+.cinema-hud::before { content: ''; position: absolute; inset: 0; border: 1px solid rgba(245,158,11,0.08); border-radius: 0; pointer-events: none; }
+.cinema-badge { animation: cinema-pulse 3s infinite; }
+.cinema-hud > div { transition: opacity 0.3s ease; }

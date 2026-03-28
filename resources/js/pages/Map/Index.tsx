@@ -3,25 +3,13 @@ import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'rea
 import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
-import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint } from './mockData';
-import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES } from './mockData';
+import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint } from '../../mock/map';
+import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts } from '../../mock/map';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
 import { mockVehicles } from '../../mock/vehicles';
 
 // All subjects placed in Croatia for mockup — spread across Croatian cities
-const cityCoords: Record<string, [number, number]> = {
-    'Zagreb': [15.9819, 45.8150], 'Split': [16.4402, 43.5081], 'Dubrovnik': [18.0944, 42.6507],
-    'Rijeka': [14.4422, 45.3271], 'Osijek': [18.6939, 45.5550], 'Zadar': [15.2314, 44.1194],
-    'Pula': [13.8496, 44.8666], 'Varaždin': [16.3366, 46.3057], 'Šibenik': [15.8952, 43.7350],
-    'Karlovac': [15.5553, 45.4929],
-    // Map foreign cities to Croatian locations for mockup
-    'Belgrade': [15.9670, 45.8050], 'Riyadh': [16.0100, 45.7900], 'Moscow': [15.9500, 45.8250],
-    'Dublin': [15.9300, 45.8000], 'Tokyo': [16.0300, 45.8100], 'Cairo': [15.9900, 45.8200],
-    'Berlin': [15.9600, 45.8300], 'Bogotá': [16.0000, 45.7800], 'Shanghai': [16.0200, 45.8050],
-    'Dubai': [15.9400, 45.7950], 'Mumbai': [16.0400, 45.8150], 'Budva': [15.9750, 45.8080],
-    'London': [15.9550, 45.8120], 'Jebel Ali Free Zone': [15.9350, 45.8180],
-};
 
 /* ═══ SIDEBAR MULTISELECT ═══ */
 function SidebarMS({ selected, onChange, options, placeholder, showSelectAll }: { selected: string[]; onChange: (v: string[]) => void; options: { id: string; label: string; sub?: string; img?: string }[]; placeholder: string; showSelectAll?: boolean }) {
@@ -50,17 +38,17 @@ function Toggle({ label, enabled, onChange, description }: { label: string; enab
 
 /* ═══ SECTION ICONS ═══ */
 const Ico = {
-    period: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="12" height="11" rx="1"/><line x1="2" y1="7" x2="14" y2="7"/><line x1="5" y1="1" x2="5" y2="4"/><line x1="11" y1="1" x2="11" y2="4"/></svg>,
-    subjects: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3 2.2-5 5-5s5 2 5 5"/><circle cx="12" cy="5" r="2"/><path d="M12 9c1.7 0 3 1.3 3 3"/></svg>,
-    sources: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 1v14M4 4v8M12 4v8M1 6v4M15 6v4"/></svg>,
-    layers: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2l6 3-6 3-6-3z"/><path d="M2 8l6 3 6-3"/><path d="M2 11l6 3 6-3"/></svg>,
-    tiles: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>,
-    tools: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M10 2l4 4-8 8H2v-4z"/></svg>,
-    intel: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>,
-    objects: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="2"/></svg>,
-    places: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 6.5l-4 8-4-8a4 4 0 118 0z"/></svg>,
-    settings: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>,
-    workspaces: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M2 4l2-2h4l2 2"/><line x1="6" y1="8" x2="10" y2="8"/><line x1="6" y1="11" x2="9" y2="11"/></svg>,
+    period: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="12" height="11" rx="1"/><line x1="2" y1="7" x2="14" y2="7"/><line x1="5" y1="1" x2="5" y2="4"/><line x1="11" y1="1" x2="11" y2="4"/></svg>,
+    subjects: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3 2.2-5 5-5s5 2 5 5"/><circle cx="12" cy="5" r="2"/><path d="M12 9c1.7 0 3 1.3 3 3"/></svg>,
+    sources: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 1v14M4 4v8M12 4v8M1 6v4M15 6v4"/></svg>,
+    layers: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2l6 3-6 3-6-3z"/><path d="M2 8l6 3 6-3"/><path d="M2 11l6 3 6-3"/></svg>,
+    tiles: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>,
+    tools: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M10 2l4 4-8 8H2v-4z"/></svg>,
+    intel: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>,
+    objects: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 1C5.24 1 3 3.24 3 6c0 4.5 5 9 5 9s5-4.5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="6" r="2"/></svg>,
+    places: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 6.5l-4 8-4-8a4 4 0 118 0z"/></svg>,
+    settings: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>,
+    workspaces: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M2 4l2-2h4l2 2"/><line x1="6" y1="8" x2="10" y2="8"/><line x1="6" y1="11" x2="9" y2="11"/></svg>,
 };
 
 const personOpts = mockPersons.map(p => ({ id: p.id.toString(), label: `${p.firstName} ${p.lastName}`, sub: `${p.nationality} · ${p.risk}`, img: p.avatar || undefined }));
@@ -126,8 +114,8 @@ function Minimap({ center, zoom: mainZoom, onNavigate }: { center: { lat: number
         <div style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round" opacity="0.8"><line x1="8" y1="2" x2="8" y2="6"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="2" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="14" y2="8"/></svg>
         </div>
-        <div style={{ position: 'absolute' as const, top: 3, left: 5, fontSize: 7, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", opacity: 0.7, pointerEvents: 'none' }}>OVERVIEW</div>
-        <div style={{ position: 'absolute' as const, bottom: 2, right: 4, fontSize: 6, color: 'rgba(255,255,255,0.35)', fontFamily: "'JetBrains Mono', monospace", pointerEvents: 'none' }}>Click to navigate</div>
+        <div style={{ position: 'absolute' as const, top: 3, left: 5, fontSize: 9, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", opacity: 0.7, pointerEvents: 'none' }}>OVERVIEW</div>
+        <div style={{ position: 'absolute' as const, bottom: 2, right: 4, fontSize: 8, color: 'rgba(255,255,255,0.35)', fontFamily: "'JetBrains Mono', monospace", pointerEvents: 'none' }}>Click to navigate</div>
     </div>);
 }
 
@@ -923,7 +911,7 @@ export default function MapIndex() {
             <span style={{ fontSize: 14 }}>{icon}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 800, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{title}</div>
-                {!isPanelMin(id) && <div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{subtitle}</div>}
+                {!isPanelMin(id) && <div style={{ fontSize: 9, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{subtitle}</div>}
             </div>
             {extra}
             <button onClick={() => togglePanelMin(id)} title={isPanelMin(id) ? 'Expand' : 'Minimize'} style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 9, padding: 0, flexShrink: 0 }}>{isPanelMin(id) ? '🔽' : '🔼'}</button>
@@ -2621,6 +2609,82 @@ export default function MapIndex() {
     const [activeTile, setActiveTile] = useState<TileId>('dark');
     const [active3D, setActive3D] = useState<TileId | null>(null);
 
+    // ═══ CINEMA MODE ═══
+    const [cinemaMode, setCinemaMode] = useState(false);
+    const [cinemaSpeed, setCinemaSpeed] = useState(0.15);
+    const [cinemaHud, setCinemaHud] = useState(true);
+    const [cinemaAutoFly, setCinemaAutoFly] = useState(false);
+    const [cinemaPaused, setCinemaPaused] = useState(false);
+    const [cinemaWaypointIdx, setCinemaWaypointIdx] = useState(0);
+    const cinemaTimerRef = useRef<any>(null);
+    const cinemaWaypoints = [
+        { name: 'Zagreb — HQ', lat: 45.8150, lng: 15.9819, zoom: 5, pitch: 45, bearing: -30 },
+        { name: 'Port Area — Zone Alpha', lat: 45.8250, lng: 15.9700, zoom: 6, pitch: 55, bearing: 20 },
+        { name: 'Eastern Europe — Overview', lat: 48.2, lng: 20.0, zoom: 3, pitch: 30, bearing: 0 },
+        { name: 'Mediterranean — Theater', lat: 38.5, lng: 18.0, zoom: 3, pitch: 35, bearing: 45 },
+        { name: 'Middle East — SIGINT', lat: 30.0, lng: 45.0, zoom: 3, pitch: 40, bearing: -15 },
+        { name: 'Global — Full View', lat: 25.0, lng: 30.0, zoom: 1.5, pitch: 0, bearing: 0 },
+    ];
+    const toggleCinema = () => {
+        if (!cinemaMode) {
+            if (active3D !== '3d-globe') setActive3D('3d-globe');
+            setCinemaMode(true); setCinemaPaused(false);
+        } else {
+            setCinemaMode(false); setCinemaPaused(false); setCinemaAutoFly(false);
+            if (cinemaTimerRef.current) { clearInterval(cinemaTimerRef.current); cinemaTimerRef.current = null; }
+        }
+    };
+    const cinemaFlyTo = (wp: typeof cinemaWaypoints[0], idx: number) => {
+        setCinemaWaypointIdx(idx);
+        const map = mapRef.current;
+        if (!map) return;
+        // Stop spin temporarily for fly-to
+        if ((map as any)._spinFrame) cancelAnimationFrame((map as any)._spinFrame);
+        map.flyTo({ center: [wp.lng, wp.lat], zoom: wp.zoom, pitch: wp.pitch, bearing: wp.bearing, duration: 4000, essential: true });
+        // Resume spin after fly-to
+        setTimeout(() => {
+            if (!mapRef.current?._isGlobe || cinemaPaused) return;
+            const spinGlobe = () => {
+                if (!mapRef.current?._isGlobe || cinemaPaused) return;
+                const c = mapRef.current.getCenter();
+                c.lng -= cinemaSpeed;
+                mapRef.current.setCenter(c);
+                (mapRef.current as any)._spinFrame = requestAnimationFrame(spinGlobe);
+            };
+            spinGlobe();
+        }, 4500);
+    };
+    // Auto-fly waypoint cycling
+    useEffect(() => {
+        if (cinemaAutoFly && cinemaMode && !cinemaPaused) {
+            cinemaTimerRef.current = setInterval(() => {
+                setCinemaWaypointIdx(prev => {
+                    const next = (prev + 1) % cinemaWaypoints.length;
+                    cinemaFlyTo(cinemaWaypoints[next], next);
+                    return next;
+                });
+            }, 12000);
+        } else {
+            if (cinemaTimerRef.current) { clearInterval(cinemaTimerRef.current); cinemaTimerRef.current = null; }
+        }
+        return () => { if (cinemaTimerRef.current) clearInterval(cinemaTimerRef.current); };
+    }, [cinemaAutoFly, cinemaMode, cinemaPaused]);
+    // Update spin speed when cinemaSpeed changes
+    useEffect(() => {
+        if (!cinemaMode || cinemaPaused) return;
+        const map = mapRef.current;
+        if (!map?._isGlobe) return;
+        if ((map as any)._spinFrame) cancelAnimationFrame((map as any)._spinFrame);
+        const spinGlobe = () => {
+            if (!mapRef.current?._isGlobe || cinemaPaused) return;
+            const c = mapRef.current.getCenter();
+            c.lng -= cinemaSpeed;
+            mapRef.current.setCenter(c);
+            (mapRef.current as any)._spinFrame = requestAnimationFrame(spinGlobe);
+        };
+        spinGlobe();
+    }, [cinemaSpeed, cinemaMode, cinemaPaused]);
+
     // Place search
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -3470,7 +3534,7 @@ export default function MapIndex() {
                                     <span style={{ fontSize: 13 }}>{l.icon}</span>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: l.active ? l.color : theme.text }}>{l.label}</div>
-                                        <div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{l.desc}</div>
+                                        <div style={{ fontSize: 9, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{l.desc}</div>
                                     </div>
                                     <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={l.panel ? l.color : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
                                 </button>
@@ -3500,6 +3564,41 @@ export default function MapIndex() {
                                 ); })}
                             </div>
                             {active3D && <div style={{ marginTop: 8, padding: '5px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', fontSize: 9, color: 'rgba(139,92,246,0.7)' }}>3D mode active: {tiles3D.find(t => t.id === active3D)?.name}. Click again to disable.</div>}
+
+                            {/* Cinema Mode */}
+                            <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
+                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Cinema Mode</div>
+                                <button onClick={toggleCinema} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1.5px solid ${cinemaMode ? '#f59e0b' : theme.border}`, background: cinemaMode ? 'rgba(245,158,11,0.08)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                                    <span style={{ fontSize: 16 }}>🎬</span>
+                                    <div style={{ flex: 1, textAlign: 'left' as const }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: cinemaMode ? '#f59e0b' : theme.text }}>Cinema Mode</div>
+                                        <div style={{ fontSize: 8, color: theme.textDim }}>{cinemaMode ? 'Active — Cinematic globe experience' : 'Auto-rotate globe with HUD overlay'}</div>
+                                    </div>
+                                    <div style={{ width: 28, height: 16, borderRadius: 8, background: cinemaMode ? '#f59e0b' : theme.border, position: 'relative' as const, flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute' as const, top: 2, left: cinemaMode ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></div>
+                                </button>
+                                {cinemaMode && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <button onClick={() => setCinemaPaused(!cinemaPaused)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${cinemaPaused ? '#22c55e30' : '#f59e0b30'}`, background: cinemaPaused ? '#22c55e08' : '#f59e0b08', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12 }}>{cinemaPaused ? '▶' : '⏸'}</button>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: 8, color: theme.textDim, marginBottom: 2 }}>Rotation Speed</div>
+                                            <input type="range" min="0.02" max="0.5" step="0.01" value={cinemaSpeed} onChange={e => setCinemaSpeed(Number(e.target.value))} style={{ width: '100%', height: 4, accentColor: '#f59e0b' }} />
+                                        </div>
+                                        <span style={{ fontSize: 9, fontWeight: 700, color: '#f59e0b', fontFamily: "'JetBrains Mono',monospace", width: 32, textAlign: 'right' as const }}>{cinemaSpeed.toFixed(2)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 4 }}>
+                                        <button onClick={() => setCinemaHud(!cinemaHud)} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid ${cinemaHud ? '#3b82f630' : theme.border}`, background: cinemaHud ? '#3b82f608' : 'transparent', cursor: 'pointer', fontSize: 8, fontWeight: 700, color: cinemaHud ? '#3b82f6' : theme.textDim, fontFamily: 'inherit' }}>HUD {cinemaHud ? 'ON' : 'OFF'}</button>
+                                        <button onClick={() => setCinemaAutoFly(!cinemaAutoFly)} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid ${cinemaAutoFly ? '#22c55e30' : theme.border}`, background: cinemaAutoFly ? '#22c55e08' : 'transparent', cursor: 'pointer', fontSize: 8, fontWeight: 700, color: cinemaAutoFly ? '#22c55e' : theme.textDim, fontFamily: 'inherit' }}>AUTO-FLY {cinemaAutoFly ? 'ON' : 'OFF'}</button>
+                                    </div>
+                                    <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginTop: 2 }}>WAYPOINTS</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+                                        {cinemaWaypoints.map((wp, i) => <button key={i} onClick={() => cinemaFlyTo(wp, i)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 4, border: `1px solid ${cinemaWaypointIdx === i ? '#f59e0b30' : 'transparent'}`, background: cinemaWaypointIdx === i ? '#f59e0b06' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#f59e0b08'} onMouseLeave={e => e.currentTarget.style.background = cinemaWaypointIdx === i ? '#f59e0b06' : 'transparent'}>
+                                            <span style={{ fontSize: 9, fontWeight: 800, color: cinemaWaypointIdx === i ? '#f59e0b' : theme.textDim, width: 12, textAlign: 'center' as const }}>{i + 1}</span>
+                                            <span style={{ fontSize: 9, color: cinemaWaypointIdx === i ? '#f59e0b' : theme.textSecondary, flex: 1 }}>{wp.name}</span>
+                                            {cinemaWaypointIdx === i && <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b' }} />}
+                                        </button>)}
+                                    </div>
+                                </div>}
+                            </div>
                         </div>
                     </Section>
                     </div>
@@ -3515,7 +3614,7 @@ export default function MapIndex() {
                                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={rulerActive ? '#f59e0b' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 14L14 2"/><path d="M5 14L2 14L2 11"/><path d="M11 2L14 2L14 5"/></svg>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: rulerActive ? '#f59e0b' : theme.text }}>Ruler</div>
-                                        <div style={{ fontSize: 7, color: theme.textDim }}>{rulerActive ? `${rulerPoints.length} points${rulerPoints.length >= 2 ? ` · ${formatDist(calcDistance(rulerPoints))}` : ''}` : 'Measure distances on map'}</div>
+                                        <div style={{ fontSize: 9, color: theme.textDim }}>{rulerActive ? `${rulerPoints.length} points${rulerPoints.length >= 2 ? ` · ${formatDist(calcDistance(rulerPoints))}` : ''}` : 'Measure distances on map'}</div>
                                     </div>
                                     {rulerPoints.length >= 2 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#f59e0b15', color: '#f59e0b', border: '1px solid #f59e0b25', fontFamily: "'JetBrains Mono', monospace" }}>{formatDist(calcDistance(rulerPoints))}</span>}
                                     <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showRulerPanel ? '#f59e0b' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
@@ -3530,7 +3629,7 @@ export default function MapIndex() {
                                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={zoneDrawing ? '#8b5cf6' : theme.textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: zoneDrawing ? '#8b5cf6' : theme.text }}>Zone Editor</div>
-                                        <div style={{ fontSize: 7, color: theme.textDim }}>{zones.length} zones{hiddenZones.size > 0 ? ` · ${hiddenZones.size} hidden` : ''}{zoneDrawing ? ' · Drawing...' : ''}</div>
+                                        <div style={{ fontSize: 9, color: theme.textDim }}>{zones.length} zones{hiddenZones.size > 0 ? ` · ${hiddenZones.size} hidden` : ''}{zoneDrawing ? ' · Drawing...' : ''}</div>
                                     </div>
                                     {zones.length > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#8b5cf612', color: '#8b5cf6', border: '1px solid #8b5cf620' }}>{zones.length}</span>}
                                     <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showZonePanel ? '#8b5cf6' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
@@ -3561,8 +3660,8 @@ export default function MapIndex() {
                                     const statColor = s.status === 'tracking' ? '#22c55e' : s.status === 'paused' ? '#f59e0b' : '#ef4444';
                                     return <button key={s.id} onClick={() => { setShowLiveTracker(true); setLiveTrackFollow(s.id); triggerTopLoader(); const last = s.positions[s.positions.length - 1]; if (last && mapRef.current) mapRef.current.flyTo({ center: [last.lng, last.lat], zoom: 16, duration: 800 }); }} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '2px 5px', borderRadius: 3, border: `1px solid ${s.color}30`, background: `${s.color}06`, cursor: 'pointer', fontFamily: 'inherit' }}>
                                         <div style={{ width: 5, height: 5, borderRadius: '50%', background: statColor, flexShrink: 0 }} />
-                                        <span style={{ fontSize: 7, fontWeight: 700, color: s.color }}>{s.personName.charAt(0)}{s.personLastName.charAt(0)}</span>
-                                        <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{s.speed}km/h</span>
+                                        <span style={{ fontSize: 9, fontWeight: 700, color: s.color }}>{s.personName.charAt(0)}{s.personLastName.charAt(0)}</span>
+                                        <span style={{ fontSize: 9, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{s.speed}km/h</span>
                                     </button>;
                                 })}
                             </div>}
@@ -3651,7 +3750,7 @@ export default function MapIndex() {
                                     <div style={{ fontSize: 11, fontWeight: 700, color: showRouteReplay ? '#ec4899' : theme.text }}>Route Replay</div>
                                     <div style={{ fontSize: 8, color: theme.textDim }}>{rrPlaying ? `Playing · ${rrSpeed}x speed` : 'Animate historical movement'}</div>
                                 </div>
-                                {rrPlaying && <span style={{ fontSize: 7, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#ec489915', color: '#ec4899', border: '1px solid #ec489925', animation: 'argux-fadeIn 0.3s' }}>▶ LIVE</span>}
+                                {rrPlaying && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#ec489915', color: '#ec4899', border: '1px solid #ec489925', animation: 'argux-fadeIn 0.3s' }}>▶ LIVE</span>}
                                 <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showRouteReplay ? '#ec4899' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
                             </button>
                         </div>
@@ -3678,8 +3777,8 @@ export default function MapIndex() {
                             </button>
                             {/* Quick visible count */}
                             {mapObjects.length > 0 && <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                                {Object.entries(objTypeLabels).map(([type, info]) => { const count = mapObjects.filter(o => o.type === type).length; return count > 0 ? <span key={type} style={{ fontSize: 7, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${theme.accent}06`, color: theme.textDim, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 2 }}>{info.icon} {count}</span> : null; })}
-                                {mapObjects.some(o => !o.visible) && <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: 'rgba(239,68,68,0.06)', color: theme.danger, border: '1px solid rgba(239,68,68,0.15)' }}>👁️ {mapObjects.filter(o => !o.visible).length} hidden</span>}
+                                {Object.entries(objTypeLabels).map(([type, info]) => { const count = mapObjects.filter(o => o.type === type).length; return count > 0 ? <span key={type} style={{ fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${theme.accent}06`, color: theme.textDim, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 2 }}>{info.icon} {count}</span> : null; })}
+                                {mapObjects.some(o => !o.visible) && <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: 'rgba(239,68,68,0.06)', color: theme.danger, border: '1px solid rgba(239,68,68,0.15)' }}>👁️ {mapObjects.filter(o => !o.visible).length} hidden</span>}
                             </div>}
                         </div>
                     </Section>
@@ -3691,7 +3790,7 @@ export default function MapIndex() {
                                 <div style={{ width: 24, height: 24, borderRadius: 5, background: `${theme.accent}08`, border: `1px solid ${theme.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>📍</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: 10, fontWeight: 700, color: theme.text }}>Saved Places</div>
-                                    <div style={{ fontSize: 7, color: theme.textDim }}>{savedPlaces.length} places saved</div>
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{savedPlaces.length} places saved</div>
                                 </div>
                                 {savedPlaces.length > 0 && <span style={{ fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: `${theme.accent}12`, color: theme.accent, border: `1px solid ${theme.accent}20` }}>{savedPlaces.length}</span>}
                                 <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showPlacesPanel ? theme.accent : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
@@ -3713,14 +3812,14 @@ export default function MapIndex() {
                             {wsActiveId && <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
                                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
                                 <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{workspaces.find(w => w.id === wsActiveId)?.name || 'Active'}</span>
-                                <button onClick={() => { const ws = workspaces.find(w => w.id === wsActiveId); if (ws) updateWsState(ws); }} title="Update" style={{ fontSize: 7, padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(59,130,246,0.25)', background: 'rgba(59,130,246,0.06)', color: theme.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>💾</button>
+                                <button onClick={() => { const ws = workspaces.find(w => w.id === wsActiveId); if (ws) updateWsState(ws); }} title="Update" style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(59,130,246,0.25)', background: 'rgba(59,130,246,0.06)', color: theme.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>💾</button>
                             </div>}
                             {/* Open panel button */}
                             <button onClick={() => { setShowWorkspacesPanel(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${workspaces.length > 0 ? theme.accent + '25' : theme.border}`, background: showWorkspacesPanel ? `${theme.accent}06` : workspaces.length > 0 ? `${theme.accent}03` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = `${theme.accent}08`; }} onMouseLeave={e => { e.currentTarget.style.background = showWorkspacesPanel ? `${theme.accent}06` : workspaces.length > 0 ? `${theme.accent}03` : 'transparent'; }}>
                                 <div style={{ width: 24, height: 24, borderRadius: 5, background: `${theme.accent}08`, border: `1px solid ${theme.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>📋</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: 10, fontWeight: 700, color: theme.text }}>Workspaces</div>
-                                    <div style={{ fontSize: 7, color: theme.textDim }}>{workspaces.length} saved{wsActiveId ? ` · ${workspaces.find(w => w.id === wsActiveId)?.name || 'Active'}` : ''}</div>
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{workspaces.length} saved{wsActiveId ? ` · ${workspaces.find(w => w.id === wsActiveId)?.name || 'Active'}` : ''}</div>
                                 </div>
                                 {workspaces.length > 0 && <span style={{ fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: `${theme.accent}12`, color: theme.accent, border: `1px solid ${theme.accent}20` }}>{workspaces.length}</span>}
                                 <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showWorkspacesPanel ? theme.accent : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
@@ -3896,7 +3995,7 @@ export default function MapIndex() {
                                 groups[key].push(r);
                             });
                             return Object.entries(groups).map(([groupName, items]) => <div key={groupName}>
-                                <div style={{ padding: '5px 12px', fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.1em', background: 'rgba(255,255,255,0.015)', borderBottom: `1px solid ${theme.border}20` }}>{groupName} <span style={{ fontWeight: 400, fontSize: 7, opacity: 0.7 }}>({items.length})</span></div>
+                                <div style={{ padding: '5px 12px', fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.1em', background: 'rgba(255,255,255,0.015)', borderBottom: `1px solid ${theme.border}20` }}>{groupName} <span style={{ fontWeight: 400, fontSize: 9, opacity: 0.7 }}>({items.length})</span></div>
                                 {items.map(r => (
                                     <div key={r.id} onClick={() => handleSearchSelect(r)} style={{ padding: '7px 12px', cursor: 'pointer', borderBottom: `1px solid ${theme.border}10`, transition: 'background 0.1s', display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                         {/* Icon or avatar */}
@@ -3907,9 +4006,9 @@ export default function MapIndex() {
                                             <div style={{ fontSize: 8, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.sub}</div>
                                         </div>
                                         {/* Risk badge for persons */}
-                                        {r.risk && <span style={{ fontSize: 7, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: `${r.color}12`, color: r.color, border: `1px solid ${r.color}20`, flexShrink: 0 }}>{r.risk}</span>}
+                                        {r.risk && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: `${r.color}12`, color: r.color, border: `1px solid ${r.color}20`, flexShrink: 0 }}>{r.risk}</span>}
                                         {/* Coordinates */}
-                                        <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{r.lat.toFixed(2)},{r.lng.toFixed(2)}</span>
+                                        <span style={{ fontSize: 9, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{r.lat.toFixed(2)},{r.lng.toFixed(2)}</span>
                                     </div>
                                 ))}
                             </div>);
@@ -3937,7 +4036,7 @@ export default function MapIndex() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
                             {[{ icon: '👤', label: 'Persons', desc: 'Name, nickname', color: '#ef4444' }, { icon: '🏢', label: 'Organizations', desc: 'Company name', color: '#3b82f6' }, { icon: '🚗', label: 'Vehicles', desc: 'Plate number', color: '#10b981' }, { icon: '📡', label: 'Devices', desc: 'Device label, ID', color: '#22c55e' }, { icon: '⭐', label: 'Saved Places', desc: 'Bookmarked locations', color: '#f59e0b' }, { icon: '🛡️', label: 'Zones', desc: 'Geofence zones', color: '#8b5cf6' }, { icon: '📍', label: 'Addresses', desc: 'Cities, streets', color: theme.accent }, { icon: '🎯', label: 'Coordinates', desc: '45.81, 15.97', color: '#22c55e' }].map(h => <div key={h.label} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4 }}>
                                 <span style={{ fontSize: 11 }}>{h.icon}</span>
-                                <div><div style={{ fontSize: 9, fontWeight: 600, color: h.color }}>{h.label}</div><div style={{ fontSize: 7, color: theme.textDim }}>{h.desc}</div></div>
+                                <div><div style={{ fontSize: 9, fontWeight: 600, color: h.color }}>{h.label}</div><div style={{ fontSize: 9, color: theme.textDim }}>{h.desc}</div></div>
                             </div>)}
                         </div>
                     </div>}
@@ -3948,6 +4047,67 @@ export default function MapIndex() {
 
                 {/* BOTTOM-LEFT: Compass */}
                 {showCompass && loaded && <div style={{ position: 'absolute' as const, bottom: 60, left: 12, zIndex: 5 }}><Compass bearing={bearing} /></div>}
+
+                {/* CINEMA MODE HUD OVERLAY */}
+                {cinemaMode && cinemaHud && loaded && <div className="cinema-hud" style={{ position: 'absolute' as const, inset: 0, zIndex: 6, pointerEvents: 'none' }}>
+                    {/* Top-left: Classification + Time */}
+                    <div style={{ position: 'absolute' as const, top: 14, left: 14, pointerEvents: 'auto' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                            <span className="cinema-badge" style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 3, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', letterSpacing: '0.15em', fontFamily: "'JetBrains Mono',monospace" }}>CLASSIFIED // NOFORN</span>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: cinemaPaused ? '#f59e0b' : '#22c55e', boxShadow: cinemaPaused ? '0 0 8px #f59e0b' : '0 0 8px #22c55e', animation: cinemaPaused ? 'none' : 'cinema-pulse 2s infinite' }} />
+                        </div>
+                        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 22, fontWeight: 800, color: '#fff', textShadow: '0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(59,130,246,0.15)', lineHeight: 1, marginBottom: 4 }}>ARGUX</div>
+                        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.12em' }}>TACTICAL INTELLIGENCE PLATFORM</div>
+                        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'rgba(245,158,11,0.8)', marginTop: 8 }}>{new Date().toLocaleTimeString('en-US', { hour12: false })} UTC+{String(-(new Date().getTimezoneOffset() / 60)).padStart(2, '0')}</div>
+                        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                    </div>
+
+                    {/* Top-right: Telemetry */}
+                    <div style={{ position: 'absolute' as const, top: 14, right: 14, textAlign: 'right' as const }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, alignItems: 'flex-end' }}>
+                            {[{ l: 'LAT', v: coords.lat.toFixed(4) }, { l: 'LNG', v: coords.lng.toFixed(4) }, { l: 'ZOOM', v: zoom.toFixed(1) }, { l: 'BRG', v: `${Math.round(bearing)}°` }].map(r => <div key={r.l} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <span style={{ fontSize: 8, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>{r.l}</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', fontFamily: "'JetBrains Mono',monospace" }}>{r.v}</span>
+                            </div>)}
+                        </div>
+                    </div>
+
+                    {/* Bottom-left: Waypoint info */}
+                    <div style={{ position: 'absolute' as const, bottom: 14, left: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                            <span style={{ fontSize: 8, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>WAYPOINT</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(245,158,11,0.8)', fontFamily: "'JetBrains Mono',monospace" }}>{cinemaWaypoints[cinemaWaypointIdx].name}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12, fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
+                            <span>SPD: <strong style={{ color: 'rgba(245,158,11,0.7)' }}>{cinemaSpeed.toFixed(2)}°/f</strong></span>
+                            <span>STATUS: <strong style={{ color: cinemaPaused ? '#f59e0b' : '#22c55e' }}>{cinemaPaused ? 'PAUSED' : 'ROTATING'}</strong></span>
+                            <span>AUTO-FLY: <strong style={{ color: cinemaAutoFly ? '#22c55e' : 'rgba(255,255,255,0.3)' }}>{cinemaAutoFly ? 'ON' : 'OFF'}</strong></span>
+                        </div>
+                    </div>
+
+                    {/* Bottom-right: Stats */}
+                    <div style={{ position: 'absolute' as const, bottom: 14, right: 14, textAlign: 'right' as const }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 3, alignItems: 'flex-end' }}>
+                            {[{ l: 'ENTITIES', v: '12,847', c: '#3b82f6' }, { l: 'EVENTS/DAY', v: '134K', c: '#22c55e' }, { l: 'OPERATIONS', v: '5 ACTIVE', c: '#f59e0b' }, { l: 'UPTIME', v: '99.97%', c: '#06b6d4' }].map(r => <div key={r.l} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <span style={{ fontSize: 8, fontWeight: 600, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em' }}>{r.l}</span>
+                                <span style={{ fontSize: 10, fontWeight: 800, color: `${r.c}90`, fontFamily: "'JetBrains Mono',monospace" }}>{r.v}</span>
+                            </div>)}
+                        </div>
+                    </div>
+
+                    {/* Center-bottom: Controls */}
+                    <div style={{ position: 'absolute' as const, bottom: 50, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 6, pointerEvents: 'auto' }}>
+                        <button onClick={() => setCinemaPaused(!cinemaPaused)} style={{ width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 14, transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(245,158,11,0.3)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.4)'}>{cinemaPaused ? '▶' : '⏸'}</button>
+                        <button onClick={() => { const prev = (cinemaWaypointIdx - 1 + cinemaWaypoints.length) % cinemaWaypoints.length; cinemaFlyTo(cinemaWaypoints[prev], prev); }} style={{ width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 12, transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.4)'}>⏮</button>
+                        <button onClick={() => { const next = (cinemaWaypointIdx + 1) % cinemaWaypoints.length; cinemaFlyTo(cinemaWaypoints[next], next); }} style={{ width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 12, transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.4)'}>⏭</button>
+                        <button onClick={toggleCinema} style={{ width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.15)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ef4444', fontSize: 11, fontWeight: 700, transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.3)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.15)'}>✕</button>
+                    </div>
+
+                    {/* Scanline effect */}
+                    <div className="cinema-scanlines" style={{ position: 'absolute' as const, inset: 0, opacity: 0.03, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.05) 2px, rgba(255,255,255,0.05) 4px)' }} />
+                    {/* Corner brackets */}
+                    {[[14,14,'top','left'],[14,14,'top','right'],[14,14,'bottom','left'],[14,14,'bottom','right']].map(([t,l,va,ha], i) => <svg key={i} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(245,158,11,0.25)" strokeWidth="1.5" style={{ position: 'absolute' as const, [va as string]: t as number, [ha as string]: l as number, transform: `${i === 1 || i === 3 ? 'scaleX(-1)' : ''} ${i === 2 || i === 3 ? 'scaleY(-1)' : ''}` }}><polyline points="1,8 1,1 8,1" /></svg>)}
+                </div>}
 
                 {/* BOTTOM-RIGHT: Map Controls */}
                 {showControls && loaded && <div style={{ position: 'absolute' as const, bottom: 30, right: 12, zIndex: 5, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
@@ -3977,7 +4137,7 @@ export default function MapIndex() {
                     {/* Row 1: Transport + time + stats + tracking */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderBottom: `1px solid ${theme.border}20`, flexWrap: 'wrap' }}>
                         <button onClick={() => { if (timelineCursor >= 100) setTimelineCursor(0); setTimelinePlaying(!timelinePlaying); }} style={{ width: 26, height: 26, borderRadius: 5, border: `1px solid ${timelinePlaying ? '#3b82f650' : theme.border}`, background: timelinePlaying ? 'rgba(59,130,246,0.12)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: timelinePlaying ? '#3b82f6' : theme.textDim, flexShrink: 0 }}>
-                            {timelinePlaying ? <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="4" height="10" rx="1"/><rect x="9" y="3" width="4" height="10" rx="1"/></svg> : <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><polygon points="4,2 14,8 4,14"/></svg>}
+                            {timelinePlaying ? <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="4" height="10" rx="1"/><rect x="9" y="3" width="4" height="10" rx="1"/></svg> : <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><polygon points="4,2 14,8 4,14"/></svg>}
                         </button>
                         <button onClick={() => setTimelineCursor(Math.max(0, timelineCursor - 2))} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, flexShrink: 0, padding: 0 }}><svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><polygon points="10,2 4,8 10,14"/></svg></button>
                         <button onClick={() => setTimelineCursor(Math.min(100, timelineCursor + 2))} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, flexShrink: 0, padding: 0 }}><svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><polygon points="6,2 12,8 6,14"/></svg></button>
@@ -4024,8 +4184,8 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>👤 {tlStats.uniquePersons} persons</span>
                         <span style={{ fontSize: 8, color: theme.textDim }}>⚡ {tlStats.rate}/hr</span>
                         <div style={{ flex: 1 }} />
-                        <button onClick={() => { /* mock export */ const el = document.createElement('a'); el.href = 'data:text/csv,' + encodeURIComponent('id,type,title,time,lat,lng,severity,person\n' + visibleTLEvents.map(e => `${e.id},${e.type},"${e.title}",${e.ts},${e.lat},${e.lng},${e.sev},${e.personName || ''}`).join('\n')); el.download = 'argux-timeline-export.csv'; el.click(); }} style={{ padding: '2px 7px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 7, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>📥 Export</button>
-                        {tlHiddenIds.size > 0 && <button onClick={() => setTlHiddenIds(new Set())} style={{ padding: '2px 7px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 7, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>👁️ {tlHiddenIds.size} hidden · Show all</button>}
+                        <button onClick={() => { /* mock export */ const el = document.createElement('a'); el.href = 'data:text/csv,' + encodeURIComponent('id,type,title,time,lat,lng,severity,person\n' + visibleTLEvents.map(e => `${e.id},${e.type},"${e.title}",${e.ts},${e.lat},${e.lng},${e.sev},${e.personName || ''}`).join('\n')); el.download = 'argux-timeline-export.csv'; el.click(); }} style={{ padding: '2px 7px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>📥 Export</button>
+                        {tlHiddenIds.size > 0 && <button onClick={() => setTlHiddenIds(new Set())} style={{ padding: '2px 7px', borderRadius: 3, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 9, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>👁️ {tlHiddenIds.size} hidden · Show all</button>}
                     </div>
 
                     {/* Severity heatstrip */}
@@ -4044,42 +4204,42 @@ export default function MapIndex() {
                             {tlDensity.map((d, i) => { const pct = ((i + 0.5) / 50) * 100; const past = pct <= timelineCursor; return <div key={i} style={{ flex: 1, height: `${Math.max(2, d * 100)}%`, background: past ? '#3b82f6' : `rgba(${d > 0.5 ? '239,68,68' : '107,114,128'},${0.15 + d * 0.3})`, borderRadius: '2px 2px 0 0', transition: 'background 0.1s' }} />; })}
                         </div>
                         <input type="range" min="0" max="100" step="0.1" value={timelineCursor} onChange={e => { setTimelineCursor(parseFloat(e.target.value)); setTimelinePlaying(false); }} style={{ width: '100%', height: 6, appearance: 'none', WebkitAppearance: 'none', background: `linear-gradient(to right, #3b82f6 ${timelineCursor}%, ${theme.border} ${timelineCursor}%)`, borderRadius: 3, outline: 'none', cursor: 'pointer', margin: '2px 0' }} />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 7, fontFamily: "'JetBrains Mono', monospace", color: theme.textDim }}><span>{fmtTlTime(tlStart)}</span><span>{fmtTlTime(tlStart + tlRange * 0.25)}</span><span>{fmtTlTime(tlStart + tlRange * 0.5)}</span><span>{fmtTlTime(tlStart + tlRange * 0.75)}</span><span>{fmtTlTime(tlEnd)}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: theme.textDim }}><span>{fmtTlTime(tlStart)}</span><span>{fmtTlTime(tlStart + tlRange * 0.25)}</span><span>{fmtTlTime(tlStart + tlRange * 0.5)}</span><span>{fmtTlTime(tlStart + tlRange * 0.75)}</span><span>{fmtTlTime(tlEnd)}</span></div>
                     </div>
 
                     {/* Bottom: filters + person panel + event feed */}
                     <div style={{ display: 'flex', height: tlShowPersonPanel ? 140 : 100, borderTop: `1px solid ${theme.border}20`, marginTop: 2 }}>
                         {/* Type filters */}
                         <div style={{ width: 110, borderRight: `1px solid ${theme.border}20`, padding: '4px 8px', display: 'flex', flexDirection: 'column' as const, gap: 2, flexShrink: 0, overflowY: 'auto' }}>
-                            <div style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 1 }}>Types</div>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 1 }}>Types</div>
                             {[{ id: 'lpr', icon: '🚗', label: 'LPR', color: '#10b981' }, { id: 'face', icon: '🧑‍🦲', label: 'Face', color: '#ec4899' }, { id: 'source', icon: '📡', label: 'Sources', color: '#3b82f6' }, { id: 'zone', icon: '🛡️', label: 'Zones', color: '#f59e0b' }, { id: 'object', icon: '📌', label: 'Objects', color: '#8b5cf6' }].map(f => {
                                 const on = tlFilterTypes.has(f.id); const count = periodFilteredEvents.filter(e => e.type === f.id).length;
-                                return <button key={f.id} onClick={() => toggleTlFilter(f.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 5px', borderRadius: 3, border: `1px solid ${on ? f.color + '40' : theme.border}`, background: on ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}><span style={{ fontSize: 9 }}>{f.icon}</span><span style={{ fontSize: 8, fontWeight: 600, color: on ? f.color : theme.textDim, flex: 1 }}>{f.label}</span><span style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{count}</span></button>;
+                                return <button key={f.id} onClick={() => toggleTlFilter(f.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 5px', borderRadius: 3, border: `1px solid ${on ? f.color + '40' : theme.border}`, background: on ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}><span style={{ fontSize: 9 }}>{f.icon}</span><span style={{ fontSize: 8, fontWeight: 600, color: on ? f.color : theme.textDim, flex: 1 }}>{f.label}</span><span style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{count}</span></button>;
                             })}
                             {tlPersonIds.size > 0 && <div style={{ marginTop: 4, paddingTop: 4, borderTop: `1px solid ${theme.border}20` }}>
-                                <div style={{ fontSize: 7, fontWeight: 700, color: '#ec4899', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 2 }}>Persons</div>
-                                {Array.from(tlPersonIds).map(pid => { const p = tlPersonOptions.find(x => x.id === pid); return p ? <div key={pid} style={{ fontSize: 7, color: theme.textSecondary, display: 'flex', alignItems: 'center', gap: 3, marginBottom: 1 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ec4899', flexShrink: 0 }} />{p.name}<button onClick={() => toggleTlPerson(pid)} style={{ background: 'none', border: 'none', color: theme.danger, cursor: 'pointer', fontSize: 8, padding: 0, marginLeft: 'auto' }}>×</button></div> : null; })}
+                                <div style={{ fontSize: 9, fontWeight: 700, color: '#ec4899', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 2 }}>Persons</div>
+                                {Array.from(tlPersonIds).map(pid => { const p = tlPersonOptions.find(x => x.id === pid); return p ? <div key={pid} style={{ fontSize: 9, color: theme.textSecondary, display: 'flex', alignItems: 'center', gap: 3, marginBottom: 1 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ec4899', flexShrink: 0 }} />{p.name}<button onClick={() => toggleTlPerson(pid)} style={{ background: 'none', border: 'none', color: theme.danger, cursor: 'pointer', fontSize: 8, padding: 0, marginLeft: 'auto' }}>×</button></div> : null; })}
                             </div>}
                         </div>
 
                         {/* Person panel (toggleable) */}
                         {tlShowPersonPanel && <div style={{ width: 160, borderRight: `1px solid ${theme.border}20`, padding: '4px 8px', overflowY: 'auto', flexShrink: 0 }}>
-                            <div style={{ fontSize: 7, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Filter / Track Person</div>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Filter / Track Person</div>
                             {tlPersonOptions.map(p => {
                                 const isFiltered = tlPersonIds.has(p.id);
                                 const isTracking = tlTrackingPerson === p.id;
                                 const evtCount = filteredTLEvents.filter(e => e.personId === p.id).length;
                                 const avatar = mockPersons.find(x => x.id === p.id)?.avatar;
                                 return <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 4px', borderRadius: 4, marginBottom: 2, background: isTracking ? 'rgba(34,197,94,0.08)' : isFiltered ? 'rgba(236,72,153,0.06)' : 'transparent', border: `1px solid ${isTracking ? '#22c55e30' : isFiltered ? '#ec489920' : 'transparent'}` }}>
-                                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: avatar ? `url(${avatar}) center/cover` : 'rgba(59,130,246,0.15)', border: `1.5px solid ${isFiltered ? '#ec4899' : theme.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7 }}>{avatar ? '' : '👤'}</div>
+                                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: avatar ? `url(${avatar}) center/cover` : 'rgba(59,130,246,0.15)', border: `1.5px solid ${isFiltered ? '#ec4899' : theme.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>{avatar ? '' : '👤'}</div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ fontSize: 8, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{p.name}</div>
-                                        <div style={{ fontSize: 7, color: theme.textDim }}>{evtCount} events</div>
+                                        <div style={{ fontSize: 9, color: theme.textDim }}>{evtCount} events</div>
                                     </div>
                                     <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                                         <button onClick={() => toggleTlPerson(p.id)} title="Filter" style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isFiltered ? '#ec489940' : theme.border}`, background: isFiltered ? 'rgba(236,72,153,0.1)' : 'transparent', color: isFiltered ? '#ec4899' : theme.textDim, fontSize: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>🔍</button>
-                                        <button onClick={() => startTracking(p.id, false)} title="Track 2D" style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isTracking && !tlTracking3D ? '#22c55e40' : theme.border}`, background: isTracking && !tlTracking3D ? 'rgba(34,197,94,0.1)' : 'transparent', color: theme.textDim, fontSize: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>▶</button>
-                                        <button onClick={() => startTracking(p.id, true)} title="Track 3D" style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isTracking && tlTracking3D ? '#8b5cf640' : theme.border}`, background: isTracking && tlTracking3D ? 'rgba(139,92,246,0.1)' : 'transparent', color: theme.textDim, fontSize: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontWeight: 700 }}>3D</button>
+                                        <button onClick={() => startTracking(p.id, false)} title="Track 2D" style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isTracking && !tlTracking3D ? '#22c55e40' : theme.border}`, background: isTracking && !tlTracking3D ? 'rgba(34,197,94,0.1)' : 'transparent', color: theme.textDim, fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>▶</button>
+                                        <button onClick={() => startTracking(p.id, true)} title="Track 3D" style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isTracking && tlTracking3D ? '#8b5cf640' : theme.border}`, background: isTracking && tlTracking3D ? 'rgba(139,92,246,0.1)' : 'transparent', color: theme.textDim, fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontWeight: 700 }}>3D</button>
                                     </div>
                                 </div>;
                             })}
@@ -4098,12 +4258,12 @@ export default function MapIndex() {
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ fontSize: 9, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, display: 'flex', alignItems: 'center', gap: 4 }}>
                                             {ev.title}
-                                            <span style={{ fontSize: 7, fontWeight: 700, padding: '0 3px', borderRadius: 2, background: `${sevColor}15`, color: sevColor, border: `1px solid ${sevColor}25`, flexShrink: 0 }}>{ev.sev === 'critical' ? '!!!' : ev.sev === 'high' ? '!!' : ev.sev === 'medium' ? '!' : ''}</span>
+                                            <span style={{ fontSize: 9, fontWeight: 700, padding: '0 3px', borderRadius: 2, background: `${sevColor}15`, color: sevColor, border: `1px solid ${sevColor}25`, flexShrink: 0 }}>{ev.sev === 'critical' ? '!!!' : ev.sev === 'high' ? '!!' : ev.sev === 'medium' ? '!' : ''}</span>
                                         </div>
-                                        <div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ev.sub}</div>
+                                        <div style={{ fontSize: 9, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ev.sub}</div>
                                     </div>
-                                    {ev.personName && <span style={{ fontSize: 7, color: '#ec4899', flexShrink: 0, maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ev.personName}</span>}
-                                    <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, whiteSpace: 'nowrap' as const }}>{ev.ts.split(' ')[1]}</span>
+                                    {ev.personName && <span style={{ fontSize: 9, color: '#ec4899', flexShrink: 0, maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ev.personName}</span>}
+                                    <span style={{ fontSize: 9, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, whiteSpace: 'nowrap' as const }}>{ev.ts.split(' ')[1]}</span>
                                 </div>;
                             })}
                         </div>
@@ -4117,7 +4277,7 @@ export default function MapIndex() {
 
                     {!isPanelMin('tracker') && <>{/* Tabs */}
                     <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}20`, flexShrink: 0 }}>
-                        {[{ id: 'sessions' as const, label: 'Sessions', count: liveTrackSessions.length }, { id: 'targets' as const, label: 'Targets', count: trackablePersons.length }, { id: 'history' as const, label: 'History', count: 0 }].map(t => <button key={t.id} onClick={() => setLiveTrackTab(t.id)} style={{ flex: 1, padding: '7px 0', background: 'transparent', border: 'none', borderBottom: `2px solid ${liveTrackTab === t.id ? '#22c55e' : 'transparent'}`, color: liveTrackTab === t.id ? '#22c55e' : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>{t.label}{t.count > 0 && <span style={{ fontSize: 7, fontWeight: 800, padding: '0 3px', borderRadius: 3, background: liveTrackTab === t.id ? '#22c55e15' : `${theme.border}`, color: liveTrackTab === t.id ? '#22c55e' : theme.textDim }}>{t.count}</span>}</button>)}
+                        {[{ id: 'sessions' as const, label: 'Sessions', count: liveTrackSessions.length }, { id: 'targets' as const, label: 'Targets', count: trackablePersons.length }, { id: 'history' as const, label: 'History', count: 0 }].map(t => <button key={t.id} onClick={() => setLiveTrackTab(t.id)} style={{ flex: 1, padding: '7px 0', background: 'transparent', border: 'none', borderBottom: `2px solid ${liveTrackTab === t.id ? '#22c55e' : 'transparent'}`, color: liveTrackTab === t.id ? '#22c55e' : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>{t.label}{t.count > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '0 3px', borderRadius: 3, background: liveTrackTab === t.id ? '#22c55e15' : `${theme.border}`, color: liveTrackTab === t.id ? '#22c55e' : theme.textDim }}>{t.count}</span>}</button>)}
                     </div>
 
                     {/* Display toggles */}
@@ -4156,9 +4316,9 @@ export default function MapIndex() {
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: 11, fontWeight: 700, color: theme.text }}>{s.personName} {s.personLastName} <span style={{ fontWeight: 400, color: theme.textDim, fontSize: 9 }}>({s.personNickname})</span></div>
                                             <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}>
-                                                <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 5px', borderRadius: 3, background: `${statColor}15`, color: statColor, border: `1px solid ${statColor}25` }}>{s.status === 'tracking' ? '● TRACKING' : s.status === 'paused' ? '⏸ PAUSED' : '✕ SIGNAL LOST'}</span>
-                                                <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${riskColor}12`, color: riskColor, border: `1px solid ${riskColor}20` }}>{s.risk}</span>
-                                                <span style={{ fontSize: 7, fontWeight: 600, color: s.sourceType === 'gps' ? '#22c55e' : '#06b6d4' }}>{s.sourceType === 'gps' ? '📡 GPS' : '📍 Phone'}</span>
+                                                <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 3, background: `${statColor}15`, color: statColor, border: `1px solid ${statColor}25` }}>{s.status === 'tracking' ? '● TRACKING' : s.status === 'paused' ? '⏸ PAUSED' : '✕ SIGNAL LOST'}</span>
+                                                <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${riskColor}12`, color: riskColor, border: `1px solid ${riskColor}20` }}>{s.risk}</span>
+                                                <span style={{ fontSize: 9, fontWeight: 600, color: s.sourceType === 'gps' ? '#22c55e' : '#06b6d4' }}>{s.sourceType === 'gps' ? '📡 GPS' : '📍 Phone'}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -4175,8 +4335,8 @@ export default function MapIndex() {
                                     </div>
                                     {/* Battery + Signal bars */}
                                     <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                                        <div style={{ flex: 1 }}><div style={{ fontSize: 7, color: theme.textDim, marginBottom: 2 }}>🔋 Battery</div><div style={{ height: 4, borderRadius: 2, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${s.battery}%`, height: '100%', background: batColor, borderRadius: 2, transition: 'width 0.5s' }} /></div></div>
-                                        <div style={{ flex: 1 }}><div style={{ fontSize: 7, color: theme.textDim, marginBottom: 2 }}>📶 Signal</div><div style={{ height: 4, borderRadius: 2, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${s.signal}%`, height: '100%', background: sigColor, borderRadius: 2, transition: 'width 0.5s' }} /></div></div>
+                                        <div style={{ flex: 1 }}><div style={{ fontSize: 9, color: theme.textDim, marginBottom: 2 }}>🔋 Battery</div><div style={{ height: 4, borderRadius: 2, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${s.battery}%`, height: '100%', background: batColor, borderRadius: 2, transition: 'width 0.5s' }} /></div></div>
+                                        <div style={{ flex: 1 }}><div style={{ fontSize: 9, color: theme.textDim, marginBottom: 2 }}>📶 Signal</div><div style={{ height: 4, borderRadius: 2, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${s.signal}%`, height: '100%', background: sigColor, borderRadius: 2, transition: 'width 0.5s' }} /></div></div>
                                     </div>
                                     {/* Actions */}
                                     <div style={{ display: 'flex', gap: 4 }}>
@@ -4202,10 +4362,10 @@ export default function MapIndex() {
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{tp.personName} {tp.personLastName}</div>
                                             <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}>
-                                                <span style={{ fontSize: 7, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: `${riskColor}12`, color: riskColor, border: `1px solid ${riskColor}20` }}>{tp.risk}</span>
-                                                <span style={{ fontSize: 7, color: tp.sourceType === 'gps' ? '#22c55e' : '#06b6d4', fontWeight: 600 }}>{tp.sourceType === 'gps' ? '📡 GPS' : '📍 Phone'}</span>
-                                                <span style={{ fontSize: 7, color: tp.status === 'online' ? '#22c55e' : tp.status === 'degraded' ? '#f59e0b' : '#6b7280' }}>● {tp.status}</span>
-                                                <span style={{ fontSize: 7, color: batColor }}>🔋{tp.battery}%</span>
+                                                <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: `${riskColor}12`, color: riskColor, border: `1px solid ${riskColor}20` }}>{tp.risk}</span>
+                                                <span style={{ fontSize: 9, color: tp.sourceType === 'gps' ? '#22c55e' : '#06b6d4', fontWeight: 600 }}>{tp.sourceType === 'gps' ? '📡 GPS' : '📍 Phone'}</span>
+                                                <span style={{ fontSize: 9, color: tp.status === 'online' ? '#22c55e' : tp.status === 'degraded' ? '#f59e0b' : '#6b7280' }}>● {tp.status}</span>
+                                                <span style={{ fontSize: 9, color: batColor }}>🔋{tp.battery}%</span>
                                             </div>
                                         </div>
                                         {isActive ? <span style={{ fontSize: 8, fontWeight: 700, color: '#22c55e', padding: '3px 8px', borderRadius: 4, background: '#22c55e10', border: '1px solid #22c55e20' }}>ACTIVE</span> : <button onClick={() => { startLiveTrack(tp); setLiveTrackTab('sessions'); triggerTopLoader(); }} disabled={tp.status === 'offline'} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${tp.status === 'offline' ? theme.border : '#22c55e30'}`, background: tp.status === 'offline' ? 'transparent' : 'rgba(34,197,94,0.08)', color: tp.status === 'offline' ? theme.textDim : '#22c55e', fontSize: 9, fontWeight: 700, cursor: tp.status === 'offline' ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: tp.status === 'offline' ? 0.5 : 1 }}>▶ Track</button>}
@@ -4229,7 +4389,7 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>·</span>
                         <span style={{ fontSize: 8, color: theme.textDim }}>{trackablePersons.filter(t => t.status === 'online').length}/{trackablePersons.length} online</span>
                         <div style={{ flex: 1 }} />
-                        <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveTrackSessions.length > 0 ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6002</span></span>
+                        <span style={{ fontSize: 9, color: theme.textDim }}>WS: <span style={{ color: liveTrackSessions.length > 0 ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6002</span></span>
                     </div>
                 </>}
                 </div>}
@@ -4294,7 +4454,7 @@ export default function MapIndex() {
                                 { label: 'Avg Dur', value: `${corrStats!.avgDur}m`, color: '#8b5cf6' },
                             ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' as const }}>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
-                                <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
+                                <div style={{ fontSize: 9, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
                             </div>)}
                         </div>
 
@@ -4308,7 +4468,7 @@ export default function MapIndex() {
                             ].map(s => <div key={s.sev} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, padding: '3px 0', borderRadius: 3, background: s.count > 0 ? `${s.color}08` : 'transparent', border: `1px solid ${s.count > 0 ? s.color + '20' : 'transparent'}` }}>
                                 <div style={{ width: 5, height: 5, borderRadius: 1, background: s.count > 0 ? s.color : theme.border }} />
                                 <span style={{ fontSize: 8, fontWeight: 700, color: s.count > 0 ? s.color : theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{s.count}</span>
-                                <span style={{ fontSize: 7, color: theme.textDim }}>{s.sev}</span>
+                                <span style={{ fontSize: 9, color: theme.textDim }}>{s.sev}</span>
                             </div>)}
                         </div>
 
@@ -4335,9 +4495,9 @@ export default function MapIndex() {
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: 10, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ev.subjectA.name.split(' ')[1]} ↔ {ev.subjectB.name.split(' ')[1]}</div>
                                             <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}>
-                                                <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{ev.severity.toUpperCase()}</span>
-                                                <span style={{ fontSize: 7, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{ev.confidence}%</span>
-                                                <span style={{ fontSize: 7, color: theme.textDim }}>{ev.source}</span>
+                                                <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{ev.severity.toUpperCase()}</span>
+                                                <span style={{ fontSize: 9, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{ev.confidence}%</span>
+                                                <span style={{ fontSize: 9, color: theme.textDim }}>{ev.source}</span>
                                             </div>
                                         </div>
                                         <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
@@ -4411,7 +4571,7 @@ export default function MapIndex() {
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}><span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Sensitivity</span><span style={{ fontSize: 9, fontWeight: 700, color: '#8b5cf6', fontFamily: "'JetBrains Mono', monospace" }}>{anomalySensitivity}%</span></div>
                             <input type="range" min={30} max={100} step={5} value={anomalySensitivity} onChange={e => setAnomalySensitivity(parseInt(e.target.value))} style={{ width: '100%', height: 4, accentColor: '#8b5cf6' }} />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 7, color: theme.textDim, marginTop: 2 }}><span>Fewer, high-confidence</span><span>More, lower threshold</span></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: theme.textDim, marginTop: 2 }}><span>Fewer, high-confidence</span><span>More, lower threshold</span></div>
                         </div>
                         {/* Run button */}
                         <button onClick={runAnomalyDetection} disabled={anomalyRunning} style={{ padding: '8px', borderRadius: 6, border: 'none', background: anomalyRunning ? theme.border : 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: anomalyRunning ? theme.textDim : '#fff', fontSize: 11, fontWeight: 800, cursor: anomalyRunning ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, letterSpacing: '0.05em', opacity: anomalyRunning ? 0.6 : 1, transition: 'all 0.2s' }}>
@@ -4430,7 +4590,7 @@ export default function MapIndex() {
                                 { label: 'Avg Dev', value: `${anomalyStats!.avgDev}%`, color: '#f59e0b' },
                             ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' as const }}>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
-                                <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
+                                <div style={{ fontSize: 9, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
                             </div>)}
                         </div>
 
@@ -4440,9 +4600,9 @@ export default function MapIndex() {
                                 { sev: 'critical', color: '#ef4444', count: anomalyStats!.critical },
                                 { sev: 'high', color: '#f97316', count: anomalyStats!.high },
                                 { sev: 'medium', color: '#f59e0b', count: anomalyStats!.medium },
-                            ].filter(s => s.count > 0).map(s => <span key={s.sev} style={{ fontSize: 7, fontWeight: 700, padding: '2px 5px', borderRadius: 3, background: `${s.color}10`, color: s.color, border: `1px solid ${s.color}20` }}>{s.count} {s.sev}</span>)}
+                            ].filter(s => s.count > 0).map(s => <span key={s.sev} style={{ fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 3, background: `${s.color}10`, color: s.color, border: `1px solid ${s.color}20` }}>{s.count} {s.sev}</span>)}
                             <span style={{ width: 1, height: 14, background: theme.border, margin: '0 2px' }} />
-                            {anomalyTypes.filter(t => t.id !== 'all' && anomalyResults.some(r => r.type === t.id)).map(t => <span key={t.id} style={{ fontSize: 7, fontWeight: 600, padding: '2px 5px', borderRadius: 3, background: `${t.color}08`, color: t.color, border: `1px solid ${t.color}15` }}>{t.icon} {anomalyResults.filter(r => r.type === t.id).length}</span>)}
+                            {anomalyTypes.filter(t => t.id !== 'all' && anomalyResults.some(r => r.type === t.id)).map(t => <span key={t.id} style={{ fontSize: 9, fontWeight: 600, padding: '2px 5px', borderRadius: 3, background: `${t.color}08`, color: t.color, border: `1px solid ${t.color}15` }}>{t.icon} {anomalyResults.filter(r => r.type === t.id).length}</span>)}
                         </div>
 
                         {/* Anomaly list */}
@@ -4461,9 +4621,9 @@ export default function MapIndex() {
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: 10, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{an.title}</div>
                                             <div style={{ display: 'flex', gap: 3, alignItems: 'center', marginTop: 1 }}>
-                                                <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{an.severity.toUpperCase()}</span>
-                                                <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${typeColor}10`, color: typeColor, border: `1px solid ${typeColor}15` }}>{typeInfo?.icon} {typeInfo?.label}</span>
-                                                <span style={{ fontSize: 7, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{an.confidence}%</span>
+                                                <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{an.severity.toUpperCase()}</span>
+                                                <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${typeColor}10`, color: typeColor, border: `1px solid ${typeColor}15` }}>{typeInfo?.icon} {typeInfo?.label}</span>
+                                                <span style={{ fontSize: 9, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{an.confidence}%</span>
                                             </div>
                                         </div>
                                         <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
@@ -4473,7 +4633,7 @@ export default function MapIndex() {
                                     </div>
                                     {/* Deviation bar */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: isExpanded ? 6 : 0 }}>
-                                        <span style={{ fontSize: 7, color: theme.textDim, width: 50, flexShrink: 0 }}>Deviation</span>
+                                        <span style={{ fontSize: 9, color: theme.textDim, width: 50, flexShrink: 0 }}>Deviation</span>
                                         <div style={{ flex: 1, height: 4, borderRadius: 2, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${an.deviation}%`, height: '100%', borderRadius: 2, background: an.deviation >= 85 ? '#ef4444' : an.deviation >= 70 ? '#f59e0b' : '#22c55e', transition: 'width 0.5s' }} /></div>
                                         <span style={{ fontSize: 8, fontWeight: 700, color: an.deviation >= 85 ? '#ef4444' : an.deviation >= 70 ? '#f59e0b' : '#22c55e', fontFamily: "'JetBrains Mono', monospace", width: 30, textAlign: 'right' as const, flexShrink: 0 }}>{an.deviation}%</span>
                                     </div>
@@ -4484,11 +4644,11 @@ export default function MapIndex() {
                                         {/* Baseline vs Observed */}
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
                                             <div style={{ padding: '6px 8px', borderRadius: 5, background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.1)' }}>
-                                                <div style={{ fontSize: 7, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>📊 Baseline</div>
+                                                <div style={{ fontSize: 9, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>📊 Baseline</div>
                                                 <div style={{ fontSize: 8, color: theme.textDim, lineHeight: 1.4 }}>{an.baseline}</div>
                                             </div>
                                             <div style={{ padding: '6px 8px', borderRadius: 5, background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}>
-                                                <div style={{ fontSize: 7, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>⚠️ Observed</div>
+                                                <div style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>⚠️ Observed</div>
                                                 <div style={{ fontSize: 8, color: theme.textDim, lineHeight: 1.4 }}>{an.observed}</div>
                                             </div>
                                         </div>
@@ -4499,7 +4659,7 @@ export default function MapIndex() {
                                         </div>
                                         {/* Recommendation */}
                                         <div style={{ padding: '8px', borderRadius: 5, background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.12)' }}>
-                                            <div style={{ fontSize: 7, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>💡 Recommendation</div>
+                                            <div style={{ fontSize: 9, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>💡 Recommendation</div>
                                             <div style={{ fontSize: 9, color: theme.text, lineHeight: 1.5 }}>{an.recommendation}</div>
                                         </div>
                                     </div>}
@@ -4511,7 +4671,7 @@ export default function MapIndex() {
                         <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                             <span style={{ fontSize: 8, color: theme.textDim }}>{anomalyResults.length} anomalies · ø{anomalyStats!.avgConf}% confidence · {anomalyStats!.types} types</span>
                             <div style={{ flex: 1 }} />
-                            <span style={{ fontSize: 7, color: '#8b5cf6', fontWeight: 600 }}>AI: Ollama LLaMA 3.1</span>
+                            <span style={{ fontSize: 9, color: '#8b5cf6', fontWeight: 600 }}>AI: Ollama LLaMA 3.1</span>
                         </div>
                     </>}
 
@@ -4520,7 +4680,7 @@ export default function MapIndex() {
                         <div style={{ fontSize: 36, marginBottom: 8 }}>🧠</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>AI Anomaly Detection</div>
                         <div style={{ fontSize: 10, color: theme.textDim, maxWidth: 260, lineHeight: 1.5, marginBottom: 12 }}>Uses on-premise AI to analyze movement patterns, temporal behaviors, and communication changes to identify deviations from established baselines.</div>
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>{anomalyTypes.filter(t => t.id !== 'all').map(t => <span key={t.id} style={{ fontSize: 7, padding: '2px 5px', borderRadius: 3, background: `${t.color}08`, color: t.color, border: `1px solid ${t.color}15` }}>{t.icon} {t.label}</span>)}</div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>{anomalyTypes.filter(t => t.id !== 'all').map(t => <span key={t.id} style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3, background: `${t.color}08`, color: t.color, border: `1px solid ${t.color}15` }}>{t.icon} {t.label}</span>)}</div>
                     </div>}
 
                     {/* Loading */}
@@ -4561,7 +4721,7 @@ export default function MapIndex() {
                                 { label: 'Actions', value: String(predStats!.totalActions), color: '#3b82f6' },
                             ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' as const }}>
                                 <div style={{ fontSize: 16, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
-                                <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
+                                <div style={{ fontSize: 9, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
                             </div>)}
                         </div>
 
@@ -4576,7 +4736,7 @@ export default function MapIndex() {
                                     {/* Person header */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                         <div style={{ width: 32, height: 32, borderRadius: '50%', border: `2.5px solid ${riskColor}`, background: `url(${pr.personAvatar}) center/cover`, flexShrink: 0, position: 'relative' as const }}>
-                                            {escalating && <div style={{ position: 'absolute' as const, top: -3, right: -3, width: 12, height: 12, borderRadius: '50%', background: '#ef4444', border: '1.5px solid rgba(13,18,32,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: '#fff', fontWeight: 900 }}>↑</div>}
+                                            {escalating && <div style={{ position: 'absolute' as const, top: -3, right: -3, width: 12, height: 12, borderRadius: '50%', background: '#ef4444', border: '1.5px solid rgba(13,18,32,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 900 }}>↑</div>}
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>{pr.personName}</div>
@@ -4616,7 +4776,7 @@ export default function MapIndex() {
                                         <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(59,130,246,0.03)', border: '1px solid rgba(59,130,246,0.08)' }}>
                                             <div style={{ fontSize: 8, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>Predicted Locations</div>
                                             {pr.nextLocations.map((loc: any, i: number) => <div key={i} onClick={e => { e.stopPropagation(); mapRef.current?.flyTo({ center: [loc.lng, loc.lat], zoom: 16, duration: 600 }); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, marginBottom: 2, cursor: 'pointer', border: `1px solid transparent` }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f625'; e.currentTarget.style.background = 'rgba(59,130,246,0.04)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'transparent'; }}>
-                                                <div style={{ width: 18, height: 18, borderRadius: '50%', background: `conic-gradient(#3b82f6 ${loc.probability * 3.6}deg, ${theme.border} ${loc.probability * 3.6}deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: '50%', background: 'rgba(10,14,22,0.97)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 6, fontWeight: 900, color: '#3b82f6' }}>{i + 1}</span></div></div>
+                                                <div style={{ width: 18, height: 18, borderRadius: '50%', background: `conic-gradient(#3b82f6 ${loc.probability * 3.6}deg, ${theme.border} ${loc.probability * 3.6}deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: '50%', background: 'rgba(10,14,22,0.97)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 8, fontWeight: 900, color: '#3b82f6' }}>{i + 1}</span></div></div>
                                                 <span style={{ fontSize: 9, color: theme.text, flex: 1 }}>{loc.name}</span>
                                                 <span style={{ fontSize: 9, fontWeight: 800, color: loc.probability >= 60 ? '#ef4444' : loc.probability >= 40 ? '#f59e0b' : '#3b82f6', fontFamily: "'JetBrains Mono', monospace" }}>{loc.probability}%</span>
                                             </div>)}
@@ -4630,7 +4790,7 @@ export default function MapIndex() {
                                         <div style={{ padding: '8px', borderRadius: 6, background: 'rgba(34,197,94,0.03)', border: '1px solid rgba(34,197,94,0.1)' }}>
                                             <div style={{ fontSize: 8, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 4 }}>💡 Recommended Actions</div>
                                             {pr.recommendedActions.map((a: string, i: number) => <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 4, marginBottom: 3 }}>
-                                                <div style={{ width: 14, height: 14, borderRadius: 3, background: '#22c55e12', border: '1px solid #22c55e20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 800, color: '#22c55e', flexShrink: 0 }}>{i + 1}</div>
+                                                <div style={{ width: 14, height: 14, borderRadius: 3, background: '#22c55e12', border: '1px solid #22c55e20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#22c55e', flexShrink: 0 }}>{i + 1}</div>
                                                 <span style={{ fontSize: 9, color: theme.text, lineHeight: 1.4 }}>{a}</span>
                                             </div>)}
                                         </div>
@@ -4643,7 +4803,7 @@ export default function MapIndex() {
                         <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                             <span style={{ fontSize: 8, color: theme.textDim }}>{predResults.length} subjects · ø{predStats!.avgConf}% conf · {predStats!.totalActions} actions</span>
                             <div style={{ flex: 1 }} />
-                            <span style={{ fontSize: 7, color: '#ef4444', fontWeight: 600 }}>AI: XGBoost + scikit-learn</span>
+                            <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 600 }}>AI: XGBoost + scikit-learn</span>
                         </div>
                     </>}
 
@@ -4653,7 +4813,7 @@ export default function MapIndex() {
                         <div style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Predictive Risk Analysis</div>
                         <div style={{ fontSize: 10, color: theme.textDim, maxWidth: 260, lineHeight: 1.5, marginBottom: 12 }}>Uses on-premise ML models to predict risk trajectories, probable next locations, and threat assessments for persons of interest.</div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-                            {['Risk Trajectory', 'Location Prediction', 'Threat Assessment', 'Action Recommendations'].map(f => <span key={f} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, background: '#ef444408', color: '#ef4444', border: '1px solid #ef444415' }}>{f}</span>)}
+                            {['Risk Trajectory', 'Location Prediction', 'Threat Assessment', 'Action Recommendations'].map(f => <span key={f} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, background: '#ef444408', color: '#ef4444', border: '1px solid #ef444415' }}>{f}</span>)}
                         </div>
                     </div>}
 
@@ -4705,15 +4865,15 @@ export default function MapIndex() {
                                 { label: 'Events', value: String(patternStats!.totalOcc), color: '#22c55e' },
                             ].map(s => <div key={s.label} style={{ padding: '6px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' as const }}>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
-                                <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
+                                <div style={{ fontSize: 9, color: theme.textDim, marginTop: 2, fontWeight: 600 }}>{s.label}</div>
                             </div>)}
                         </div>
 
                         {/* Category + severity chips */}
                         <div style={{ display: 'flex', gap: 3, padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0, flexWrap: 'wrap' }}>
-                            {[{ sev: 'critical', color: '#ef4444' }, { sev: 'high', color: '#f97316' }, { sev: 'medium', color: '#f59e0b' }].map(s => { const c = patternResults.filter(r => r.severity === s.sev).length; return c > 0 ? <span key={s.sev} style={{ fontSize: 7, fontWeight: 700, padding: '2px 5px', borderRadius: 3, background: `${s.color}10`, color: s.color, border: `1px solid ${s.color}20` }}>{c} {s.sev}</span> : null; })}
+                            {[{ sev: 'critical', color: '#ef4444' }, { sev: 'high', color: '#f97316' }, { sev: 'medium', color: '#f59e0b' }].map(s => { const c = patternResults.filter(r => r.severity === s.sev).length; return c > 0 ? <span key={s.sev} style={{ fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 3, background: `${s.color}10`, color: s.color, border: `1px solid ${s.color}20` }}>{c} {s.sev}</span> : null; })}
                             <span style={{ width: 1, height: 14, background: theme.border, margin: '0 2px' }} />
-                            {patternCategories.filter(c => c.id !== 'all' && patternResults.some(r => r.category === c.id)).map(c => <span key={c.id} style={{ fontSize: 7, fontWeight: 600, padding: '2px 5px', borderRadius: 3, background: `${c.color}08`, color: c.color, border: `1px solid ${c.color}15` }}>{c.icon} {patternResults.filter(r => r.category === c.id).length}</span>)}
+                            {patternCategories.filter(c => c.id !== 'all' && patternResults.some(r => r.category === c.id)).map(c => <span key={c.id} style={{ fontSize: 9, fontWeight: 600, padding: '2px 5px', borderRadius: 3, background: `${c.color}08`, color: c.color, border: `1px solid ${c.color}15` }}>{c.icon} {patternResults.filter(r => r.category === c.id).length}</span>)}
                         </div>
 
                         {/* Pattern list */}
@@ -4732,8 +4892,8 @@ export default function MapIndex() {
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: 10, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{pt.title}</div>
                                             <div style={{ display: 'flex', gap: 3, alignItems: 'center', marginTop: 1 }}>
-                                                <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{pt.severity.toUpperCase()}</span>
-                                                <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${catColor}10`, color: catColor, border: `1px solid ${catColor}15` }}>{catInfo?.icon} {catInfo?.label}</span>
+                                                <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{pt.severity.toUpperCase()}</span>
+                                                <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${catColor}10`, color: catColor, border: `1px solid ${catColor}15` }}>{catInfo?.icon} {catInfo?.label}</span>
                                             </div>
                                         </div>
                                         <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
@@ -4763,29 +4923,29 @@ export default function MapIndex() {
                                         {/* Details grid */}
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
                                             {pt.details.map((d: any) => <div key={d.label} style={{ padding: '5px 8px', borderRadius: 4, background: `${theme.border}15`, border: `1px solid ${theme.border}30` }}>
-                                                <div style={{ fontSize: 7, color: theme.textDim, fontWeight: 600, marginBottom: 1 }}>{d.label}</div>
+                                                <div style={{ fontSize: 9, color: theme.textDim, fontWeight: 600, marginBottom: 1 }}>{d.label}</div>
                                                 <div style={{ fontSize: 9, color: theme.text, fontWeight: 700 }}>{d.value}</div>
                                             </div>)}
                                         </div>
                                         {/* Involved persons */}
                                         {pt.involvedPersons.length > 0 && <div style={{ padding: '6px 8px', borderRadius: 5, background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.1)' }}>
-                                            <div style={{ fontSize: 7, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 4 }}>👥 Involved Persons</div>
+                                            <div style={{ fontSize: 9, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 4 }}>👥 Involved Persons</div>
                                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{pt.involvedPersons.map((p: any) => <span key={p.name} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, background: '#8b5cf608', color: '#8b5cf6', border: '1px solid #8b5cf615', fontWeight: 600 }}>{p.name} ({p.count}×)</span>)}</div>
                                         </div>}
                                         {/* Weekly heatmap expanded */}
                                         <div style={{ padding: '6px 8px', borderRadius: 5, background: 'rgba(6,182,212,0.03)', border: '1px solid rgba(6,182,212,0.08)' }}>
-                                            <div style={{ fontSize: 7, fontWeight: 700, color: '#06b6d4', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>📊 Weekly Activity Heatmap</div>
+                                            <div style={{ fontSize: 9, fontWeight: 700, color: '#06b6d4', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>📊 Weekly Activity Heatmap</div>
                                             <div style={{ display: 'flex', gap: 3 }}>
                                                 {pt.heatmap.map((v: number, i: number) => <div key={i} style={{ flex: 1, textAlign: 'center' as const }}>
                                                     <div style={{ height: 28, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}><div style={{ width: '80%', height: `${v > 0 ? Math.max(20, (v / maxHeat) * 100) : 4}%`, borderRadius: '2px 2px 0 0', background: v > 0 ? `rgba(6,182,212,${0.3 + (v / maxHeat) * 0.6})` : `${theme.border}30`, transition: 'height 0.3s' }} /></div>
-                                                    <div style={{ fontSize: 7, color: v > 0 ? '#06b6d4' : theme.textDim, fontWeight: 700, marginTop: 2 }}>{dayLabels[i]}</div>
-                                                    <div style={{ fontSize: 7, color: v > 0 ? '#06b6d4' : theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{v}</div>
+                                                    <div style={{ fontSize: 9, color: v > 0 ? '#06b6d4' : theme.textDim, fontWeight: 700, marginTop: 2 }}>{dayLabels[i]}</div>
+                                                    <div style={{ fontSize: 9, color: v > 0 ? '#06b6d4' : theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{v}</div>
                                                 </div>)}
                                             </div>
                                         </div>
                                         {/* Assessment */}
                                         <div style={{ padding: '8px', borderRadius: 5, background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)' }}>
-                                            <div style={{ fontSize: 7, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>🎯 Assessment</div>
+                                            <div style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>🎯 Assessment</div>
                                             <div style={{ fontSize: 9, color: theme.text, lineHeight: 1.5 }}>{pt.assessment}</div>
                                         </div>
                                     </div>}
@@ -4797,7 +4957,7 @@ export default function MapIndex() {
                         <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                             <span style={{ fontSize: 8, color: theme.textDim }}>{patternResults.length} patterns · ø{patternStats!.avgConf}% conf · ø{patternStats!.avgReg}% regularity</span>
                             <div style={{ flex: 1 }} />
-                            <span style={{ fontSize: 7, color: '#06b6d4', fontWeight: 600 }}>AI: scikit-learn + Kafka</span>
+                            <span style={{ fontSize: 9, color: '#06b6d4', fontWeight: 600 }}>AI: scikit-learn + Kafka</span>
                         </div>
                     </>}
 
@@ -4806,7 +4966,7 @@ export default function MapIndex() {
                         <div style={{ fontSize: 36, marginBottom: 8 }}>🔄</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: theme.textSecondary, marginBottom: 4 }}>Pattern Detection</div>
                         <div style={{ fontSize: 10, color: theme.textDim, maxWidth: 260, lineHeight: 1.5, marginBottom: 12 }}>Analyzes recurring behavioral patterns including meeting schedules, movement routes, communication timing, and location frequency across all monitored subjects.</div>
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>{patternCategories.filter(c => c.id !== 'all').map(c => <span key={c.id} style={{ fontSize: 7, padding: '2px 5px', borderRadius: 3, background: `${c.color}08`, color: c.color, border: `1px solid ${c.color}15` }}>{c.icon} {c.label}</span>)}</div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>{patternCategories.filter(c => c.id !== 'all').map(c => <span key={c.id} style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3, background: `${c.color}08`, color: c.color, border: `1px solid ${c.color}15` }}>{c.icon} {c.label}</span>)}</div>
                     </div>}
 
                     {/* Loading */}
@@ -4835,14 +4995,14 @@ export default function MapIndex() {
                             { sev: 'info', label: 'Info', color: '#3b82f6', count: incidentStats.info },
                         ].map(s => { const on = incidentSevFilter.has(s.sev); return <button key={s.sev} onClick={() => setIncidentSevFilter(prev => { if (s.sev === 'all') return new Set(['all']); const n = new Set(prev); n.delete('all'); if (n.has(s.sev)) { n.delete(s.sev); if (n.size === 0) return new Set(['all']); } else n.add(s.sev); return n; })} style={{ flex: 1, padding: '4px 2px', borderRadius: 4, border: `1px solid ${on ? s.color + '40' : 'transparent'}`, background: on ? `${s.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' as const, transition: 'all 0.1s' }}>
                             <div style={{ fontSize: 12, fontWeight: 800, color: on ? s.color : theme.textDim, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.count}</div>
-                            <div style={{ fontSize: 6, fontWeight: 700, color: on ? s.color : theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 1 }}>{s.label}</div>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: on ? s.color : theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 1 }}>{s.label}</div>
                         </button>; })}
                     </div>
 
                     {/* Type filter chips */}
                     <div style={{ display: 'flex', gap: 3, padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0, flexWrap: 'wrap' as const }}>
                         <button onClick={() => setIncidentTypeFilter(new Set(['all']))} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${incidentTypeFilter.has('all') ? '#f9731640' : theme.border}`, background: incidentTypeFilter.has('all') ? '#f9731608' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 600, color: incidentTypeFilter.has('all') ? '#f97316' : theme.textDim }}>All</button>
-                        {incidentTypes.map(t => { const on = incidentTypeFilter.has(t.id); const count = mockIncidents.filter(e => e.type === t.id).length; return count > 0 ? <button key={t.id} onClick={() => setIncidentTypeFilter(prev => { const n = new Set(prev); n.delete('all'); if (n.has(t.id)) { n.delete(t.id); if (n.size === 0) return new Set(['all']); } else n.add(t.id); return n; })} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${on ? t.color + '40' : theme.border}`, background: on ? `${t.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 2, fontSize: 8, fontWeight: 600, color: on ? t.color : theme.textDim }}>{t.icon}<span style={{ fontSize: 7 }}>{count}</span></button> : null; })}
+                        {incidentTypes.map(t => { const on = incidentTypeFilter.has(t.id); const count = mockIncidents.filter(e => e.type === t.id).length; return count > 0 ? <button key={t.id} onClick={() => setIncidentTypeFilter(prev => { const n = new Set(prev); n.delete('all'); if (n.has(t.id)) { n.delete(t.id); if (n.size === 0) return new Set(['all']); } else n.add(t.id); return n; })} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${on ? t.color + '40' : theme.border}`, background: on ? `${t.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 2, fontSize: 8, fontWeight: 600, color: on ? t.color : theme.textDim }}>{t.icon}<span style={{ fontSize: 9 }}>{count}</span></button> : null; })}
                     </div>
 
                     {/* Search */}
@@ -4877,14 +5037,14 @@ export default function MapIndex() {
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ fontSize: 10, fontWeight: 700, color: theme.text, lineHeight: 1.3 }}>{ev.title}</div>
                                                 <div style={{ display: 'flex', gap: 3, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' as const }}>
-                                                    <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{ev.severity.toUpperCase()}</span>
-                                                    <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${typeColor}10`, color: typeColor, border: `1px solid ${typeColor}15` }}>{typeInfo?.label}</span>
-                                                    {ev.personId > 0 && <span style={{ fontSize: 7, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}><div style={{ width: 10, height: 10, borderRadius: '50%', background: ev.personAvatar ? `url(${ev.personAvatar}) center/cover` : theme.border, border: `1px solid ${ev.risk === 'Critical' ? '#ef444440' : '#f9731640'}`, flexShrink: 0 }} />{ev.personName.split(' ')[1]}</span>}
+                                                    <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: `${sevColor}12`, color: sevColor, border: `1px solid ${sevColor}20` }}>{ev.severity.toUpperCase()}</span>
+                                                    <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${typeColor}10`, color: typeColor, border: `1px solid ${typeColor}15` }}>{typeInfo?.label}</span>
+                                                    {ev.personId > 0 && <span style={{ fontSize: 9, color: theme.textDim, display: 'flex', alignItems: 'center', gap: 2 }}><div style={{ width: 10, height: 10, borderRadius: '50%', background: ev.personAvatar ? `url(${ev.personAvatar}) center/cover` : theme.border, border: `1px solid ${ev.risk === 'Critical' ? '#ef444440' : '#f9731640'}`, flexShrink: 0 }} />{ev.personName.split(' ')[1]}</span>}
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
                                                 <div style={{ fontSize: 8, color: theme.textDim, fontWeight: 600 }}>{ev.timeAgo}</div>
-                                                <div style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{ev.timestamp.split(' ')[1]}</div>
+                                                <div style={{ fontSize: 9, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{ev.timestamp.split(' ')[1]}</div>
                                             </div>
                                         </div>
                                         {/* Location + source */}
@@ -4899,7 +5059,7 @@ export default function MapIndex() {
                                             {/* Metadata grid */}
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
                                                 {Object.entries(ev.metadata).map(([k, v]) => <div key={k} style={{ padding: '4px 8px', borderRadius: 4, background: `${theme.border}15`, border: `1px solid ${theme.border}30` }}>
-                                                    <div style={{ fontSize: 7, color: theme.textDim, fontWeight: 600, marginBottom: 1 }}>{k}</div>
+                                                    <div style={{ fontSize: 9, color: theme.textDim, fontWeight: 600, marginBottom: 1 }}>{k}</div>
                                                     <div style={{ fontSize: 9, color: theme.text, fontWeight: 700 }}>{v}</div>
                                                 </div>)}
                                             </div>
@@ -4912,7 +5072,7 @@ export default function MapIndex() {
                                             {/* Person link */}
                                             {ev.personId > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.1)' }}>
                                                 <div style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${ev.risk === 'Critical' ? '#ef4444' : '#f97316'}`, background: `url(${ev.personAvatar}) center/cover`, flexShrink: 0 }} />
-                                                <div><div style={{ fontSize: 10, fontWeight: 700, color: theme.accent }}>{ev.personName}</div><div style={{ fontSize: 7, color: theme.textDim }}>Risk: {ev.risk} · {ev.timestamp}</div></div>
+                                                <div><div style={{ fontSize: 10, fontWeight: 700, color: theme.accent }}>{ev.personName}</div><div style={{ fontSize: 9, color: theme.textDim }}>Risk: {ev.risk} · {ev.timestamp}</div></div>
                                             </div>}
                                         </div>}
                                     </div>
@@ -4928,7 +5088,7 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>·</span>
                         <span style={{ fontSize: 8, color: theme.textDim }}>{filteredIncidents.length} of {mockIncidents.length} · {incidentStats.types} types · {incidentStats.subjects} subjects</span>
                         <div style={{ flex: 1 }} />
-                        <span style={{ fontSize: 7, color: '#f97316', fontWeight: 600 }}>Kafka Stream</span>
+                        <span style={{ fontSize: 9, color: '#f97316', fontWeight: 600 }}>Kafka Stream</span>
                     </div>
                     </>}
                 </div>}
@@ -4947,7 +5107,7 @@ export default function MapIndex() {
                                 const riskColor = info.risk === 'Critical' ? '#ef4444' : '#f97316';
                                 return <button key={pid} onClick={() => setHeatCalPerson(pid)} style={{ flex: 1, padding: '5px 4px', borderRadius: 5, border: `1px solid ${on ? '#10b98140' : theme.border}`, background: on ? 'rgba(16,185,129,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' as const }}>
                                     <div style={{ fontSize: 9, fontWeight: 700, color: on ? '#10b981' : theme.text }}>{info.name.split(' ')[1]}</div>
-                                    <div style={{ fontSize: 7, color: riskColor, fontWeight: 600 }}>{info.risk}</div>
+                                    <div style={{ fontSize: 9, color: riskColor, fontWeight: 600 }}>{info.risk}</div>
                                 </button>;
                             })}
                         </div>
@@ -4987,18 +5147,18 @@ export default function MapIndex() {
                                         { label: 'Active Days', value: `${activeDays}/90`, color: '#f59e0b' },
                                     ].map(s => <div key={s.label} style={{ padding: '5px 4px', borderRadius: 5, background: `${s.color}06`, border: `1px solid ${s.color}15`, textAlign: 'center' as const }}>
                                         <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.value}</div>
-                                        <div style={{ fontSize: 7, color: theme.textDim, marginTop: 2 }}>{s.label}</div>
+                                        <div style={{ fontSize: 9, color: theme.textDim, marginTop: 2 }}>{s.label}</div>
                                     </div>)}
                                 </div>
 
                                 {/* Month labels */}
                                 <div style={{ display: 'flex', gap: 2, marginBottom: 2, paddingLeft: 22 }}>
-                                    {weeks.map((_, wi) => { const ml = monthLabels.find(m => m.col === wi); return <div key={wi} style={{ width: 11, fontSize: 7, color: theme.textDim, fontWeight: 600, textAlign: 'center' as const }}>{ml?.label || ''}</div>; })}
+                                    {weeks.map((_, wi) => { const ml = monthLabels.find(m => m.col === wi); return <div key={wi} style={{ width: 11, fontSize: 9, color: theme.textDim, fontWeight: 600, textAlign: 'center' as const }}>{ml?.label || ''}</div>; })}
                                 </div>
 
                                 {/* Grid: rows = days (Mon-Sun), cols = weeks */}
                                 {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayName, di) => <div key={dayName} style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 2 }}>
-                                    <span style={{ width: 18, fontSize: 7, color: theme.textDim, textAlign: 'right' as const, flexShrink: 0, fontWeight: 600 }}>{di % 2 === 0 ? dayName : ''}</span>
+                                    <span style={{ width: 18, fontSize: 9, color: theme.textDim, textAlign: 'right' as const, flexShrink: 0, fontWeight: 600 }}>{di % 2 === 0 ? dayName : ''}</span>
                                     {weeks.map((wk, wi) => {
                                         const dateStr = wk[di];
                                         const val = personData[dateStr] || 0;
@@ -5011,9 +5171,9 @@ export default function MapIndex() {
 
                                 {/* Legend */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, justifyContent: 'flex-end' }}>
-                                    <span style={{ fontSize: 7, color: theme.textDim }}>Less</span>
+                                    <span style={{ fontSize: 9, color: theme.textDim }}>Less</span>
                                     {[0, 0.2, 0.4, 0.6, 0.8, 1].map(v => <div key={v} style={{ width: 10, height: 10, borderRadius: 2, background: v === 0 ? `${theme.border}25` : `rgba(16,185,129,${0.15 + v * 0.75})` }} />)}
-                                    <span style={{ fontSize: 7, color: theme.textDim }}>More</span>
+                                    <span style={{ fontSize: 9, color: theme.textDim }}>More</span>
                                 </div>
 
                                 {/* Peak info */}
@@ -5026,7 +5186,7 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                         <span style={{ fontSize: 8, color: theme.textDim }}>90-day activity heatmap · Kafka event stream</span>
                         <div style={{ flex: 1 }} />
-                        <span style={{ fontSize: 7, color: '#10b981', fontWeight: 600 }}>ClickHouse Analytics</span>
+                        <span style={{ fontSize: 9, color: '#10b981', fontWeight: 600 }}>ClickHouse Analytics</span>
                     </div>
                     </>}
                 </div>}
@@ -5073,7 +5233,7 @@ export default function MapIndex() {
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 4 }}>
                                     <span style={{ fontSize: 10 }}>{m.icon}</span>
                                     <span style={{ fontSize: 9, fontWeight: 700, color: theme.textSecondary }}>{m.label}</span>
-                                    {diffPct > 15 && <span style={{ fontSize: 7, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}>Δ{diffPct}%</span>}
+                                    {diffPct > 15 && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}>Δ{diffPct}%</span>}
                                 </div>
                                 {/* Dual bar */}
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -5092,7 +5252,7 @@ export default function MapIndex() {
                                     {/* B value */}
                                     <span style={{ width: 36, fontSize: 11, fontWeight: 800, color: highlightB ? '#ef4444' : '#ef444499', fontFamily: "'JetBrains Mono', monospace", textAlign: 'left' as const }}>{m.bVal}</span>
                                 </div>
-                                {m.unit && <div style={{ textAlign: 'center' as const, fontSize: 7, color: theme.textDim, marginTop: 1 }}>{m.unit}</div>}
+                                {m.unit && <div style={{ textAlign: 'center' as const, fontSize: 9, color: theme.textDim, marginTop: 1 }}>{m.unit}</div>}
                             </div>;
                         })}
 
@@ -5109,13 +5269,13 @@ export default function MapIndex() {
                                             <div style={{ width: 6, height: `${(aVal / 25) * 100}%`, borderRadius: '2px 2px 0 0', background: '#3b82f6', minHeight: 2 }} />
                                             <div style={{ width: 6, height: `${(bVal / 25) * 100}%`, borderRadius: '2px 2px 0 0', background: '#ef4444', minHeight: 2 }} />
                                         </div>
-                                        <span style={{ fontSize: 6, color: theme.textDim, fontWeight: 600 }}>{day}</span>
+                                        <span style={{ fontSize: 8, color: theme.textDim, fontWeight: 600 }}>{day}</span>
                                     </div>;
                                 })}
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 6 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><div style={{ width: 8, height: 4, borderRadius: 1, background: '#3b82f6' }} /><span style={{ fontSize: 7, color: '#3b82f6', fontWeight: 600 }}>{heatCalPersonInfo[parseInt(compareA)]?.name.split(' ')[1] || 'A'}</span></div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><div style={{ width: 8, height: 4, borderRadius: 1, background: '#ef4444' }} /><span style={{ fontSize: 7, color: '#ef4444', fontWeight: 600 }}>{heatCalPersonInfo[parseInt(compareB)]?.name.split(' ')[1] || 'B'}</span></div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><div style={{ width: 8, height: 4, borderRadius: 1, background: '#3b82f6' }} /><span style={{ fontSize: 9, color: '#3b82f6', fontWeight: 600 }}>{heatCalPersonInfo[parseInt(compareA)]?.name.split(' ')[1] || 'A'}</span></div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><div style={{ width: 8, height: 4, borderRadius: 1, background: '#ef4444' }} /><span style={{ fontSize: 9, color: '#ef4444', fontWeight: 600 }}>{heatCalPersonInfo[parseInt(compareB)]?.name.split(' ')[1] || 'B'}</span></div>
                             </div>
                         </div>}
 
@@ -5130,7 +5290,7 @@ export default function MapIndex() {
                                         { label: 'Shared Contacts', value: '4 persons', color: '#3b82f6' },
                                         { label: 'Time Overlap', value: '68%', color: '#22c55e' },
                                     ].map(o => <div key={o.label} style={{ padding: '4px 6px', borderRadius: 4, background: `${theme.border}15` }}>
-                                        <div style={{ fontSize: 7, color: theme.textDim }}>{o.label}</div>
+                                        <div style={{ fontSize: 9, color: theme.textDim }}>{o.label}</div>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: o.color }}>{o.value}</div>
                                     </div>)}
                                 </div>
@@ -5142,14 +5302,14 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                         <span style={{ fontSize: 8, color: theme.textDim }}>{compareData.length} metrics · 30-day analysis window</span>
                         <div style={{ flex: 1 }} />
-                        <span style={{ fontSize: 7, color: '#a855f7', fontWeight: 600 }}>ClickHouse + scikit-learn</span>
+                        <span style={{ fontSize: 9, color: '#a855f7', fontWeight: 600 }}>ClickHouse + scikit-learn</span>
                     </div>
                     </>}
                 </div>}
 
                 {/* ═══ ROUTE REPLAY PANEL ═══ */}
                 {showRouteReplay && loaded && <div data-panel="routereplay" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('routereplay' as PanelId); }} style={panelStyle('routereplay', '380px', '#ec4899')}>
-                    <PanelHeader id="routereplay" icon="🎬" title="Route Replay" subtitle={`${heatCalPersonInfo[parseInt(rrPerson)]?.name || 'Select'} · ${(mockRoutes[rrPerson] || []).length} points`} color="#ec4899" onClose={() => { setShowRouteReplay(false); setRrPlaying(false); }} extra={rrPlaying ? <span style={{ fontSize: 7, fontWeight: 800, padding: '2px 5px', borderRadius: 3, background: '#ec489920', color: '#ec4899', border: '1px solid #ec489930', animation: 'argux-fadeIn 0.3s' }}>▶ PLAYING</span> : undefined} />
+                    <PanelHeader id="routereplay" icon="🎬" title="Route Replay" subtitle={`${heatCalPersonInfo[parseInt(rrPerson)]?.name || 'Select'} · ${(mockRoutes[rrPerson] || []).length} points`} color="#ec4899" onClose={() => { setShowRouteReplay(false); setRrPlaying(false); }} extra={rrPlaying ? <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 5px', borderRadius: 3, background: '#ec489920', color: '#ec4899', border: '1px solid #ec489930', animation: 'argux-fadeIn 0.3s' }}>▶ PLAYING</span> : undefined} />
                     <PanelResizeGrip id="routereplay" />
 
                     {!isPanelMin('routereplay') && <>
@@ -5162,7 +5322,7 @@ export default function MapIndex() {
                                 const info = heatCalPersonInfo[parseInt(pid)];
                                 return <button key={pid} onClick={() => { setRrPerson(pid); setRrCursor(0); setRrPlaying(false); }} style={{ flex: 1, padding: '5px', borderRadius: 5, border: `1px solid ${on ? '#ec489940' : theme.border}`, background: on ? 'rgba(236,72,153,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' as const }}>
                                     <div style={{ fontSize: 9, fontWeight: 700, color: on ? '#ec4899' : theme.text }}>{info?.name.split(' ')[1] || pid}</div>
-                                    <div style={{ fontSize: 7, color: theme.textDim }}>{route.length} pts</div>
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{route.length} pts</div>
                                 </button>;
                             })}
                         </div>
@@ -5204,9 +5364,9 @@ export default function MapIndex() {
                         if (!pt) return null;
                         return <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
-                                <div style={{ padding: '4px 6px', borderRadius: 4, background: `${theme.border}15`, textAlign: 'center' as const }}><div style={{ fontSize: 7, color: theme.textDim }}>Speed</div><div style={{ fontSize: 12, fontWeight: 800, color: pt.speed > 80 ? '#ef4444' : pt.speed > 0 ? '#22c55e' : theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{pt.speed}<span style={{ fontSize: 7, fontWeight: 400 }}> km/h</span></div></div>
-                                <div style={{ padding: '4px 6px', borderRadius: 4, background: `${theme.border}15`, textAlign: 'center' as const }}><div style={{ fontSize: 7, color: theme.textDim }}>Bearing</div><div style={{ fontSize: 12, fontWeight: 800, color: theme.text, fontFamily: "'JetBrains Mono', monospace" }}>{pt.bearing}°</div></div>
-                                <div style={{ padding: '4px 6px', borderRadius: 4, background: `${theme.border}15`, textAlign: 'center' as const }}><div style={{ fontSize: 7, color: theme.textDim }}>Time</div><div style={{ fontSize: 12, fontWeight: 800, color: '#ec4899', fontFamily: "'JetBrains Mono', monospace" }}>{pt.ts}</div></div>
+                                <div style={{ padding: '4px 6px', borderRadius: 4, background: `${theme.border}15`, textAlign: 'center' as const }}><div style={{ fontSize: 9, color: theme.textDim }}>Speed</div><div style={{ fontSize: 12, fontWeight: 800, color: pt.speed > 80 ? '#ef4444' : pt.speed > 0 ? '#22c55e' : theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{pt.speed}<span style={{ fontSize: 9, fontWeight: 400 }}> km/h</span></div></div>
+                                <div style={{ padding: '4px 6px', borderRadius: 4, background: `${theme.border}15`, textAlign: 'center' as const }}><div style={{ fontSize: 9, color: theme.textDim }}>Bearing</div><div style={{ fontSize: 12, fontWeight: 800, color: theme.text, fontFamily: "'JetBrains Mono', monospace" }}>{pt.bearing}°</div></div>
+                                <div style={{ padding: '4px 6px', borderRadius: 4, background: `${theme.border}15`, textAlign: 'center' as const }}><div style={{ fontSize: 9, color: theme.textDim }}>Time</div><div style={{ fontSize: 12, fontWeight: 800, color: '#ec4899', fontFamily: "'JetBrains Mono', monospace" }}>{pt.ts}</div></div>
                             </div>
                             <div style={{ marginTop: 4, fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", textAlign: 'center' as const }}>{pt.lat.toFixed(5)}, {pt.lng.toFixed(5)}</div>
                         </div>;
@@ -5230,7 +5390,7 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                         <span style={{ fontSize: 8, color: theme.textDim }}>{(mockRoutes[rrPerson] || []).length} waypoints · {(mockRoutes[rrPerson] || []).filter(p => p.event).length} events</span>
                         <div style={{ flex: 1 }} />
-                        <span style={{ fontSize: 7, color: '#ec4899', fontWeight: 600 }}>GPS + Kafka</span>
+                        <span style={{ fontSize: 9, color: '#ec4899', fontWeight: 600 }}>GPS + Kafka</span>
                     </div>
                     </>}
                 </div>}
@@ -5243,7 +5403,7 @@ export default function MapIndex() {
                     {wsActiveId && <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, background: 'rgba(34,197,94,0.03)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 6px #22c55e60' }} />
                         <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 700, flex: 1 }}>{workspaces.find(w => w.id === wsActiveId)?.name}</span>
-                        <button onClick={() => { const ws = workspaces.find(w => w.id === wsActiveId); if (ws) { updateWsState(ws); triggerTopLoader(); } }} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(59,130,246,0.25)', background: 'rgba(59,130,246,0.06)', color: theme.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>💾 Update</button>
+                        <button onClick={() => { const ws = workspaces.find(w => w.id === wsActiveId); if (ws) { updateWsState(ws); triggerTopLoader(); } }} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(59,130,246,0.25)', background: 'rgba(59,130,246,0.06)', color: theme.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>💾 Update</button>
                     </div>}
                     {/* Search */}
                     <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
@@ -5267,11 +5427,11 @@ export default function MapIndex() {
                                         <div style={{ fontSize: 11, fontWeight: 700, color: isActive ? '#22c55e' : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{ws.name}</div>
                                         <div style={{ fontSize: 9, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginTop: 1 }}>{ws.description}</div>
                                     </div>
-                                    {isActive && <span style={{ fontSize: 7, fontWeight: 800, padding: '2px 5px', borderRadius: 3, background: '#22c55e15', color: '#22c55e', border: '1px solid #22c55e25', flexShrink: 0 }}>ACTIVE</span>}
+                                    {isActive && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 5px', borderRadius: 3, background: '#22c55e15', color: '#22c55e', border: '1px solid #22c55e25', flexShrink: 0 }}>ACTIVE</span>}
                                 </div>
                                 {/* Tags */}
                                 {ws.tags.length > 0 && <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginBottom: 4 }}>
-                                    {ws.tags.map(t => <span key={t} style={{ fontSize: 7, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${theme.accent}08`, color: theme.accent, border: `1px solid ${theme.accent}15` }}>{t}</span>)}
+                                    {ws.tags.map(t => <span key={t} style={{ fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: `${theme.accent}08`, color: theme.accent, border: `1px solid ${theme.accent}15` }}>{t}</span>)}
                                 </div>}
                                 {/* Meta + state icons */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 8, color: theme.textDim, marginBottom: 6 }}>
@@ -5279,11 +5439,11 @@ export default function MapIndex() {
                                     <span>🕐 {ws.updatedAt.split(' ')[1]}</span>
                                     <span>👤 {ws.state.selectedPersons.length}</span>
                                     <div style={{ display: 'flex', gap: 2 }}>
-                                        {ws.state.layerHeatmap && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 2, background: '#f59e0b10', color: '#f59e0b', border: '1px solid #f59e0b20' }}>🔥</span>}
-                                        {ws.state.layerNetwork && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 2, background: '#8b5cf610', color: '#8b5cf6', border: '1px solid #8b5cf620' }}>🕸️</span>}
-                                        {ws.state.layerLPR && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 2, background: '#10b98110', color: '#10b981', border: '1px solid #10b98120' }}>🚗</span>}
-                                        {ws.state.layerFace && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 2, background: '#ec489910', color: '#ec4899', border: '1px solid #ec489920' }}>🧑‍🦲</span>}
-                                        {ws.state.showZones && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 2, background: '#8b5cf610', color: '#8b5cf6', border: '1px solid #8b5cf620' }}>🛡️</span>}
+                                        {ws.state.layerHeatmap && <span style={{ fontSize: 9, padding: '0 3px', borderRadius: 2, background: '#f59e0b10', color: '#f59e0b', border: '1px solid #f59e0b20' }}>🔥</span>}
+                                        {ws.state.layerNetwork && <span style={{ fontSize: 9, padding: '0 3px', borderRadius: 2, background: '#8b5cf610', color: '#8b5cf6', border: '1px solid #8b5cf620' }}>🕸️</span>}
+                                        {ws.state.layerLPR && <span style={{ fontSize: 9, padding: '0 3px', borderRadius: 2, background: '#10b98110', color: '#10b981', border: '1px solid #10b98120' }}>🚗</span>}
+                                        {ws.state.layerFace && <span style={{ fontSize: 9, padding: '0 3px', borderRadius: 2, background: '#ec489910', color: '#ec4899', border: '1px solid #ec489920' }}>🧑‍🦲</span>}
+                                        {ws.state.showZones && <span style={{ fontSize: 9, padding: '0 3px', borderRadius: 2, background: '#8b5cf610', color: '#8b5cf6', border: '1px solid #8b5cf620' }}>🛡️</span>}
                                     </div>
                                 </div>
                                 {/* Actions */}
@@ -5330,8 +5490,8 @@ export default function MapIndex() {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{p.name}</div>
                                     <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}>
-                                        <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{p.lat.toFixed(4)}, {p.lng.toFixed(4)}</span>
-                                        <span style={{ fontSize: 7, color: theme.textDim }}>z{p.zoom}</span>
+                                        <span style={{ fontSize: 9, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{p.lat.toFixed(4)}, {p.lng.toFixed(4)}</span>
+                                        <span style={{ fontSize: 9, color: theme.textDim }}>z{p.zoom}</span>
                                     </div>
                                     {p.note && <div style={{ fontSize: 8, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginTop: 1 }}>{p.note}</div>}
                                 </div>
@@ -5393,7 +5553,7 @@ export default function MapIndex() {
                                 const segDist = i > 0 ? calcDistance([rulerPoints[i - 1], pt]) : 0;
                                 return <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 5, background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.08)' }}>
                                     <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(245,158,11,0.12)', border: '1.5px solid #f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, color: '#f59e0b', flexShrink: 0 }}>{i + 1}</div>
-                                    <div style={{ flex: 1 }}><span style={{ fontSize: 9, color: theme.text, fontFamily: "'JetBrains Mono', monospace" }}>{pt.lat.toFixed(5)}, {pt.lng.toFixed(5)}</span><div style={{ fontSize: 7, color: theme.textDim }}>{mockAddress(pt.lat, pt.lng)}</div></div>
+                                    <div style={{ flex: 1 }}><span style={{ fontSize: 9, color: theme.text, fontFamily: "'JetBrains Mono', monospace" }}>{pt.lat.toFixed(5)}, {pt.lng.toFixed(5)}</span><div style={{ fontSize: 9, color: theme.textDim }}>{mockAddress(pt.lat, pt.lng)}</div></div>
                                     {i > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>+{formatDist(segDist)}</span>}
                                 </div>;
                             })}
@@ -5434,7 +5594,7 @@ export default function MapIndex() {
                                 <div style={{ width: 28, height: 28, borderRadius: z.shape === 'circle' ? '50%' : 5, background: `${z.color}12`, border: `1.5px solid ${z.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0, position: 'relative' as const }}>{zt?.icon || '🛡️'}{isHidden && <div style={{ position: 'absolute' as const, inset: 0, borderRadius: 'inherit', background: 'rgba(13,18,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/></svg></div>}</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: 11, fontWeight: 700, color: isHidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, textDecoration: isHidden ? 'line-through' : 'none' }}>{z.name}</div>
-                                    <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}><span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${z.color}12`, color: z.color, border: `1px solid ${z.color}20` }}>{zt?.label || z.type}</span><span style={{ fontSize: 7, color: theme.textDim }}>{z.shape === 'circle' ? `${z.radius}m radius` : `${z.points?.length || 0} vertices`}</span></div>
+                                    <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}><span style={{ fontSize: 9, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${z.color}12`, color: z.color, border: `1px solid ${z.color}20` }}>{zt?.label || z.type}</span><span style={{ fontSize: 9, color: theme.textDim }}>{z.shape === 'circle' ? `${z.radius}m radius` : `${z.points?.length || 0} vertices`}</span></div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                                     <button onClick={e => { e.stopPropagation(); toggleZoneVisibility(z.id); triggerTopLoader(); }} title={isHidden ? 'Show' : 'Hide'} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${isHidden ? theme.danger + '20' : theme.border}`, background: isHidden ? 'rgba(239,68,68,0.04)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontSize: 9, color: isHidden ? theme.danger : theme.textDim }}>{isHidden ? '👁️‍🗨️' : '👁️'}</button>
@@ -5447,7 +5607,7 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         <span style={{ fontSize: 8, color: theme.textDim }}>{filteredZones.length} of {zones.length} zones</span>
                         <div style={{ flex: 1 }} />
-                        {hiddenZones.size > 0 && <button onClick={() => { setHiddenZones(new Set()); triggerTopLoader(); }} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: '1px solid #22c55e20', background: '#22c55e06', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>👁️ Show All ({hiddenZones.size})</button>}
+                        {hiddenZones.size > 0 && <button onClick={() => { setHiddenZones(new Set()); triggerTopLoader(); }} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: '1px solid #22c55e20', background: '#22c55e06', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>👁️ Show All ({hiddenZones.size})</button>}
                     </div>
                 </>}
                 </div>}
@@ -5488,14 +5648,14 @@ export default function MapIndex() {
                                 {[{ label: 'Persons', icon: '👤', enabled: networkShowPersons, toggle: setNetworkShowPersons, count: netNodes.filter(n => n.type === 'person').length, color: '#ef4444' }, { label: 'Organizations', icon: '🏢', enabled: networkShowOrgs, toggle: setNetworkShowOrgs, count: netNodes.filter(n => n.type === 'org').length, color: '#3b82f6' }, { label: 'Devices', icon: '📡', enabled: networkShowDevices, toggle: setNetworkShowDevices, count: netNodes.filter(n => n.type === 'device').length, color: '#22c55e' }].map(f => <button key={f.label} onClick={() => { f.toggle(!f.enabled); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 5, border: `1px solid ${f.enabled ? f.color + '40' : theme.border}`, background: f.enabled ? f.color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, marginBottom: 2 }}><span style={{ fontSize: 11 }}>{f.icon}</span><span style={{ flex: 1, fontSize: 10, fontWeight: 600, color: f.enabled ? f.color : theme.textDim }}>{f.label}</span><span style={{ fontSize: 8, color: theme.textDim }}>{f.count}</span><div style={{ width: 8, height: 8, borderRadius: 2, border: `1.5px solid ${f.enabled ? f.color : theme.border}`, background: f.enabled ? f.color : 'transparent' }}>{f.enabled && <svg width="5" height="5" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div></button>)}
                             </div>
                             {/* Edge type filters */}
-                            <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Connection Types</div><div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>{Object.entries(edgeColors).map(([type, color]) => { const on = netEdgeFilters.has(type); const cnt = netEdges.filter(e => e.type === type).length; return <button key={type} onClick={() => { setNetEdgeFilters(prev => { const n = new Set(prev); n.has(type) ? n.delete(type) : n.add(type); return n; }); triggerTopLoader(); }} style={{ padding: '3px 7px', borderRadius: 4, border: `1px solid ${on ? color + '40' : theme.border}`, background: on ? color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 600, color: on ? color : theme.textDim }}><span style={{ width: 8, height: 3, borderRadius: 1, background: on ? color : theme.border }} />{type} <span style={{ fontSize: 7, opacity: 0.7 }}>{cnt}</span></button>; })}</div></div>
+                            <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Connection Types</div><div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>{Object.entries(edgeColors).map(([type, color]) => { const on = netEdgeFilters.has(type); const cnt = netEdges.filter(e => e.type === type).length; return <button key={type} onClick={() => { setNetEdgeFilters(prev => { const n = new Set(prev); n.has(type) ? n.delete(type) : n.add(type); return n; }); triggerTopLoader(); }} style={{ padding: '3px 7px', borderRadius: 4, border: `1px solid ${on ? color + '40' : theme.border}`, background: on ? color + '08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 600, color: on ? color : theme.textDim }}><span style={{ width: 8, height: 3, borderRadius: 1, background: on ? color : theme.border }} />{type} <span style={{ fontSize: 9, opacity: 0.7 }}>{cnt}</span></button>; })}</div></div>
                             {/* Strength slider */}
                             <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}><span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Min Strength</span><span style={{ fontSize: 9, fontWeight: 700, color: '#8b5cf6', fontFamily: "'JetBrains Mono', monospace" }}>{Math.round(netStrengthMin * 100)}%</span></div>
                                 <input type="range" min={0} max={100} value={netStrengthMin * 100} onChange={e => setNetStrengthMin(parseInt(e.target.value) / 100)} style={{ width: '100%', height: 4, accentColor: '#8b5cf6' }} />
                             </div>
                             {/* Connection list */}
-                            <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Connections · click to isolate</div><div style={{ maxHeight: 150, overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column' as const, gap: 1 }}>{netFilteredEdges.map(e => { const from = netNodes.find(n => n.id === e.from); const to = netNodes.find(n => n.id === e.to); const isIso = netIsolatedEdge === edgeKey(e); return <button key={edgeKey(e)} onClick={() => { setNetIsolatedEdge(prev => prev === edgeKey(e) ? null : edgeKey(e)); setNetFocusNode(null); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', borderRadius: 4, border: `1px solid ${isIso ? '#8b5cf630' : 'transparent'}`, background: isIso ? 'rgba(139,92,246,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}><span style={{ width: 8, height: 3, borderRadius: 1, background: edgeColors[e.type], flexShrink: 0 }} /><span style={{ fontSize: 9, fontWeight: 600, color: isIso ? '#8b5cf6' : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{from?.label} ↔ {to?.label}</span><span style={{ fontSize: 7, color: edgeColors[e.type], fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{Math.round(e.strength * 100)}%</span>{isIso && <span style={{ fontSize: 7, color: '#8b5cf6' }}>🎯</span>}</button>; })}</div></div>
+                            <div><div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 3 }}>Connections · click to isolate</div><div style={{ maxHeight: 150, overflowY: 'auto', scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column' as const, gap: 1 }}>{netFilteredEdges.map(e => { const from = netNodes.find(n => n.id === e.from); const to = netNodes.find(n => n.id === e.to); const isIso = netIsolatedEdge === edgeKey(e); return <button key={edgeKey(e)} onClick={() => { setNetIsolatedEdge(prev => prev === edgeKey(e) ? null : edgeKey(e)); setNetFocusNode(null); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', borderRadius: 4, border: `1px solid ${isIso ? '#8b5cf630' : 'transparent'}`, background: isIso ? 'rgba(139,92,246,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const }}><span style={{ width: 8, height: 3, borderRadius: 1, background: edgeColors[e.type], flexShrink: 0 }} /><span style={{ fontSize: 9, fontWeight: 600, color: isIso ? '#8b5cf6' : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{from?.label} ↔ {to?.label}</span><span style={{ fontSize: 9, color: edgeColors[e.type], fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{Math.round(e.strength * 100)}%</span>{isIso && <span style={{ fontSize: 9, color: '#8b5cf6' }}>🎯</span>}</button>; })}</div></div>
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                 <button onClick={() => { setNetShowLabels(!netShowLabels); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${netShowLabels ? '#8b5cf630' : theme.border}`, background: netShowLabels ? '#8b5cf608' : 'transparent', color: netShowLabels ? '#8b5cf6' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🏷️ Labels</button>
                                 <button onClick={() => { setNetIsolatedEdge(null); setNetFocusNode(null); setNetStrengthMin(0); setNetEdgeFilters(new Set(['financial', 'family', 'business', 'criminal', 'comms', 'surveillance'])); setNetSearch(''); triggerTopLoader(); }} style={{ fontSize: 8, padding: '3px 7px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🔄 Reset</button>
@@ -5511,7 +5671,7 @@ export default function MapIndex() {
                                 {mockLPR.filter(l => { if (lprSearch.trim()) { const q = lprSearch.toLowerCase(); return l.plate.toLowerCase().includes(q) || l.personName.toLowerCase().includes(q) || l.cameraName.toLowerCase().includes(q) || (l.orgName || '').toLowerCase().includes(q); } return true; }).map(lpr => { const confColor = lpr.confidence >= 95 ? '#22c55e' : lpr.confidence >= 85 ? '#f59e0b' : '#ef4444'; const v = mockVehicles.find(vv => vv.id === lpr.vehicleId); const isSelected = lprSelected.size === 0 || lprSelected.has(lpr.id); const isHidden = lprHidden.has(lpr.id); return <div key={lpr.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 5, background: isHidden ? 'rgba(107,114,128,0.04)' : isSelected && lprSelected.size > 0 ? 'rgba(16,185,129,0.04)' : 'transparent', border: `1px solid ${isHidden ? theme.border + '50' : isSelected && lprSelected.size > 0 ? '#10b98120' : theme.border}`, opacity: isHidden ? 0.5 : 1 }}>
                                     <button onClick={() => { setLprSelected(prev => { const n = new Set(prev); if (prev.size === 0) { mockLPR.forEach(l => { if (l.id !== lpr.id) n.add(l.id); }); } else if (n.has(lpr.id)) { n.delete(lpr.id); if (n.size === 0) return new Set(); } else { n.add(lpr.id); } return n; }); }} style={{ width: 12, height: 12, borderRadius: 2, border: `1.5px solid ${isSelected ? '#10b981' : theme.border}`, background: isSelected && lprSelected.size > 0 ? '#10b981' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>{isSelected && lprSelected.size > 0 && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</button>
                                     <div style={{ width: 26, height: 18, borderRadius: 3, border: '1.5px solid #10b981', background: 'url(https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg) center/cover', flexShrink: 0, cursor: 'pointer' }} onClick={() => setTlLightbox('https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg')} />
-                                    <div style={{ flex: 1, minWidth: 0 }}><div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10, fontWeight: 700, color: isHidden ? theme.textDim : theme.text, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.03em' }}>{lpr.plate}</span><span style={{ fontSize: 8, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{lpr.confidence}%</span></div><div style={{ fontSize: 7, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{lpr.personName}{v ? ` · ${v.make} ${v.model}` : ''}</div></div>
+                                    <div style={{ flex: 1, minWidth: 0 }}><div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10, fontWeight: 700, color: isHidden ? theme.textDim : theme.text, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.03em' }}>{lpr.plate}</span><span style={{ fontSize: 8, color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{lpr.confidence}%</span></div><div style={{ fontSize: 9, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{lpr.personName}{v ? ` · ${v.make} ${v.model}` : ''}</div></div>
                                     <button onClick={() => setLprHidden(prev => { const n = new Set(prev); n.has(lpr.id) ? n.delete(lpr.id) : n.add(lpr.id); return n; })} style={{ width: 18, height: 18, borderRadius: 3, border: `1px solid ${isHidden ? theme.danger + '30' : theme.border}`, background: isHidden ? 'rgba(239,68,68,0.04)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, fontSize: 8, color: isHidden ? theme.danger : theme.textDim }}>{isHidden ? '👁️‍🗨️' : '👁️'}</button>
                                 </div>; })}
                             </div>
@@ -5530,7 +5690,7 @@ export default function MapIndex() {
                                 {mockFaces.filter(fr => { if (faceSearch.trim()) { const q = faceSearch.toLowerCase(); return fr.personName.toLowerCase().includes(q) || fr.cameraName.toLowerCase().includes(q) || fr.emotion.toLowerCase().includes(q); } return true; }).map(fr => { const riskColor = fr.risk === 'Critical' ? '#ef4444' : fr.risk === 'High' ? '#f97316' : '#f59e0b'; const confColor = fr.confidence >= 90 ? '#22c55e' : fr.confidence >= 75 ? '#f59e0b' : '#ef4444'; const isSelected = faceSelected.size === 0 || faceSelected.has(fr.id); const isHidden = faceHidden.has(fr.id); return <div key={fr.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 5, background: isHidden ? 'rgba(107,114,128,0.04)' : isSelected && faceSelected.size > 0 ? 'rgba(236,72,153,0.04)' : 'transparent', border: `1px solid ${isHidden ? theme.border + '50' : isSelected && faceSelected.size > 0 ? '#ec489920' : theme.border}`, opacity: isHidden ? 0.5 : 1 }}>
                                     <button onClick={() => { setFaceSelected(prev => { const n = new Set(prev); if (prev.size === 0) { mockFaces.forEach(f => { if (f.id !== fr.id) n.add(f.id); }); } else if (n.has(fr.id)) { n.delete(fr.id); if (n.size === 0) return new Set(); } else { n.add(fr.id); } return n; }); }} style={{ width: 12, height: 12, borderRadius: 2, border: `1.5px solid ${isSelected ? '#ec4899' : theme.border}`, background: isSelected && faceSelected.size > 0 ? '#ec4899' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>{isSelected && faceSelected.size > 0 && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</button>
                                     <div style={{ width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${riskColor}`, background: 'url(https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg) center/cover', flexShrink: 0, cursor: 'pointer' }} onClick={() => setTlLightbox('https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg')} />
-                                    <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 10, fontWeight: 600, color: isHidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{fr.personName}</div><div style={{ fontSize: 7, color: theme.textDim, display: 'flex', gap: 4, alignItems: 'center' }}><span>{fr.cameraName}</span><span style={{ color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{fr.confidence}%</span></div></div>
+                                    <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 10, fontWeight: 600, color: isHidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{fr.personName}</div><div style={{ fontSize: 9, color: theme.textDim, display: 'flex', gap: 4, alignItems: 'center' }}><span>{fr.cameraName}</span><span style={{ color: confColor, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{fr.confidence}%</span></div></div>
                                     <button onClick={() => setFaceHidden(prev => { const n = new Set(prev); n.has(fr.id) ? n.delete(fr.id) : n.add(fr.id); return n; })} style={{ width: 18, height: 18, borderRadius: 3, border: `1px solid ${isHidden ? theme.danger + '30' : theme.border}`, background: isHidden ? 'rgba(239,68,68,0.04)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, fontSize: 8, color: isHidden ? theme.danger : theme.textDim }}>{isHidden ? '👁️‍🗨️' : '👁️'}</button>
                                 </div>; })}
                             </div>
@@ -5548,12 +5708,12 @@ export default function MapIndex() {
 
                 {/* Objects Panel */}
                 {showObjectsPanel && loaded && <div data-panel="objects" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('objects' as PanelId); }} style={panelStyle('objects', '380px', theme.accent)}>
-                    <PanelHeader id="objects" icon="📋" title="Map Objects" subtitle={`${mapObjects.length} objects · ${mapObjects.filter(o => o.visible).length} visible · ${mapObjects.filter(o => !o.visible).length} hidden`} color={theme.accent} onClose={() => setShowObjectsPanel(false)} extra={mapObjects.some(o => !o.visible) ? <button onClick={() => setMapObjects(prev => prev.map(o => ({ ...o, visible: true })))} style={{ fontSize: 7, padding: '2px 5px', borderRadius: 3, border: '1px solid #22c55e25', background: '#22c55e08', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>Show All</button> : undefined} />
+                    <PanelHeader id="objects" icon="📋" title="Map Objects" subtitle={`${mapObjects.length} objects · ${mapObjects.filter(o => o.visible).length} visible · ${mapObjects.filter(o => !o.visible).length} hidden`} color={theme.accent} onClose={() => setShowObjectsPanel(false)} extra={mapObjects.some(o => !o.visible) ? <button onClick={() => setMapObjects(prev => prev.map(o => ({ ...o, visible: true })))} style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3, border: '1px solid #22c55e25', background: '#22c55e08', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>Show All</button> : undefined} />
                     <PanelResizeGrip id="objects" />
 
                     {!isPanelMin('objects') && <>{/* Tabs */}
                     <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}20`, flexShrink: 0 }}>
-                        {[{ id: 'all' as const, label: 'All', count: mapObjects.length }, { id: 'markers' as const, label: 'Markers', count: mapObjects.filter(o => o.type === 'marker').length }, { id: 'shapes' as const, label: 'Shapes', count: mapObjects.filter(o => o.type !== 'marker').length }].map(t => <button key={t.id} onClick={() => setObjPanelTab(t.id)} style={{ flex: 1, padding: '7px 0', background: 'transparent', border: 'none', borderBottom: `2px solid ${objPanelTab === t.id ? theme.accent : 'transparent'}`, color: objPanelTab === t.id ? theme.accent : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>{t.label}{t.count > 0 && <span style={{ fontSize: 7, fontWeight: 800, padding: '0 3px', borderRadius: 3, background: objPanelTab === t.id ? `${theme.accent}15` : theme.border, color: objPanelTab === t.id ? theme.accent : theme.textDim }}>{t.count}</span>}</button>)}
+                        {[{ id: 'all' as const, label: 'All', count: mapObjects.length }, { id: 'markers' as const, label: 'Markers', count: mapObjects.filter(o => o.type === 'marker').length }, { id: 'shapes' as const, label: 'Shapes', count: mapObjects.filter(o => o.type !== 'marker').length }].map(t => <button key={t.id} onClick={() => setObjPanelTab(t.id)} style={{ flex: 1, padding: '7px 0', background: 'transparent', border: 'none', borderBottom: `2px solid ${objPanelTab === t.id ? theme.accent : 'transparent'}`, color: objPanelTab === t.id ? theme.accent : theme.textDim, fontSize: 9, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>{t.label}{t.count > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '0 3px', borderRadius: 3, background: objPanelTab === t.id ? `${theme.accent}15` : theme.border, color: objPanelTab === t.id ? theme.accent : theme.textDim }}>{t.count}</span>}</button>)}
                     </div>
 
                     {/* Search */}
@@ -5585,13 +5745,13 @@ export default function MapIndex() {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: 11, fontWeight: 700, color: hidden ? theme.textDim : theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, textDecoration: hidden ? 'line-through' : 'none' }}>{o.name || 'Untitled'}</div>
                                     <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 1 }}>
-                                        <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${o.color}12`, color: o.color, border: `1px solid ${o.color}20` }}>{typeInfo.label}</span>
-                                        {o.assignedTo && <span style={{ fontSize: 7, color: theme.textDim }}>{o.assignedTo.type === 'person' ? '👤' : '🏢'} {o.assignedTo.name}</span>}
-                                        <span style={{ fontSize: 7, color: theme.textDim }}>{o.coords.length} pts</span>
+                                        <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${o.color}12`, color: o.color, border: `1px solid ${o.color}20` }}>{typeInfo.label}</span>
+                                        {o.assignedTo && <span style={{ fontSize: 9, color: theme.textDim }}>{o.assignedTo.type === 'person' ? '👤' : '🏢'} {o.assignedTo.name}</span>}
+                                        <span style={{ fontSize: 9, color: theme.textDim }}>{o.coords.length} pts</span>
                                     </div>
                                 </div>
                                 {/* Coords */}
-                                <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{coordStr}</span>
+                                <span style={{ fontSize: 9, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{coordStr}</span>
                                 {/* Actions */}
                                 <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                                     <button onClick={e => { e.stopPropagation(); toggleObjVisibility(o.id); triggerTopLoader(); }} title={hidden ? 'Show' : 'Hide'} style={{ width: 22, height: 22, borderRadius: 4, border: `1px solid ${hidden ? theme.danger + '20' : theme.border}`, background: hidden ? 'rgba(239,68,68,0.04)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontSize: 9, color: hidden ? theme.danger : theme.textDim }}>{hidden ? '👁️‍🗨️' : '👁️'}</button>
@@ -5606,8 +5766,8 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         <span style={{ fontSize: 8, color: theme.textDim }}>{filteredObjects.length} of {mapObjects.length} shown</span>
                         <div style={{ flex: 1 }} />
-                        {mapObjects.length > 0 && <button onClick={() => { setMapObjects(prev => prev.map(o => ({ ...o, visible: true }))); triggerTopLoader(); }} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: '1px solid #22c55e20', background: '#22c55e06', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>👁️ Show All</button>}
-                        {mapObjects.length > 0 && <button onClick={() => { setMapObjects(prev => prev.map(o => ({ ...o, visible: false }))); triggerTopLoader(); }} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🚫 Hide All</button>}
+                        {mapObjects.length > 0 && <button onClick={() => { setMapObjects(prev => prev.map(o => ({ ...o, visible: true }))); triggerTopLoader(); }} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: '1px solid #22c55e20', background: '#22c55e06', color: '#22c55e', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>👁️ Show All</button>}
+                        {mapObjects.length > 0 && <button onClick={() => { setMapObjects(prev => prev.map(o => ({ ...o, visible: false }))); triggerTopLoader(); }} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🚫 Hide All</button>}
                     </div>
                 </>}
                 </div>}
@@ -5644,16 +5804,16 @@ export default function MapIndex() {
 
                 {/* Status Bar (bottom-left) */}
                 {loaded && <div style={{ position: 'absolute' as const, bottom: timelineOpen ? 282 : 8, left: 8, zIndex: 5, display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 220, transition: 'bottom 0.3s ease' }}>
-                    {activeSources.size > 0 && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(6,182,212,0.1)', color: '#06b6d4', border: '1px solid rgba(6,182,212,0.2)', backdropFilter: 'blur(6px)' }}>📡 {activeSources.size} sources</span>}
-                    {layerHeatmap && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)', backdropFilter: 'blur(6px)' }}>🔥 Heatmap</span>}
-                    {layerNetwork && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.2)', backdropFilter: 'blur(6px)' }}>🕸️ Network</span>}
-                    {layerLPR && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', backdropFilter: 'blur(6px)' }}>🚗 LPR</span>}
-                    {layerFace && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(236,72,153,0.1)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.2)', backdropFilter: 'blur(6px)' }}>🧑‍🦲 Face</span>}
-                    {showZones && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)', backdropFilter: 'blur(6px)' }}>🛡️ Zones</span>}
-                    {active3D && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.2)', backdropFilter: 'blur(6px)' }}>🏢 3D</span>}
-                    {rulerActive && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)', backdropFilter: 'blur(6px)' }}>📏 Ruler</span>}
-                    {selectedPersons.length > 0 && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(236,72,153,0.1)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.2)', backdropFilter: 'blur(6px)' }}>👤 {selectedPersons.length}</span>}
-                    {hiddenSources.size > 0 && <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)', backdropFilter: 'blur(6px)' }}>👁️ {hiddenSources.size} hidden</span>}
+                    {activeSources.size > 0 && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(6,182,212,0.1)', color: '#06b6d4', border: '1px solid rgba(6,182,212,0.2)', backdropFilter: 'blur(6px)' }}>📡 {activeSources.size} sources</span>}
+                    {layerHeatmap && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)', backdropFilter: 'blur(6px)' }}>🔥 Heatmap</span>}
+                    {layerNetwork && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.2)', backdropFilter: 'blur(6px)' }}>🕸️ Network</span>}
+                    {layerLPR && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', backdropFilter: 'blur(6px)' }}>🚗 LPR</span>}
+                    {layerFace && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(236,72,153,0.1)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.2)', backdropFilter: 'blur(6px)' }}>🧑‍🦲 Face</span>}
+                    {showZones && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)', backdropFilter: 'blur(6px)' }}>🛡️ Zones</span>}
+                    {active3D && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.2)', backdropFilter: 'blur(6px)' }}>🏢 3D</span>}
+                    {rulerActive && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)', backdropFilter: 'blur(6px)' }}>📏 Ruler</span>}
+                    {selectedPersons.length > 0 && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(236,72,153,0.1)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.2)', backdropFilter: 'blur(6px)' }}>👤 {selectedPersons.length}</span>}
+                    {hiddenSources.size > 0 && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)', backdropFilter: 'blur(6px)' }}>👁️ {hiddenSources.size} hidden</span>}
                 </div>}
 
                 {/* FPS Counter */}
@@ -5672,7 +5832,7 @@ export default function MapIndex() {
                 {showLiveFeed && loaded && <div data-panel="feed" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('feed' as PanelId); }} style={panelStyle('feed', '320px', liveFeedRunning ? '#ef4444' : theme.border)}>
                     <PanelHeader id="feed" icon={liveFeedRunning ? '🔴' : '⏸️'} title="LIVE FEED" subtitle={`${liveFeedEvents.length} events`} color={liveFeedRunning ? '#ef4444' : theme.border} onClose={() => { setShowLiveFeed(false); if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; } if (liveFeedPopupRef.current) { liveFeedPopupRef.current.remove(); liveFeedPopupRef.current = null; } }} extra={<>
                         <button onClick={() => setLiveFeedMuted(!liveFeedMuted)} title={liveFeedMuted ? 'Unmute' : 'Mute'} style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${liveFeedMuted ? '#f59e0b30' : theme.border}`, background: liveFeedMuted ? 'rgba(245,158,11,0.08)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: liveFeedMuted ? '#f59e0b' : theme.textDim, fontSize: 9, padding: 0 }}>{liveFeedMuted ? '🔇' : '🔔'}</button>
-                        <button onClick={() => setLiveFeedRunning(!liveFeedRunning)} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${liveFeedRunning ? '#ef444430' : '#22c55e30'}`, background: liveFeedRunning ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)', cursor: 'pointer', fontSize: 7, fontWeight: 700, color: liveFeedRunning ? '#ef4444' : '#22c55e', fontFamily: 'inherit' }}>{liveFeedRunning ? '⏸' : '▶'}</button>
+                        <button onClick={() => setLiveFeedRunning(!liveFeedRunning)} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${liveFeedRunning ? '#ef444430' : '#22c55e30'}`, background: liveFeedRunning ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)', cursor: 'pointer', fontSize: 9, fontWeight: 700, color: liveFeedRunning ? '#ef4444' : '#22c55e', fontFamily: 'inherit' }}>{liveFeedRunning ? '⏸' : '▶'}</button>
                         <button onClick={() => { setLiveFeedEvents([]); if (liveFeedMarkerRef.current) { liveFeedMarkerRef.current.remove(); liveFeedMarkerRef.current = null; } if (liveFeedPopupRef.current) { liveFeedPopupRef.current.remove(); liveFeedPopupRef.current = null; } }} style={{ width: 20, height: 20, borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textDim, fontSize: 8, padding: 0 }} title="Clear">🗑️</button>
                     </>} />
                     <PanelResizeGrip id="feed" />
@@ -5712,7 +5872,7 @@ export default function MapIndex() {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 1 }}>
                                         <span style={{ fontSize: 10, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{evt.title}</span>
-                                        {evt.isNew && <span style={{ fontSize: 7, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: '#ef444420', color: '#ef4444', border: '1px solid #ef444430', flexShrink: 0, animation: 'tmap-tl-ring 1s infinite' }}>NEW</span>}
+                                        {evt.isNew && <span style={{ fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 2, background: '#ef444420', color: '#ef4444', border: '1px solid #ef444430', flexShrink: 0, animation: 'tmap-tl-ring 1s infinite' }}>NEW</span>}
                                     </div>
                                     <div style={{ fontSize: 8, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginBottom: 2 }}>
                                         {evt.person && <span style={{ color: '#ec4899', fontWeight: 600 }}>{evt.person}</span>}
@@ -5720,9 +5880,9 @@ export default function MapIndex() {
                                         {evt.camera && <span>{evt.camera}</span>}
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <span style={{ fontSize: 7, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: `${sevColor}15`, color: sevColor, border: `1px solid ${sevColor}25` }}>{evt.sev.toUpperCase()}</span>
-                                        <span style={{ fontSize: 7, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${evt.color}10`, color: evt.color, border: `1px solid ${evt.color}20` }}>{evt.type.toUpperCase()}</span>
-                                        <span style={{ fontSize: 7, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", marginLeft: 'auto' }}>{evt.ts}</span>
+                                        <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 2, background: `${sevColor}15`, color: sevColor, border: `1px solid ${sevColor}25` }}>{evt.sev.toUpperCase()}</span>
+                                        <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 4px', borderRadius: 2, background: `${evt.color}10`, color: evt.color, border: `1px solid ${evt.color}20` }}>{evt.type.toUpperCase()}</span>
+                                        <span style={{ fontSize: 9, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", marginLeft: 'auto' }}>{evt.ts}</span>
                                     </div>
                                 </div>
                                 {/* Pin button */}
@@ -5739,7 +5899,7 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{liveFeedEvents.filter(e => liveFeedFilter.has(e.type)).length} shown</span>
                         {liveFeedPinned.size > 0 && <><span style={{ fontSize: 8, color: theme.textDim }}>·</span><span style={{ fontSize: 8, color: '#8b5cf6', fontWeight: 600 }}>📌 {liveFeedPinned.size}</span></>}
                         <div style={{ flex: 1 }} />
-                        <span style={{ fontSize: 7, color: theme.textDim }}>WS: <span style={{ color: liveFeedRunning ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6001</span></span>
+                        <span style={{ fontSize: 9, color: theme.textDim }}>WS: <span style={{ color: liveFeedRunning ? '#22c55e' : '#6b7280', fontWeight: 700 }}>ws://argux.local:6001</span></span>
                     </div>
                 </>}
                 </div>}
@@ -5844,7 +6004,7 @@ export default function MapIndex() {
                                     { label: 'Tile', value: activeTile, icon: '🗺️' },
                                 ].map(v => <div key={v.label} style={{ display: 'flex', alignItems: 'center', gap: 5, flex: '1 1 100px' }}>
                                     <span style={{ fontSize: 12 }}>{v.icon}</span>
-                                    <div><div style={{ fontSize: 7, color: theme.textDim, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{v.label}</div><div style={{ fontSize: 10, color: theme.text, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{v.value}</div></div>
+                                    <div><div style={{ fontSize: 9, color: theme.textDim, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{v.label}</div><div style={{ fontSize: 10, color: theme.text, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{v.value}</div></div>
                                 </div>)}
                             </div>
 
@@ -5945,7 +6105,7 @@ export default function MapIndex() {
                                     <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
                                         {shareUrl.split('?')[1]?.split('&').map(p => {
                                             const [k, v] = p.split('=');
-                                            return <span key={k} style={{ fontSize: 7, padding: '1px 5px', borderRadius: 3, background: `${theme.border}40`, color: theme.textDim }}><span style={{ color: '#8b5cf6', fontWeight: 700 }}>{k}</span>={decodeURIComponent(v || '')}</span>;
+                                            return <span key={k} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: `${theme.border}40`, color: theme.textDim }}><span style={{ color: '#8b5cf6', fontWeight: 700 }}>{k}</span>={decodeURIComponent(v || '')}</span>;
                                         })}
                                     </div>
                                 </div>}
@@ -5978,12 +6138,12 @@ export default function MapIndex() {
                         </div>
                     </div>
                     <div style={{ padding: '2px 0' }}>
-                        <button onClick={() => { setZoneEventsPanel(zoneCtxMenu.zone); goToZone(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="6" y1="6" x2="6" y2="14"/></svg>Show Events</button>
-                        <button onClick={() => { openEditZone(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg>Edit Zone</button>
-                        <button onClick={() => { goToZone(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5"/></svg>Zoom to Zone</button>
-                        <button onClick={() => { toggleZoneVisibility(zoneCtxMenu.zone.id); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{hiddenZones.has(zoneCtxMenu.zone.id) ? <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>Show Zone</> : <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/><line x1="3" y1="13" x2="13" y2="3"/></svg>Hide Zone</>}</button>
+                        <button onClick={() => { setZoneEventsPanel(zoneCtxMenu.zone); goToZone(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="6" y1="6" x2="6" y2="14"/></svg>Show Events</button>
+                        <button onClick={() => { openEditZone(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg>Edit Zone</button>
+                        <button onClick={() => { goToZone(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5"/></svg>Zoom to Zone</button>
+                        <button onClick={() => { toggleZoneVisibility(zoneCtxMenu.zone.id); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{hiddenZones.has(zoneCtxMenu.zone.id) ? <><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>Show Zone</> : <><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/><line x1="3" y1="13" x2="13" y2="3"/></svg>Hide Zone</>}</button>
                         <div style={{ height: 1, background: theme.border, margin: '2px 8px' }} />
-                        <button onClick={() => { setZoneDeleteConfirm(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M6 4V3h4v1M5 4v8.5a.5.5 0 00.5.5h5a.5.5 0 00.5-.5V4"/></svg>Delete Zone</button>
+                        <button onClick={() => { setZoneDeleteConfirm(zoneCtxMenu.zone); setZoneCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M6 4V3h4v1M5 4v8.5a.5.5 0 00.5.5h5a.5.5 0 00.5-.5V4"/></svg>Delete Zone</button>
                     </div>
                 </div>}
 
@@ -5995,19 +6155,19 @@ export default function MapIndex() {
                     </div>
                     <div style={{ padding: '2px 0' }}>
                         {(markerCtxMenu.type === 'person' ? [
-                            { label: 'Profile', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5"/></svg>, href: `/persons/${markerCtxMenu.id}` },
-                            { label: 'Vehicles', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="6" width="14" height="6" rx="1.5"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l2-3h6l2 3"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=vehicles` },
-                            { label: 'Devices', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="1" width="12" height="10" rx="1.5"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="11" x2="8" y2="14"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=devices` },
-                            { label: 'Connections', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="8" cy="12" r="2"/><line x1="5.5" y1="5.5" x2="6.5" y2="10.5"/><line x1="10.5" y1="5.5" x2="9.5" y2="10.5"/><line x1="6" y1="4" x2="10" y2="4"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=connections` },
-                            { label: 'AI Assistant', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="10" rx="2"/><path d="M5 7h6M5 9h3"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=ai` },
-                            { label: 'Notes', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=notes` },
+                            { label: 'Profile', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5"/></svg>, href: `/persons/${markerCtxMenu.id}` },
+                            { label: 'Vehicles', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="6" width="14" height="6" rx="1.5"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l2-3h6l2 3"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=vehicles` },
+                            { label: 'Devices', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="1" width="12" height="10" rx="1.5"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="11" x2="8" y2="14"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=devices` },
+                            { label: 'Connections', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="8" cy="12" r="2"/><line x1="5.5" y1="5.5" x2="6.5" y2="10.5"/><line x1="10.5" y1="5.5" x2="9.5" y2="10.5"/><line x1="6" y1="4" x2="10" y2="4"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=connections` },
+                            { label: 'AI Assistant', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="10" rx="2"/><path d="M5 7h6M5 9h3"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=ai` },
+                            { label: 'Notes', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>, href: `/persons/${markerCtxMenu.id}?tab=notes` },
                         ] : [
-                            { label: 'Company Profile', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M5 4V2h6v2"/><line x1="2" y1="8" x2="14" y2="8"/></svg>, href: `/organizations/${markerCtxMenu.id}` },
-                            { label: 'Vehicles', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="6" width="14" height="6" rx="1.5"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l2-3h6l2 3"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=vehicles` },
-                            { label: 'Devices', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="1" width="12" height="10" rx="1.5"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="11" x2="8" y2="14"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=devices` },
-                            { label: 'Connections', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="8" cy="12" r="2"/><line x1="5.5" y1="5.5" x2="6.5" y2="10.5"/><line x1="10.5" y1="5.5" x2="9.5" y2="10.5"/><line x1="6" y1="4" x2="10" y2="4"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=connections` },
-                            { label: 'AI Assistant', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="10" rx="2"/><path d="M5 7h6M5 9h3"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=ai` },
-                            { label: 'Notes', icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=notes` },
+                            { label: 'Company Profile', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="4" width="12" height="10" rx="1"/><path d="M5 4V2h6v2"/><line x1="2" y1="8" x2="14" y2="8"/></svg>, href: `/organizations/${markerCtxMenu.id}` },
+                            { label: 'Vehicles', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="6" width="14" height="6" rx="1.5"/><circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><path d="M3 6l2-3h6l2 3"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=vehicles` },
+                            { label: 'Devices', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="1" width="12" height="10" rx="1.5"/><line x1="5" y1="14" x2="11" y2="14"/><line x1="8" y1="11" x2="8" y2="14"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=devices` },
+                            { label: 'Connections', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="8" cy="12" r="2"/><line x1="5.5" y1="5.5" x2="6.5" y2="10.5"/><line x1="10.5" y1="5.5" x2="9.5" y2="10.5"/><line x1="6" y1="4" x2="10" y2="4"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=connections` },
+                            { label: 'AI Assistant', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="10" rx="2"/><path d="M5 7h6M5 9h3"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=ai` },
+                            { label: 'Notes', icon: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textSecondary} strokeWidth="1.5" strokeLinecap="round"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>, href: `/organizations/${markerCtxMenu.id}?tab=notes` },
                         ]).map((item, i) => (
                             <a key={i} href={item.href} onClick={() => setMarkerCtxMenu(null)} style={{ display: 'flex', width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, textDecoration: 'none', alignItems: 'center', gap: 8, boxSizing: 'border-box' as const }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{item.icon}{item.label}</a>
                         ))}
@@ -6149,7 +6309,7 @@ export default function MapIndex() {
                         </div>
                         {/* Summary */}
                         <div style={{ display: 'flex', gap: 6, padding: '8px 14px', borderBottom: `1px solid ${theme.border}`, flexShrink: 0 }}>
-                            {(['critical', 'warning', 'info'] as const).map(s => { const c = events.filter(e => e.severity === s).length; return <div key={s} style={{ flex: 1, padding: '4px 6px', borderRadius: 4, background: sevColors[s] + '10', border: `1px solid ${sevColors[s]}20`, textAlign: 'center' as const }}><div style={{ fontSize: 14, fontWeight: 800, color: sevColors[s] }}>{c}</div><div style={{ fontSize: 7, color: theme.textDim, textTransform: 'uppercase' as const, fontWeight: 600 }}>{s}</div></div>; })}
+                            {(['critical', 'warning', 'info'] as const).map(s => { const c = events.filter(e => e.severity === s).length; return <div key={s} style={{ flex: 1, padding: '4px 6px', borderRadius: 4, background: sevColors[s] + '10', border: `1px solid ${sevColors[s]}20`, textAlign: 'center' as const }}><div style={{ fontSize: 14, fontWeight: 800, color: sevColors[s] }}>{c}</div><div style={{ fontSize: 9, color: theme.textDim, textTransform: 'uppercase' as const, fontWeight: 600 }}>{s}</div></div>; })}
                         </div>
                         {/* Event list */}
                         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
@@ -6164,7 +6324,7 @@ export default function MapIndex() {
                                         <div style={{ fontSize: 10, color: theme.textSecondary, marginBottom: 1 }}>{ev.person}</div>
                                         <div style={{ fontSize: 9, color: theme.textDim }}>{ev.detail}</div>
                                     </div>
-                                    <span style={{ fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, whiteSpace: 'nowrap' as const }}>{ev.time.split(' ')[1]}<br/><span style={{ fontSize: 7 }}>{ev.time.split(' ')[0].slice(5)}</span></span>
+                                    <span style={{ fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, whiteSpace: 'nowrap' as const }}>{ev.time.split(' ')[1]}<br/><span style={{ fontSize: 9 }}>{ev.time.split(' ')[0].slice(5)}</span></span>
                                 </div>
                             ))}
                         </div>
@@ -6197,11 +6357,11 @@ export default function MapIndex() {
                         </div>
                     </div>
                     <div style={{ padding: '2px 0' }}>
-                        <button onClick={() => { goToObj(objCtxMenu.obj); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5"/></svg>Zoom to Object</button>
-                        <button onClick={() => { openEditObj(objCtxMenu.obj); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg>Edit Object</button>
-                        <button onClick={() => { toggleObjVisibility(objCtxMenu.obj.id); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{objCtxMenu.obj.visible ? <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/><line x1="3" y1="13" x2="13" y2="3"/></svg>Hide Object</> : <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>Show Object</>}</button>
+                        <button onClick={() => { goToObj(objCtxMenu.obj); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5"/></svg>Zoom to Object</button>
+                        <button onClick={() => { openEditObj(objCtxMenu.obj); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M11 2l3 3-8 8H3v-3z"/></svg>Edit Object</button>
+                        <button onClick={() => { toggleObjVisibility(objCtxMenu.obj.id); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.text, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{objCtxMenu.obj.visible ? <><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/><line x1="3" y1="13" x2="13" y2="3"/></svg>Hide Object</> : <><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z"/><circle cx="8" cy="8" r="2"/></svg>Show Object</>}</button>
                         <div style={{ height: 1, background: theme.border, margin: '2px 8px' }} />
-                        <button onClick={() => { setObjDeleteConfirm(objCtxMenu.obj); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M6 4V3h4v1M5 4v8.5a.5.5 0 00.5.5h5a.5.5 0 00.5-.5V4"/></svg>Remove Object</button>
+                        <button onClick={() => { setObjDeleteConfirm(objCtxMenu.obj); setObjCtxMenu(null); }} style={{ width: '100%', padding: '7px 12px', border: 'none', background: 'transparent', color: theme.danger, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M6 4V3h4v1M5 4v8.5a.5.5 0 00.5.5h5a.5.5 0 00.5-.5V4"/></svg>Remove Object</button>
                     </div>
                 </div>}
 
