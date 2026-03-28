@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.25.36 - 2026-03-28
+
+### Implemented — Configuration (/admin/config)
+- **7 configuration tabs** with full form controls, toggles, CRUD for clocks/IPs, and live state.
+
+#### Tab 1: General (⚙️)
+- **Language & Region**: Language (6), Timezone (12), Date Format (5), Number Format (3).
+- **Appearance**: Default Theme (10 themes), Default Font (7 fonts), Classification Level (6), System Name.
+- **Header Clocks**: CRUD — add/remove city clocks with timezone selector. 5 defaults (Zagreb, London, New York, Dubai, Tokyo). Add Clock modal with label + timezone. Remove with ✕ button.
+
+#### Tab 2: Security (🔐)
+- **Two-Factor Auth**: Default MFA Method (App/SMS/Email dropdown), MFA Enforcement (required/optional/admin-only).
+- **Session Management**: Session Timeout (8 options: 15min → Never), Max Concurrent Sessions (number input).
+- **Encryption**: Algorithm (AES-256-GCM/CBC, ChaCha20), TLS Version (1.2/1.3), Force HTTPS toggle.
+- **Password Policy**: 7 configurable rules — min length, uppercase/lowercase/number/special (toggles), max age, history depth.
+- **IP Whitelist**: CRUD — add/remove CIDR ranges. 3 defaults (10.0/8, 192.168/16, 172.16/12). Inline ✕ removal.
+- **Audit Logging**: Master toggle, brute force threshold, lockout duration.
+
+#### Tab 3: Notifications (🔔)
+- **Global**: Master enable/disable toggle, quiet hours (start/end time pickers), cooldown minutes, min severity for push.
+- **Preferences**: 14 notification types (zone breach, face match, LPR, co-location, signal lost, speed, keyword, device offline, sync, report, AI job, user login, backup, system error). Each with icon + toggle.
+- **Channels**: 7 delivery channels (In-App, Email, SMS, Webhook, Telegram, Slack, Push). Each with icon, label, toggle, ACTIVE/OFF badge.
+
+#### Tab 4: Developer (🛠️)
+- **Environment**: App Environment (5: production→local), Debug Mode (3), Log Level (8: emergency→debug), Log Channel (6), App URL, Filesystem (4).
+- **Cache & Queue**: Cache Driver (redis/memcached/file/array), Queue Driver (redis/database/sync/null), Worker count, Job timeout.
+- **API & CORS**: Rate limit, CORS origins.
+- Non-production warning banner.
+
+#### Tab 5: Map Defaults (🗺️)
+- **Default View**: Center Lat/Lng (number inputs), Zoom (1-20), Tile Provider (16 providers).
+- **Layers**: 6 toggleable layers (Markers, Heatmap, Tracks, Zones, Network, Clusters).
+- **Performance**: Cluster threshold, max markers, trail history, 3D buildings mode.
+- Live preview summary of current defaults.
+
+#### Tab 6: Data Retention (📦)
+- **Policies**: 6 retention dropdowns — Event Logs, App Logs, Media Files, Chat History, Backups, Audit Trail. Each with hint text. Options: 7 days → Forever.
+- **Auto-Purge**: Master toggle for automatic deletion.
+- **Storage Estimates**: 6 cards showing estimated consumption per category with current retention.
+
+#### Tab 7: Backup & AI (💾)
+- **Backups**: Frequency (6h→Monthly), Type (Full/Incremental/Differential), Encryption toggle, Integrity verification toggle.
+- **AI Models**: 9 models (LLaMA 3.1 70B, 8B, Faster-Whisper, InsightFace, NLLB-200, LLaVA, PaddleOCR, YOLOv8, Mistral 7B) with active/standby toggles, GPU memory per model, status badges.
+- **RAG Index**: Rebuild schedule (daily/weekly/manual).
+- GPU summary: Total active GPU, active count, standby count.
+
+### Technical
+- **Mock data** (`resources/js/mock/admin-config.ts`, 111 lines): 6 languages, 12 timezones, 5 date formats, 10 themes, 7 fonts, 5 default clocks, 3 MFA methods, 8 session timeouts, 3 encryption algorithms, 7 password policies, 3 IP ranges, 14 notification types, 7 channels, 5 environments, 3 debug modes, 8 log levels, 6 log channels, 4 filesystems, 16 tile providers, 6 map layers, 10 retention periods, 5 backup frequencies, 3 backup types, 9 AI models.
+- **CSS** (`resources/css/pages/admin-config.css`, 22 lines): Tab styles, section cards, form fields, toggle component, grid layouts, responsive.
+- **Tests** (`resources/js/tests/AdminConfig.test.ts`, 76 lines): 34 tests across 9 describe blocks.
+- **Keyboard shortcuts**: `1-7` tab switch, `S` save, `Esc` close, `Ctrl+Q` modal.
+- Page: 268 lines (was 11 placeholder).
+
 ## 0.25.35 - 2026-03-27
 
 ### Implemented — Statistics (/admin/statistics)
