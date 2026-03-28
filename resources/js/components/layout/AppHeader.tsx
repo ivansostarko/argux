@@ -151,7 +151,7 @@ function UserDropdown() {
     );
 }
 
-export default function AppHeader({ onMenuToggle }: { onMenuToggle: () => void }) {
+export default function AppHeader({ onMenuToggle, hideClock, hideNotifications }: { onMenuToggle: () => void; hideClock?: boolean; hideNotifications?: boolean }) {
     const { currentTheme: th } = useAppSettings();
     return (
         <header style={{ height: 56, background: th.headerBg, borderBottom: `1px solid ${th.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0, position: 'sticky', top: 0, zIndex: 30 }}>
@@ -173,10 +173,10 @@ export default function AppHeader({ onMenuToggle }: { onMenuToggle: () => void }
                 <button onClick={onMenuToggle} className="ax-hamburger" style={{ display: 'none', background: 'none', border: `1px solid ${th.border}`, borderRadius: 8, padding: 7, cursor: 'pointer', color: th.textSecondary, alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg>
                 </button>
-                <CityClocks />
+                {!hideClock && <CityClocks />}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <NotificationDropdown />
+                {!hideNotifications && <NotificationDropdown />}
                 <UserDropdown />
             </div>
         </header>

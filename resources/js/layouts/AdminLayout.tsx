@@ -48,7 +48,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <AdminSidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} currentPath={currentPath} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
 
             <div className="ax-app-main">
-                <AppHeader onMenuToggle={() => setMobileOpen(!mobileOpen)} />
+                <AppHeader onMenuToggle={() => setMobileOpen(!mobileOpen)} hideClock hideNotifications />
                 <main className="ax-app-content" style={{ background: t.bg }}>
                     <Breadcrumbs />
                     {children}

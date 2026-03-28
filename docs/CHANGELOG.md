@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.25.38 - 2026-03-28
+
+### Updated — Admin Layout
+- Removed clock dropdown from admin header.
+- Removed notifications dropdown from admin header.
+- AppHeader now accepts optional `hideClock` and `hideNotifications` props. Admin layout passes both as true. User layout unchanged (shows both).
+
 ## 0.25.37 - 2026-03-28
 
 ### Updated — Configuration (/admin/config) — Expanded to 11 Tabs
