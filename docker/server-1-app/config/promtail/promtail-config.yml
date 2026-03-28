@@ -1,0 +1,76 @@
+# ============================================================
+# argux — Promtail 3.x Configuration
+# ============================================================
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+
+  # ── Docker container logs ──────────────────────────────────
+  - job_name: docker
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          __path__: /var/lib/docker/containers/**/*.log
+    pipeline_stages:
+      - docker: {}
+      - json:
+          expressions:
+            tag: tag
+      - labels:
+          tag:
+
+  # ── Nginx access logs ─────────────────────────────────────
+  - job_name: nginx-access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          log_type: access
+          __path__: /var/log/nginx/access.log
+    pipeline_stages:
+      - json:
+          expressions:
+            status: status
+            request: request
+            request_time: request_time
+      - labels:
+          status:
+
+  # ── Nginx error logs ──────────────────────────────────────
+  - job_name: nginx-error
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          log_type: error
+          __path__: /var/log/nginx/error.log
+
+  # ── System logs ────────────────────────────────────────────
+  - job_name: syslog
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: syslog
+          __path__: /var/log/syslog
+
+  - job_name: auth
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: auth
+          __path__: /var/log/auth.log

@@ -1,0 +1,18 @@
+# ============================================================
+# argux — CoreDNS v1.12 Configuration
+# ============================================================
+
+argux.local:53 {
+    file /etc/coredns/argux.local.db
+    log
+    errors
+    cache 30
+    reload 10s
+}
+
+.:53 {
+    forward . 8.8.8.8 8.8.4.4
+    cache 300
+    log
+    errors
+}

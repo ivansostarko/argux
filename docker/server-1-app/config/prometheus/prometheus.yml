@@ -1,0 +1,143 @@
+# ============================================================
+# argux — Prometheus 3.x Scrape Configuration
+# ============================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+  external_labels:
+    cluster: argux-production
+    environment: production
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+scrape_configs:
+
+  # ── Self-scrape ────────────────────────────────────────────
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── Node Exporter (all servers) ────────────────────────────
+  - job_name: node
+    static_configs:
+      - targets:
+          - "node-exporter:9100"
+        labels:
+          server: app
+      # Add other servers when deployed:
+      # - targets: ["dbmsg-node-exporter:9100"]
+      #   labels:
+      #     server: dbmsg
+
+  # ── Nginx ──────────────────────────────────────────────────
+  - job_name: nginx
+    static_configs:
+      - targets: ["nginx:9113"]
+        labels:
+          server: app
+
+  # ── Redis Cluster ──────────────────────────────────────────
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+        labels:
+          server: app
+
+  # ── PostgreSQL (Server 2) ──────────────────────────────────
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres.argux.local:9187"]
+        labels:
+          server: dbmsg
+
+  # ── MySQL (Server 2) ───────────────────────────────────────
+  - job_name: mysql
+    static_configs:
+      - targets: ["mysql.argux.local:9104"]
+        labels:
+          server: dbmsg
+
+  # ── Kafka (Server 2) ──────────────────────────────────────
+  - job_name: kafka
+    static_configs:
+      - targets: ["kafka.argux.local:9308"]
+        labels:
+          server: dbmsg
+
+  # ── ClickHouse (Server 2) ─────────────────────────────────
+  - job_name: clickhouse
+    static_configs:
+      - targets: ["clickhouse.argux.local:9116"]
+        labels:
+          server: dbmsg
+
+  # ── MinIO (Server 4) ──────────────────────────────────────
+  - job_name: minio
+    metrics_path: /minio/v2/metrics/cluster
+    static_configs:
+      - targets: ["minio.argux.local:9000"]
+        labels:
+          server: storage
+
+  # ── Qdrant (Server 4) ─────────────────────────────────────
+  - job_name: qdrant
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["qdrant.argux.local:6333"]
+        labels:
+          server: storage
+
+  # ── GPU / AI (Server 3) ───────────────────────────────────
+  - job_name: gpu
+    static_configs:
+      - targets: ["ai.argux.local:9835"]
+        labels:
+          server: ai
+
+  # ── MediaMTX ───────────────────────────────────────────────
+  - job_name: mediamtx
+    static_configs:
+      - targets: ["mediamtx:9998"]
+        labels:
+          server: app
+
+  # ── CrowdSec ───────────────────────────────────────────────
+  - job_name: crowdsec
+    static_configs:
+      - targets: ["crowdsec:6060"]
+        labels:
+          server: app
+
+  # ── Falco ──────────────────────────────────────────────────
+  - job_name: falco
+    static_configs:
+      - targets: ["falco:9376"]
+        labels:
+          server: app
+
+  # ── Blackbox HTTP Probes ───────────────────────────────────
+  - job_name: blackbox_http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://argux.local/api/v1/health
+          - http://grafana:3000
+          - http://prometheus:9090
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

@@ -1,0 +1,80 @@
+# ============================================================
+# argux — FastAPI AI Microservice Dependencies
+# ============================================================
+
+# Framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+
+# AI / ML Core
+torch==2.5.1
+torchvision==0.20.1
+torchaudio==2.5.1
+numpy==1.26.4
+scipy==1.14.1
+scikit-learn==1.6.0
+
+# Face Recognition
+insightface==0.7.3
+onnxruntime-gpu==1.20.1
+
+# Object Detection (LPR)
+ultralytics==8.3.52
+paddlepaddle-gpu==2.6.2
+paddleocr==2.9.1
+
+# Audio / Speech
+speechbrain==1.0.2
+pyannote.audio==3.3.2
+faster-whisper==1.1.0
+
+# Translation
+transformers==4.47.1
+sentencepiece==0.2.0
+protobuf==5.29.3
+
+# RAG / LLM
+langchain==0.3.14
+langchain-community==0.3.14
+sentence-transformers==3.3.1
+
+# Predictive Analytics
+xgboost==2.1.3
+prophet==1.1.6
+statsmodels==0.14.4
+
+# Vector DB
+qdrant-client==1.12.1
+
+# Kafka
+confluent-kafka==2.6.1
+
+# Task Queue
+celery==5.4.0
+redis==5.2.1
+
+# Storage
+minio==7.2.12
+boto3==1.36.2
+
+# Database
+psycopg2-binary==2.9.10
+clickhouse-connect==0.8.9
+
+# Monitoring
+prometheus-client==0.21.1
+prometheus-fastapi-instrumentator==7.0.2
+
+# Media processing
+Pillow==11.1.0
+opencv-python-headless==4.10.0.84
+ffmpeg-python==0.2.0
+librosa==0.10.2.post1
+soundfile==0.12.1
+
+# Utilities
+httpx==0.28.1
+python-multipart==0.0.18
+python-dotenv==1.0.1
+pyyaml==6.0.2

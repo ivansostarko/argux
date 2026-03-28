@@ -1,0 +1,237 @@
+# ============================================================
+# argux Server 4 — Storage Server
+# ============================================================
+# Services: MinIO Distributed (4 drives), Qdrant,
+#           restic backup agent, node_exporter
+# ============================================================
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${LOG_MAX_SIZE:-50m}"
+    max-file: "${LOG_MAX_FILE:-5}"
+    tag: "{{.Name}}"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s
+
+services:
+
+  # ════════════════════════════════════════════════════════════
+  # MinIO Distributed — S3-Compatible Object Storage
+  # ════════════════════════════════════════════════════════════
+  minio:
+    image: minio/minio:RELEASE.2025-02-28T09-55-16Z
+    container_name: argux-minio
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - argux-minio-data-1:/data1
+      - argux-minio-data-2:/data2
+      - argux-minio-data-3:/data3
+      - argux-minio-data-4:/data4
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_PROMETHEUS_AUTH_TYPE: ${MINIO_PROMETHEUS_AUTH_TYPE:-public}
+    command: ["server", "/data{1...4}", "--console-address", ":9001"]
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "mc", "ready", "local"]
+    networks:
+      argux-storage-net:
+        aliases:
+          - minio.argux.local
+
+  # ── MinIO Bucket Initialization ────────────────────────────
+  minio-init:
+    image: minio/mc:latest
+    container_name: argux-minio-init
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mc alias set argux http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
+
+        # Create argux buckets
+        mc mb --ignore-existing argux/argux-media
+        mc mb --ignore-existing argux/argux-faces
+        mc mb --ignore-existing argux/argux-audio
+        mc mb --ignore-existing argux/argux-video
+        mc mb --ignore-existing argux/argux-lpr
+        mc mb --ignore-existing argux/argux-documents
+        mc mb --ignore-existing argux/argux-exports
+        mc mb --ignore-existing argux/argux-backups
+        mc mb --ignore-existing argux/argux-hls-recordings
+
+        # Set lifecycle rules (auto-expire temp files after 7 days)
+        mc ilm rule add argux/argux-exports --expire-days 7
+
+        # Enable versioning on critical buckets
+        mc version enable argux/argux-faces
+        mc version enable argux/argux-documents
+
+        echo "All argux MinIO buckets created."
+        mc ls argux/
+    networks:
+      argux-storage-net:
+
+  # ════════════════════════════════════════════════════════════
+  # Qdrant — Vector Database
+  # ════════════════════════════════════════════════════════════
+  qdrant:
+    image: qdrant/qdrant:v1.13.2
+    container_name: argux-qdrant
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - argux-qdrant-storage:/qdrant/storage
+      - argux-qdrant-snapshots:/qdrant/snapshots
+      - ./config/qdrant/config.yaml:/qdrant/config/production.yaml:ro
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+    networks:
+      argux-storage-net:
+        aliases:
+          - qdrant.argux.local
+
+  # ── Qdrant Collection Initialization ───────────────────────
+  qdrant-init:
+    image: curlimages/curl:latest
+    container_name: argux-qdrant-init
+    restart: "no"
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 5
+        API="http://qdrant:6333"
+        HDR="Content-Type: application/json"
+        KEY="Api-Key: ${QDRANT_API_KEY}"
+
+        # Face embeddings (512-d ArcFace)
+        curl -s -X PUT "$$API/collections/face_embeddings" -H "$$HDR" -H "$$KEY" -d '{
+          "vectors": {"size": 512, "distance": "Cosine"},
+          "optimizers_config": {"indexing_threshold": 20000},
+          "hnsw_config": {"m": 16, "ef_construct": 100}
+        }' || true
+
+        # Voice embeddings (192-d ECAPA-TDNN)
+        curl -s -X PUT "$$API/collections/voice_embeddings" -H "$$HDR" -H "$$KEY" -d '{
+          "vectors": {"size": 192, "distance": "Cosine"},
+          "optimizers_config": {"indexing_threshold": 10000}
+        }' || true
+
+        # RAG document embeddings (384-d all-MiniLM-L6-v2)
+        curl -s -X PUT "$$API/collections/rag_documents" -H "$$HDR" -H "$$KEY" -d '{
+          "vectors": {"size": 384, "distance": "Cosine"},
+          "optimizers_config": {"indexing_threshold": 10000}
+        }' || true
+
+        # Event semantic embeddings (384-d)
+        curl -s -X PUT "$$API/collections/event_embeddings" -H "$$HDR" -H "$$KEY" -d '{
+          "vectors": {"size": 384, "distance": "Cosine"},
+          "optimizers_config": {"indexing_threshold": 20000}
+        }' || true
+
+        echo "All argux Qdrant collections created."
+    networks:
+      argux-storage-net:
+
+  # ════════════════════════════════════════════════════════════
+  # Restic Backup Agent
+  # ════════════════════════════════════════════════════════════
+  restic-backup:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.restic
+    container_name: argux-restic-backup
+    <<: *default-restart
+    logging: *default-logging
+    volumes:
+      - argux-minio-data-1:/mnt/minio-data-1:ro
+      - argux-minio-data-2:/mnt/minio-data-2:ro
+      - argux-minio-data-3:/mnt/minio-data-3:ro
+      - argux-minio-data-4:/mnt/minio-data-4:ro
+      - argux-qdrant-snapshots:/mnt/qdrant-snapshots:ro
+      - argux-restic-cache:/root/.cache/restic
+      - ./config/restic/backup.sh:/usr/local/bin/backup.sh:ro
+    environment:
+      RESTIC_REPOSITORY: /backups
+      RESTIC_PASSWORD: CHANGE_ME_RESTIC_PASSWORD
+      TZ: ${TZ:-UTC}
+    # Runs on cron schedule defined in Dockerfile
+    networks:
+      argux-storage-net:
+
+  # ── Node Exporter ──────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: argux-storage-node-exporter
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+    networks:
+      argux-storage-net:
+
+# ══════════════════════════════════════════════════════════════
+# NETWORKS
+# ══════════════════════════════════════════════════════════════
+networks:
+  argux-storage-net:
+    name: argux-storage-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16
+          gateway: 172.23.0.1
+
+# ══════════════════════════════════════════════════════════════
+# VOLUMES
+# ══════════════════════════════════════════════════════════════
+volumes:
+  argux-minio-data-1:
+    name: argux-minio-data-1
+  argux-minio-data-2:
+    name: argux-minio-data-2
+  argux-minio-data-3:
+    name: argux-minio-data-3
+  argux-minio-data-4:
+    name: argux-minio-data-4
+
+  argux-qdrant-storage:
+    name: argux-qdrant-storage
+  argux-qdrant-snapshots:
+    name: argux-qdrant-snapshots
+
+  argux-restic-cache:
+    name: argux-restic-cache

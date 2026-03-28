@@ -1,0 +1,14 @@
+# ============================================================
+# argux — Restic Backup Agent
+# ============================================================
+FROM restic/restic:0.17.3
+
+RUN apk add --no-cache bash curl postgresql16-client mysql-client
+
+COPY backup.sh /usr/local/bin/backup.sh
+RUN chmod +x /usr/local/bin/backup.sh
+
+# Run backup daily at 04:00 UTC via cron
+RUN echo "0 4 * * * /usr/local/bin/backup.sh >> /var/log/backup.log 2>&1" > /etc/crontabs/root
+
+CMD ["crond", "-f", "-d", "8"]

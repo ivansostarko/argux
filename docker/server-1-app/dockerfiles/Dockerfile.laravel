@@ -1,0 +1,49 @@
+# ============================================================
+# argux — Laravel 13 Octane (Swoole) · PHP 8.4
+# ============================================================
+ARG PHP_VERSION=8.4
+FROM php:${PHP_VERSION}-cli-bookworm AS base
+
+LABEL maintainer="argux DevOps <devops@argux.local>"
+LABEL description="Laravel 13 Octane with Swoole for argux API"
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl zip unzip libpng-dev libjpeg-dev libfreetype6-dev \
+    libzip-dev libpq-dev libonig-dev libxml2-dev libcurl4-openssl-dev \
+    libssl-dev libicu-dev supervisor procps \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo pdo_pgsql pdo_mysql pgsql mysqli \
+        gd zip mbstring xml curl intl bcmath pcntl sockets opcache \
+    && rm -rf /var/lib/apt/lists/*
+
+# Swoole extension
+RUN pecl install swoole && docker-php-ext-enable swoole
+
+# Redis extension
+RUN pecl install redis && docker-php-ext-enable redis
+
+# Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# PHP configuration
+RUN cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini
+COPY php-overrides.ini /usr/local/etc/php/conf.d/99-argux.ini
+
+WORKDIR /var/www/html
+
+# Copy application code (mount or COPY from build context)
+# In production, use multi-stage build with npm build step
+# COPY . /var/www/html
+
+# Set permissions
+RUN mkdir -p storage/logs storage/framework/{sessions,views,cache} bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+USER www-data
+
+EXPOSE 8000 8080 9253
+
+# Default: run Octane. Override via CONTAINER_ROLE env var.
+CMD ["php", "artisan", "octane:start", "--server=swoole", "--host=0.0.0.0", "--port=8000"]

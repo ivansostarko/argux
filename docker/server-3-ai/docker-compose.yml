@@ -1,0 +1,271 @@
+# ============================================================
+# argux Server 3 — AI Server (GPU Inference)
+# ============================================================
+# Services: Ollama, FastAPI AI Microservice, Celery Workers,
+#           NVIDIA GPU Exporter, node_exporter
+# ============================================================
+# Prerequisites: NVIDIA Container Toolkit installed on host
+#   apt install nvidia-container-toolkit
+#   nvidia-ctk runtime configure --runtime=docker
+#   systemctl restart docker
+# ============================================================
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${LOG_MAX_SIZE:-50m}"
+    max-file: "${LOG_MAX_FILE:-5}"
+    tag: "{{.Name}}"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 120s
+
+x-gpu: &gpu-deploy
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
+services:
+
+  # ════════════════════════════════════════════════════════════
+  # Ollama — LLM Model Server
+  # ════════════════════════════════════════════════════════════
+  ollama:
+    image: ollama/ollama:latest
+    container_name: argux-ollama
+    <<: [*default-restart, *gpu-deploy]
+    logging: *default-logging
+    ports:
+      - "11434:11434"
+    volumes:
+      - argux-ollama-models:/root/.ollama
+    environment:
+      OLLAMA_HOST: ${OLLAMA_HOST:-0.0.0.0:11434}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-4}
+      OLLAMA_MAX_LOADED_MODELS: ${OLLAMA_MAX_LOADED_MODELS:-3}
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+    networks:
+      argux-ai-net:
+        aliases:
+          - ollama.argux.local
+
+  # ── Ollama Model Pull (runs once) ──────────────────────────
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: argux-ollama-pull
+    restart: "no"
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        sleep 15
+        echo "Pulling argux AI models..."
+        ollama pull mistral:7b-instruct-v0.3-q4_K_M
+        ollama pull llama3.1:8b-instruct-q4_K_M
+        ollama pull nomic-embed-text
+        echo "All models pulled."
+    environment:
+      OLLAMA_HOST: ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      argux-ai-net:
+
+  # ════════════════════════════════════════════════════════════
+  # FastAPI AI Microservice
+  # ════════════════════════════════════════════════════════════
+  fastapi-ai:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.fastapi
+    container_name: argux-fastapi-ai
+    <<: [*default-restart, *gpu-deploy]
+    logging: *default-logging
+    ports:
+      - "8001:8001"
+      - "8002:8002"
+    volumes:
+      - argux-ai-models:/models
+      - argux-ai-cache:/root/.cache
+    env_file:
+      - ./env/.env
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      argux-ai-net:
+        aliases:
+          - fastapi.argux.local
+
+  # ════════════════════════════════════════════════════════════
+  # Celery Workers — Async AI Task Processing
+  # ════════════════════════════════════════════════════════════
+  celery-face:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.fastapi
+    container_name: argux-celery-face
+    <<: [*default-restart, *gpu-deploy]
+    logging: *default-logging
+    command: ["celery", "-A", "app.celery_app", "worker", "-Q", "face_recognition", "-c", "2", "--loglevel=info"]
+    volumes:
+      - argux-ai-models:/models
+      - argux-ai-cache:/root/.cache
+    env_file:
+      - ./env/.env
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis-node-1.argux.local:6379/1
+    depends_on:
+      fastapi-ai:
+        condition: service_healthy
+    networks:
+      argux-ai-net:
+
+  celery-lpr:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.fastapi
+    container_name: argux-celery-lpr
+    <<: [*default-restart, *gpu-deploy]
+    logging: *default-logging
+    command: ["celery", "-A", "app.celery_app", "worker", "-Q", "lpr_recognition", "-c", "2", "--loglevel=info"]
+    volumes:
+      - argux-ai-models:/models
+      - argux-ai-cache:/root/.cache
+    env_file:
+      - ./env/.env
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis-node-1.argux.local:6379/1
+    depends_on:
+      fastapi-ai:
+        condition: service_healthy
+    networks:
+      argux-ai-net:
+
+  celery-audio:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.fastapi
+    container_name: argux-celery-audio
+    <<: [*default-restart, *gpu-deploy]
+    logging: *default-logging
+    command: ["celery", "-A", "app.celery_app", "worker", "-Q", "audio_processing,voice_recognition,translation", "-c", "2", "--loglevel=info"]
+    volumes:
+      - argux-ai-models:/models
+      - argux-ai-cache:/root/.cache
+    env_file:
+      - ./env/.env
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis-node-1.argux.local:6379/1
+    depends_on:
+      fastapi-ai:
+        condition: service_healthy
+    networks:
+      argux-ai-net:
+
+  celery-analytics:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.fastapi
+    container_name: argux-celery-analytics
+    <<: *default-restart
+    logging: *default-logging
+    command: ["celery", "-A", "app.celery_app", "worker", "-Q", "analytics,prediction", "-c", "4", "--loglevel=info"]
+    volumes:
+      - argux-ai-models:/models
+      - argux-ai-cache:/root/.cache
+    env_file:
+      - ./env/.env
+    environment:
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis-node-1.argux.local:6379/1
+    depends_on:
+      fastapi-ai:
+        condition: service_healthy
+    networks:
+      argux-ai-net:
+
+  # ════════════════════════════════════════════════════════════
+  # NVIDIA GPU Exporter
+  # ════════════════════════════════════════════════════════════
+  nvidia-gpu-exporter:
+    image: utkuozdemir/nvidia_gpu_exporter:1.3.0
+    container_name: argux-nvidia-gpu-exporter
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "9835:9835"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:ro
+      - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
+    networks:
+      argux-ai-net:
+
+  # ── Node Exporter ──────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: argux-ai-node-exporter
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+    networks:
+      argux-ai-net:
+
+# ══════════════════════════════════════════════════════════════
+# NETWORKS
+# ══════════════════════════════════════════════════════════════
+networks:
+  argux-ai-net:
+    name: argux-ai-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+          gateway: 172.22.0.1
+
+# ══════════════════════════════════════════════════════════════
+# VOLUMES
+# ══════════════════════════════════════════════════════════════
+volumes:
+  argux-ollama-models:
+    name: argux-ollama-models
+  argux-ai-models:
+    name: argux-ai-models
+  argux-ai-cache:
+    name: argux-ai-cache

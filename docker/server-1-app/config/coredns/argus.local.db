@@ -1,0 +1,79 @@
+; ============================================================
+; argux — Internal DNS Zone: argux.local
+; ============================================================
+; Update IPs to match your 5-server deployment topology.
+; ============================================================
+
+$ORIGIN argux.local.
+$TTL 60
+
+@       IN  SOA ns1.argux.local. admin.argux.local. (
+            2026032801  ; serial (YYYYMMDDNN)
+            3600        ; refresh
+            600         ; retry
+            86400       ; expire
+            60          ; minimum TTL
+        )
+
+        IN  NS  ns1.argux.local.
+
+; ── Server 1 — Application Server ────────────────────────────
+ns1             IN  A   10.0.1.10
+app             IN  A   10.0.1.10
+nginx           IN  A   10.0.1.10
+octane          IN  A   10.0.1.10
+reverb          IN  A   10.0.1.10
+horizon         IN  A   10.0.1.10
+redis           IN  A   10.0.1.10
+redis-node-1    IN  A   10.0.1.10
+redis-node-2    IN  A   10.0.1.10
+redis-node-3    IN  A   10.0.1.10
+mediamtx        IN  A   10.0.1.10
+step-ca         IN  A   10.0.1.10
+infisical       IN  A   10.0.1.10
+prometheus      IN  A   10.0.1.10
+grafana         IN  A   10.0.1.10
+loki            IN  A   10.0.1.10
+crowdsec        IN  A   10.0.1.10
+wireguard       IN  A   10.0.1.10
+
+; ── Server 2 — Database & Messaging Server ───────────────────
+dbmsg           IN  A   10.0.1.20
+postgres        IN  A   10.0.1.20
+mysql           IN  A   10.0.1.20
+clickhouse      IN  A   10.0.1.20
+kafka           IN  A   10.0.1.20
+kafka-1         IN  A   10.0.1.20
+kafka-2         IN  A   10.0.1.20
+kafka-3         IN  A   10.0.1.20
+karapace        IN  A   10.0.1.20
+kafka-connect   IN  A   10.0.1.20
+typesense       IN  A   10.0.1.20
+typesense-1     IN  A   10.0.1.20
+typesense-2     IN  A   10.0.1.20
+typesense-3     IN  A   10.0.1.20
+
+; ── Server 3 — AI Server ─────────────────────────────────────
+ai              IN  A   10.0.1.30
+ollama          IN  A   10.0.1.30
+fastapi         IN  A   10.0.1.30
+celery          IN  A   10.0.1.30
+
+; ── Server 4 — Storage Server ────────────────────────────────
+storage         IN  A   10.0.1.40
+minio           IN  A   10.0.1.40
+qdrant          IN  A   10.0.1.40
+
+; ── Server 5 — Management UI Server ─────────────────────────
+ui              IN  A   10.0.1.50
+pgadmin         IN  A   10.0.1.50
+phpmyadmin      IN  A   10.0.1.50
+adminer         IN  A   10.0.1.50
+redisinsight    IN  A   10.0.1.50
+kafka-ui        IN  A   10.0.1.50
+clickhouse-ui   IN  A   10.0.1.50
+typesense-ui    IN  A   10.0.1.50
+glitchtip       IN  A   10.0.1.50
+karapace-ui     IN  A   10.0.1.50
+infisical-ui    IN  A   10.0.1.50
+wazuh-ui        IN  A   10.0.1.50

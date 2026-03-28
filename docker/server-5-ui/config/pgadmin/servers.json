@@ -1,0 +1,24 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "argux PostgreSQL 17",
+      "Group": "argux Production",
+      "Host": "postgres.argux.local",
+      "Port": 5432,
+      "MaintenanceDB": "argux",
+      "Username": "argux_app",
+      "SSLMode": "prefer",
+      "Comment": "argux primary PostgreSQL database with PostGIS 3.5"
+    },
+    "2": {
+      "Name": "Infisical DB",
+      "Group": "argux Production",
+      "Host": "postgres.argux.local",
+      "Port": 5432,
+      "MaintenanceDB": "infisical",
+      "Username": "argux_app",
+      "SSLMode": "prefer",
+      "Comment": "Infisical secrets manager database"
+    }
+  }
+}

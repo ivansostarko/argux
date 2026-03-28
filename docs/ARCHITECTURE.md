@@ -46,11 +46,40 @@
 ## Monitoring
 - Prometheus
 - Grafana
-- Loki
+
+
+Log Aggregation
+- Loki + Promtail
 
 ## Object Storage
 - MinIO 
 
+## Containerization
+- Docker + Compose
+
 
 ## AI Inference
-- 
+
+### Local LLM Core
+- Mistral 7B / Llama 3.1 8B
+
+### Translation
+- NLLB-200 / Helsinki-NLP
+
+### Face Recognition
+- InsightFace (ArcFace)
+
+### Predictive Analysis
+- XGBoost + Prophet + LSTM
+
+### License Plate OCR
+- YOLO v8 + PaddleOCR
+
+### Audio Transcription
+- Whisper Large-v3
+
+### Video Transcription
+- Whisper + FFmpeg pipeline
+
+### AI Assistant (RAG)
+- Ollama + ChromaDB + LangChain

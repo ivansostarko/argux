@@ -1,0 +1,44 @@
+# ============================================================
+# argux — FastAPI AI Microservice
+# InsightFace, YOLOv11, PaddleOCR, SpeechBrain,
+# NLLB-200, Whisper, LangChain, XGBoost, Prophet, LSTM
+# ============================================================
+FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
+
+LABEL maintainer="argux DevOps <devops@argux.local>"
+LABEL description="argux AI inference microservice with GPU support"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 python3.12-venv python3-pip python3.12-dev \
+    build-essential cmake git curl wget \
+    libgl1 libglib2.0-0 libsm6 libxext6 libxrender-dev \
+    ffmpeg libsndfile1 \
+    && ln -sf /usr/bin/python3.12 /usr/bin/python3 \
+    && ln -sf /usr/bin/python3 /usr/bin/python \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Python dependencies
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
+
+# Copy application code
+# COPY . /app/
+
+# Create model directories
+RUN mkdir -p /models/insightface /models/yolo /models/paddleocr \
+    /models/speechbrain /models/nllb /models/sentence-transformers
+
+EXPOSE 8001 8002
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=120s \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "4"]

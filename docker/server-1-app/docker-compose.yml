@@ -1,0 +1,717 @@
+# ============================================================
+# argux Server 1 — Application Server
+# ============================================================
+# Services: Nginx, Laravel Octane, Reverb, Horizon, Redis 8,
+#           Prometheus, Grafana, Loki, Promtail, MediaMTX,
+#           CoreDNS, step-ca, Infisical, CrowdSec, Falco,
+#           WireGuard, node_exporter, exporters
+# ============================================================
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${LOG_MAX_SIZE:-50m}"
+    max-file: "${LOG_MAX_FILE:-5}"
+    tag: "{{.Name}}"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
+
+services:
+
+  # ────────────────────────────────────────────────────────────
+  # REVERSE PROXY — Nginx 1.26 LTS + ModSecurity v3
+  # ────────────────────────────────────────────────────────────
+  nginx:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.nginx
+    container_name: argux-nginx
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+      - "9113:9113"
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./config/nginx/ssl:/etc/nginx/ssl:ro
+      - ./config/nginx/modsecurity:/etc/nginx/modsecurity:ro
+      - argux-nginx-cache:/var/cache/nginx
+      - argux-nginx-logs:/var/log/nginx
+      - argux-spa-dist:/usr/share/nginx/html:ro
+    environment:
+      TZ: ${TZ:-UTC}
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+    depends_on:
+      laravel-octane:
+        condition: service_healthy
+    networks:
+      argux-app-net:
+        aliases:
+          - nginx.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # BACKEND — Laravel 13 Octane (Swoole)
+  # ────────────────────────────────────────────────────────────
+  laravel-octane:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.laravel
+      args:
+        PHP_VERSION: "8.4"
+    container_name: argux-laravel-octane
+    <<: *default-restart
+    logging: *default-logging
+    expose:
+      - "8000"
+      - "9253"
+    volumes:
+      - argux-laravel-storage:/var/www/html/storage
+      - argux-laravel-logs:/var/www/html/storage/logs
+    env_file:
+      - ./env/.env
+    environment:
+      CONTAINER_ROLE: octane
+      OCTANE_SERVER: ${OCTANE_SERVER:-swoole}
+      OCTANE_WORKERS: ${OCTANE_WORKERS:-16}
+      OCTANE_TASK_WORKERS: ${OCTANE_TASK_WORKERS:-8}
+      OCTANE_MAX_REQUESTS: ${OCTANE_MAX_REQUESTS:-1000}
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+    depends_on:
+      redis-node-1:
+        condition: service_healthy
+    networks:
+      argux-app-net:
+        aliases:
+          - octane.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # WEBSOCKET — Laravel Reverb
+  # ────────────────────────────────────────────────────────────
+  laravel-reverb:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.laravel
+      args:
+        PHP_VERSION: "8.4"
+    container_name: argux-laravel-reverb
+    <<: *default-restart
+    logging: *default-logging
+    expose:
+      - "8080"
+    volumes:
+      - argux-laravel-storage:/var/www/html/storage
+    env_file:
+      - ./env/.env
+    environment:
+      CONTAINER_ROLE: reverb
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    depends_on:
+      redis-node-1:
+        condition: service_healthy
+    networks:
+      argux-app-net:
+        aliases:
+          - reverb.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # QUEUE SUPERVISOR — Laravel Horizon
+  # ────────────────────────────────────────────────────────────
+  laravel-horizon:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.laravel
+      args:
+        PHP_VERSION: "8.4"
+    container_name: argux-laravel-horizon
+    <<: *default-restart
+    logging: *default-logging
+    volumes:
+      - argux-laravel-storage:/var/www/html/storage
+    env_file:
+      - ./env/.env
+    environment:
+      CONTAINER_ROLE: horizon
+    command: ["php", "artisan", "horizon"]
+    depends_on:
+      redis-node-1:
+        condition: service_healthy
+    networks:
+      argux-app-net:
+        aliases:
+          - horizon.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # SCHEDULER — Laravel Cron
+  # ────────────────────────────────────────────────────────────
+  laravel-scheduler:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.laravel
+      args:
+        PHP_VERSION: "8.4"
+    container_name: argux-laravel-scheduler
+    <<: *default-restart
+    logging: *default-logging
+    volumes:
+      - argux-laravel-storage:/var/www/html/storage
+    env_file:
+      - ./env/.env
+    environment:
+      CONTAINER_ROLE: scheduler
+    command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      laravel-octane:
+        condition: service_healthy
+    networks:
+      argux-app-net:
+
+  # ────────────────────────────────────────────────────────────
+  # CACHE / SESSION / QUEUE — Redis 8 Cluster (3 masters)
+  # ────────────────────────────────────────────────────────────
+  redis-node-1:
+    image: redis:8.0-bookworm
+    container_name: argux-redis-node-1
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "6379:6379"
+      - "16379:16379"
+    volumes:
+      - argux-redis-data-1:/data
+      - ./config/redis/redis-node-1.conf:/usr/local/etc/redis/redis.conf:ro
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+    networks:
+      argux-app-net:
+        aliases:
+          - redis-node-1.argux.local
+
+  redis-node-2:
+    image: redis:8.0-bookworm
+    container_name: argux-redis-node-2
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "6380:6379"
+      - "16380:16379"
+    volumes:
+      - argux-redis-data-2:/data
+      - ./config/redis/redis-node-2.conf:/usr/local/etc/redis/redis.conf:ro
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+    networks:
+      argux-app-net:
+        aliases:
+          - redis-node-2.argux.local
+
+  redis-node-3:
+    image: redis:8.0-bookworm
+    container_name: argux-redis-node-3
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "6381:6379"
+      - "16381:16379"
+    volumes:
+      - argux-redis-data-3:/data
+      - ./config/redis/redis-node-3.conf:/usr/local/etc/redis/redis.conf:ro
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+    networks:
+      argux-app-net:
+        aliases:
+          - redis-node-3.argux.local
+
+  redis-node-4:
+    image: redis:8.0-bookworm
+    container_name: argux-redis-node-4
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "6382:6379"
+      - "16382:16379"
+    volumes:
+      - argux-redis-data-4:/data
+      - ./config/redis/redis-node-4.conf:/usr/local/etc/redis/redis.conf:ro
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks:
+      argux-app-net:
+        aliases:
+          - redis-node-4.argux.local
+
+  redis-node-5:
+    image: redis:8.0-bookworm
+    container_name: argux-redis-node-5
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "6383:6379"
+      - "16383:16379"
+    volumes:
+      - argux-redis-data-5:/data
+      - ./config/redis/redis-node-5.conf:/usr/local/etc/redis/redis.conf:ro
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks:
+      argux-app-net:
+        aliases:
+          - redis-node-5.argux.local
+
+  redis-node-6:
+    image: redis:8.0-bookworm
+    container_name: argux-redis-node-6
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "6384:6379"
+      - "16384:16379"
+    volumes:
+      - argux-redis-data-6:/data
+      - ./config/redis/redis-node-6.conf:/usr/local/etc/redis/redis.conf:ro
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks:
+      argux-app-net:
+        aliases:
+          - redis-node-6.argux.local
+
+  redis-cluster-init:
+    image: redis:8.0-bookworm
+    container_name: argux-redis-cluster-init
+    depends_on:
+      redis-node-1:
+        condition: service_healthy
+      redis-node-2:
+        condition: service_healthy
+      redis-node-3:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 5
+        echo "yes" | redis-cli -a ${REDIS_PASSWORD} --cluster create \
+          redis-node-1:6379 redis-node-2:6379 redis-node-3:6379 \
+          redis-node-4:6379 redis-node-5:6379 redis-node-6:6379 \
+          --cluster-replicas 1
+        echo "Redis Cluster initialized."
+    networks:
+      argux-app-net:
+
+  # ────────────────────────────────────────────────────────────
+  # REDIS EXPORTER
+  # ────────────────────────────────────────────────────────────
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.63.0
+    container_name: argux-redis-exporter
+    <<: *default-restart
+    logging: *default-logging
+    expose:
+      - "9121"
+    environment:
+      REDIS_ADDR: redis://redis-node-1:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      redis-node-1:
+        condition: service_healthy
+    networks:
+      argux-app-net:
+
+  # ────────────────────────────────────────────────────────────
+  # VIDEO STREAMING — MediaMTX v1.9
+  # ────────────────────────────────────────────────────────────
+  mediamtx:
+    image: bluenviron/mediamtx:1.9.0
+    container_name: argux-mediamtx
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "${MEDIAMTX_RTSP_PORT:-8554}:8554"
+      - "${MEDIAMTX_HLS_PORT:-8888}:8888"
+      - "${MEDIAMTX_WEBRTC_PORT:-8889}:8889/udp"
+      - "${MEDIAMTX_API_PORT:-9997}:9997"
+      - "${MEDIAMTX_METRICS_PORT:-9998}:9998"
+    volumes:
+      - ./config/mediamtx/mediamtx.yml:/mediamtx.yml:ro
+      - argux-mediamtx-recordings:/recordings
+    environment:
+      TZ: ${TZ:-UTC}
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9997/v3/paths/list"]
+    networks:
+      argux-app-net:
+        aliases:
+          - mediamtx.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # INTERNAL DNS — CoreDNS v1.12
+  # ────────────────────────────────────────────────────────────
+  coredns:
+    image: coredns/coredns:1.12.0
+    container_name: argux-coredns
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - ./config/coredns/Corefile:/etc/coredns/Corefile:ro
+      - ./config/coredns/argux.local.db:/etc/coredns/argux.local.db:ro
+    command: ["-conf", "/etc/coredns/Corefile"]
+    networks:
+      argux-app-net:
+        aliases:
+          - coredns.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # PRIVATE CA — step-ca v0.27
+  # ────────────────────────────────────────────────────────────
+  step-ca:
+    image: smallstep/step-ca:0.27.5
+    container_name: argux-step-ca
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "9000:9000"
+    volumes:
+      - argux-step-ca-data:/home/step
+      - ./config/step-ca/ca.json:/home/step/config/ca.json:ro
+    environment:
+      DOCKER_STEPCA_INIT_NAME: "argux Internal CA"
+      DOCKER_STEPCA_INIT_DNS_NAMES: "step-ca.argux.local,localhost"
+      DOCKER_STEPCA_INIT_PROVISIONER_NAME: argux-provisioner
+      DOCKER_STEPCA_INIT_PASSWORD: ${STEP_CA_PASSWORD}
+    networks:
+      argux-app-net:
+        aliases:
+          - step-ca.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # SECRETS — Infisical v0.88
+  # ────────────────────────────────────────────────────────────
+  infisical:
+    image: infisical/infisical:v0.88.0
+    container_name: argux-infisical
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "8060:8060"
+    volumes:
+      - argux-infisical-data:/app/data
+    environment:
+      ENCRYPTION_KEY: ${INFISICAL_TOKEN}
+      SITE_URL: ${INFISICAL_SITE_URL:-http://infisical:8060}
+      DB_CONNECTION_URI: postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/infisical
+    depends_on:
+      laravel-octane:
+        condition: service_healthy
+    networks:
+      argux-app-net:
+        aliases:
+          - infisical.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # MONITORING — Prometheus 3.x
+  # ────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: argux-prometheus
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - argux-prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-30d}"
+      - "--storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-50GB}"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+    networks:
+      argux-app-net:
+        aliases:
+          - prometheus.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # DASHBOARDS — Grafana 11.x
+  # ────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana-oss:11.4.0
+    container_name: argux-grafana
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - argux-grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    networks:
+      argux-app-net:
+        aliases:
+          - grafana.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # LOG AGGREGATION — Loki 3.x
+  # ────────────────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: argux-loki
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - argux-loki-data:/loki
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3100/ready"]
+    networks:
+      argux-app-net:
+        aliases:
+          - loki.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # LOG SHIPPER — Promtail 3.x
+  # ────────────────────────────────────────────────────────────
+  promtail:
+    image: grafana/promtail:3.3.2
+    container_name: argux-promtail
+    <<: *default-restart
+    logging: *default-logging
+    volumes:
+      - ./config/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/log:/var/log:ro
+      - argux-nginx-logs:/var/log/nginx:ro
+    command: ["-config.file=/etc/promtail/config.yml"]
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      argux-app-net:
+
+  # ────────────────────────────────────────────────────────────
+  # IDS/IPS — CrowdSec 1.6
+  # ────────────────────────────────────────────────────────────
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.6.4
+    container_name: argux-crowdsec
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "6060:6060"
+      - "8082:8080"
+    volumes:
+      - argux-crowdsec-config:/etc/crowdsec
+      - argux-crowdsec-data:/var/lib/crowdsec/data
+      - argux-nginx-logs:/var/log/nginx:ro
+      - /var/log:/var/log:ro
+    environment:
+      COLLECTIONS: "crowdsecurity/nginx crowdsecurity/linux crowdsecurity/sshd"
+      BOUNCER_KEY_nginx: ${CROWDSEC_BOUNCER_KEY}
+    networks:
+      argux-app-net:
+        aliases:
+          - crowdsec.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # CONTAINER SECURITY — Falco 0.40
+  # ────────────────────────────────────────────────────────────
+  falco:
+    image: falcosecurity/falco-no-driver:0.40.0
+    container_name: argux-falco
+    <<: *default-restart
+    logging: *default-logging
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/host/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /dev:/host/dev:ro
+    expose:
+      - "9376"
+    networks:
+      argux-app-net:
+        aliases:
+          - falco.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # ADMIN VPN — WireGuard
+  # ────────────────────────────────────────────────────────────
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: argux-wireguard
+    <<: *default-restart
+    logging: *default-logging
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    ports:
+      - "${WG_SERVER_PORT:-51820}:51820/udp"
+    volumes:
+      - argux-wireguard-config:/config
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: ${TZ:-UTC}
+      SERVERURL: ${argux_DOMAIN:-argux.local}
+      SERVERPORT: ${WG_SERVER_PORT:-51820}
+      PEERS: ${WG_PEERS:-3}
+      PEERDNS: auto
+      INTERNAL_SUBNET: 10.10.0.0
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    networks:
+      argux-app-net:
+        aliases:
+          - wireguard.argux.local
+
+  # ────────────────────────────────────────────────────────────
+  # NODE EXPORTER — Hardware metrics
+  # ────────────────────────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: argux-node-exporter
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    networks:
+      argux-app-net:
+
+  # ────────────────────────────────────────────────────────────
+  # BLACKBOX EXPORTER — HTTP/HTTPS probing
+  # ────────────────────────────────────────────────────────────
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: argux-blackbox-exporter
+    <<: *default-restart
+    logging: *default-logging
+    expose:
+      - "9115"
+    networks:
+      argux-app-net:
+
+# ══════════════════════════════════════════════════════════════
+# NETWORKS
+# ══════════════════════════════════════════════════════════════
+networks:
+  argux-app-net:
+    name: argux-app-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+
+# ══════════════════════════════════════════════════════════════
+# VOLUMES
+# ══════════════════════════════════════════════════════════════
+volumes:
+  # Nginx
+  argux-nginx-cache:
+    name: argux-nginx-cache
+  argux-nginx-logs:
+    name: argux-nginx-logs
+  argux-spa-dist:
+    name: argux-spa-dist
+
+  # Laravel
+  argux-laravel-storage:
+    name: argux-laravel-storage
+  argux-laravel-logs:
+    name: argux-laravel-logs
+
+  # Redis Cluster (6 nodes: 3 master + 3 replica)
+  argux-redis-data-1:
+    name: argux-redis-data-1
+  argux-redis-data-2:
+    name: argux-redis-data-2
+  argux-redis-data-3:
+    name: argux-redis-data-3
+  argux-redis-data-4:
+    name: argux-redis-data-4
+  argux-redis-data-5:
+    name: argux-redis-data-5
+  argux-redis-data-6:
+    name: argux-redis-data-6
+
+  # MediaMTX
+  argux-mediamtx-recordings:
+    name: argux-mediamtx-recordings
+
+  # step-ca
+  argux-step-ca-data:
+    name: argux-step-ca-data
+
+  # Infisical
+  argux-infisical-data:
+    name: argux-infisical-data
+
+  # Prometheus
+  argux-prometheus-data:
+    name: argux-prometheus-data
+
+  # Grafana
+  argux-grafana-data:
+    name: argux-grafana-data
+
+  # Loki
+  argux-loki-data:
+    name: argux-loki-data
+
+  # CrowdSec
+  argux-crowdsec-config:
+    name: argux-crowdsec-config
+  argux-crowdsec-data:
+    name: argux-crowdsec-data
+
+  # WireGuard
+  argux-wireguard-config:
+    name: argux-wireguard-config

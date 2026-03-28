@@ -1,0 +1,24 @@
+# ============================================================
+# argux — Qdrant v1.13 Configuration
+# ============================================================
+
+storage:
+  storage_path: /qdrant/storage
+  snapshots_path: /qdrant/snapshots
+  on_disk_payload: true
+  performance:
+    max_search_threads: 0
+    max_optimization_threads: 4
+
+service:
+  host: 0.0.0.0
+  http_port: 6333
+  grpc_port: 6334
+  enable_tls: false
+
+cluster:
+  enabled: false
+
+telemetry_disabled: true
+
+log_level: INFO

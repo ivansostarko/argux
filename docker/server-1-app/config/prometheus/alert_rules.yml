@@ -1,0 +1,105 @@
+# ============================================================
+# argux — Prometheus Alert Rules
+# ============================================================
+
+groups:
+  - name: argux-infrastructure
+    interval: 30s
+    rules:
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 85% for 5 minutes (current: {{ $value }}%)"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space below 10% on {{ $labels.instance }}"
+
+      - alert: RedisClusterDown
+        expr: redis_cluster_state != 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis cluster is not in OK state"
+
+      - alert: KafkaConsumerLag
+        expr: kafka_consumergroup_lag_sum > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer lag high for {{ $labels.consumergroup }}"
+
+      - alert: PostgresConnectionsHigh
+        expr: pg_stat_activity_count > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL connections above 200"
+
+      - alert: NginxHighErrorRate
+        expr: rate(nginx_http_requests_total{status=~"5.."}[5m]) / rate(nginx_http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nginx 5xx error rate above 5%"
+
+      - alert: GPUHighTemperature
+        expr: nvidia_gpu_temperature_celsius > 85
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GPU temperature above 85°C on {{ $labels.instance }}"
+
+      - alert: GPUHighVRAM
+        expr: nvidia_gpu_memory_used_bytes / nvidia_gpu_memory_total_bytes > 0.95
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU VRAM usage above 95%"
+
+      - alert: MinIODiskOffline
+        expr: minio_cluster_disk_offline_total > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MinIO has offline disks"
+
+      - alert: ClickHouseInsertErrors
+        expr: rate(ClickHouseProfileEvents_FailedInsertQuery[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ClickHouse insert errors detected"
+
+      - alert: MediaMTXNoStreams
+        expr: mediamtx_paths_total == 0
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "No active MediaMTX streams"

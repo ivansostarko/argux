@@ -1,0 +1,19 @@
+# ============================================================
+# argux — Kafka Connect with ClickHouse Sink Connector
+# ============================================================
+FROM apache/kafka:4.0.0
+
+LABEL maintainer="argux DevOps <devops@argux.local>"
+
+USER root
+
+# Install ClickHouse Kafka Connect Sink
+RUN mkdir -p /opt/kafka/connect-plugins/clickhouse-sink && \
+    curl -fSL "https://github.com/ClickHouse/clickhouse-kafka-connect/releases/download/v1.2.3/clickhouse-kafka-connect-v1.2.3.zip" \
+    -o /tmp/ch-sink.zip && \
+    unzip /tmp/ch-sink.zip -d /opt/kafka/connect-plugins/clickhouse-sink/ && \
+    rm /tmp/ch-sink.zip
+
+USER appuser
+
+EXPOSE 8083

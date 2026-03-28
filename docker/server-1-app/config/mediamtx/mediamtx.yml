@@ -1,0 +1,57 @@
+# ============================================================
+# argux — MediaMTX v1.9 Configuration
+# ============================================================
+
+# General
+logLevel: info
+logDestinations: [stdout]
+
+# API
+api: yes
+apiAddress: :9997
+
+# Metrics (Prometheus)
+metrics: yes
+metricsAddress: :9998
+
+# RTSP server
+rtsp: yes
+rtspAddress: :8554
+protocols: [tcp, udp]
+
+# HLS server
+hls: yes
+hlsAddress: :8888
+hlsAlwaysRemux: no
+hlsSegmentCount: 7
+hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
+hlsSegmentMaxSize: 50M
+hlsAllowOrigin: "*"
+
+# Low-Latency HLS
+hlsVariant: lowLatency
+
+# WebRTC server
+webrtc: yes
+webrtcAddress: :8889
+
+# Recording (optional — write HLS segments to disk)
+record: no
+recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S
+recordFormat: fmp4
+recordSegmentDuration: 1h
+
+# Default path settings
+pathDefaults:
+  # Source timeout
+  sourceOnDemandStartTimeout: 10s
+  sourceOnDemandCloseAfter: 10s
+
+  # Read/publish authentication (integrate with Laravel)
+  # publishUser: argux
+  # publishPass: CHANGE_ME
+
+# Paths (auto-discovered via RTSP push or API)
+paths:
+  all_others:

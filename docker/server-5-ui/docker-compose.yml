@@ -1,0 +1,322 @@
+# ============================================================
+# argux Server 5 — Management UI Server
+# ============================================================
+# All admin web interfaces. VPN-only access (WireGuard).
+# Zero public exposure. Low resource requirements.
+# ============================================================
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${LOG_MAX_SIZE:-50m}"
+    max-file: "${LOG_MAX_FILE:-5}"
+    tag: "{{.Name}}"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 30s
+
+services:
+
+  # ════════════════════════════════════════════════════════════
+  # pgAdmin 4 — PostgreSQL Admin
+  # ════════════════════════════════════════════════════════════
+  pgadmin:
+    image: dpage/pgadmin4:8.14
+    container_name: argux-pgadmin
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "5050:5050"
+    volumes:
+      - argux-pgadmin-data:/var/lib/pgadmin
+      - ./config/pgadmin/servers.json:/pgadmin4/servers.json:ro
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_LISTEN_PORT: ${PGADMIN_LISTEN_PORT:-5050}
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "True"
+      PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: 30
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5050/misc/ping"]
+    networks:
+      argux-ui-net:
+        aliases:
+          - pgadmin.argux.local
+
+  # ════════════════════════════════════════════════════════════
+  # phpMyAdmin — MySQL Admin
+  # ════════════════════════════════════════════════════════════
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    container_name: argux-phpmyadmin
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "5051:80"
+    environment:
+      PMA_HOST: ${PMA_HOST:-mysql.argux.local}
+      PMA_PORT: ${PMA_PORT:-3306}
+      PMA_ARBITRARY: 0
+      UPLOAD_LIMIT: 100M
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+    networks:
+      argux-ui-net:
+        aliases:
+          - phpmyadmin.argux.local
+
+  # ════════════════════════════════════════════════════════════
+  # Adminer — Universal DB UI (PG + MySQL + ClickHouse)
+  # ════════════════════════════════════════════════════════════
+  adminer:
+    image: adminer:4.8.4
+    container_name: argux-adminer
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "5052:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: ${POSTGRES_HOST:-postgres.argux.local}
+      ADMINER_DESIGN: nette
+      ADMINER_PLUGINS: tables-filter tinymce
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+    networks:
+      argux-ui-net:
+        aliases:
+          - adminer.argux.local
+
+  # ════════════════════════════════════════════════════════════
+  # RedisInsight — Redis 8 Cluster Admin
+  # ════════════════════════════════════════════════════════════
+  redisinsight:
+    image: redis/redisinsight:2.64
+    container_name: argux-redisinsight
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "5053:5540"
+    volumes:
+      - argux-redisinsight-data:/data
+    environment:
+      RI_APP_PORT: 5540
+      RI_LOG_LEVEL: info
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:5540/api/health"]
+    networks:
+      argux-ui-net:
+        aliases:
+          - redisinsight.argux.local
+
+  # ════════════════════════════════════════════════════════════
+  # Kafka UI (Provectus) — Kafka Topic Browser
+  # ════════════════════════════════════════════════════════════
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: argux-kafka-ui
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "5054:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: ${KAFKA_CLUSTERS_0_NAME:-argux-production}
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS}
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: ${KAFKA_CLUSTERS_0_SCHEMAREGISTRY}
+      DYNAMIC_CONFIG_ENABLED: "true"
+      AUTH_TYPE: DISABLED
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
+    networks:
+      argux-ui-net:
+        aliases:
+          - kafka-ui.argux.local
+
+  # ════════════════════════════════════════════════════════════
+  # ClickHouse UI (official) — Query Editor
+  # ════════════════════════════════════════════════════════════
+  clickhouse-ui:
+    image: ghcr.io/caioricciuti/ch-ui:latest
+    container_name: argux-clickhouse-ui
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "5055:3000"
+    environment:
+      VITE_CLICKHOUSE_URL: http://${CLICKHOUSE_HOST:-clickhouse.argux.local}:${CLICKHOUSE_PORT:-8123}
+    networks:
+      argux-ui-net:
+        aliases:
+          - clickhouse-ui.argux.local
+
+  # ════════════════════════════════════════════════════════════
+  # Typesense Dashboard — Collection Manager
+  # ════════════════════════════════════════════════════════════
+  typesense-dashboard:
+    image: ghcr.io/bfritscher/typesense-dashboard:latest
+    container_name: argux-typesense-dashboard
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "5056:80"
+    networks:
+      argux-ui-net:
+        aliases:
+          - typesense-ui.argux.local
+
+  # ════════════════════════════════════════════════════════════
+  # GlitchTip — Error Tracking (Sentry-compatible)
+  # ════════════════════════════════════════════════════════════
+  glitchtip-web:
+    image: glitchtip/glitchtip:v4.1
+    container_name: argux-glitchtip-web
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "5057:8080"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      PORT: 8080
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-noreply@argux.local}
+      GLITCHTIP_MAX_EVENT_LIFE_DAYS: ${GLITCHTIP_MAX_EVENT_LIFE_DAYS:-90}
+      REDIS_URL: ${REDIS_URL}
+      ENABLE_USER_REGISTRATION: ${ENABLE_USER_REGISTRATION:-false}
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:8080/_health/"]
+    networks:
+      argux-ui-net:
+        aliases:
+          - glitchtip.argux.local
+
+  glitchtip-worker:
+    image: glitchtip/glitchtip:v4.1
+    container_name: argux-glitchtip-worker
+    <<: *default-restart
+    logging: *default-logging
+    command: ["./bin/run-celery-with-beat.sh"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN}
+      REDIS_URL: ${REDIS_URL}
+      GLITCHTIP_MAX_EVENT_LIFE_DAYS: ${GLITCHTIP_MAX_EVENT_LIFE_DAYS:-90}
+    networks:
+      argux-ui-net:
+
+  # ════════════════════════════════════════════════════════════
+  # Karapace UI — Kafka Schema Registry Browser
+  # ════════════════════════════════════════════════════════════
+  karapace-ui:
+    image: ghcr.io/aiven-open/karapace:3.15.0
+    container_name: argux-karapace-ui
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "5058:8081"
+    environment:
+      KARAPACE_ADVERTISED_HOSTNAME: karapace-ui
+      KARAPACE_BOOTSTRAP_URI: ${KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS}
+      KARAPACE_PORT: 8081
+      KARAPACE_HOST: 0.0.0.0
+      KARAPACE_CLIENT_ID: argux-karapace-ui
+      KARAPACE_GROUP_ID: argux-schema-registry-ui
+      KARAPACE_MASTER_ELIGIBILITY: "false"
+      KARAPACE_TOPIC_NAME: _argux-schemas
+    networks:
+      argux-ui-net:
+        aliases:
+          - karapace-ui.argux.local
+
+  # ════════════════════════════════════════════════════════════
+  # Infisical UI — Secrets Management
+  # ════════════════════════════════════════════════════════════
+  infisical-ui:
+    image: infisical/infisical:v0.88.0
+    container_name: argux-infisical-ui
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "5059:8060"
+    environment:
+      SITE_URL: ${INFISICAL_SITE_URL}
+    networks:
+      argux-ui-net:
+        aliases:
+          - infisical-ui.argux.local
+
+  # ════════════════════════════════════════════════════════════
+  # Wazuh Dashboard — SIEM / Security Events
+  # ════════════════════════════════════════════════════════════
+  wazuh-dashboard:
+    image: wazuh/wazuh-dashboard:4.10.2
+    container_name: argux-wazuh-dashboard
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "5060:5601"
+    volumes:
+      - argux-wazuh-dashboard-data:/usr/share/wazuh-dashboard/data
+    environment:
+      OPENSEARCH_HOSTS: '["https://wazuh-indexer.argux.local:9200"]'
+      WAZUH_API_URL: ${WAZUH_API_URL}
+      API_USERNAME: ${WAZUH_DASHBOARD_USERNAME:-admin}
+      API_PASSWORD: ${WAZUH_DASHBOARD_PASSWORD}
+    networks:
+      argux-ui-net:
+        aliases:
+          - wazuh-ui.argux.local
+
+  # ── Node Exporter ──────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: argux-ui-node-exporter
+    <<: *default-restart
+    logging: *default-logging
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+    networks:
+      argux-ui-net:
+
+# ══════════════════════════════════════════════════════════════
+# NETWORKS
+# ══════════════════════════════════════════════════════════════
+networks:
+  argux-ui-net:
+    name: argux-ui-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.24.0.0/16
+          gateway: 172.24.0.1
+
+# ══════════════════════════════════════════════════════════════
+# VOLUMES
+# ══════════════════════════════════════════════════════════════
+volumes:
+  argux-pgadmin-data:
+    name: argux-pgadmin-data
+  argux-redisinsight-data:
+    name: argux-redisinsight-data
+  argux-wazuh-dashboard-data:
+    name: argux-wazuh-dashboard-data
