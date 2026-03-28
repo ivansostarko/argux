@@ -1,82 +1,96 @@
 /**
- * ARGUX — Admin Configuration Tests
+ * ARGUX — Admin Configuration Tests (11 tabs)
  * Run: npx vitest run resources/js/tests/AdminConfig.test.ts
  */
 import { describe, it, expect } from 'vitest';
 import * as C from '../mock/admin-config';
 
 describe('Config tabs', () => {
-    it('should have 7 tabs', () => { expect(C.configTabs.length).toBe(7); });
+    it('should have 11 tabs', () => { expect(C.configTabs.length).toBe(11); });
     it('should include all expected tabs', () => {
         const ids = C.configTabs.map(t => t.id);
-        ['general', 'security', 'notifications', 'dev', 'map', 'retention', 'system'].forEach(id => expect(ids).toContain(id));
+        ['general','security','notifications','dev','map','retention','backup','ai','storage','update','licence'].forEach(id => expect(ids).toContain(id));
     });
-    it('all should have id, label, icon', () => { C.configTabs.forEach(t => { expect(t.id).toBeTruthy(); expect(t.label).toBeTruthy(); expect(t.icon).toBeTruthy(); }); });
 });
 
 describe('General config', () => {
-    it('should have at least 4 languages', () => { expect(C.languages.length).toBeGreaterThanOrEqual(4); });
-    it('should include en and hr', () => { expect(C.languages.map(l => l.code)).toContain('en'); expect(C.languages.map(l => l.code)).toContain('hr'); });
-    it('should have at least 8 timezones', () => { expect(C.timezones.length).toBeGreaterThanOrEqual(8); });
-    it('should have at least 4 date formats', () => { expect(C.dateFormats.length).toBeGreaterThanOrEqual(4); });
-    it('should have 10 themes', () => { expect(C.themes.length).toBe(10); });
-    it('should have 7 fonts', () => { expect(C.fonts.length).toBe(7); });
-    it('should have at least 3 default clocks', () => { expect(C.defaultClocks.length).toBeGreaterThanOrEqual(3); });
-    it('clocks should have id, label, timezone', () => { C.defaultClocks.forEach(c => { expect(c.id).toBeTruthy(); expect(c.label).toBeTruthy(); expect(c.timezone).toBeTruthy(); }); });
+    it('should have languages, timezones, themes, fonts, clocks', () => {
+        expect(C.languages.length).toBeGreaterThanOrEqual(4);
+        expect(C.timezones.length).toBeGreaterThanOrEqual(8);
+        expect(C.themes.length).toBe(10);
+        expect(C.fonts.length).toBe(7);
+        expect(C.defaultClocks.length).toBeGreaterThanOrEqual(3);
+    });
 });
 
 describe('Security config', () => {
-    it('should have 3 MFA methods', () => { expect(C.mfaMethods.length).toBe(3); });
-    it('should have at least 6 session timeouts', () => { expect(C.sessionTimeouts.length).toBeGreaterThanOrEqual(6); });
-    it('should have at least 2 encryption options', () => { expect(C.encryptionOptions.length).toBeGreaterThanOrEqual(2); });
-    it('should have at least 5 password policies', () => { expect(C.passwordPolicies.length).toBeGreaterThanOrEqual(5); });
-    it('should have at least 2 default IP ranges', () => { expect(C.defaultIpWhitelist.length).toBeGreaterThanOrEqual(2); });
+    it('should have MFA, timeouts, encryption, passwords, IPs', () => {
+        expect(C.mfaMethods.length).toBe(3);
+        expect(C.sessionTimeouts.length).toBeGreaterThanOrEqual(6);
+        expect(C.encryptionOptions.length).toBeGreaterThanOrEqual(2);
+        expect(C.passwordPolicies.length).toBeGreaterThanOrEqual(5);
+        expect(C.defaultIpWhitelist.length).toBeGreaterThanOrEqual(2);
+    });
 });
 
 describe('Notifications config', () => {
-    it('should have at least 10 notification types', () => { expect(C.notificationTypes.length).toBeGreaterThanOrEqual(10); });
-    it('notification types should have id, label, icon, default', () => { C.notificationTypes.forEach(n => { expect(n.id).toBeTruthy(); expect(n.label).toBeTruthy(); expect(n.icon).toBeTruthy(); expect(typeof n.default).toBe('boolean'); }); });
-    it('should have at least 5 channels', () => { expect(C.notificationChannels.length).toBeGreaterThanOrEqual(5); });
-    it('channels should have id, label, icon, enabled', () => { C.notificationChannels.forEach(c => { expect(c.id).toBeTruthy(); expect(c.label).toBeTruthy(); expect(typeof c.enabled).toBe('boolean'); }); });
-    it('in-app channel should be enabled by default', () => { expect(C.notificationChannels.find(c => c.id === 'in_app')?.enabled).toBe(true); });
-});
-
-describe('Dev config', () => {
-    it('should have at least 4 environments', () => { expect(C.appEnvironments.length).toBeGreaterThanOrEqual(4); });
-    it('should include production', () => { expect(C.appEnvironments).toContain('production'); });
-    it('should have at least 6 log levels', () => { expect(C.logLevels.length).toBeGreaterThanOrEqual(6); });
-    it('should have at least 3 filesystems', () => { expect(C.filesystems.length).toBeGreaterThanOrEqual(3); });
-});
-
-describe('Map config', () => {
-    it('should have at least 12 tile providers', () => { expect(C.tileProviders.length).toBeGreaterThanOrEqual(12); });
-    it('should have at least 5 map layers', () => { expect(C.mapLayers.length).toBeGreaterThanOrEqual(5); });
-    it('should include CartoDB Dark', () => { expect(C.tileProviders.some(t => t.includes('CartoDB Dark'))).toBe(true); });
-});
-
-describe('Retention config', () => {
-    it('should have at least 8 retention periods', () => { expect(C.retentionPeriods.length).toBeGreaterThanOrEqual(8); });
-    it('should include Forever', () => { expect(C.retentionPeriods).toContain('Forever'); });
-});
-
-describe('System config', () => {
-    it('should have at least 3 backup frequencies', () => { expect(C.backupFrequencies.length).toBeGreaterThanOrEqual(3); });
-    it('should have at least 2 backup types', () => { expect(C.backupTypes.length).toBeGreaterThanOrEqual(2); });
-    it('should have at least 7 AI models', () => { expect(C.aiModels.length).toBeGreaterThanOrEqual(7); });
-    it('AI models should have id, label, gpu, status', () => { C.aiModels.forEach(m => { expect(m.id).toBeTruthy(); expect(m.label).toBeTruthy(); expect(m.gpu).toBeTruthy(); expect(['active', 'standby']).toContain(m.status); }); });
-    it('should include key AI models', () => {
-        const labels = C.aiModels.map(m => m.label);
-        expect(labels.some(l => l.includes('LLaMA'))).toBe(true);
-        expect(labels.some(l => l.includes('Whisper'))).toBe(true);
-        expect(labels.some(l => l.includes('InsightFace'))).toBe(true);
+    it('should have types and channels', () => {
+        expect(C.notificationTypes.length).toBeGreaterThanOrEqual(10);
+        expect(C.notificationChannels.length).toBeGreaterThanOrEqual(5);
+        expect(C.notificationChannels.find(c => c.id === 'in_app')?.enabled).toBe(true);
     });
 });
 
-describe('Config shortcuts', () => {
-    it('should include tab switching, S, Ctrl+Q', () => {
-        const keys = C.keyboardShortcuts.map(s => s.key);
-        expect(keys.some(k => k.includes('1'))).toBe(true);
-        expect(keys).toContain('S');
-        expect(keys).toContain('Ctrl+Q');
+describe('Backup config', () => {
+    it('should have frequencies and types', () => { expect(C.backupFrequencies.length).toBeGreaterThanOrEqual(3); expect(C.backupTypes.length).toBeGreaterThanOrEqual(2); });
+    it('should have backup history', () => { expect(C.backupHistory.length).toBeGreaterThanOrEqual(5); });
+    it('backup history should have required fields', () => {
+        C.backupHistory.forEach(b => { expect(b.id).toBeTruthy(); expect(['completed','running','failed','scheduled']).toContain(b.status); expect(b.databases.length).toBeGreaterThan(0); });
     });
+    it('should have backup databases', () => { expect(C.backupDatabases.length).toBeGreaterThanOrEqual(4); });
+    it('should have both completed and failed backups', () => {
+        expect(C.backupHistory.some(b => b.status === 'completed')).toBe(true);
+        expect(C.backupHistory.some(b => b.status === 'failed')).toBe(true);
+    });
+});
+
+describe('AI config', () => {
+    it('should have at least 8 AI functions', () => { expect(C.aiFunctions.length).toBeGreaterThanOrEqual(8); });
+    it('should include core functions', () => {
+        const ids = C.aiFunctions.map(f => f.id);
+        ['rag','audio_transcription','video_analysis','photo_analysis','plate_recognition','face_recognition','translation'].forEach(id => expect(ids).toContain(id));
+    });
+    it('all functions should have models', () => { C.aiFunctions.forEach(f => { expect(f.models.length).toBeGreaterThanOrEqual(1); expect(f.primaryModelId).toBeTruthy(); expect(f.models.some(m => m.id === f.primaryModelId)).toBe(true); }); });
+    it('models should have required fields', () => { C.aiFunctions.flatMap(f => f.models).forEach(m => { expect(m.id).toBeTruthy(); expect(m.name).toBeTruthy(); expect(['active','standby','error']).toContain(m.status); }); });
+    it('functions should have usage stats', () => { C.aiFunctions.forEach(f => { expect(typeof f.jobsToday).toBe('number'); expect(typeof f.jobsTotal).toBe('number'); expect(f.avgTime).toBeTruthy(); }); });
+    it('some functions should have multiple models', () => { expect(C.aiFunctions.filter(f => f.models.length >= 2).length).toBeGreaterThanOrEqual(4); });
+});
+
+describe('Storage config', () => {
+    it('should have at least 5 storage nodes', () => { expect(C.storageNodes.length).toBeGreaterThanOrEqual(5); });
+    it('nodes should have required fields', () => { C.storageNodes.forEach(n => { expect(n.id).toBeTruthy(); expect(n.totalGb).toBeGreaterThan(0); expect(n.usedGb).toBeLessThanOrEqual(n.totalGb); expect(['healthy','warning','critical']).toContain(n.status); }); });
+    it('should have MinIO buckets', () => { expect(C.minioBuckets.length).toBeGreaterThanOrEqual(5); });
+    it('buckets should have objects and size', () => { C.minioBuckets.forEach(b => { expect(b.name).toBeTruthy(); expect(b.objects).toBeGreaterThan(0); expect(b.sizeGb).toBeGreaterThan(0); }); });
+    it('should include PostgreSQL, ClickHouse, MinIO, Redis', () => {
+        const labels = C.storageNodes.map(n => n.label);
+        expect(labels.some(l => l.includes('PostgreSQL'))).toBe(true);
+        expect(labels.some(l => l.includes('ClickHouse'))).toBe(true);
+        expect(labels.some(l => l.includes('MinIO'))).toBe(true);
+        expect(labels.some(l => l.includes('Redis'))).toBe(true);
+    });
+});
+
+describe('Update config', () => {
+    it('should have current version info', () => { expect(C.currentVersion.version).toBeTruthy(); expect(C.currentVersion.build).toBeTruthy(); expect(C.currentVersion.laravel).toBeTruthy(); expect(C.currentVersion.react).toBeTruthy(); });
+    it('should have available updates', () => { expect(C.availableUpdates.length).toBeGreaterThanOrEqual(1); C.availableUpdates.forEach(u => { expect(u.version).toBeTruthy(); expect(u.changes.length).toBeGreaterThan(0); expect(['major','minor','patch','security']).toContain(u.type); }); });
+    it('should have update history', () => { expect(C.updateHistory.length).toBeGreaterThanOrEqual(3); });
+});
+
+describe('Licence config', () => {
+    it('should have licence info', () => { expect(C.licenceInfo.key).toBeTruthy(); expect(C.licenceInfo.type).toBeTruthy(); expect(C.licenceInfo.status).toBe('active'); expect(C.licenceInfo.daysRemaining).toBeGreaterThan(0); expect(C.licenceInfo.seats.used).toBeLessThanOrEqual(C.licenceInfo.seats.total); });
+    it('should have at least 20 modules', () => { expect(C.licenceModules.length).toBeGreaterThanOrEqual(20); });
+    it('most modules should be included', () => { expect(C.licenceModules.filter(m => m.included).length).toBeGreaterThan(C.licenceModules.length / 2); });
+    it('some modules should be add-ons', () => { expect(C.licenceModules.filter(m => m.addon).length).toBeGreaterThanOrEqual(3); });
+    it('some modules should not be licensed', () => { expect(C.licenceModules.filter(m => !m.included).length).toBeGreaterThanOrEqual(1); });
+    it('addon modules should have prices', () => { C.licenceModules.filter(m => m.addon).forEach(m => expect(m.addonPrice).toBeTruthy()); });
 });

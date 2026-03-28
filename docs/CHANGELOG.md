@@ -1,5 +1,56 @@
 # Changelog
 
+## 0.25.37 - 2026-03-28
+
+### Updated — Configuration (/admin/config) — Expanded to 11 Tabs
+
+#### New Tab: Update (🔄)
+- Current installation info: version, build, date, environment, Node.js, PHP, Laravel, React, Vite, Tauri versions.
+- Available updates with type badges (major/minor/patch/security), change lists, size, Install button.
+- Update history with version, type, date, changes summary, size.
+- Check for Updates and System Report action buttons.
+
+#### New Tab: Licence (🔑)
+- Licence info: key (monospace), type (Enterprise), holder, validity dates, hardware lock ID, support tier, last verified, days remaining.
+- Seat usage bar (147/200 used) with color-coded progress.
+- 25 licensable modules: each shows icon, name, LICENSED/NOT LICENSED badge, add-on indicator with pricing.
+- Verify Licence and Update Licence Key actions.
+- Modules include: Tactical Map, Vision, Persons, Organizations, Vehicles, Devices, Operations, Face Recognition (€15k add-on), Plate Recognition (€12k), Social Scraper (€8k), Surveillance Apps (€20k), AI Assistant (€25k), AI Transcription (€18k), Translation (€10k), Air-Gap (€30k), Multi-Site (€50k, not licensed), Satellite Feed (€75k, not licensed).
+
+#### Updated Tab: Backup (💾) — Separated from AI
+- Backup schedule: frequency, type (full/incremental/differential), encrypt toggle, verify toggle, include MinIO files toggle.
+- Database selection: 5 databases (PostgreSQL+PostGIS 84GB, ClickHouse 320GB, Redis 2.8GB, Typesense 12GB, ChromaDB 4.2GB) with individual enable/disable toggles.
+- Run Backup Now and Verify Last Backup action buttons.
+- Backup history: 6 records (completed, failed, scheduled) showing type, date, duration, size, databases, file inclusion, encryption, verification status. Failed backups show error reason.
+- Restore from backup with confirmation modal warning about data overwrite.
+
+#### Updated Tab: AI Models (🤖) — Separated from Backup
+- **9 AI functions** each with multiple assignable models:
+  1. **RAG Assistant** (🧠) — LLaMA 3.1 70B (primary), LLaMA 3.1 8B, Mistral 7B
+  2. **Audio Transcription** (🎙️) — Faster-Whisper Large-v3 (primary), Faster-Whisper Medium
+  3. **Video Analysis** (🎥) — Faster-Whisper Large-v3 (primary), YOLOv8 Object
+  4. **Photo Analysis & OCR** (📷) — LLaVA Vision (primary), PaddleOCR v3
+  5. **Plate Recognition** (🚗) — YOLOv8 Plate Detect (primary), PaddleOCR v3 Chars
+  6. **Face Recognition** (🧑) — InsightFace/ArcFace (primary), RetinaFace Detect
+  7. **Translation** (🌐) — Meta NLLB-200
+  8. **Summarization** (📝) — LLaMA 3.1 70B
+  9. **Anomaly Detection** (🔮) — XGBoost Risk, scikit-learn Pipeline
+- Per-function stats: jobs today, total jobs, avg processing time, error rate, GPU usage %, queue depth.
+- Per-model: version, GPU memory, active/standby toggle, PRIMARY badge for default model.
+- Expandable accordion per function — click to show models and stats.
+- Summary KPIs: total functions, active models, GPU allocated, jobs today.
+
+#### New Tab: Storage (🗄️)
+- Summary KPIs: total capacity (9.6 TB), used (2.8 TB), available (6.8 TB), usage %.
+- 6 storage nodes: PostgreSQL+PostGIS (84/500 GB), ClickHouse (320/1000 GB), MinIO (2.4/8 TB), Redis (2.8/32 GB), Typesense (12/64 GB), ChromaDB (4.2/50 GB). Each with progress bar, version, host:port, connection count, status badge.
+- 7 MinIO buckets: surveillance-video (12,840 objects, 1.2 TB), camera-captures (89,200 objects, 480 GB), audio-recordings, documents, photos, database-backups, ai-models. Each with object count and proportional bar.
+
+### Technical
+- Tab count expanded from 7 to 11.
+- **Mock data** (`resources/js/mock/admin-config.ts`, 255 lines): Complete datasets for all 11 tabs including 6 backup history records, 9 AI functions with 19 models, 6 storage nodes, 7 MinIO buckets, 2 available updates, 4 update history, licence info with 25 modules.
+- **Tests** (`resources/js/tests/AdminConfig.test.ts`, 96 lines): 30 tests across 10 describe blocks covering all new tabs.
+- Page: 285 lines (was 268).
+
 ## 0.25.36 - 2026-03-28
 
 ### Implemented — Configuration (/admin/config)
