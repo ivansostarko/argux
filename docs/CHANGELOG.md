@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.25.41 - 2026-03-28
+
+### Implemented — Location Analyzer (/map → Intelligence)
+- **Location Analyzer** — select a rectangular area on the map and run intelligence analysis to get comprehensive results displayed both on the map and in a floating panel.
+
+#### How to Use
+1. Open Intelligence section in sidebar → click **📐 Location Analyzer**
+2. Click **Select Area** → cursor becomes crosshair
+3. Click and drag on the map to draw a rectangle
+4. Click **Analyze** → 2.2s mock analysis runs
+5. Results appear in panel + hotspots render on map
+
+#### Map Interaction
+- Rectangle drawing: mousedown → drag → mouseup creates selection bounds
+- Map panning disabled during drawing, cursor set to crosshair
+- GeoJSON rectangle overlay: teal (#14b8a6) dashed border + 12% opacity fill
+- Hotspot circles: rendered at detected locations with intensity-based radius (6-18px)
+- Clickable hotspots in panel fly camera to location
+
+#### Analysis Panel (8 sections)
+1. **Controls**: Select Area / Analyze buttons, drawing status indicator, NW/SE coordinate display
+2. **KPI Summary**: 6 cards — Events, Persons, Devices, Alerts, Daily Avg Activity, Risk Score (%)
+3. **Top Subjects**: 5 persons with initials avatar, risk badge (Critical/High), event count, last seen, avg dwell time. Clickable to fly to area center.
+4. **Event Breakdown**: 6 types with icon, label, progress bar, count — GPS Signal (37%), Camera Capture (23%), LPR Detection (15%), Phone Signal (12%), Face Match (8%), Audio/Video (5%)
+5. **Time Distribution**: 6-period bar chart (00-04, 04-08, 08-12, 12-16, 16-20, 20-00) showing peak at 12-16 (31%)
+6. **Hotspots**: 3 detected hotspots with intensity score (65-92), event count, clickable fly-to
+7. **Zone Activity**: 2 zones (restricted + monitored) with breach count and last breach time
+8. **Threat Assessment**: 3 ranked threats — unusual night activity (critical), co-location frequency spike (high), new unregistered device (medium)
+
+#### Technical
+- State: showLocAnalyzer, locAnalyzerDrawing, locAnalyzerBounds, locAnalyzerRunning, locAnalyzerResults
+- Map layers: loc-analyzer-fill (polygon), loc-analyzer-outline (dashed line), loc-analyzer-hotspot-circles (circle with intensity interpolation)
+- Drawing uses mousedown/mousemove/mouseup with dragPan disable/enable
+- Escape handler chain updated for locAnalyzerDrawing → showLocAnalyzer
+- Dependency array updated with showLocAnalyzer, locAnalyzerDrawing
+- Panel uses PanelHeader + PanelResizeGrip pattern consistent with other intelligence panels
+- ~170 lines of new code added to Map page
+
 ## 0.25.40 - 2026-03-28
 
 ### Implemented — Cinema Mode for 3D Globe (/map)

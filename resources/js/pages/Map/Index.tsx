@@ -686,6 +686,74 @@ export default function MapIndex() {
     const [rrPlaying, setRrPlaying] = useState(false);
     const [rrSpeed, setRrSpeed] = useState<number>(1);
     const [rrCursor, setRrCursor] = useState<number>(0);
+
+    // ═══ LOCATION ANALYZER ═══
+    const [showLocAnalyzer, setShowLocAnalyzer] = useState(false);
+    const [locAnalyzerDrawing, setLocAnalyzerDrawing] = useState(false);
+    const [locAnalyzerBounds, setLocAnalyzerBounds] = useState<{ nw: [number, number]; se: [number, number] } | null>(null);
+    const [locAnalyzerRunning, setLocAnalyzerRunning] = useState(false);
+    const [locAnalyzerResults, setLocAnalyzerResults] = useState<any | null>(null);
+    const locAnalyzerStartRef = useRef<[number, number] | null>(null);
+
+    const startLocAnalyzerDraw = () => {
+        setLocAnalyzerDrawing(true); setLocAnalyzerBounds(null); setLocAnalyzerResults(null);
+        locAnalyzerStartRef.current = null;
+    };
+    const runLocAnalysis = () => {
+        if (!locAnalyzerBounds) return;
+        setLocAnalyzerRunning(true);
+        const b = locAnalyzerBounds;
+        const areaKm2 = Math.abs((b.se[0] - b.nw[0]) * (b.se[1] - b.nw[1])) * 111 * 111 * Math.cos(((b.nw[1] + b.se[1]) / 2) * Math.PI / 180);
+        setTimeout(() => {
+            setLocAnalyzerResults({
+                area: { nw: b.nw, se: b.se, km2: areaKm2 },
+                summary: {
+                    totalEvents: 847 + Math.floor(Math.random() * 200),
+                    persons: 5 + Math.floor(Math.random() * 4),
+                    devices: 8 + Math.floor(Math.random() * 6),
+                    alerts: 3 + Math.floor(Math.random() * 5),
+                    avgDailyActivity: 28 + Math.floor(Math.random() * 15),
+                    riskScore: 62 + Math.floor(Math.random() * 30),
+                },
+                topPersons: [
+                    { id: 1, name: 'Marko Horvat', risk: 'Critical', events: 234, lastSeen: '12 min ago', avgDwell: '2.4h' },
+                    { id: 9, name: 'Carlos Mendoza', risk: 'Critical', events: 189, lastSeen: '45 min ago', avgDwell: '1.8h' },
+                    { id: 7, name: 'Omar Hassan', risk: 'High', events: 156, lastSeen: '2h ago', avgDwell: '3.1h' },
+                    { id: 12, name: 'Ivan Babić', risk: 'High', events: 98, lastSeen: '1h ago', avgDwell: '1.2h' },
+                    { id: 3, name: 'Ahmed Al-Rashid', risk: 'Critical', events: 67, lastSeen: '6h ago', avgDwell: '0.8h' },
+                ],
+                eventBreakdown: [
+                    { type: 'GPS Signal', icon: '📡', count: 312, pct: 37, color: '#22c55e' },
+                    { type: 'Camera Capture', icon: '📹', count: 198, pct: 23, color: '#3b82f6' },
+                    { type: 'LPR Detection', icon: '🚗', count: 124, pct: 15, color: '#f59e0b' },
+                    { type: 'Phone Signal', icon: '📱', count: 98, pct: 12, color: '#8b5cf6' },
+                    { type: 'Face Match', icon: '🧑', count: 67, pct: 8, color: '#ec4899' },
+                    { type: 'Audio/Video', icon: '🎙️', count: 48, pct: 5, color: '#06b6d4' },
+                ],
+                hotspots: [
+                    { name: 'Intersection A', lat: (b.nw[1] + b.se[1]) / 2 + 0.002, lng: (b.nw[0] + b.se[0]) / 2 - 0.003, intensity: 92, events: 156 },
+                    { name: 'Building Complex', lat: (b.nw[1] + b.se[1]) / 2 - 0.001, lng: (b.nw[0] + b.se[0]) / 2 + 0.002, intensity: 78, events: 112 },
+                    { name: 'Parking Structure', lat: b.se[1] + 0.001, lng: (b.nw[0] + b.se[0]) / 2, intensity: 65, events: 89 },
+                ],
+                timeDistribution: [
+                    { hour: '00-04', events: 34, pct: 4 }, { hour: '04-08', events: 89, pct: 11 },
+                    { hour: '08-12', events: 245, pct: 29 }, { hour: '12-16', events: 267, pct: 31 },
+                    { hour: '16-20', events: 156, pct: 18 }, { hour: '20-00', events: 56, pct: 7 },
+                ],
+                zones: [
+                    { name: 'Zone Alpha — Port Area', type: 'restricted', breaches: 7, lastBreach: '2h ago' },
+                    { name: 'Zone Bravo — Warehouse', type: 'monitored', breaches: 3, lastBreach: '12h ago' },
+                ],
+                threats: [
+                    { level: 'critical', title: 'Unusual night activity detected', detail: '3 subjects present 02:00-04:00 on consecutive nights' },
+                    { level: 'high', title: 'Co-location frequency spike', detail: 'Horvat + Mendoza — 8 co-locations in 7 days vs 2/week baseline' },
+                    { level: 'medium', title: 'New device in area', detail: 'Unregistered IMSI detected 3x in past 48h' },
+                ],
+            });
+            setLocAnalyzerRunning(false);
+            triggerTopLoader();
+        }, 2200);
+    };
     const rrIntervalRef = useRef<any>(null);
 
     const mockRoutes = MOCK_ROUTES;
@@ -717,7 +785,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -2907,6 +2975,8 @@ export default function MapIndex() {
                 if (showHeatCalPanel) { setShowHeatCalPanel(false); return; }
                 if (showComparePanel) { setShowComparePanel(false); return; }
                 if (showRouteReplay) { setShowRouteReplay(false); setRrPlaying(false); return; }
+                if (locAnalyzerDrawing) { setLocAnalyzerDrawing(false); return; }
+                if (showLocAnalyzer) { setShowLocAnalyzer(false); setLocAnalyzerDrawing(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
@@ -2957,7 +3027,7 @@ export default function MapIndex() {
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [showExportModal, showShortcuts, tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showPatternPanel, showIncidentPanel, showHeatCalPanel, showComparePanel, showRouteReplay, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
+    }, [showExportModal, showShortcuts, tlLightbox, tlMarkerCtx, markerCtxMenu, mapCtxMenu, zoneCtxMenu, objCtxMenu, wsModal, zoneModal, placeModal, deleteConfirm, zoneDrawing, objDrawing, rulerActive, placingMarker, timelineOpen, showLiveTracker, showCorrelationPanel, showAnomalyPanel, showPredictivePanel, showPatternPanel, showIncidentPanel, showHeatCalPanel, showComparePanel, showRouteReplay, showLocAnalyzer, locAnalyzerDrawing, showObjectsPanel, showRulerPanel, showZonePanel, showPlacesPanel, showWorkspacesPanel, activeLayerPanel, sidebarOpen]);
 
     // ═══ GLOBAL CLEANUP on unmount ═══
     useEffect(() => {
@@ -3034,6 +3104,76 @@ export default function MapIndex() {
         };
         if (map.loaded()) apply(); else map.once('idle', apply);
     }, [showLocalization, loaded]);
+
+    // ═══ LOCATION ANALYZER — Map Rectangle Drawing & Overlay ═══
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        // Draw rectangle source/layer for selected area
+        try {
+            if (!map.getSource('loc-analyzer-area')) {
+                map.addSource('loc-analyzer-area', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+                map.addLayer({ id: 'loc-analyzer-fill', type: 'fill', source: 'loc-analyzer-area', paint: { 'fill-color': '#14b8a6', 'fill-opacity': 0.12 } });
+                map.addLayer({ id: 'loc-analyzer-outline', type: 'line', source: 'loc-analyzer-area', paint: { 'line-color': '#14b8a6', 'line-width': 2, 'line-dasharray': [4, 3] } });
+            }
+            if (locAnalyzerBounds) {
+                const { nw, se } = locAnalyzerBounds;
+                (map.getSource('loc-analyzer-area') as any).setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[nw[0], nw[1]], [se[0], nw[1]], [se[0], se[1]], [nw[0], se[1]], [nw[0], nw[1]]]] } }] });
+            } else {
+                (map.getSource('loc-analyzer-area') as any)?.setData({ type: 'FeatureCollection', features: [] });
+            }
+        } catch {}
+
+        // Hotspot markers
+        try {
+            if (!map.getSource('loc-analyzer-hotspots')) {
+                map.addSource('loc-analyzer-hotspots', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+                map.addLayer({ id: 'loc-analyzer-hotspot-circles', type: 'circle', source: 'loc-analyzer-hotspots', paint: { 'circle-radius': ['interpolate', ['linear'], ['get', 'intensity'], 0, 6, 100, 18], 'circle-color': '#14b8a6', 'circle-opacity': 0.35, 'circle-stroke-width': 1.5, 'circle-stroke-color': '#14b8a6' } });
+            }
+            if (locAnalyzerResults?.hotspots) {
+                (map.getSource('loc-analyzer-hotspots') as any).setData({ type: 'FeatureCollection', features: locAnalyzerResults.hotspots.map((h: any) => ({ type: 'Feature', properties: { intensity: h.intensity, name: h.name }, geometry: { type: 'Point', coordinates: [h.lng, h.lat] } })) });
+            } else {
+                (map.getSource('loc-analyzer-hotspots') as any)?.setData({ type: 'FeatureCollection', features: [] });
+            }
+        } catch {}
+    }, [locAnalyzerBounds, locAnalyzerResults, loaded]);
+
+    // Drawing interaction
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded || !locAnalyzerDrawing) return;
+        map.getCanvas().style.cursor = 'crosshair';
+        map.dragPan.disable();
+
+        const onMouseDown = (e: any) => {
+            locAnalyzerStartRef.current = [e.lngLat.lng, e.lngLat.lat];
+        };
+        const onMouseMove = (e: any) => {
+            if (!locAnalyzerStartRef.current) return;
+            const [sLng, sLat] = locAnalyzerStartRef.current;
+            const nw: [number, number] = [Math.min(sLng, e.lngLat.lng), Math.max(sLat, e.lngLat.lat)];
+            const se: [number, number] = [Math.max(sLng, e.lngLat.lng), Math.min(sLat, e.lngLat.lat)];
+            setLocAnalyzerBounds({ nw, se });
+        };
+        const onMouseUp = () => {
+            if (locAnalyzerStartRef.current) {
+                setLocAnalyzerDrawing(false);
+                map.getCanvas().style.cursor = '';
+                map.dragPan.enable();
+            }
+        };
+        map.on('mousedown', onMouseDown);
+        map.on('mousemove', onMouseMove);
+        map.on('mouseup', onMouseUp);
+
+        return () => {
+            map.off('mousedown', onMouseDown);
+            map.off('mousemove', onMouseMove);
+            map.off('mouseup', onMouseUp);
+            map.getCanvas().style.cursor = '';
+            map.dragPan.enable();
+        };
+    }, [locAnalyzerDrawing, loaded]);
 
     // 3D Modes — Globe requires map rebuild, others modify in place
     useEffect(() => {
@@ -3752,6 +3892,17 @@ export default function MapIndex() {
                                 </div>
                                 {rrPlaying && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#ec489915', color: '#ec4899', border: '1px solid #ec489925', animation: 'argux-fadeIn 0.3s' }}>▶ LIVE</span>}
                                 <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showRouteReplay ? '#ec4899' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+
+                            {/* Location Analyzer button */}
+                            <button onClick={() => { setShowLocAnalyzer(true); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, border: `1px solid ${locAnalyzerResults ? '#14b8a630' : showLocAnalyzer ? '#14b8a640' : theme.border}`, background: showLocAnalyzer ? 'rgba(20,184,166,0.06)' : locAnalyzerResults ? 'rgba(20,184,166,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showLocAnalyzer ? 'rgba(20,184,166,0.06)' : locAnalyzerResults ? 'rgba(20,184,166,0.03)' : 'transparent'; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: locAnalyzerResults ? 'rgba(20,184,166,0.12)' : 'rgba(20,184,166,0.06)', border: `1px solid ${locAnalyzerResults ? '#14b8a630' : '#14b8a615'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📐</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: locAnalyzerResults ? '#14b8a6' : theme.text }}>Location Analyzer</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>{locAnalyzerResults ? `${locAnalyzerResults.summary.totalEvents} events · ${locAnalyzerResults.summary.persons} subjects` : 'Select area for intelligence analysis'}</div>
+                                </div>
+                                {locAnalyzerResults && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#14b8a615', color: '#14b8a6', border: '1px solid #14b8a625' }}>{locAnalyzerResults.summary.riskScore}%</span>}
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showLocAnalyzer ? '#14b8a6' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
                             </button>
                         </div>
                     </Section>
@@ -5392,6 +5543,94 @@ export default function MapIndex() {
                         <div style={{ flex: 1 }} />
                         <span style={{ fontSize: 9, color: '#ec4899', fontWeight: 600 }}>GPS + Kafka</span>
                     </div>
+                    </>}
+                </div>}
+
+                {/* ═══ LOCATION ANALYZER PANEL ═══ */}
+                {showLocAnalyzer && loaded && <div data-panel="locanalyzer" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('locanalyzer' as PanelId); }} style={panelStyle('locanalyzer', '400px', '#14b8a6')}>
+                    <PanelHeader id={'locanalyzer' as PanelId} icon="📐" title="Location Analyzer" subtitle={locAnalyzerResults ? `${locAnalyzerResults.area.km2.toFixed(2)} km² · ${locAnalyzerResults.summary.totalEvents} events` : locAnalyzerBounds ? 'Area selected — ready to analyze' : 'Select area on map'} color="#14b8a6" onClose={() => { setShowLocAnalyzer(false); setLocAnalyzerDrawing(false); setLocAnalyzerBounds(null); setLocAnalyzerResults(null); }} />
+                    <PanelResizeGrip id={'locanalyzer' as PanelId} />
+
+                    {!isPanelMin('locanalyzer' as PanelId) && <>
+                    {/* Controls */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                            <button onClick={startLocAnalyzerDraw} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: `1px solid ${locAnalyzerDrawing ? '#14b8a640' : theme.border}`, background: locAnalyzerDrawing ? 'rgba(20,184,166,0.08)' : 'transparent', color: locAnalyzerDrawing ? '#14b8a6' : theme.text, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>{locAnalyzerDrawing ? '✏️ Drawing...' : '📐 Select Area'}</button>
+                            <button onClick={runLocAnalysis} disabled={!locAnalyzerBounds || locAnalyzerRunning} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: 'none', background: locAnalyzerBounds && !locAnalyzerRunning ? '#14b8a6' : theme.border, color: '#fff', fontSize: 11, fontWeight: 700, cursor: locAnalyzerBounds && !locAnalyzerRunning ? 'pointer' : 'not-allowed', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>{locAnalyzerRunning ? '⏳ Analyzing...' : '🔍 Analyze'}</button>
+                        </div>
+                        {locAnalyzerDrawing && <div style={{ fontSize: 9, color: '#14b8a6', padding: '4px 8px', borderRadius: 4, background: 'rgba(20,184,166,0.06)', border: '1px solid rgba(20,184,166,0.15)' }}>Click and drag on the map to select a rectangular area for analysis.</div>}
+                        {locAnalyzerBounds && !locAnalyzerResults && !locAnalyzerRunning && <div style={{ fontSize: 9, color: theme.textSecondary, display: 'flex', gap: 8, flexWrap: 'wrap' as const }}><span>NW: <strong style={{ color: theme.text, fontFamily: "'JetBrains Mono',monospace" }}>{locAnalyzerBounds.nw[1].toFixed(4)}, {locAnalyzerBounds.nw[0].toFixed(4)}</strong></span><span>SE: <strong style={{ color: theme.text, fontFamily: "'JetBrains Mono',monospace" }}>{locAnalyzerBounds.se[1].toFixed(4)}, {locAnalyzerBounds.se[0].toFixed(4)}</strong></span></div>}
+                        {locAnalyzerRunning && <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', padding: '20px 0' }}><div className="tmap-spinner" style={{ width: 28, height: 28, border: `2.5px solid ${theme.border}`, borderTopColor: '#14b8a6', borderRadius: '50%', animation: 'tmap-spin 0.7s linear infinite' }} /><div style={{ fontSize: 10, color: '#14b8a6', fontWeight: 600, marginTop: 8 }}>Analyzing selected area...</div><div style={{ fontSize: 9, color: theme.textDim, marginTop: 4 }}>Scanning events, devices, patterns</div></div>}
+                    </div>
+
+                    {/* Results */}
+                    {locAnalyzerResults && <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {/* KPI Summary */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, padding: '10px 14px' }}>
+                            {[{ l: 'Events', v: locAnalyzerResults.summary.totalEvents, c: '#3b82f6' },{ l: 'Persons', v: locAnalyzerResults.summary.persons, c: '#22c55e' },{ l: 'Devices', v: locAnalyzerResults.summary.devices, c: '#f59e0b' },{ l: 'Alerts', v: locAnalyzerResults.summary.alerts, c: '#ef4444' },{ l: 'Daily Avg', v: locAnalyzerResults.summary.avgDailyActivity, c: '#8b5cf6' },{ l: 'Risk', v: `${locAnalyzerResults.summary.riskScore}%`, c: locAnalyzerResults.summary.riskScore > 75 ? '#ef4444' : '#f59e0b' }].map((k: any) => <div key={k.l} style={{ padding: '6px 8px', borderRadius: 6, border: `1px solid ${theme.border}`, textAlign: 'center' as const }}><div style={{ fontSize: 16, fontWeight: 800, color: k.c, fontFamily: "'JetBrains Mono',monospace" }}>{k.v}</div><div style={{ fontSize: 8, color: theme.textDim }}>{k.l}</div></div>)}
+                        </div>
+
+                        {/* Top Persons */}
+                        <div style={{ padding: '6px 14px' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 6 }}>TOP SUBJECTS IN AREA</div>
+                            {locAnalyzerResults.topPersons.map((p: any) => { const rc: Record<string, string> = { Critical: '#ef4444', High: '#f97316', Medium: '#f59e0b' }; return <div key={p.id} onClick={() => { const map = mapRef.current; if (map && locAnalyzerResults?.area) { map.flyTo({ center: [(locAnalyzerResults.area.nw[0] + locAnalyzerResults.area.se[0]) / 2, (locAnalyzerResults.area.nw[1] + locAnalyzerResults.area.se[1]) / 2], zoom: 15, duration: 800 }); } }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, border: `1px solid ${theme.border}20`, marginBottom: 3, cursor: 'pointer', transition: 'background 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                <div style={{ width: 26, height: 26, borderRadius: 6, background: `${rc[p.risk] || '#6b7280'}12`, border: `1px solid ${rc[p.risk] || '#6b7280'}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: rc[p.risk] || '#6b7280', flexShrink: 0 }}>{p.name.split(' ').map((w: string) => w[0]).join('')}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{p.name}</div><div style={{ fontSize: 9, color: theme.textDim }}>{p.lastSeen} · {p.avgDwell} avg dwell</div></div>
+                                <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: `${rc[p.risk] || '#6b7280'}12`, color: rc[p.risk] || '#6b7280' }}>{p.events}</span>
+                            </div>; })}
+                        </div>
+
+                        {/* Event Breakdown */}
+                        <div style={{ padding: '6px 14px' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 6 }}>EVENT BREAKDOWN</div>
+                            {locAnalyzerResults.eventBreakdown.map((e: any) => <div key={e.type} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <span style={{ fontSize: 12, width: 18, textAlign: 'center' as const }}>{e.icon}</span>
+                                <span style={{ fontSize: 10, color: theme.textSecondary, flex: 1 }}>{e.type}</span>
+                                <div style={{ width: 80, height: 5, borderRadius: 3, background: `${theme.border}20`, overflow: 'hidden' }}><div style={{ width: `${e.pct}%`, height: '100%', borderRadius: 3, background: e.color, opacity: 0.8 }} /></div>
+                                <span style={{ fontSize: 9, fontWeight: 700, color: theme.text, fontFamily: "'JetBrains Mono',monospace", width: 30, textAlign: 'right' as const }}>{e.count}</span>
+                            </div>)}
+                        </div>
+
+                        {/* Time Distribution */}
+                        <div style={{ padding: '6px 14px' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 6 }}>TIME DISTRIBUTION</div>
+                            <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 40 }}>
+                                {locAnalyzerResults.timeDistribution.map((t: any) => <div key={t.hour} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2 }}>
+                                    <div style={{ width: '100%', height: `${t.pct}px`, minHeight: 2, borderRadius: '2px 2px 0 0', background: t.pct > 25 ? '#14b8a6' : t.pct > 15 ? '#14b8a680' : '#14b8a640' }} />
+                                    <span style={{ fontSize: 7, color: theme.textDim }}>{t.hour}</span>
+                                </div>)}
+                            </div>
+                        </div>
+
+                        {/* Hotspots */}
+                        <div style={{ padding: '6px 14px' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 6 }}>HOTSPOTS</div>
+                            {locAnalyzerResults.hotspots.map((h: any) => <div key={h.name} onClick={() => { const map = mapRef.current; if (map) map.flyTo({ center: [h.lng, h.lat], zoom: 17, duration: 800 }); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 5, border: `1px solid ${theme.border}20`, marginBottom: 3, cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(20,184,166,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                <div style={{ width: 22, height: 22, borderRadius: '50%', background: `rgba(20,184,166,${h.intensity / 100 * 0.3})`, border: '1px solid rgba(20,184,166,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, color: '#14b8a6', flexShrink: 0 }}>{h.intensity}</div>
+                                <div style={{ flex: 1 }}><div style={{ fontSize: 10, fontWeight: 600, color: theme.text }}>{h.name}</div></div>
+                                <span style={{ fontSize: 9, color: theme.textDim }}>{h.events} events</span>
+                            </div>)}
+                        </div>
+
+                        {/* Zones */}
+                        {locAnalyzerResults.zones.length > 0 && <div style={{ padding: '6px 14px' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 6 }}>ZONE ACTIVITY</div>
+                            {locAnalyzerResults.zones.map((z: any) => <div key={z.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 5, border: `1px solid ${z.type === 'restricted' ? '#ef444420' : '#f59e0b20'}`, marginBottom: 3 }}>
+                                <span style={{ fontSize: 12 }}>{z.type === 'restricted' ? '🔴' : '🟡'}</span>
+                                <div style={{ flex: 1 }}><div style={{ fontSize: 10, fontWeight: 600, color: theme.text }}>{z.name}</div><div style={{ fontSize: 9, color: theme.textDim }}>Last breach: {z.lastBreach}</div></div>
+                                <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: z.breaches > 5 ? '#ef444412' : '#f59e0b12', color: z.breaches > 5 ? '#ef4444' : '#f59e0b' }}>{z.breaches} breaches</span>
+                            </div>)}
+                        </div>}
+
+                        {/* Threats */}
+                        <div style={{ padding: '6px 14px 14px' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 6 }}>⚠️ THREAT ASSESSMENT</div>
+                            {locAnalyzerResults.threats.map((t: any, i: number) => { const tc: Record<string, string> = { critical: '#ef4444', high: '#f97316', medium: '#f59e0b' }; return <div key={i} style={{ padding: '8px 10px', borderRadius: 6, border: `1px solid ${tc[t.level]}20`, background: `${tc[t.level]}04`, marginBottom: 4 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}><span style={{ fontSize: 8, fontWeight: 800, padding: '1px 5px', borderRadius: 3, background: `${tc[t.level]}15`, color: tc[t.level], textTransform: 'uppercase' as const }}>{t.level}</span><span style={{ fontSize: 10, fontWeight: 700, color: theme.text }}>{t.title}</span></div>
+                                <div style={{ fontSize: 9, color: theme.textSecondary, lineHeight: 1.5 }}>{t.detail}</div>
+                            </div>; })}
+                        </div>
+                    </div>}
                     </>}
                 </div>}
 
