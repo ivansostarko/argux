@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.25.39 - 2026-03-28
+
+### Implemented — Admin Profile (/admin/profile)
+- Full profile page for admin users using AdminLayout with red accent.
+- 5 tabs: Personal Data, Password, Security, Settings, Audit Logs.
+- Copied logic from /profile with admin-specific styling (red accent, ADMIN badge).
+- Personal Data: avatar upload, name, email, phone fields.
+- Password: current/new/confirm with 5 strength rules.
+- Security: 2FA method (App/SMS/Email), backup codes, active sessions with revoke, login stats.
+- Settings: language with flags, timezone, date format, 10 themes grid, 7 fonts grid.
+- Audit Logs: searchable paginated log with action badges.
+
+### Updated — Admin Header Menu
+- UserDropdown is now context-aware via `isAdmin` prop.
+- Admin context: "My Profile" → /admin/profile, "Back to Platform" → /map, Logout → /admin/login.
+- User context: unchanged — "My Profile" → /profile, "Download Client", "Settings", Logout → /login.
+- AppHeader accepts new optional `isAdmin` prop (in addition to hideClock, hideNotifications).
+
 ## 0.25.38 - 2026-03-28
 
 ### Updated — Admin Layout

@@ -75,6 +75,7 @@ Route::get('/admin/audit', fn () => \Inertia\Inertia::render('Admin/Audit'))->na
 Route::get('/admin/config', fn () => \Inertia\Inertia::render('Admin/Config'))->name('admin.config');
 Route::get('/admin/support', fn () => \Inertia\Inertia::render('Admin/Support'))->name('admin.support');
 Route::get('/admin/kb', fn () => \Inertia\Inertia::render('Admin/KnowledgeBase'))->name('admin.kb');
+Route::get('/admin/profile', fn () => \Inertia\Inertia::render('Admin/Profile'))->name('admin.profile');
 
 /*
 |--------------------------------------------------------------------------

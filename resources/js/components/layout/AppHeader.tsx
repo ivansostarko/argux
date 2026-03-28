@@ -102,13 +102,16 @@ function NotificationDropdown() {
     );
 }
 
-function UserDropdown() {
+function UserDropdown({ isAdmin }: { isAdmin?: boolean }) {
     const { currentTheme: th } = useAppSettings();
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => { const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
 
-    const menuItems = [
+    const menuItems = isAdmin ? [
+        { label: 'My Profile', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="5" r="3"/><path d="M2.5 14.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>, action: () => router.visit('/admin/profile') },
+        { label: 'Back to Platform', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="10,3 4,8 10,13"/></svg>, action: () => router.visit('/map') },
+    ] : [
         { label: 'My Profile', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="5" r="3"/><path d="M2.5 14.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>, action: () => router.visit('/profile') },
         { label: 'Download Client', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2"/></svg>, action: () => router.visit('/download') },
         { label: 'Settings', icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="2.5"/><path d="M13 8a5.002 5.002 0 00-.3-1.7l1.5-1.2-1-1.7-1.8.6A5 5 0 009.7 3L9 1.5H7L6.3 3a5 5 0 00-1.7 1l-1.8-.6-1 1.7 1.5 1.2A5 5 0 003 8a5 5 0 00.3 1.7l-1.5 1.2 1 1.7 1.8-.6c.5.4 1.1.8 1.7 1l.7 1.5h2l.7-1.5c.6-.2 1.2-.6 1.7-1l1.8.6 1-1.7-1.5-1.2A5 5 0 0013 8z"/></svg>, action: () => router.visit('/profile?tab=settings') },
@@ -140,7 +143,7 @@ function UserDropdown() {
                         </button>
                     ))}
                     <div style={{ height: 1, background: th.border, margin: '4px 0' }} />
-                    <button onClick={() => { setOpen(false); router.visit('/login'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', background: 'none', border: 'none', color: th.danger, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 6, transition: 'all 0.15s' }}
+                    <button onClick={() => { setOpen(false); router.visit(isAdmin ? '/admin/login' : '/login'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', background: 'none', border: 'none', color: th.danger, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 6, transition: 'all 0.15s' }}
                         onMouseEnter={e => (e.currentTarget.style.background = th.dangerDim)} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3"/><polyline points="10,11 14,8 10,5"/><line x1="14" y1="8" x2="6" y2="8"/></svg>
                         Logout
@@ -151,7 +154,7 @@ function UserDropdown() {
     );
 }
 
-export default function AppHeader({ onMenuToggle, hideClock, hideNotifications }: { onMenuToggle: () => void; hideClock?: boolean; hideNotifications?: boolean }) {
+export default function AppHeader({ onMenuToggle, hideClock, hideNotifications, isAdmin }: { onMenuToggle: () => void; hideClock?: boolean; hideNotifications?: boolean; isAdmin?: boolean }) {
     const { currentTheme: th } = useAppSettings();
     return (
         <header style={{ height: 56, background: th.headerBg, borderBottom: `1px solid ${th.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0, position: 'sticky', top: 0, zIndex: 30 }}>
@@ -177,7 +180,7 @@ export default function AppHeader({ onMenuToggle, hideClock, hideNotifications }
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {!hideNotifications && <NotificationDropdown />}
-                <UserDropdown />
+                <UserDropdown isAdmin={isAdmin} />
             </div>
         </header>
     );
