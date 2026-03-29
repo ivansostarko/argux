@@ -3,8 +3,8 @@ import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'rea
 import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
-import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint } from '../../mock/map';
-import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts } from '../../mock/map';
+import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData } from '../../mock/map';
+import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig } from '../../mock/map';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
 import { mockVehicles } from '../../mock/vehicles';
@@ -352,6 +352,47 @@ export default function MapIndex() {
 
     // Face Recognition Layer
     const [layerFace, setLayerFace] = useState(false);
+
+    // ═══ LIVE FLIGHTS (OpenSky Network) ═══
+    const [layerFlights, setLayerFlights] = useState(false);
+    const [showFlightsPanel, setShowFlightsPanel] = useState(false);
+    const [flightSearch, setFlightSearch] = useState('');
+    const [flightCategoryFilter, setFlightCategoryFilter] = useState<Set<string>>(new Set());
+    const [flightSelected, setFlightSelected] = useState<string | null>(null);
+    const [flights, setFlights] = useState<FlightData[]>(MOCK_FLIGHTS);
+    const flightMarkersRef = useRef<any[]>([]);
+    const flightPopupRef = useRef<any>(null);
+    const flightUpdateRef = useRef<any>(null);
+
+    // Simulate live flight position updates
+    useEffect(() => {
+        if (!layerFlights) { if (flightUpdateRef.current) clearInterval(flightUpdateRef.current); return; }
+        flightUpdateRef.current = setInterval(() => {
+            setFlights(prev => prev.map(f => {
+                if (f.onGround) return f;
+                const rad = f.heading * Math.PI / 180;
+                const dlat = Math.cos(rad) * (f.velocity / 111000) * 3 * (0.8 + Math.random() * 0.4);
+                const dlng = Math.sin(rad) * (f.velocity / (111000 * Math.cos(f.lat * Math.PI / 180))) * 3 * (0.8 + Math.random() * 0.4);
+                return { ...f, lat: f.lat + dlat, lng: f.lng + dlng, heading: f.heading + (Math.random() - 0.5) * 2, velocity: Math.max(50, f.velocity + (Math.random() - 0.5) * 5) };
+            }));
+        }, 3000);
+        return () => { if (flightUpdateRef.current) clearInterval(flightUpdateRef.current); };
+    }, [layerFlights]);
+
+    const filteredFlights = useMemo(() => {
+        let f = flights;
+        if (flightCategoryFilter.size > 0) f = f.filter(fl => flightCategoryFilter.has(fl.category));
+        if (flightSearch) { const q = flightSearch.toLowerCase(); f = f.filter(fl => fl.callsign.toLowerCase().includes(q) || (fl.airline || '').toLowerCase().includes(q) || fl.originCountry.toLowerCase().includes(q) || (fl.departure || '').toLowerCase().includes(q) || (fl.arrival || '').toLowerCase().includes(q) || fl.icao24.includes(q)); }
+        return f;
+    }, [flights, flightCategoryFilter, flightSearch]);
+
+    const flightStats = useMemo(() => ({
+        total: flights.length, airborne: flights.filter(f => !f.onGround).length,
+        commercial: flights.filter(f => f.category === 'commercial').length, cargo: flights.filter(f => f.category === 'cargo').length,
+        private: flights.filter(f => f.category === 'private').length, military: flights.filter(f => f.category === 'military').length,
+        helicopter: flights.filter(f => f.category === 'helicopter').length,
+        countries: new Set(flights.map(f => f.originCountry)).size,
+    }), [flights]);
     const [faceSearch, setFaceSearch] = useState('');
     const [faceSelected, setFaceSelected] = useState<Set<string>>(new Set()); // selected face IDs to show (empty = all)
     const [faceHidden, setFaceHidden] = useState<Set<string>>(new Set()); // hidden face IDs
@@ -785,7 +826,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -2534,6 +2575,75 @@ export default function MapIndex() {
         return () => { faceMarkersRef.current.forEach(m => m.remove()); faceMarkersRef.current = []; };
     }, [layerFace, loaded, timelineActive, tlCursorMs, faceSelected, faceHidden, faceSearch]);
 
+    // ═══ FLIGHT LAYER RENDERING ═══
+    useEffect(() => {
+        const map = mapRef.current;
+        const ml = (window as any).maplibregl;
+        if (!map || !ml || !loaded) return;
+
+        // Remove existing markers
+        flightMarkersRef.current.forEach(m => m.remove());
+        flightMarkersRef.current = [];
+        if (flightPopupRef.current) { flightPopupRef.current.remove(); flightPopupRef.current = null; }
+
+        if (!layerFlights) return;
+
+        filteredFlights.forEach(f => {
+            const cat = flightCategoryConfig[f.category] || flightCategoryConfig.commercial;
+            const altKm = (f.baroAlt / 1000).toFixed(1);
+            const el = document.createElement('div');
+            el.style.cssText = 'cursor:pointer;transition:transform 0.15s;';
+            el.innerHTML = `<div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="${cat.color}" style="transform:rotate(${f.heading - 90}deg);filter:drop-shadow(0 1px 4px rgba(0,0,0,0.6));transition:transform 2.5s linear;">
+                    <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                </svg>
+                <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none;text-align:center;">
+                    <div style="font-size:7px;font-weight:800;color:${cat.color};text-shadow:0 1px 3px rgba(0,0,0,0.9);font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;">${f.callsign}</div>
+                </div>
+                <div style="position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none;">
+                    <div style="font-size:6px;font-weight:600;color:rgba(255,255,255,0.5);text-shadow:0 1px 3px rgba(0,0,0,0.9);font-family:'JetBrains Mono',monospace;">FL${Math.round(f.baroAlt / 30.48 / 100)}</div>
+                </div>
+            </div>`;
+
+            el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.3)'; el.style.zIndex = '10'; });
+            el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; el.style.zIndex = '1'; });
+            el.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                setFlightSelected(f.icao24);
+                if (flightPopupRef.current) flightPopupRef.current.remove();
+                const popup = new ml.Popup({ offset: 18, closeButton: true, maxWidth: '320px', className: 'tmap-flight-popup' })
+                    .setLngLat([f.lng, f.lat])
+                    .setHTML(`<div style="font-family:inherit;padding:4px 0;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                            <div style="width:32px;height:32px;border-radius:6px;background:${cat.color}18;border:1px solid ${cat.color}30;display:flex;align-items:center;justify-content:center;font-size:16px;">${f.category === 'helicopter' ? '🚁' : f.category === 'military' ? '🎖️' : '✈️'}</div>
+                            <div><div style="font-size:14px;font-weight:800;color:#fff;">${f.callsign}</div><div style="font-size:10px;color:rgba(255,255,255,0.5);">${f.airline || f.category} · ${f.originCountry}</div></div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-bottom:8px;">
+                            ${[['Aircraft', f.aircraft || '—'], ['Registration', f.registration || '—'], ['Altitude', `${altKm} km (FL${Math.round(f.baroAlt / 30.48 / 100)})`], ['Speed', `${Math.round(f.velocity)} m/s (${Math.round(f.velocity * 1.944)} kts)`], ['Heading', `${Math.round(f.heading)}°`], ['V/Rate', `${f.verticalRate > 0 ? '+' : ''}${f.verticalRate.toFixed(1)} m/s`], ['Squawk', f.squawk], ['ICAO24', f.icao24]].map(([l, v]) => `<div><div style="font-size:8px;color:rgba(255,255,255,0.35);font-weight:700;letter-spacing:0.08em;">${l}</div><div style="font-size:10px;color:#fff;font-family:'JetBrains Mono',monospace;">${v}</div></div>`).join('')}
+                        </div>
+                        ${f.departure || f.arrival ? `<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;border:1px solid ${cat.color}25;background:${cat.color}06;margin-top:4px;">
+                            <div style="text-align:center;flex:1;"><div style="font-size:8px;color:rgba(255,255,255,0.35);">FROM</div><div style="font-size:10px;font-weight:700;color:${cat.color};">${f.departureIcao || '—'}</div><div style="font-size:8px;color:rgba(255,255,255,0.5);">${f.departure || '—'}</div></div>
+                            <div style="font-size:14px;color:${cat.color};">→</div>
+                            <div style="text-align:center;flex:1;"><div style="font-size:8px;color:rgba(255,255,255,0.35);">TO</div><div style="font-size:10px;font-weight:700;color:${cat.color};">${f.arrivalIcao || '—'}</div><div style="font-size:8px;color:rgba(255,255,255,0.5);">${f.arrival || '—'}</div></div>
+                        </div>` : ''}
+                        <div style="margin-top:6px;font-size:8px;color:rgba(255,255,255,0.25);text-align:center;">Source: OpenSky Network · ${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}</div>
+                    </div>`)
+                    .addTo(map);
+                flightPopupRef.current = popup;
+                popup.on('close', () => { setFlightSelected(null); flightPopupRef.current = null; });
+            });
+
+            const marker = new ml.Marker({ element: el }).setLngLat([f.lng, f.lat]).addTo(map);
+            flightMarkersRef.current.push(marker);
+        });
+
+        return () => {
+            flightMarkersRef.current.forEach(m => m.remove());
+            flightMarkersRef.current = [];
+            if (flightPopupRef.current) { flightPopupRef.current.remove(); flightPopupRef.current = null; }
+        };
+    }, [layerFlights, filteredFlights, loaded]);
+
     // Object drawing click handler
     useEffect(() => {
         const map = mapRef.current;
@@ -2977,6 +3087,7 @@ export default function MapIndex() {
                 if (showRouteReplay) { setShowRouteReplay(false); setRrPlaying(false); return; }
                 if (locAnalyzerDrawing) { setLocAnalyzerDrawing(false); return; }
                 if (showLocAnalyzer) { setShowLocAnalyzer(false); setLocAnalyzerDrawing(false); return; }
+                if (showFlightsPanel) { setShowFlightsPanel(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
@@ -3656,14 +3767,15 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
-                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Layer buttons */}
                             {[
-                                { key: 'heatmap', icon: '🔥', label: 'Activity Heatmap', color: '#f59e0b', active: layerHeatmap, toggle: () => { setLayerHeatmap(!layerHeatmap); triggerTopLoader(); }, panel: showHeatmapPanel, openPanel: () => { setShowHeatmapPanel(true); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); triggerTopLoader(); }, desc: layerHeatmap ? `${heatmapPoints.length} points · ${(heatmapIntensity * 100).toFixed(0)}% intensity` : 'Surveillance activity density' },
-                                { key: 'network', icon: '🕸️', label: 'Network Graph', color: '#8b5cf6', active: layerNetwork, toggle: () => { setLayerNetwork(!layerNetwork); triggerTopLoader(); }, panel: showNetworkPanel, openPanel: () => { setShowNetworkPanel(true); setShowHeatmapPanel(false); setShowLPRPanel(false); setShowFacePanel(false); triggerTopLoader(); }, desc: layerNetwork ? `${netNodes.length} nodes · ${netFilteredEdges.length} connections${netIsolatedEdge ? ' · isolated' : ''}` : 'Entity connection analysis' },
-                                { key: 'lpr', icon: '🚗', label: 'Plate Recognition', color: '#10b981', active: layerLPR, toggle: () => { setLayerLPR(!layerLPR); triggerTopLoader(); }, panel: showLPRPanel, openPanel: () => { setShowLPRPanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowFacePanel(false); triggerTopLoader(); }, desc: layerLPR ? `${mockLPR.filter(l => !lprHidden.has(l.id) && (lprSelected.size === 0 || lprSelected.has(l.id))).length} visible · ${lprHidden.size} hidden` : 'License plate captures' },
-                                { key: 'face', icon: '🧑‍🦲', label: 'Face Recognition', color: '#ec4899', active: layerFace, toggle: () => { setLayerFace(!layerFace); triggerTopLoader(); }, panel: showFacePanel, openPanel: () => { setShowFacePanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); triggerTopLoader(); }, desc: layerFace ? `${mockFaces.filter(f => !faceHidden.has(f.id) && (faceSelected.size === 0 || faceSelected.has(f.id))).length} visible · ${faceHidden.size} hidden` : 'Facial recognition captures' },
+                                { key: 'heatmap', icon: '🔥', label: 'Activity Heatmap', color: '#f59e0b', active: layerHeatmap, toggle: () => { setLayerHeatmap(!layerHeatmap); triggerTopLoader(); }, panel: showHeatmapPanel, openPanel: () => { setShowHeatmapPanel(true); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); setShowFlightsPanel(false); triggerTopLoader(); }, desc: layerHeatmap ? `${heatmapPoints.length} points · ${(heatmapIntensity * 100).toFixed(0)}% intensity` : 'Surveillance activity density' },
+                                { key: 'network', icon: '🕸️', label: 'Network Graph', color: '#8b5cf6', active: layerNetwork, toggle: () => { setLayerNetwork(!layerNetwork); triggerTopLoader(); }, panel: showNetworkPanel, openPanel: () => { setShowNetworkPanel(true); setShowHeatmapPanel(false); setShowLPRPanel(false); setShowFacePanel(false); setShowFlightsPanel(false); triggerTopLoader(); }, desc: layerNetwork ? `${netNodes.length} nodes · ${netFilteredEdges.length} connections${netIsolatedEdge ? ' · isolated' : ''}` : 'Entity connection analysis' },
+                                { key: 'lpr', icon: '🚗', label: 'Plate Recognition', color: '#10b981', active: layerLPR, toggle: () => { setLayerLPR(!layerLPR); triggerTopLoader(); }, panel: showLPRPanel, openPanel: () => { setShowLPRPanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowFacePanel(false); setShowFlightsPanel(false); triggerTopLoader(); }, desc: layerLPR ? `${mockLPR.filter(l => !lprHidden.has(l.id) && (lprSelected.size === 0 || lprSelected.has(l.id))).length} visible · ${lprHidden.size} hidden` : 'License plate captures' },
+                                { key: 'face', icon: '🧑‍🦲', label: 'Face Recognition', color: '#ec4899', active: layerFace, toggle: () => { setLayerFace(!layerFace); triggerTopLoader(); }, panel: showFacePanel, openPanel: () => { setShowFacePanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFlightsPanel(false); triggerTopLoader(); }, desc: layerFace ? `${mockFaces.filter(f => !faceHidden.has(f.id) && (faceSelected.size === 0 || faceSelected.has(f.id))).length} visible · ${faceHidden.size} hidden` : 'Facial recognition captures' },
+                                { key: 'flights', icon: '✈️', label: 'Live Flights', color: '#06b6d4', active: layerFlights, toggle: () => { setLayerFlights(!layerFlights); triggerTopLoader(); }, panel: showFlightsPanel, openPanel: () => { setShowFlightsPanel(!showFlightsPanel); triggerTopLoader(); }, desc: layerFlights ? `${filteredFlights.length} aircraft · ${flightStats.airborne} airborne` : 'OpenSky Network ADS-B feed' },
                             ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {/* Toggle switch */}
                                 <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
@@ -5542,6 +5654,58 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>{(mockRoutes[rrPerson] || []).length} waypoints · {(mockRoutes[rrPerson] || []).filter(p => p.event).length} events</span>
                         <div style={{ flex: 1 }} />
                         <span style={{ fontSize: 9, color: '#ec4899', fontWeight: 600 }}>GPS + Kafka</span>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ FLIGHTS PANEL ═══ */}
+                {showFlightsPanel && loaded && <div data-panel="flights" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('flights'); }} style={panelStyle('flights', '380px', '#06b6d4')}>
+                    <PanelHeader id="flights" icon="✈️" title="Live Flights" subtitle={`${filteredFlights.length} aircraft · ${flightStats.countries} countries`} color="#06b6d4" onClose={() => setShowFlightsPanel(false)} extra={<button onClick={() => { setLayerFlights(!layerFlights); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: layerFlights ? '#06b6d4' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: layerFlights ? 16 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></button>} />
+                    <PanelResizeGrip id="flights" />
+
+                    {!isPanelMin('flights') && <>
+                    {/* Stats bar */}
+                    <div style={{ display: 'flex', gap: 4, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexWrap: 'wrap' as const }}>
+                        {Object.entries(flightCategoryConfig).map(([k, v]) => { const c = flightStats[k as keyof typeof flightStats] as number || 0; const on = flightCategoryFilter.has(k); return <button key={k} onClick={() => setFlightCategoryFilter(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 7px', borderRadius: 4, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: on ? v.color : theme.textDim }}>{v.icon} <span>{c}</span></button>; })}
+                    </div>
+
+                    {/* Search */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${flightSearch ? '#06b6d450' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                            <input value={flightSearch} onChange={e => setFlightSearch(e.target.value)} placeholder="Search callsign, airline, route..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                            {flightSearch && <button onClick={() => setFlightSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', fontSize: 9, padding: 0 }}>✕</button>}
+                        </div>
+                    </div>
+
+                    {/* Flight list */}
+                    <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {filteredFlights.length === 0 ? <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, opacity: 0.15 }}>✈️</div><div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 6 }}>No flights match filters</div></div> :
+                        filteredFlights.map(f => { const cat = flightCategoryConfig[f.category]; const isSel = flightSelected === f.icao24; return <div key={f.icao24} onClick={() => { setFlightSelected(isSel ? null : f.icao24); const map = mapRef.current; if (map && !isSel) map.flyTo({ center: [f.lng, f.lat], zoom: Math.max(map.getZoom(), 8), duration: 800 }); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', cursor: 'pointer', background: isSel ? `${cat.color}06` : 'transparent', borderLeft: `3px solid ${isSel ? cat.color : 'transparent'}`, borderBottom: `1px solid ${theme.border}06`, transition: 'background 0.1s' }} onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, background: `${cat.color}12`, border: `1px solid ${cat.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill={cat.color} style={{ transform: `rotate(${f.heading - 90}deg)` }}><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 800, color: theme.text, fontFamily: "'JetBrains Mono',monospace" }}>{f.callsign}</span>
+                                    <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${cat.color}12`, color: cat.color }}>{cat.label}</span>
+                                </div>
+                                <div style={{ fontSize: 9, color: theme.textDim }}>{f.airline || f.aircraft || f.originCountry}{f.departure && f.arrival ? ` · ${f.departureIcao} → ${f.arrivalIcao}` : ''}</div>
+                            </div>
+                            <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: theme.text, fontFamily: "'JetBrains Mono',monospace" }}>FL{Math.round(f.baroAlt / 30.48 / 100)}</div>
+                                <div style={{ fontSize: 8, color: theme.textDim }}>{Math.round(f.velocity * 1.944)} kts</div>
+                            </div>
+                        </div>; })}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{filteredFlights.length} flights · Updates every 3s</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: layerFlights ? '#22c55e' : '#6b7280', boxShadow: layerFlights ? '0 0 6px #22c55e60' : 'none', animation: layerFlights ? 'tmap-tl-ring 2s infinite' : 'none' }} />
+                            <span style={{ fontSize: 9, color: '#06b6d4', fontWeight: 600 }}>OpenSky ADS-B</span>
+                        </div>
                     </div>
                     </>}
                 </div>}

@@ -158,3 +158,41 @@ export const keyboardShortcuts = [
     { key: 'Esc', description: 'Close panel' },
     { key: 'Ctrl+Q', description: 'Keyboard shortcuts' },
 ];
+
+// ═══ LIVE FLIGHTS (OpenSky Network mock) ═══
+export interface FlightData {
+    icao24: string; callsign: string; originCountry: string;
+    lat: number; lng: number; baroAlt: number; geoAlt: number;
+    velocity: number; heading: number; verticalRate: number;
+    onGround: boolean; squawk: string;
+    category: 'commercial' | 'cargo' | 'private' | 'military' | 'helicopter';
+    airline?: string; aircraft?: string; registration?: string;
+    departure?: string; arrival?: string;
+    departureIcao?: string; arrivalIcao?: string;
+}
+
+export const MOCK_FLIGHTS: FlightData[] = [
+    { icao24: '3c6752', callsign: 'DLH1A', originCountry: 'Germany', lat: 45.92, lng: 15.78, baroAlt: 11278, geoAlt: 11320, velocity: 245, heading: 142, verticalRate: 0, onGround: false, squawk: '1000', category: 'commercial', airline: 'Lufthansa', aircraft: 'Airbus A320-271N', registration: 'D-AINK', departure: 'Frankfurt (FRA)', arrival: 'Zagreb (ZAG)', departureIcao: 'EDDF', arrivalIcao: 'LDZA' },
+    { icao24: '4b1815', callsign: 'SWR162', originCountry: 'Switzerland', lat: 46.12, lng: 15.45, baroAlt: 10668, geoAlt: 10710, velocity: 230, heading: 165, verticalRate: -3.2, onGround: false, squawk: '5765', category: 'commercial', airline: 'Swiss Intl', aircraft: 'Airbus A220-300', registration: 'HB-JCR', departure: 'Zurich (ZRH)', arrival: 'Athens (ATH)', departureIcao: 'LSZH', arrivalIcao: 'LGAV' },
+    { icao24: '501db4', callsign: 'CTN523', originCountry: 'Croatia', lat: 45.74, lng: 16.12, baroAlt: 4572, geoAlt: 4600, velocity: 155, heading: 280, verticalRate: -5.8, onGround: false, squawk: '7421', category: 'commercial', airline: 'Croatia Airlines', aircraft: 'Airbus A319-112', registration: '9A-CTL', departure: 'Split (SPU)', arrival: 'Zagreb (ZAG)', departureIcao: 'LDSP', arrivalIcao: 'LDZA' },
+    { icao24: '4ca850', callsign: 'RYR4PL', originCountry: 'Ireland', lat: 45.65, lng: 15.55, baroAlt: 11887, geoAlt: 11930, velocity: 262, heading: 92, verticalRate: 0, onGround: false, squawk: '0523', category: 'commercial', airline: 'Ryanair', aircraft: 'Boeing 737-8AS', registration: 'EI-FRL', departure: 'London Stansted (STN)', arrival: 'Dubrovnik (DBV)', departureIcao: 'EGSS', arrivalIcao: 'LDDU' },
+    { icao24: '471f52', callsign: 'THY6EL', originCountry: 'Turkey', lat: 45.48, lng: 16.45, baroAlt: 12192, geoAlt: 12240, velocity: 255, heading: 305, verticalRate: 0, onGround: false, squawk: '2314', category: 'commercial', airline: 'Turkish Airlines', aircraft: 'Boeing 737-9F2', registration: 'TC-JYN', departure: 'Istanbul (IST)', arrival: 'Vienna (VIE)', departureIcao: 'LTFM', arrivalIcao: 'LOWW' },
+    { icao24: '3944e2', callsign: 'AFR1842', originCountry: 'France', lat: 46.05, lng: 16.20, baroAlt: 10363, geoAlt: 10400, velocity: 238, heading: 118, verticalRate: 0, onGround: false, squawk: '6145', category: 'commercial', airline: 'Air France', aircraft: 'Airbus A321-212', registration: 'F-GTAJ', departure: 'Paris CDG (CDG)', arrival: 'Belgrade (BEG)', departureIcao: 'LFPG', arrivalIcao: 'LYBE' },
+    { icao24: '4067a8', callsign: 'FDX5210', originCountry: 'United States', lat: 46.30, lng: 15.20, baroAlt: 9753, geoAlt: 9800, velocity: 220, heading: 178, verticalRate: -1.5, onGround: false, squawk: '4523', category: 'cargo', airline: 'FedEx', aircraft: 'Boeing 767-3S2F', registration: 'N128FE', departure: 'Memphis (MEM)', arrival: 'Budapest (BUD)', departureIcao: 'KMEM', arrivalIcao: 'LHBP' },
+    { icao24: '501da2', callsign: 'CTN701', originCountry: 'Croatia', lat: 45.73, lng: 15.92, baroAlt: 610, geoAlt: 640, velocity: 72, heading: 115, verticalRate: 4.2, onGround: false, squawk: '1742', category: 'commercial', airline: 'Croatia Airlines', aircraft: 'De Havilland DHC-8-402', registration: '9A-CQC', departure: 'Zagreb (ZAG)', arrival: 'Osijek (OSI)', departureIcao: 'LDZA', arrivalIcao: 'LDOS' },
+    { icao24: '4400a3', callsign: 'AUA451', originCountry: 'Austria', lat: 46.18, lng: 15.70, baroAlt: 8534, geoAlt: 8570, velocity: 210, heading: 200, verticalRate: -2.8, onGround: false, squawk: '3456', category: 'commercial', airline: 'Austrian Airlines', aircraft: 'Embraer E195', registration: 'OE-LWE', departure: 'Vienna (VIE)', arrival: 'Dubrovnik (DBV)', departureIcao: 'LOWW', arrivalIcao: 'LDDU' },
+    { icao24: '501d99', callsign: '9ACRO', originCountry: 'Croatia', lat: 45.80, lng: 16.05, baroAlt: 1524, geoAlt: 1560, velocity: 95, heading: 45, verticalRate: 0, onGround: false, squawk: '7000', category: 'private', aircraft: 'Cessna 172S', registration: '9A-DMA' },
+    { icao24: '3e7b12', callsign: 'GAF614', originCountry: 'Germany', lat: 45.55, lng: 15.88, baroAlt: 7620, geoAlt: 7660, velocity: 195, heading: 340, verticalRate: 2.5, onGround: false, squawk: '4612', category: 'military', aircraft: 'Airbus A400M', registration: '54+20' },
+    { icao24: '5014ab', callsign: 'HRZL1', originCountry: 'Croatia', lat: 45.82, lng: 15.97, baroAlt: 457, geoAlt: 490, velocity: 65, heading: 220, verticalRate: -1.0, onGround: false, squawk: '7000', category: 'helicopter', aircraft: 'Airbus H145', registration: '9A-HBA' },
+    { icao24: '3c4b21', callsign: 'EWG7KD', originCountry: 'Germany', lat: 45.42, lng: 16.35, baroAlt: 11582, geoAlt: 11620, velocity: 248, heading: 70, verticalRate: 0, onGround: false, squawk: '7312', category: 'commercial', airline: 'Eurowings', aircraft: 'Airbus A320-214', registration: 'D-AIZT', departure: 'Milan (MXP)', arrival: 'Bucharest (OTP)', departureIcao: 'LIMC', arrivalIcao: 'LROP' },
+    { icao24: '4ca215', callsign: 'EIN52Y', originCountry: 'Ireland', lat: 46.25, lng: 16.55, baroAlt: 11887, geoAlt: 11930, velocity: 258, heading: 130, verticalRate: 0, onGround: false, squawk: '5143', category: 'commercial', airline: 'Aer Lingus', aircraft: 'Airbus A320-214', registration: 'EI-DVG', departure: 'Dublin (DUB)', arrival: 'Thessaloniki (SKG)', departureIcao: 'EIDW', arrivalIcao: 'LGTS' },
+    { icao24: '40693f', callsign: 'UPS234', originCountry: 'United States', lat: 46.40, lng: 16.10, baroAlt: 10058, geoAlt: 10100, velocity: 232, heading: 155, verticalRate: 0, onGround: false, squawk: '5421', category: 'cargo', airline: 'UPS Airlines', aircraft: 'Boeing 747-8F', registration: 'N621UP', departure: 'Cologne (CGN)', arrival: 'Dubai (DXB)', departureIcao: 'EDDK', arrivalIcao: 'OMDB' },
+];
+
+export const flightCategoryConfig: Record<string, { label: string; color: string; icon: string }> = {
+    commercial: { label: 'Commercial', color: '#3b82f6', icon: '✈️' },
+    cargo: { label: 'Cargo', color: '#f59e0b', icon: '📦' },
+    private: { label: 'Private', color: '#22c55e', icon: '🛩️' },
+    military: { label: 'Military', color: '#ef4444', icon: '🎖️' },
+    helicopter: { label: 'Helicopter', color: '#8b5cf6', icon: '🚁' },
+};

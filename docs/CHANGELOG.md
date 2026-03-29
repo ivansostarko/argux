@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.25.42 - 2026-03-29
+
+### Implemented — Live Flights Layer (/map → Layers)
+- **Live civilian flight tracking** on the tactical map via OpenSky Network ADS-B data (mock). Works on all 2D tiles and 3D Globe/Buildings/Terrain modes.
+
+#### Flight Markers on Map
+- SVG airplane icons rotated to match heading, color-coded by category (commercial=blue, cargo=amber, private=green, military=red, helicopter=purple).
+- Callsign label above each aircraft (JetBrains Mono, 7px).
+- Flight level (FLxxx) label below each aircraft.
+- Hover: scale up 1.3x with z-index boost.
+- Click: opens detailed popup with all flight data.
+
+#### Flight Popup (on click)
+- Header: category icon, callsign, airline/category, country.
+- 8-field data grid: Aircraft type, Registration, Altitude (km + FL), Speed (m/s + knots), Heading (degrees), Vertical Rate (m/s), Squawk code, ICAO24 hex.
+- Route card: departure ICAO → arrival ICAO with airport names (when available).
+- Footer: data source attribution + coordinates.
+
+#### Flights Panel (standalone floating panel)
+- Category filter buttons: Commercial (10), Cargo (2), Private (1), Military (1), Helicopter (1) — toggle individually.
+- Search: filter by callsign, airline, country, departure, arrival, ICAO24.
+- Flight list: each row shows airplane icon (rotated), callsign (monospace), category badge, airline/route info, flight level, speed in knots. Click to fly camera to aircraft.
+- Selected flight highlighted with left border accent.
+- Footer: flight count, "Updates every 3s", live status indicator, "OpenSky ADS-B" badge.
+
+#### Live Position Updates
+- Aircraft positions update every 3 seconds with realistic movement simulation.
+- Velocity-based displacement along heading vector with ±20% randomization.
+- Heading drift ±1° per update for realism.
+- Speed variation ±2.5 m/s per update.
+
+#### 15 Mock Aircraft
+| Callsign | Airline | Aircraft | Route | Category |
+|---|---|---|---|---|
+| DLH1A | Lufthansa | A320-271N | FRA → ZAG | Commercial |
+| SWR162 | Swiss Intl | A220-300 | ZRH → ATH | Commercial |
+| CTN523 | Croatia Airlines | A319-112 | SPU → ZAG | Commercial |
+| RYR4PL | Ryanair | B737-8AS | STN → DBV | Commercial |
+| THY6EL | Turkish Airlines | B737-9F2 | IST → VIE | Commercial |
+| AFR1842 | Air France | A321-212 | CDG → BEG | Commercial |
+| FDX5210 | FedEx | B767-3S2F | MEM → BUD | Cargo |
+| CTN701 | Croatia Airlines | DHC-8-402 | ZAG → OSI | Commercial |
+| AUA451 | Austrian Airlines | E195 | VIE → DBV | Commercial |
+| 9ACRO | — | Cessna 172S | — | Private |
+| GAF614 | — | Airbus A400M | — | Military |
+| HRZL1 | — | Airbus H145 | — | Helicopter |
+| EWG7KD | Eurowings | A320-214 | MXP → OTP | Commercial |
+| EIN52Y | Aer Lingus | A320-214 | DUB → SKG | Commercial |
+| UPS234 | UPS Airlines | B747-8F | CGN → DXB | Cargo |
+
+#### Technical
+- Layer toggle in Layers section with toggle switch + panel open button.
+- Standalone floating panel (not shared layer panel) — can coexist with other layers open.
+- PanelId 'flights' added to union type.
+- `FlightData` interface and `flightCategoryConfig` exported from mock/map.ts.
+- Flight markers use MapLibre Marker API with custom HTML elements — works on both 2D flat and 3D globe projection.
+- State: layerFlights, showFlightsPanel, flightSearch, flightCategoryFilter, flightSelected, flights.
+- Live update interval (3s) starts/stops with layerFlights toggle.
+- Cleanup: all markers removed when layer deactivated.
+
 ## 0.25.41 - 2026-03-28
 
 ### Implemented — Location Analyzer (/map → Intelligence)
