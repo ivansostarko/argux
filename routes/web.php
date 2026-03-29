@@ -158,6 +158,14 @@ Route::prefix('errors')->name('errors.')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
+| Mock API Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/mock-api/flights', [\App\Http\Controllers\MockApi\OpenSkyController::class, 'index'])->name('mock-api.flights');
+
+/*
+|--------------------------------------------------------------------------
 | Catch-all redirect to login (mockup entry point)
 |--------------------------------------------------------------------------
 */

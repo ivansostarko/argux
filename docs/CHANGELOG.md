@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.25.43 - 2026-03-29
+
+### Updated — Live Flights: Real API + Marker Fix
+
+#### Real OpenSky Network API Integration
+- Created `app/Http/Controllers/MockApi/OpenSkyController.php` — Laravel proxy that fetches live ADS-B data from OpenSky Network API.
+- Created `config/opensky.php` — configuration for credentials, bounds, cache TTL.
+- Added route `GET /mock-api/flights` → proxies to OpenSky with bounding box from map viewport.
+- **Credentials setup**: Place `credentials.json` (from opensky-network.org) in project root. Format: `{"username":"...","password":"..."}`. Alternatively set `OPENSKY_USERNAME` and `OPENSKY_PASSWORD` in `.env`.
+- Authenticated users get 10s update intervals (vs 30s anonymous). Falls back to mock data if API unreachable.
+- Server-side caching (8s TTL) prevents excessive API calls.
+- Aircraft categorization: commercial/cargo/private/military/helicopter detected by OpenSky category code + callsign prefix patterns (FDX→cargo, GAF→military, etc.).
+
+#### Marker Click Bug Fixed
+- **Root cause**: Every 3s position update destroyed ALL markers and recreated them, which killed any open popup.
+- **Fix**: Markers stored in a `Map<icao24, {marker, el, data}>` keyed by ICAO24 hex. Position updates call `marker.setLngLat()` and update SVG rotation — no destruction. Markers are only created/removed when the filtered flight set changes (search/filter).
+- Popup click handler reads from `entry.data` (mutable ref to latest flight data) so popup always shows current values even after updates.
+
+#### Panel Enhancements
+- Footer shows data source: "OpenSky LIVE" (green dot) or "Mock Data" (amber dot).
+- Last update timestamp displayed.
+- Sidebar description shows "LIVE" or "Mock" indicator.
+- Frontend polls `/mock-api/flights` every 10 seconds with map viewport bounding box.
+- If viewport is zoomed out >12° lat or >15° lng, bounds are clamped to prevent overloading.
+
 ## 0.25.42 - 2026-03-29
 
 ### Implemented — Live Flights Layer (/map → Layers)
