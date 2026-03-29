@@ -4721,6 +4721,90 @@ export default function MapIndex() {
         return () => { if (anim3dRef.current) { cancelAnimationFrame(anim3dRef.current); anim3dRef.current = null; } };
     }, [active3D, loaded]);
 
+    // ═══ 3D TRAFFIC PARTICLE SYSTEM ═══
+    const trafficParticlesRef = useRef<any>(null);
+    const trafficParticleAnimRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        const is3D = !!active3D;
+        const shouldRun = is3D && layerTraffic && trafficShowFlow;
+
+        if (!shouldRun) {
+            if (trafficParticleAnimRef.current) { cancelAnimationFrame(trafficParticleAnimRef.current); trafficParticleAnimRef.current = null; }
+            try { if (map.getLayer('traffic-particles-glow')) map.removeLayer('traffic-particles-glow'); } catch {}
+            try { if (map.getLayer('traffic-particles')) map.removeLayer('traffic-particles'); } catch {}
+            try { if (map.getLayer('traffic-particles-tail')) map.removeLayer('traffic-particles-tail'); } catch {}
+            try { if (map.getSource('traffic-particles-src')) map.removeSource('traffic-particles-src'); } catch {}
+            trafficParticlesRef.current = null;
+            return;
+        }
+
+        const PARTICLES_PER_SEGMENT = 6;
+        const segments = MOCK_TRAFFIC_SEGMENTS;
+
+        interface Particle { segIdx: number; progress: number; speed: number; lng: number; lat: number; heading: number; level: string; }
+
+        const particles: Particle[] = [];
+        segments.forEach((seg, si) => {
+            const count = seg.level === 'standstill' ? 10 : seg.level === 'heavy' ? 8 : PARTICLES_PER_SEGMENT;
+            for (let p = 0; p < count; p++) {
+                const progress = p / count + (Math.random() * 0.05);
+                const speedFactor = seg.level === 'standstill' ? 0.00003 : seg.level === 'heavy' ? 0.00015 : seg.level === 'moderate' ? 0.0004 : seg.level === 'light' ? 0.0007 : 0.001;
+                particles.push({ segIdx: si, progress: progress % 1, speed: speedFactor + Math.random() * speedFactor * 0.3, lng: 0, lat: 0, heading: 0, level: seg.level });
+            }
+        });
+
+        const interpolate = (seg: typeof segments[0], t: number): [number, number, number] => {
+            const coords = seg.coordinates;
+            if (coords.length < 2) return [coords[0][0], coords[0][1], 0];
+            const totalT = Math.max(0, Math.min(1, t));
+            const segCount = coords.length - 1;
+            const rawIdx = totalT * segCount;
+            const idx = Math.min(Math.floor(rawIdx), segCount - 1);
+            const frac = rawIdx - idx;
+            const lng = coords[idx][0] + (coords[idx + 1][0] - coords[idx][0]) * frac;
+            const lat = coords[idx][1] + (coords[idx + 1][1] - coords[idx][1]) * frac;
+            const heading = Math.atan2(coords[idx + 1][0] - coords[idx][0], coords[idx + 1][1] - coords[idx][1]) * 180 / Math.PI;
+            return [lng, lat, heading];
+        };
+
+        const emptyFC = { type: 'FeatureCollection' as const, features: [] as any[] };
+        try {
+            if (!map.getSource('traffic-particles-src')) {
+                map.addSource('traffic-particles-src', { type: 'geojson', data: emptyFC });
+                map.addLayer({ id: 'traffic-particles-tail', type: 'circle', source: 'traffic-particles-src', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 3, 15, 7, 18, 12], 'circle-color': ['get', 'color'], 'circle-opacity': 0.15, 'circle-blur': 1 } });
+                map.addLayer({ id: 'traffic-particles', type: 'circle', source: 'traffic-particles-src', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 1.5, 15, 3, 18, 5], 'circle-color': ['get', 'color'], 'circle-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.6, 16, 0.9], 'circle-blur': 0.3 } });
+                map.addLayer({ id: 'traffic-particles-glow', type: 'circle', source: 'traffic-particles-src', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 0.5, 15, 1.5, 18, 2.5], 'circle-color': '#ffffff', 'circle-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.3, 16, 0.7], 'circle-blur': 0.2 } });
+            }
+        } catch (e) { console.warn('Traffic particles init failed:', e); return; }
+
+        trafficParticlesRef.current = particles;
+
+        let lastFrame = 0;
+        const animate = (time: number) => {
+            if (!mapRef.current || !trafficParticlesRef.current) return;
+            const dt = time - lastFrame;
+            if (dt < 33) { trafficParticleAnimRef.current = requestAnimationFrame(animate); return; }
+            lastFrame = time;
+            const pts = trafficParticlesRef.current as Particle[];
+            const features: any[] = [];
+            pts.forEach(p => {
+                p.progress += p.speed * (dt / 16.67);
+                if (p.progress >= 1) p.progress -= 1;
+                const seg = segments[p.segIdx];
+                const [lng, lat, heading] = interpolate(seg, p.progress);
+                p.lng = lng; p.lat = lat; p.heading = heading;
+                features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] }, properties: { color: trafficLevelConfig[p.level]?.color || '#22c55e', heading, level: p.level } });
+            });
+            try { const src = mapRef.current.getSource('traffic-particles-src') as any; if (src) src.setData({ type: 'FeatureCollection', features }); } catch {}
+            trafficParticleAnimRef.current = requestAnimationFrame(animate);
+        };
+        trafficParticleAnimRef.current = requestAnimationFrame(animate);
+        return () => { if (trafficParticleAnimRef.current) { cancelAnimationFrame(trafficParticleAnimRef.current); trafficParticleAnimRef.current = null; } };
+    }, [active3D, layerTraffic, trafficShowFlow, loaded]);
+
     // Load MapLibre + map create/rebuild helpers
     const attachMapEvents = useCallback((map: any) => {
         map.on('mousemove', (e: any) => setCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng }));

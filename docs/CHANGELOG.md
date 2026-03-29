@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.25.63 - 2026-03-30
+
+### Implemented — 3D Traffic Particle System (/map → Layers → Live Traffic + 3D)
+Animated car-like particles flowing along road segments when both Live Traffic and any 3D mode are active. Creates a realistic live traffic simulation visible from the 3D perspective.
+
+#### How it activates
+- Toggle **🚦 Live Traffic** ON in Layers
+- Activate any 3D mode: 3D Buildings, 3D Terrain, 3D Realistic, or 3D Globe
+- Particles appear automatically and animate along all 15 road segments
+
+#### Particle System Details
+- **~100 particles** across 15 road segments (6 per segment, more on congested roads: 8 for heavy, 10 for standstill).
+- **3 render layers** per particle for realistic headlight effect:
+  - **Tail glow**: Large (7-12px), dim (15% opacity), blurred — ambient traffic glow
+  - **Body**: Medium (3-5px), colored by traffic level, 90% opacity — the "car"
+  - **Headlight core**: Small (1.5-2.5px), white, 70% opacity — bright point of light
+- All layers scale with zoom level (tiny at z12, visible at z18).
+
+#### Animation
+- Particles move along segment LineStrings using linear interpolation.
+- **Speed varies by traffic level**:
+  | Level | Speed | Visual |
+  |---|---|---|
+  | Free flow | Fast | Green dots flowing quickly |
+  | Light | Medium-fast | Lime dots, slight spacing |
+  | Moderate | Medium | Amber dots, closer together |
+  | Heavy | Slow | Red dots, bunched up |
+  | Standstill | Near-stopped | Dark red dots, barely moving |
+- Each particle has slight random speed variation (±30%) for natural feel.
+- 30fps animation cap for performance.
+- Particles loop continuously (wrap from end to start).
+
+#### Technical
+- GeoJSON point source (`traffic-particles-src`) updated every frame via `requestAnimationFrame`.
+- Positions computed by interpolating along segment coordinate arrays.
+- Heading computed from road direction (for potential future arrow markers).
+- Cleanup: all 3 layers + source removed when either Traffic or 3D is deactivated.
+- No external dependencies — pure MapLibre GL circle layers.
+
 ## 0.25.62 - 2026-03-29
 
 ### Upgraded — Live Traffic with TomTom API (/map → Layers)
