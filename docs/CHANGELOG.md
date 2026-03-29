@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.25.48 - 2026-03-29
+
+### Updated — 3D Realistic Mode with Google Maps API
+
+#### Google Maps API Integration
+- Created `app/Http/Controllers/MockApi/GoogleMapsController.php` (135 lines) — Laravel proxy for Google Maps Tiles API.
+- `GET /mock-api/google-maps/config` — returns API key status and tile endpoint URLs for satellite/hybrid/roadmap/terrain.
+- `POST /mock-api/google-maps/session` — creates a Google Maps session token for authenticated tile access (cached 24h server-side).
+- API key read from `.env` (`GOOGLE_MAPS_API_KEY`) or `credentials.json` (`google_maps_key` / `google_maps_api_key`).
+
+#### Credentials Setup
+Add Google Maps API key via either method:
+
+**Option A — `.env`:**
+```
+GOOGLE_MAPS_API_KEY=your_key_here
+```
+
+**Option B — `credentials.json` (project root):**
+```json
+{
+  "username": "opensky_user",
+  "password": "opensky_pass",
+  "google_maps_key": "AIza..."
+}
+```
+
+#### 3D Realistic Mode Improvements
+- **Session-authenticated tiles**: When API key present, creates a Google Maps session token and fetches from `tile.googleapis.com/v1/2dtiles/` for higher resolution satellite imagery (up to zoom 22).
+- **Multi-source tiles**: Uses mt1/mt2/mt3 Google tile servers for parallel loading when on free tiles.
+- **Raster enhancements**: Added `raster-saturation: 0.1` and `raster-contrast: 0.05` for richer satellite colors.
+- **Building shadow layer**: New `realistic-buildings-shadow` layer renders ground shadows (5% extrusion height, 15% opacity black) beneath buildings for depth perception.
+- **Improved building colors**: Warmer tones (`#d4d0c8` → `#989490`) interpolated by height to match real satellite imagery better.
+- **Camera**: Initial pitch 62° (was 60°), bearing -15° for more cinematic entry, exaggeration 1.2 (was 1.3).
+- **Async setup**: Tile URL configuration is now async — fetches config from backend, creates session, then adds sources/layers. No blocking.
+
+#### Sidebar UI
+- 3D Realistic tile icon changed to 🌏 (was 🏙️).
+- Active mode info bar shows Google Maps API status:
+  - Green badge "API ✓" when authenticated session active.
+  - Amber badge "Free tiles" when using free mt1.google.com tiles.
+- Other 3D modes show standard purple info bar.
+
+#### Cleanup
+- Added `realistic-buildings-shadow` layer to cleanup block when switching away from 3D Realistic.
+
 ## 0.25.47 - 2026-03-29
 
 ### Fixed — Satellite Markers: Interaction + Popup Visibility
