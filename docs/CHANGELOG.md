@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.25.44 - 2026-03-29
+
+### Fixed — Live Flights: Marker Interaction + Popup + 3D
+
+#### Bug 1: Markers disappearing on hover/click
+- **Root cause**: The rendering `useEffect` depended on `filteredFlights` (a `useMemo`). Every 10s API poll updated `flights` state → `filteredFlights` recalculated (new array ref) → effect re-ran → markers were processed mid-interaction.
+- **Fix**: Completely decoupled rendering from React's effect cycle. Flight data is now stored in `filteredFlightsRef` (a mutable ref). Marker positions are updated by a `requestAnimationFrame` loop (throttled to 800ms) that reads from the ref — **no React state change triggers DOM updates**. The effect only runs when `layerFlights` toggles ON/OFF.
+- Hover events now on inner `.flight-inner` div with `pointer-events:auto !important`. Scale transform on hover (1.5x) and z-index (200) isolated from MapLibre's marker container.
+- `flightSelectedRef` stores current selection in a ref so the rAF loop can read it without being a dependency.
+
+#### Bug 2: White popup background
+- **Root cause**: Popup used `className: 'tmap-flight-popup'` which had no CSS. The existing dark popup CSS was on `.tmap-popup`.
+- **Fix**: Changed to `className: 'tmap-popup'` — now uses the existing dark theme popup styles (dark background, themed borders, close button).
+- Popup content redesigned: uses CSS variables (`var(--ax-text)`, `var(--ax-border)`, etc.) instead of hardcoded white colors. Works correctly across all 10 themes.
+- Added route display with animated arrow SVG (departure → arrival).
+- Shows altitude in both km and ft, speed in kts and km/h, vertical rate with ↑/↓ arrows.
+- Popup follows the aircraft: rAF loop calls `popup.setLngLat()` on every position update so the popup stays attached to the moving marker.
+
+#### Bug 3: Not working on 3D maps
+- **Root cause**: When switching to 3D Globe, `rebuildMapForGlobe()` destroys and recreates the MapLibre map instance. Old markers reference the destroyed map.
+- **Fix**: Added `flightMapVerRef` that tracks `mapVersionRef.current`. When the version changes (map rebuilt), the marker map is cleared, and the rAF loop automatically recreates all markers on the new map instance in the next frame.
+
+#### CSS additions
+- `.tmap-flight-marker` and `.flight-inner`: `pointer-events: auto !important` ensures clicks reach the marker element even when MapLibre's container has overflow clipping.
+
 ## 0.25.43 - 2026-03-29
 
 ### Updated — Live Flights: Real API + Marker Fix

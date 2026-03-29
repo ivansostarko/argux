@@ -231,3 +231,9 @@
 .cinema-hud::before { content: ''; position: absolute; inset: 0; border: 1px solid rgba(245,158,11,0.08); border-radius: 0; pointer-events: none; }
 .cinema-badge { animation: cinema-pulse 3s infinite; }
 .cinema-hud > div { transition: opacity 0.3s ease; }
+
+/* ═══ FLIGHT MARKERS ═══ */
+.tmap-flight-marker { pointer-events: auto !important; }
+.tmap-flight-marker .maplibregl-marker { overflow: visible !important; }
+.flight-inner { pointer-events: auto !important; }
+.maplibregl-marker:has(.tmap-flight-marker) { overflow: visible !important; pointer-events: auto !important; }

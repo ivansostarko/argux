@@ -2611,104 +2611,149 @@ export default function MapIndex() {
     }, [layerFace, loaded, timelineActive, tlCursorMs, faceSelected, faceHidden, faceSearch]);
 
     // ═══ FLIGHT LAYER RENDERING ═══
+    // Decouple from React re-render cycle: store data in ref, update via rAF loop
+    const filteredFlightsRef = useRef(filteredFlights);
+    filteredFlightsRef.current = filteredFlights;
+    const flightAnimRef = useRef<any>(null);
+    const flightSelectedRef = useRef(flightSelected);
+    flightSelectedRef.current = flightSelected;
+
+    // Factory: create a single flight marker (called from rAF, not from React)
+    const createFlightMarkerEl = useCallback((f: FlightData, map: any, ml: any) => {
+        const cat = flightCategoryConfig[f.category] || flightCategoryConfig.commercial;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tmap-flight-marker';
+        wrapper.style.cssText = 'pointer-events:auto !important;';
+        wrapper.innerHTML = `<div class="flight-inner" style="position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.2s ease;">
+            <svg class="flight-svg" width="22" height="22" viewBox="0 0 24 24" fill="${cat.color}" style="transform:rotate(${f.heading - 90}deg);filter:drop-shadow(0 2px 6px rgba(0,0,0,0.7));transition:transform 2.5s linear;pointer-events:none;">
+                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+            </svg>
+            <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none;text-align:center;">
+                <div class="flight-cs" style="font-size:8px;font-weight:800;color:${cat.color};text-shadow:0 1px 4px rgba(0,0,0,0.95),0 0 8px rgba(0,0,0,0.8);font-family:'JetBrains Mono',monospace;letter-spacing:0.06em;padding:1px 4px;border-radius:2px;background:rgba(0,0,0,0.5);">${f.callsign}</div>
+            </div>
+            <div style="position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none;">
+                <div class="flight-fl" style="font-size:7px;font-weight:700;color:rgba(255,255,255,0.65);text-shadow:0 1px 4px rgba(0,0,0,0.95);font-family:'JetBrains Mono',monospace;padding:0 3px;background:rgba(0,0,0,0.4);border-radius:2px;">FL${Math.round(f.baroAlt / 30.48 / 100)}</div>
+            </div>
+        </div>`;
+
+        const inner = wrapper.querySelector('.flight-inner') as HTMLElement;
+        inner.addEventListener('mouseenter', () => { inner.style.transform = 'scale(1.5)'; inner.style.zIndex = '200'; });
+        inner.addEventListener('mouseleave', () => { inner.style.transform = 'scale(1)'; inner.style.zIndex = '1'; });
+
+        const entry = { marker: null as any, el: wrapper, data: f };
+
+        inner.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            const fd = entry.data;
+            const ct = flightCategoryConfig[fd.category] || flightCategoryConfig.commercial;
+            const altKm = (fd.baroAlt / 1000).toFixed(1);
+            const altFt = Math.round(fd.baroAlt * 3.281);
+            const spdKts = Math.round(fd.velocity * 1.944);
+            const spdKmh = Math.round(fd.velocity * 3.6);
+            setFlightSelected(fd.icao24);
+            if (flightPopupRef.current) { flightPopupRef.current.remove(); flightPopupRef.current = null; }
+            const popup = new ml.Popup({ offset: [0, -22], closeButton: true, maxWidth: '340px', className: 'tmap-popup', anchor: 'bottom' })
+                .setLngLat([fd.lng, fd.lat])
+                .setHTML(`<div class="tmap-popup-inner" style="padding:14px 16px;">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                        <div style="width:36px;height:36px;border-radius:8px;background:${ct.color}18;border:1.5px solid ${ct.color}35;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${fd.category === 'helicopter' ? '🚁' : fd.category === 'military' ? '🎖️' : fd.category === 'cargo' ? '📦' : fd.category === 'private' ? '🛩️' : '✈️'}</div>
+                        <div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:800;color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${fd.callsign}</div><div style="font-size:10px;color:var(--ax-text-dim);">${fd.airline || ct.label} · ${fd.originCountry}</div></div>
+                        <span style="font-size:8px;font-weight:700;padding:2px 7px;border-radius:4px;background:${ct.color}15;color:${ct.color};border:1px solid ${ct.color}30;">${ct.label}</span>
+                    </div>
+                    ${fd.departure || fd.arrival ? `<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;border:1px solid ${ct.color}20;background:${ct.color}06;margin-bottom:10px;">
+                        <div style="text-align:center;flex:1;"><div style="font-size:7px;color:var(--ax-text-dim);font-weight:700;letter-spacing:0.1em;">DEPARTURE</div><div style="font-size:13px;font-weight:800;color:${ct.color};font-family:'JetBrains Mono',monospace;">${fd.departureIcao || '—'}</div><div style="font-size:9px;color:var(--ax-text-sec);">${fd.departure || '—'}</div></div>
+                        <svg width="20" height="12" viewBox="0 0 20 12" fill="none"><line x1="0" y1="6" x2="16" y2="6" stroke="${ct.color}" stroke-width="1.5" stroke-dasharray="3,2"/><polygon points="16,3 20,6 16,9" fill="${ct.color}"/></svg>
+                        <div style="text-align:center;flex:1;"><div style="font-size:7px;color:var(--ax-text-dim);font-weight:700;letter-spacing:0.1em;">ARRIVAL</div><div style="font-size:13px;font-weight:800;color:${ct.color};font-family:'JetBrains Mono',monospace;">${fd.arrivalIcao || '—'}</div><div style="font-size:9px;color:var(--ax-text-sec);">${fd.arrival || '—'}</div></div>
+                    </div>` : ''}
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;">${[['Aircraft',fd.aircraft||'—'],['Registration',fd.registration||'—'],['Altitude',`${altKm} km / ${altFt.toLocaleString()} ft`],['Flight Level',`FL${Math.round(fd.baroAlt/30.48/100)}`],['Ground Speed',`${spdKts} kts / ${spdKmh} km/h`],['Heading',`${Math.round(fd.heading)}°`],['V/Rate',`${fd.verticalRate>0?'↑':fd.verticalRate<0?'↓':'—'} ${Math.abs(fd.verticalRate).toFixed(1)} m/s`],['Squawk',fd.squawk||'—'],['ICAO24',fd.icao24.toUpperCase()],['Position',`${fd.lat.toFixed(4)}, ${fd.lng.toFixed(4)}`]].map(([l,v])=>`<div style="padding:3px 0;"><div style="font-size:8px;color:var(--ax-text-dim);font-weight:700;letter-spacing:0.06em;margin-bottom:1px;">${l}</div><div style="font-size:11px;color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v}</div></div>`).join('')}</div>
+                    <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--ax-border);display:flex;justify-content:space-between;align-items:center;"><span style="font-size:8px;color:var(--ax-text-dim);">Source: OpenSky Network</span><span style="font-size:8px;color:${ct.color};font-weight:600;">ADS-B</span></div>
+                </div>`)
+                .addTo(map);
+            flightPopupRef.current = popup;
+            popup.on('close', () => { setFlightSelected(null); flightPopupRef.current = null; });
+        });
+
+        const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([f.lng, f.lat]).addTo(map);
+        entry.marker = marker;
+        return entry;
+    }, []);
+
+    // Main effect: start/stop the rAF loop when layer toggles
     useEffect(() => {
-        const map = mapRef.current;
+        if (!loaded) return;
         const ml = (window as any).maplibregl;
-        if (!map || !ml || !loaded) return;
+        if (!ml) return;
 
         if (!layerFlights) {
-            // Clean up all markers
-            flightMarkerMapRef.current.forEach(m => m.marker.remove());
+            // Cleanup all markers and stop loop
+            flightMarkerMapRef.current.forEach(e => e.marker.remove());
             flightMarkerMapRef.current.clear();
             if (flightPopupRef.current) { flightPopupRef.current.remove(); flightPopupRef.current = null; }
+            if (flightAnimRef.current) { cancelAnimationFrame(flightAnimRef.current); flightAnimRef.current = null; }
             return;
         }
 
-        const currentIds = new Set(filteredFlights.map(f => f.icao24));
-        const existingIds = new Set(flightMarkerMapRef.current.keys());
+        // rAF loop: reads from ref, never causes React re-render
+        let lastUpdate = 0;
+        const updateLoop = (time: number) => {
+            const map = mapRef.current;
+            if (!map) { flightAnimRef.current = requestAnimationFrame(updateLoop); return; }
+            // Throttle to ~800ms
+            if (time - lastUpdate < 800) { flightAnimRef.current = requestAnimationFrame(updateLoop); return; }
+            lastUpdate = time;
 
-        // Remove markers no longer in filtered set
-        existingIds.forEach(id => {
-            if (!currentIds.has(id)) {
-                const entry = flightMarkerMapRef.current.get(id);
-                if (entry) entry.marker.remove();
-                flightMarkerMapRef.current.delete(id);
-            }
-        });
+            const currentFlights = filteredFlightsRef.current;
+            const currentIds = new Set(currentFlights.map((f: FlightData) => f.icao24));
 
-        // Add or update markers
-        filteredFlights.forEach(f => {
-            const existing = flightMarkerMapRef.current.get(f.icao24);
+            // Remove markers for flights no longer visible
+            flightMarkerMapRef.current.forEach((entry, id) => {
+                if (!currentIds.has(id)) {
+                    entry.marker.remove();
+                    flightMarkerMapRef.current.delete(id);
+                }
+            });
 
-            if (existing) {
-                // UPDATE position + heading of existing marker (no destroy!)
-                existing.marker.setLngLat([f.lng, f.lat]);
-                const svg = existing.el.querySelector('svg');
-                if (svg) svg.style.transform = `rotate(${f.heading - 90}deg)`;
-                // Update label
-                const csLabel = existing.el.querySelector('.flight-cs');
-                if (csLabel) csLabel.textContent = f.callsign;
-                const flLabel = existing.el.querySelector('.flight-fl');
-                if (flLabel) flLabel.textContent = `FL${Math.round(f.baroAlt / 30.48 / 100)}`;
-                existing.data = f; // store latest data for popup
-            } else {
-                // CREATE new marker
-                const cat = flightCategoryConfig[f.category] || flightCategoryConfig.commercial;
-                const el = document.createElement('div');
-                el.style.cssText = 'cursor:pointer;transition:transform 0.15s;position:relative;';
-                el.innerHTML = `<div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="${cat.color}" style="transform:rotate(${f.heading - 90}deg);filter:drop-shadow(0 1px 4px rgba(0,0,0,0.6));transition:transform 2s linear;">
-                        <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-                    </svg>
-                    <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none;text-align:center;">
-                        <div class="flight-cs" style="font-size:7px;font-weight:800;color:${cat.color};text-shadow:0 1px 3px rgba(0,0,0,0.9);font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;">${f.callsign}</div>
-                    </div>
-                    <div style="position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none;">
-                        <div class="flight-fl" style="font-size:6px;font-weight:600;color:rgba(255,255,255,0.5);text-shadow:0 1px 3px rgba(0,0,0,0.9);font-family:'JetBrains Mono',monospace;">FL${Math.round(f.baroAlt / 30.48 / 100)}</div>
-                    </div>
-                </div>`;
+            // Add new or update existing
+            currentFlights.forEach((f: FlightData) => {
+                const existing = flightMarkerMapRef.current.get(f.icao24);
+                if (existing) {
+                    // Position update only — no DOM destruction
+                    existing.marker.setLngLat([f.lng, f.lat]);
+                    const svg = existing.el.querySelector('.flight-svg') as HTMLElement;
+                    if (svg) svg.style.transform = `rotate(${f.heading - 90}deg)`;
+                    const csLabel = existing.el.querySelector('.flight-cs');
+                    if (csLabel) csLabel.textContent = f.callsign;
+                    const flLabel = existing.el.querySelector('.flight-fl');
+                    if (flLabel) flLabel.textContent = `FL${Math.round(f.baroAlt / 30.48 / 100)}`;
+                    existing.data = f;
+                    // Move popup with marker if open
+                    if (flightPopupRef.current && flightSelectedRef.current === f.icao24) {
+                        flightPopupRef.current.setLngLat([f.lng, f.lat]);
+                    }
+                } else {
+                    const entry = createFlightMarkerEl(f, map, ml);
+                    flightMarkerMapRef.current.set(f.icao24, entry);
+                }
+            });
 
-                el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.3)'; el.style.zIndex = '10'; });
-                el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; el.style.zIndex = '1'; });
+            flightAnimRef.current = requestAnimationFrame(updateLoop);
+        };
 
-                const entry = { marker: null as any, el, data: f };
+        flightAnimRef.current = requestAnimationFrame(updateLoop);
+        return () => { if (flightAnimRef.current) { cancelAnimationFrame(flightAnimRef.current); flightAnimRef.current = null; } };
+    }, [layerFlights, loaded, createFlightMarkerEl]);
 
-                el.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    ev.preventDefault();
-                    const fd = entry.data; // read latest data
-                    const ct = flightCategoryConfig[fd.category] || flightCategoryConfig.commercial;
-                    const altKm = (fd.baroAlt / 1000).toFixed(1);
-                    setFlightSelected(fd.icao24);
-                    if (flightPopupRef.current) flightPopupRef.current.remove();
-                    const popup = new ml.Popup({ offset: 18, closeButton: true, maxWidth: '320px', className: 'tmap-flight-popup' })
-                        .setLngLat([fd.lng, fd.lat])
-                        .setHTML(`<div style="font-family:inherit;padding:4px 0;">
-                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                                <div style="width:32px;height:32px;border-radius:6px;background:${ct.color}18;border:1px solid ${ct.color}30;display:flex;align-items:center;justify-content:center;font-size:16px;">${fd.category === 'helicopter' ? '🚁' : fd.category === 'military' ? '🎖️' : fd.category === 'cargo' ? '📦' : fd.category === 'private' ? '🛩️' : '✈️'}</div>
-                                <div><div style="font-size:14px;font-weight:800;color:#fff;">${fd.callsign}</div><div style="font-size:10px;color:rgba(255,255,255,0.5);">${fd.airline || ct.label} · ${fd.originCountry}</div></div>
-                            </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-bottom:8px;">
-                                ${[['Aircraft', fd.aircraft || '—'], ['Registration', fd.registration || '—'], ['Altitude', `${altKm} km (FL${Math.round(fd.baroAlt / 30.48 / 100)})`], ['Speed', `${Math.round(fd.velocity)} m/s (${Math.round(fd.velocity * 1.944)} kts)`], ['Heading', `${Math.round(fd.heading)}°`], ['V/Rate', `${fd.verticalRate > 0 ? '+' : ''}${fd.verticalRate.toFixed(1)} m/s`], ['Squawk', fd.squawk || '—'], ['ICAO24', fd.icao24]].map(([l, v]) => `<div><div style="font-size:8px;color:rgba(255,255,255,0.35);font-weight:700;letter-spacing:0.08em;">${l}</div><div style="font-size:10px;color:#fff;font-family:'JetBrains Mono',monospace;">${v}</div></div>`).join('')}
-                            </div>
-                            ${fd.departure || fd.arrival ? `<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;border:1px solid ${ct.color}25;background:${ct.color}06;margin-top:4px;">
-                                <div style="text-align:center;flex:1;"><div style="font-size:8px;color:rgba(255,255,255,0.35);">FROM</div><div style="font-size:10px;font-weight:700;color:${ct.color};">${fd.departureIcao || '—'}</div><div style="font-size:8px;color:rgba(255,255,255,0.5);">${fd.departure || '—'}</div></div>
-                                <div style="font-size:14px;color:${ct.color};">→</div>
-                                <div style="text-align:center;flex:1;"><div style="font-size:8px;color:rgba(255,255,255,0.35);">TO</div><div style="font-size:10px;font-weight:700;color:${ct.color};">${fd.arrivalIcao || '—'}</div><div style="font-size:8px;color:rgba(255,255,255,0.5);">${fd.arrival || '—'}</div></div>
-                            </div>` : ''}
-                            <div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:8px;color:rgba(255,255,255,0.25);">${fd.lat.toFixed(4)}, ${fd.lng.toFixed(4)}</span><span style="font-size:8px;color:rgba(6,182,212,0.5);">OpenSky ADS-B</span></div>
-                        </div>`)
-                        .addTo(map);
-                    flightPopupRef.current = popup;
-                    popup.on('close', () => { setFlightSelected(null); flightPopupRef.current = null; });
-                });
-
-                const marker = new ml.Marker({ element: el }).setLngLat([f.lng, f.lat]).addTo(map);
-                entry.marker = marker;
-                flightMarkerMapRef.current.set(f.icao24, entry);
-            }
-        });
-    }, [layerFlights, filteredFlights, loaded]);
+    // 3D rebuild recovery: clear marker refs so rAF loop recreates on new map instance
+    const flightMapVerRef = useRef(0);
+    useEffect(() => {
+        const ver = mapVersionRef.current;
+        if (ver === flightMapVerRef.current) return;
+        flightMapVerRef.current = ver;
+        if (!layerFlights || !loaded) return;
+        flightMarkerMapRef.current.clear();
+        if (flightPopupRef.current) { flightPopupRef.current = null; }
+    }, [loaded, layerFlights]);
 
     // Object drawing click handler
     useEffect(() => {
