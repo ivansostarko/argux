@@ -243,3 +243,57 @@ export const satCategoryConfig: Record<string, { label: string; color: string; i
     starlink: { label: 'Starlink', color: '#94a3b8', icon: '⭐' },
     debris: { label: 'Debris', color: '#6b7280', icon: '🗑️' },
 };
+
+// ═══ PLACES OF INTEREST (OpenStreetMap / Overpass) ═══
+export interface POI {
+    id: number; name: string; lat: number; lng: number;
+    category: string; subcategory: string;
+    address?: string; phone?: string; website?: string;
+    openingHours?: string; wheelchair?: string;
+    operator?: string;
+}
+
+export const poiCategoryConfig: Record<string, { label: string; color: string; icon: string; emoji: string; query: string }> = {
+    hospital:   { label: 'Hospitals',      color: '#ef4444', icon: 'H',  emoji: '🏥', query: 'amenity=hospital' },
+    police:     { label: 'Police',         color: '#3b82f6', icon: 'P',  emoji: '🚔', query: 'amenity=police' },
+    fire:       { label: 'Fire Stations',  color: '#f97316', icon: 'F',  emoji: '🚒', query: 'amenity=fire_station' },
+    pharmacy:   { label: 'Pharmacies',     color: '#22c55e', icon: '+',  emoji: '💊', query: 'amenity=pharmacy' },
+    bank:       { label: 'Banks',          color: '#8b5cf6', icon: 'B',  emoji: '🏦', query: 'amenity=bank' },
+    atm:        { label: 'ATMs',           color: '#f59e0b', icon: '$',  emoji: '🏧', query: 'amenity=atm' },
+    school:     { label: 'Schools',        color: '#06b6d4', icon: 'S',  emoji: '🏫', query: 'amenity=school' },
+    fuel:       { label: 'Gas Stations',   color: '#64748b', icon: 'G',  emoji: '⛽', query: 'amenity=fuel' },
+    parking:    { label: 'Parking',        color: '#0ea5e9', icon: 'P',  emoji: '🅿️', query: 'amenity=parking' },
+    restaurant: { label: 'Restaurants',    color: '#ec4899', icon: 'R',  emoji: '🍽️', query: 'amenity=restaurant' },
+    hotel:      { label: 'Hotels',         color: '#a855f7', icon: 'H',  emoji: '🏨', query: 'tourism=hotel' },
+    embassy:    { label: 'Embassies',      color: '#14b8a6', icon: 'E',  emoji: '🏛️', query: 'amenity=embassy' },
+};
+
+export const MOCK_POIS: POI[] = [
+    { id: 1, name: 'KBC Zagreb', lat: 45.8289, lng: 15.9706, category: 'hospital', subcategory: 'hospital', address: 'Kišpatićeva ul. 12', phone: '+385 1 2388 888', openingHours: '24/7', wheelchair: 'yes', operator: 'KBC Zagreb' },
+    { id: 2, name: 'KB Dubrava', lat: 45.8322, lng: 16.0341, category: 'hospital', subcategory: 'hospital', address: 'Av. Gojka Šuška 6', phone: '+385 1 290 2444', openingHours: '24/7' },
+    { id: 3, name: 'KB Sveti Duh', lat: 45.8207, lng: 15.9561, category: 'hospital', subcategory: 'hospital', address: 'Sveti Duh 64', phone: '+385 1 3712 111', openingHours: '24/7' },
+    { id: 4, name: 'Policijska postaja Centar', lat: 45.8112, lng: 15.9736, category: 'police', subcategory: 'police', address: 'Petrinjska ul. 30', phone: '+385 1 456 3111', openingHours: '24/7', operator: 'MUP RH' },
+    { id: 5, name: 'PP Trnje', lat: 45.8034, lng: 15.9832, category: 'police', subcategory: 'police', address: 'Ulica grada Vukovara 33' },
+    { id: 6, name: 'PP Novi Zagreb', lat: 45.7891, lng: 15.9767, category: 'police', subcategory: 'police', address: 'Avenija Dubrovnik 14' },
+    { id: 7, name: 'DVD Zagreb', lat: 45.8151, lng: 15.9678, category: 'fire', subcategory: 'fire_station', address: 'Savska cesta 1', phone: '+385 1 193', openingHours: '24/7' },
+    { id: 8, name: 'Ljekarna Prima Pharme', lat: 45.8133, lng: 15.9779, category: 'pharmacy', subcategory: 'pharmacy', address: 'Ilica 43', openingHours: 'Mo-Fr 07:00-20:00; Sa 07:00-14:00' },
+    { id: 9, name: 'Ljekarna Centar', lat: 45.8109, lng: 15.9719, category: 'pharmacy', subcategory: 'pharmacy', address: 'Trg bana Jelačića 3', openingHours: '24/7' },
+    { id: 10, name: 'Zagrebačka banka', lat: 45.8128, lng: 15.9752, category: 'bank', subcategory: 'bank', address: 'Trg bana Jelačića 10', operator: 'ZABA', openingHours: 'Mo-Fr 08:00-19:00; Sa 08:00-12:00' },
+    { id: 11, name: 'PBZ', lat: 45.8095, lng: 15.9705, category: 'bank', subcategory: 'bank', address: 'Radnička cesta 50', operator: 'PBZ' },
+    { id: 12, name: 'Erste Bank', lat: 45.8141, lng: 15.9764, category: 'bank', subcategory: 'bank', address: 'Ilica 17', operator: 'Erste' },
+    { id: 13, name: 'ZABA ATM Jelačić', lat: 45.8130, lng: 15.9770, category: 'atm', subcategory: 'atm', operator: 'Zagrebačka banka' },
+    { id: 14, name: 'PBZ ATM Arena', lat: 45.7822, lng: 15.9681, category: 'atm', subcategory: 'atm', operator: 'PBZ' },
+    { id: 15, name: 'OTP ATM Cvjetni', lat: 45.8115, lng: 15.9739, category: 'atm', subcategory: 'atm', operator: 'OTP banka' },
+    { id: 16, name: 'OŠ Tina Ujevića', lat: 45.8064, lng: 15.9812, category: 'school', subcategory: 'school', address: 'Koturaška ul. 75' },
+    { id: 17, name: 'V. gimnazija Zagreb', lat: 45.8145, lng: 15.9688, category: 'school', subcategory: 'school', address: 'Klaićeva ul. 1' },
+    { id: 18, name: 'INA Benzinska', lat: 45.8021, lng: 15.9901, category: 'fuel', subcategory: 'fuel', address: 'Slavonska av. 22', operator: 'INA', openingHours: '24/7' },
+    { id: 19, name: 'Petrol', lat: 45.7965, lng: 15.9544, category: 'fuel', subcategory: 'fuel', operator: 'Petrol', openingHours: '24/7' },
+    { id: 20, name: 'Parking Importanne', lat: 45.8098, lng: 15.9740, category: 'parking', subcategory: 'parking', address: 'Starčevićev trg 1', openingHours: '24/7' },
+    { id: 21, name: 'Parking Tuškanac', lat: 45.8172, lng: 15.9726, category: 'parking', subcategory: 'parking' },
+    { id: 22, name: 'Vinodol Restaurant', lat: 45.8126, lng: 15.9702, category: 'restaurant', subcategory: 'restaurant', address: 'Nikole Tesle 10', phone: '+385 1 4811 427', openingHours: 'Mo-Sa 10:00-24:00; Su 12:00-22:00' },
+    { id: 23, name: 'Dubravkin Put', lat: 45.8178, lng: 15.9679, category: 'restaurant', subcategory: 'restaurant', address: 'Dubravkin put 2', phone: '+385 1 4834 975' },
+    { id: 24, name: 'Esplanade Zagreb Hotel', lat: 45.8064, lng: 15.9774, category: 'hotel', subcategory: 'hotel', address: 'Mihanovićeva ul. 1', phone: '+385 1 4566 666', website: 'esplanade.hr', wheelchair: 'yes', operator: 'Esplanade' },
+    { id: 25, name: 'Hotel Dubrovnik', lat: 45.8123, lng: 15.9752, category: 'hotel', subcategory: 'hotel', address: 'Gajeva ul. 1', phone: '+385 1 4863 555' },
+    { id: 26, name: 'Veleposlanstvo SAD', lat: 45.8189, lng: 15.9812, category: 'embassy', subcategory: 'embassy', address: 'Ulica Thomasa Jeffersona 2', operator: 'United States' },
+    { id: 27, name: 'Njemačko veleposlanstvo', lat: 45.8155, lng: 15.9845, category: 'embassy', subcategory: 'embassy', address: 'Ulica grada Vukovara 64', operator: 'Germany' },
+];

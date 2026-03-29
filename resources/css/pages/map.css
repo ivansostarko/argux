@@ -253,3 +253,9 @@
 #google-3d-overlay .gm-style { border-radius: 0 !important; }
 /* Ensure ARGUX panels/sidebar float above Google Maps */
 .tmap-sidebar, .tmap-panel, .tmap-top-loader, .tmap-cinema-hud, .tmap-timeline { z-index: 10 !important; }
+
+/* ═══ POI MARKERS ═══ */
+.tmap-poi-marker { pointer-events: auto !important; overflow: visible !important; }
+.tmap-poi-marker .poi-hit { pointer-events: auto !important; }
+.maplibregl-marker:has(.tmap-poi-marker) { overflow: visible !important; pointer-events: auto !important; z-index: 2; }
+.maplibregl-marker:has(.tmap-poi-marker):hover { z-index: 150 !important; }

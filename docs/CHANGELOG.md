@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.25.55 - 2026-03-29
+
+### Implemented — Places of Interest Layer (/map → Layers)
+- **Places of Interest** layer with 12 POI categories from OpenStreetMap Overpass API.
+
+#### 12 Categories
+Hospitals (🏥), Police (🚔), Fire Stations (🚒), Pharmacies (💊), Banks (🏦), ATMs (🏧), Schools (🏫), Gas Stations (⛽), Parking (🅿️), Restaurants (🍽️), Hotels (🏨), Embassies (🏛️).
+
+#### Map Markers
+- Circular pin markers (24px colored circle, white border, category letter, downward triangle).
+- Hover scale 1.3x. Click opens dark popup with address, phone, hours, operator, website, coordinates.
+
+#### Panel
+- 12 category toggle buttons with counts, Select All / Clear All / Refresh.
+- Search by name/address/operator. Scrollable place list with fly-to on click.
+- Footer: count, Overpass LIVE / Mock Data indicator.
+
+#### Backend
+- `app/Http/Controllers/MockApi/OverpassController.php` — queries `overpass-api.de` with map viewport bounds.
+- Supports nodes + ways. 5-minute cache. Bounding box clamped. Falls back to 27 mock POIs.
+- Auto-refetches on map move (moveend event).
+
 ## 0.25.48 - 2026-03-29
 
 ### Updated — 3D Realistic Mode with Google Maps API

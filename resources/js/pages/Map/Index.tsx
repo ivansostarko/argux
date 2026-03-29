@@ -3,8 +3,8 @@ import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'rea
 import { router, usePage } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
-import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData, SatelliteData } from '../../mock/map';
-import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig } from '../../mock/map';
+import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData, SatelliteData, POI } from '../../mock/map';
+import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig, MOCK_POIS, poiCategoryConfig } from '../../mock/map';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
 import { mockVehicles } from '../../mock/vehicles';
@@ -517,6 +517,69 @@ export default function MapIndex() {
     const satSelectedRef = useRef(satSelected);
     satSelectedRef.current = satSelected;
 
+    // ═══ PLACES OF INTEREST (OpenStreetMap Overpass) ═══
+    const [layerPOI, setLayerPOI] = useState(false);
+    const [showPOIPanel, setShowPOIPanel] = useState(false);
+    const [pois, setPois] = useState<POI[]>([]);
+    const [poiSource, setPoiSource] = useState<'live' | 'mock' | 'loading'>('loading');
+    const [poiSearch, setPoiSearch] = useState('');
+    const [poiActiveCategories, setPoiActiveCategories] = useState<Set<string>>(new Set(['hospital', 'police', 'pharmacy', 'fire']));
+    const [poiSelected, setPoiSelected] = useState<number | null>(null);
+    const [poiLastUpdate, setPoiLastUpdate] = useState('');
+    const poiMarkerMapRef = useRef<Map<number, any>>(new Map());
+    const poiPopupRef = useRef<any>(null);
+    const poiAnimRef = useRef<any>(null);
+
+    const fetchPOIs = useCallback(async () => {
+        if (poiActiveCategories.size === 0) return;
+        const map = mapRef.current;
+        if (!map) return;
+        const b = map.getBounds();
+        const params = new URLSearchParams({
+            categories: Array.from(poiActiveCategories).join(','),
+            south: String(b.getSouth()), north: String(b.getNorth()),
+            west: String(b.getWest()), east: String(b.getEast()),
+        });
+        try {
+            const res = await fetch(`/mock-api/places?${params}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data.source === 'error' || !data.pois?.length) throw new Error(data.error || 'No data');
+            setPois(data.pois); setPoiSource('live');
+        } catch {
+            if (pois.length === 0) { setPois(MOCK_POIS); setPoiSource('mock'); }
+        }
+        setPoiLastUpdate(new Date().toLocaleTimeString('en-US', { hour12: false }));
+    }, [poiActiveCategories]);
+
+    useEffect(() => {
+        if (!layerPOI) return;
+        fetchPOIs();
+        // Refetch when map moves
+        const map = mapRef.current;
+        if (!map) return;
+        const onMoveEnd = () => { if (layerPOI) fetchPOIs(); };
+        map.on('moveend', onMoveEnd);
+        return () => { map.off('moveend', onMoveEnd); };
+    }, [layerPOI, fetchPOIs]);
+
+    const filteredPOIs = useMemo(() => {
+        let p = pois.filter(poi => poiActiveCategories.has(poi.category));
+        if (poiSearch) { const q = poiSearch.toLowerCase(); p = p.filter(poi => poi.name.toLowerCase().includes(q) || (poi.address || '').toLowerCase().includes(q) || (poi.operator || '').toLowerCase().includes(q)); }
+        return p;
+    }, [pois, poiActiveCategories, poiSearch]);
+
+    const filteredPOIsRef = useRef(filteredPOIs);
+    filteredPOIsRef.current = filteredPOIs;
+    const poiSelectedRef = useRef(poiSelected);
+    poiSelectedRef.current = poiSelected;
+
+    const poiStats = useMemo(() => {
+        const counts: Record<string, number> = {};
+        Object.keys(poiCategoryConfig).forEach(k => { counts[k] = pois.filter(p => p.category === k).length; });
+        return { total: pois.length, visible: filteredPOIs.length, counts };
+    }, [pois, filteredPOIs]);
+
     const [faceSearch, setFaceSearch] = useState('');
     const [faceSelected, setFaceSelected] = useState<Set<string>>(new Set()); // selected face IDs to show (empty = all)
     const [faceHidden, setFaceHidden] = useState<Set<string>>(new Set()); // hidden face IDs
@@ -950,7 +1013,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -2954,6 +3017,85 @@ export default function MapIndex() {
         return () => { if (satAnimRef.current) { cancelAnimationFrame(satAnimRef.current); satAnimRef.current = null; } };
     }, [showSatellites, loaded, createSatMarkerEl]);
 
+    // ═══ POI LAYER RENDERING ═══
+    const createPOIMarkerEl = useCallback((poi: POI, map: any, ml: any) => {
+        const cat = poiCategoryConfig[poi.category] || { label: poi.category, color: '#6b7280', icon: '?', emoji: '📍' };
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tmap-poi-marker';
+        wrapper.innerHTML = `<div class="poi-hit" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform 0.15s ease;transform-origin:bottom center;">
+            <div style="width:24px;height:24px;border-radius:50%;background:${cat.color};border:2px solid rgba(255,255,255,0.9);box-shadow:0 2px 8px rgba(0,0,0,0.4),0 0 0 1px ${cat.color}40;display:flex;align-items:center;justify-content:center;">
+                <span style="font-size:10px;font-weight:900;color:#fff;font-family:'JetBrains Mono',monospace;line-height:1;">${cat.icon}</span>
+            </div>
+            <div style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid ${cat.color};margin-top:-1px;"></div>
+        </div>`;
+        const hit = wrapper.querySelector('.poi-hit') as HTMLElement;
+        hit.addEventListener('mouseenter', () => { hit.style.transform = 'scale(1.3)'; hit.style.zIndex = '150'; });
+        hit.addEventListener('mouseleave', () => { hit.style.transform = 'scale(1)'; hit.style.zIndex = '1'; });
+        const entry = { marker: null as any, el: wrapper, data: poi };
+        hit.addEventListener('click', (ev) => {
+            ev.stopPropagation(); ev.preventDefault();
+            const p = entry.data; const ct = poiCategoryConfig[p.category] || { label: p.category, color: '#6b7280', icon: '?', emoji: '📍' };
+            setPoiSelected(p.id);
+            if (poiPopupRef.current) { poiPopupRef.current.remove(); poiPopupRef.current = null; }
+            const infoRows = [
+                p.address ? ['📍 Address', p.address] : null,
+                p.phone ? ['📞 Phone', p.phone] : null,
+                p.operator ? ['🏢 Operator', p.operator] : null,
+                p.openingHours ? ['🕐 Hours', p.openingHours.replace(/;/g, '<br/>')] : null,
+                p.wheelchair ? ['♿ Wheelchair', p.wheelchair] : null,
+                p.website ? ['🌐 Website', `<a href="${p.website.startsWith('http') ? p.website : 'https://' + p.website}" target="_blank" style="color:var(--ax-accent);text-decoration:none;">${p.website}</a>`] : null,
+                ['🗺️ Coordinates', `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`],
+            ].filter(Boolean);
+            const popup = new ml.Popup({ offset: [0, -30], closeButton: true, maxWidth: '300px', className: 'tmap-popup', anchor: 'bottom' })
+                .setLngLat([p.lng, p.lat])
+                .setHTML(`<div class="tmap-popup-inner" style="padding:12px 14px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <div style="width:32px;height:32px;border-radius:8px;background:${ct.color}18;border:1.5px solid ${ct.color}35;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${ct.emoji}</div>
+                        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:var(--ax-text);">${p.name}</div><div style="font-size:9px;color:var(--ax-text-dim);">${ct.label}</div></div>
+                        <span style="font-size:7px;font-weight:700;padding:2px 6px;border-radius:3px;background:${ct.color}15;color:${ct.color};border:1px solid ${ct.color}30;">${ct.label}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;">${infoRows.map((r: any) => `<div style="display:flex;gap:6px;align-items:flex-start;"><span style="font-size:9px;color:var(--ax-text-dim);white-space:nowrap;width:80px;flex-shrink:0;">${r[0]}</span><span style="font-size:10px;color:var(--ax-text);font-family:'JetBrains Mono',monospace;word-break:break-word;">${r[1]}</span></div>`).join('')}</div>
+                    <div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--ax-border);display:flex;justify-content:space-between;"><span style="font-size:7px;color:var(--ax-text-dim);">OpenStreetMap</span><span style="font-size:7px;color:${ct.color};font-weight:600;">OSM #${p.id}</span></div>
+                </div>`).addTo(map);
+            poiPopupRef.current = popup;
+            popup.on('close', () => { setPoiSelected(null); poiPopupRef.current = null; });
+        });
+        const marker = new ml.Marker({ element: wrapper, anchor: 'bottom' }).setLngLat([poi.lng, poi.lat]).addTo(map);
+        entry.marker = marker;
+        return entry;
+    }, []);
+
+    useEffect(() => {
+        if (!loaded) return;
+        const ml = (window as any).maplibregl;
+        if (!ml) return;
+        if (!layerPOI) {
+            poiMarkerMapRef.current.forEach(e => e.marker.remove()); poiMarkerMapRef.current.clear();
+            if (poiPopupRef.current) { poiPopupRef.current.remove(); poiPopupRef.current = null; }
+            if (poiAnimRef.current) { cancelAnimationFrame(poiAnimRef.current); poiAnimRef.current = null; }
+            return;
+        }
+        let lastUp = 0;
+        const loop = (time: number) => {
+            const map = mapRef.current;
+            if (!map) { poiAnimRef.current = requestAnimationFrame(loop); return; }
+            if (time - lastUp < 1000) { poiAnimRef.current = requestAnimationFrame(loop); return; }
+            lastUp = time;
+            const cur = filteredPOIsRef.current;
+            const ids = new Set(cur.map(p => p.id));
+            poiMarkerMapRef.current.forEach((e, id) => { if (!ids.has(id)) { e.marker.remove(); poiMarkerMapRef.current.delete(id); } });
+            cur.forEach(p => {
+                if (!poiMarkerMapRef.current.has(p.id)) {
+                    const entry = createPOIMarkerEl(p, map, ml);
+                    poiMarkerMapRef.current.set(p.id, entry);
+                }
+            });
+            poiAnimRef.current = requestAnimationFrame(loop);
+        };
+        poiAnimRef.current = requestAnimationFrame(loop);
+        return () => { if (poiAnimRef.current) { cancelAnimationFrame(poiAnimRef.current); poiAnimRef.current = null; } };
+    }, [layerPOI, loaded, createPOIMarkerEl]);
+
     // Object drawing click handler
     useEffect(() => {
         const map = mapRef.current;
@@ -3400,6 +3542,7 @@ export default function MapIndex() {
                 if (showLocAnalyzer) { setShowLocAnalyzer(false); setLocAnalyzerDrawing(false); return; }
                 if (showSatPanel) { setShowSatPanel(false); return; }
                 if (showFlightsPanel) { setShowFlightsPanel(false); return; }
+                if (showPOIPanel) { setShowPOIPanel(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
@@ -4197,7 +4340,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
-                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Layer buttons */}
                             {[
@@ -4206,6 +4349,7 @@ export default function MapIndex() {
                                 { key: 'lpr', icon: '🚗', label: 'Plate Recognition', color: '#10b981', active: layerLPR, toggle: () => { setLayerLPR(!layerLPR); triggerTopLoader(); }, panel: showLPRPanel, openPanel: () => { setShowLPRPanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowFacePanel(false); setShowFlightsPanel(false); triggerTopLoader(); }, desc: layerLPR ? `${mockLPR.filter(l => !lprHidden.has(l.id) && (lprSelected.size === 0 || lprSelected.has(l.id))).length} visible · ${lprHidden.size} hidden` : 'License plate captures' },
                                 { key: 'face', icon: '🧑‍🦲', label: 'Face Recognition', color: '#ec4899', active: layerFace, toggle: () => { setLayerFace(!layerFace); triggerTopLoader(); }, panel: showFacePanel, openPanel: () => { setShowFacePanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFlightsPanel(false); triggerTopLoader(); }, desc: layerFace ? `${mockFaces.filter(f => !faceHidden.has(f.id) && (faceSelected.size === 0 || faceSelected.has(f.id))).length} visible · ${faceHidden.size} hidden` : 'Facial recognition captures' },
                                 { key: 'flights', icon: '✈️', label: 'Live Flights', color: '#06b6d4', active: layerFlights, toggle: () => { setLayerFlights(!layerFlights); triggerTopLoader(); }, panel: showFlightsPanel, openPanel: () => { setShowFlightsPanel(!showFlightsPanel); triggerTopLoader(); }, desc: layerFlights ? `${filteredFlights.length} aircraft · ${flightSource === 'live' ? 'LIVE' : 'Mock'}` : 'OpenSky Network ADS-B feed' },
+                                { key: 'poi', icon: '📍', label: 'Places of Interest', color: '#14b8a6', active: layerPOI, toggle: () => { setLayerPOI(!layerPOI); triggerTopLoader(); }, panel: showPOIPanel, openPanel: () => { setShowPOIPanel(!showPOIPanel); triggerTopLoader(); }, desc: layerPOI ? `${poiStats.visible} places · ${poiActiveCategories.size} categories` : 'Hospitals, police, banks, ATMs...' },
                             ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {/* Toggle switch */}
                                 <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
@@ -6196,6 +6340,55 @@ export default function MapIndex() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: flightSource === 'live' ? '#22c55e' : flightSource === 'mock' ? '#f59e0b' : '#6b7280', boxShadow: flightSource === 'live' ? '0 0 6px #22c55e60' : 'none', animation: layerFlights ? 'tmap-tl-ring 2s infinite' : 'none' }} />
                             <span style={{ fontSize: 9, color: flightSource === 'live' ? '#06b6d4' : '#f59e0b', fontWeight: 600 }}>{flightSource === 'live' ? 'OpenSky LIVE' : flightSource === 'mock' ? 'Mock Data' : 'Connecting...'}</span>
+                        </div>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ POI PANEL ═══ */}
+                {showPOIPanel && loaded && <div data-panel="poi" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('poi'); }} style={panelStyle('poi', '380px', '#14b8a6')}>
+                    <PanelHeader id="poi" icon="📍" title="Places of Interest" subtitle={`${poiStats.visible} places · ${poiActiveCategories.size} categories`} color="#14b8a6" onClose={() => setShowPOIPanel(false)} extra={<button onClick={() => { setLayerPOI(!layerPOI); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: layerPOI ? '#14b8a6' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: layerPOI ? 16 : 2, transition: 'left 0.2s' }} /></button>} />
+                    <PanelResizeGrip id="poi" />
+                    {!isPanelMin('poi') && <>
+                    {/* Category toggles */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, display: 'flex', flexWrap: 'wrap' as const, gap: 3 }}>
+                        {Object.entries(poiCategoryConfig).map(([k, v]) => { const on = poiActiveCategories.has(k); const c = poiStats.counts[k] || 0; return <button key={k} onClick={() => setPoiActiveCategories(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 7px', borderRadius: 4, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}10` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: on ? v.color : theme.textDim, transition: 'all 0.1s' }}>
+                            <span style={{ fontSize: 10 }}>{v.emoji}</span><span>{v.label}</span>{c > 0 && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 3, background: `${v.color}15`, color: v.color }}>{c}</span>}
+                        </button>; })}
+                        <div style={{ width: '100%', display: 'flex', gap: 4, marginTop: 2 }}>
+                            <button onClick={() => setPoiActiveCategories(new Set(Object.keys(poiCategoryConfig)))} style={{ flex: 1, padding: '3px 0', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: theme.textDim }}>Select All</button>
+                            <button onClick={() => setPoiActiveCategories(new Set())} style={{ flex: 1, padding: '3px 0', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: theme.textDim }}>Clear All</button>
+                            <button onClick={() => { fetchPOIs(); triggerTopLoader(); }} style={{ flex: 1, padding: '3px 0', borderRadius: 3, border: `1px solid #14b8a630`, background: '#14b8a608', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: '#14b8a6' }}>🔄 Refresh</button>
+                        </div>
+                    </div>
+                    {/* Search */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${poiSearch ? '#14b8a650' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                            <input value={poiSearch} onChange={e => setPoiSearch(e.target.value)} placeholder="Search places, addresses..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                            {poiSearch && <button onClick={() => setPoiSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', fontSize: 9, padding: 0 }}>✕</button>}
+                        </div>
+                    </div>
+                    {/* POI list */}
+                    <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {filteredPOIs.length === 0 ? <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, opacity: 0.15 }}>📍</div><div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 6 }}>{poiActiveCategories.size === 0 ? 'Select categories above' : 'No places found in view'}</div></div> :
+                        filteredPOIs.map(p => { const cat = poiCategoryConfig[p.category] || { label: p.category, color: '#6b7280', emoji: '📍' }; const isSel = poiSelected === p.id; return <div key={p.id} onClick={() => { setPoiSelected(isSel ? null : p.id); const map = mapRef.current; if (map && !isSel) map.flyTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 16), duration: 800 }); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer', background: isSel ? `${cat.color}06` : 'transparent', borderLeft: `3px solid ${isSel ? cat.color : 'transparent'}`, borderBottom: `1px solid ${theme.border}06`, transition: 'background 0.1s' }} onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}>
+                            <div style={{ width: 24, height: 24, borderRadius: '50%', background: cat.color, border: '2px solid rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 1px 4px ${cat.color}40` }}>
+                                <span style={{ fontSize: 9, fontWeight: 900, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>{(poiCategoryConfig[p.category] || { icon: '?' }).icon}</span>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{p.name}</div>
+                                <div style={{ fontSize: 9, color: theme.textDim }}>{p.address || `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`}{p.openingHours ? ` · ${p.openingHours.split(';')[0]}` : ''}</div>
+                            </div>
+                            <span style={{ fontSize: 7, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${cat.color}12`, color: cat.color, flexShrink: 0 }}>{cat.label}</span>
+                        </div>; })}
+                    </div>
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{poiStats.visible} places · {poiLastUpdate || '...'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: poiSource === 'live' ? '#22c55e' : '#f59e0b', boxShadow: poiSource === 'live' ? '0 0 6px #22c55e60' : 'none' }} />
+                            <span style={{ fontSize: 9, color: '#14b8a6', fontWeight: 600 }}>{poiSource === 'live' ? 'Overpass LIVE' : 'Mock Data'}</span>
                         </div>
                     </div>
                     </>}
