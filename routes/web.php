@@ -163,6 +163,7 @@ Route::prefix('errors')->name('errors.')->group(function () {
 */
 
 Route::get('/mock-api/flights', [\App\Http\Controllers\MockApi\OpenSkyController::class, 'index'])->name('mock-api.flights');
+Route::get('/mock-api/satellites', [\App\Http\Controllers\MockApi\CelesTrakController::class, 'index'])->name('mock-api.satellites');
 
 /*
 |--------------------------------------------------------------------------

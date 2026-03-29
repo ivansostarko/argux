@@ -1,5 +1,70 @@
 # Changelog
 
+## 0.25.45 - 2026-03-29
+
+### Implemented — Satellite Tracking on 3D Globe (/map)
+- **Live satellite tracking** via CelesTrak GP data, rendered on the 3D Globe tile.
+
+#### Sidebar Controls (Tiles → Satellite Tracking)
+- 🛰️ Satellite Tracker toggle — auto-activates 3D Globe when enabled.
+- Category filter buttons: Space Station, Communication, Navigation, Weather, Earth Observation, Military, Scientific, Starlink, Debris.
+- Panel open button to show full satellite list.
+
+#### Map Rendering (Globe only)
+- Satellites render as glowing dot markers with category-colored glow effects.
+- Space stations (ISS, CSS): 10px dots with double glow + name label above.
+- Standard satellites: 6px dots, debris: 4px dots.
+- Hover: 2x scale with z-index boost. Click: dark themed popup with full satellite data.
+- Orbital animation: positions update every 2s using angular velocity from period + inclination.
+- Markers automatically removed when switching away from Globe mode.
+
+#### Satellite Popup (on click)
+- Header: category icon, satellite name, NORAD ID, international designator, category badge.
+- Data grid: Altitude (km), Velocity (km/s), Inclination (°), Period (min), Orbit type, Country, Launch date, Status, Position, Category.
+- Footer: CelesTrak source + orbit type badge.
+- Popup follows satellite position as it moves.
+
+#### Satellite Panel
+- Category filter buttons with counts.
+- Search by name, country, NORAD ID.
+- Scrollable satellite list: glowing dot, name, orbit type, altitude, velocity, category badge, NORAD ID. Click to fly camera.
+- Footer: object count, last update time, CelesTrak LIVE / Mock Data indicator.
+
+#### CelesTrak API Backend
+- `app/Http/Controllers/MockApi/CelesTrakController.php` (159 lines) — Laravel proxy.
+- `GET /mock-api/satellites?group=stations&limit=60` → fetches GP JSON from celestrak.org, computes approximate lat/lng/alt from orbital elements (mean motion + epoch + RAAN + inclination), categorizes by name/type, returns JSON.
+- 120-second cache to respect rate limits.
+- Orbit type classification: LEO/MEO/GEO/HEO/SSO based on altitude, inclination, period.
+- Aircraft categorization: space-station, navigation, weather, earth-observation, military, scientific, starlink, communication, debris — by name pattern matching.
+- Falls back to 20 mock satellites if API unreachable.
+
+#### 20 Mock Satellites
+| Name | Category | Orbit | Alt (km) |
+|---|---|---|---|
+| ISS (ZARYA) | Space Station | LEO | 420 |
+| CSS (TIANHE) | Space Station | LEO | 390 |
+| HUBBLE | Scientific | LEO | 540 |
+| NOAA 20 | Weather | SSO | 824 |
+| GPS IIR-14 | Navigation | MEO | 20,200 |
+| GALILEO-FM4 | Navigation | MEO | 23,222 |
+| METEOSAT-9 | Weather | GEO | 35,786 |
+| COSMOS 2471 | Navigation | MEO | 19,140 |
+| STARLINK-1007/8/9 | Starlink | LEO | 550 |
+| LANDSAT 9 | Earth Obs | SSO | 705 |
+| SENTINEL-1A | Earth Obs | SSO | 693 |
+| CRYOSAT 2 | Earth Obs | SSO | 717 |
+| EUTELSAT 25B | Communication | GEO | 35,786 |
+| BEIDOU-3 M1 | Navigation | MEO | 21,528 |
+| USA-326 | Military | SSO | 440 |
+| TIANGONG 1 DEB | Debris | LEO | 310 |
+
+#### Technical
+- PanelId 'satellites' added to union type.
+- Escape handler: showSatPanel → close.
+- rAF loop pattern (same as flights): reads from ref, throttled 800ms, no React re-renders.
+- Globe rebuild recovery: clears marker map when mapVersionRef changes.
+- ~200 lines new code in Map page, 47 lines mock data, 159 lines controller.
+
 ## 0.25.44 - 2026-03-29
 
 ### Fixed — Live Flights: Marker Interaction + Popup + 3D

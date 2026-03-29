@@ -196,3 +196,50 @@ export const flightCategoryConfig: Record<string, { label: string; color: string
     military: { label: 'Military', color: '#ef4444', icon: '🎖️' },
     helicopter: { label: 'Helicopter', color: '#8b5cf6', icon: '🚁' },
 };
+
+// ═══ SATELLITE TRACKING (CelesTrak) ═══
+export interface SatelliteData {
+    noradId: number; name: string; intlDesignator: string;
+    lat: number; lng: number; alt: number; // km
+    velocity: number; // km/s
+    inclination: number; period: number; // minutes
+    category: 'communication' | 'navigation' | 'weather' | 'earth-observation' | 'military' | 'scientific' | 'starlink' | 'debris' | 'space-station';
+    country: string; launchDate: string; status: 'active' | 'inactive' | 'decayed';
+    orbitType: 'LEO' | 'MEO' | 'GEO' | 'HEO' | 'SSO';
+    rcs?: number; // radar cross section m²
+}
+
+export const MOCK_SATELLITES: SatelliteData[] = [
+    { noradId: 25544, name: 'ISS (ZARYA)', intlDesignator: '1998-067A', lat: 45.2, lng: 16.8, alt: 420, velocity: 7.66, inclination: 51.6, period: 92, category: 'space-station', country: 'ISS', launchDate: '1998-11-20', status: 'active', orbitType: 'LEO' },
+    { noradId: 48274, name: 'CSS (TIANHE)', intlDesignator: '2021-035A', lat: -12.5, lng: 78.3, alt: 390, velocity: 7.68, inclination: 41.5, period: 91, category: 'space-station', country: 'CN', launchDate: '2021-04-29', status: 'active', orbitType: 'LEO' },
+    { noradId: 20580, name: 'HUBBLE SPACE TELESCOPE', intlDesignator: '1990-037B', lat: 28.4, lng: -45.2, alt: 540, velocity: 7.59, inclination: 28.5, period: 95, category: 'scientific', country: 'US', launchDate: '1990-04-24', status: 'active', orbitType: 'LEO' },
+    { noradId: 36516, name: 'CRYOSAT 2', intlDesignator: '2010-013A', lat: 72.1, lng: -120.5, alt: 717, velocity: 7.44, inclination: 92.0, period: 99, category: 'earth-observation', country: 'EU', launchDate: '2010-04-08', status: 'active', orbitType: 'SSO' },
+    { noradId: 43013, name: 'NOAA 20 (JPSS-1)', intlDesignator: '2017-073A', lat: -35.8, lng: 145.2, alt: 824, velocity: 7.41, inclination: 98.7, period: 101, category: 'weather', country: 'US', launchDate: '2017-11-18', status: 'active', orbitType: 'SSO' },
+    { noradId: 29155, name: 'GPS IIR-14 (PRN 07)', intlDesignator: '2006-004A', lat: 12.3, lng: -68.4, alt: 20200, velocity: 3.87, inclination: 55.0, period: 718, category: 'navigation', country: 'US', launchDate: '2006-03-24', status: 'active', orbitType: 'MEO' },
+    { noradId: 41019, name: 'GALILEO-FM4', intlDesignator: '2015-066B', lat: -22.8, lng: 42.5, alt: 23222, velocity: 3.66, inclination: 56.0, period: 845, category: 'navigation', country: 'EU', launchDate: '2015-12-17', status: 'active', orbitType: 'MEO' },
+    { noradId: 28654, name: 'METEOSAT-9', intlDesignator: '2005-049A', lat: 0.1, lng: 9.5, alt: 35786, velocity: 3.07, inclination: 0.5, period: 1436, category: 'weather', country: 'EU', launchDate: '2005-12-21', status: 'active', orbitType: 'GEO' },
+    { noradId: 36585, name: 'COSMOS 2471 (GLONASS)', intlDesignator: '2010-014A', lat: 55.2, lng: -95.3, alt: 19140, velocity: 3.95, inclination: 64.8, period: 676, category: 'navigation', country: 'RU', launchDate: '2010-03-02', status: 'active', orbitType: 'MEO' },
+    { noradId: 44713, name: 'STARLINK-1007', intlDesignator: '2020-001A', lat: 38.5, lng: -22.1, alt: 550, velocity: 7.59, inclination: 53.0, period: 96, category: 'starlink', country: 'US', launchDate: '2020-01-07', status: 'active', orbitType: 'LEO' },
+    { noradId: 44714, name: 'STARLINK-1008', intlDesignator: '2020-001B', lat: 40.2, lng: -18.8, alt: 550, velocity: 7.59, inclination: 53.0, period: 96, category: 'starlink', country: 'US', launchDate: '2020-01-07', status: 'active', orbitType: 'LEO' },
+    { noradId: 44715, name: 'STARLINK-1009', intlDesignator: '2020-001C', lat: 36.9, lng: -25.4, alt: 550, velocity: 7.59, inclination: 53.0, period: 96, category: 'starlink', country: 'US', launchDate: '2020-01-07', status: 'active', orbitType: 'LEO' },
+    { noradId: 49260, name: 'LANDSAT 9', intlDesignator: '2021-088A', lat: -48.3, lng: 162.7, alt: 705, velocity: 7.45, inclination: 98.2, period: 99, category: 'earth-observation', country: 'US', launchDate: '2021-09-27', status: 'active', orbitType: 'SSO' },
+    { noradId: 39084, name: 'EUTELSAT 25B', intlDesignator: '2013-012A', lat: 0.0, lng: 25.5, alt: 35786, velocity: 3.07, inclination: 0.1, period: 1436, category: 'communication', country: 'FR', launchDate: '2013-03-07', status: 'active', orbitType: 'GEO' },
+    { noradId: 37348, name: 'TIANGONG 1 (DEB)', intlDesignator: '2011-053A', lat: 15.6, lng: 88.4, alt: 310, velocity: 7.72, inclination: 42.8, period: 90, category: 'debris', country: 'CN', launchDate: '2011-09-29', status: 'decayed', orbitType: 'LEO' },
+    { noradId: 40258, name: 'SENTINEL-1A', intlDesignator: '2014-016A', lat: -62.4, lng: -30.8, alt: 693, velocity: 7.45, inclination: 98.2, period: 98, category: 'earth-observation', country: 'EU', launchDate: '2014-04-03', status: 'active', orbitType: 'SSO' },
+    { noradId: 41866, name: 'BEIDOU-3 M1', intlDesignator: '2017-003A', lat: -8.5, lng: 115.2, alt: 21528, velocity: 3.83, inclination: 55.0, period: 773, category: 'navigation', country: 'CN', launchDate: '2017-01-11', status: 'active', orbitType: 'MEO' },
+    { noradId: 27424, name: 'XM-2 (ROCK)', intlDesignator: '2001-012A', lat: 0.0, lng: -115.0, alt: 35786, velocity: 3.07, inclination: 0.0, period: 1436, category: 'communication', country: 'US', launchDate: '2001-03-18', status: 'active', orbitType: 'GEO' },
+    { noradId: 43689, name: 'COSMOS 2528 (GLONASS-K)', intlDesignator: '2018-086A', lat: 48.7, lng: -155.3, alt: 19140, velocity: 3.95, inclination: 64.8, period: 676, category: 'navigation', country: 'RU', launchDate: '2018-11-03', status: 'active', orbitType: 'MEO' },
+    { noradId: 54216, name: 'USA-326 (NROL-91)', intlDesignator: '2022-130A', lat: 63.8, lng: -45.1, alt: 440, velocity: 7.64, inclination: 97.4, period: 93, category: 'military', country: 'US', launchDate: '2022-09-24', status: 'active', orbitType: 'SSO', rcs: 0.5 },
+];
+
+export const satCategoryConfig: Record<string, { label: string; color: string; icon: string }> = {
+    'space-station': { label: 'Space Station', color: '#22c55e', icon: '🛸' },
+    communication: { label: 'Communication', color: '#3b82f6', icon: '📡' },
+    navigation: { label: 'Navigation', color: '#f59e0b', icon: '🧭' },
+    weather: { label: 'Weather', color: '#06b6d4', icon: '🌤️' },
+    'earth-observation': { label: 'Earth Observation', color: '#8b5cf6', icon: '🌍' },
+    military: { label: 'Military', color: '#ef4444', icon: '🎖️' },
+    scientific: { label: 'Scientific', color: '#ec4899', icon: '🔬' },
+    starlink: { label: 'Starlink', color: '#94a3b8', icon: '⭐' },
+    debris: { label: 'Debris', color: '#6b7280', icon: '🗑️' },
+};

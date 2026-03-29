@@ -3,8 +3,8 @@ import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'rea
 import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
-import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData } from '../../mock/map';
-import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig } from '../../mock/map';
+import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData, SatelliteData } from '../../mock/map';
+import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig } from '../../mock/map';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
 import { mockVehicles } from '../../mock/vehicles';
@@ -428,6 +428,70 @@ export default function MapIndex() {
         helicopter: flights.filter(f => f.category === 'helicopter').length,
         countries: new Set(flights.map(f => f.originCountry)).size,
     }), [flights]);
+
+    // ═══ SATELLITE TRACKING (CelesTrak) ═══
+    const [showSatellites, setShowSatellites] = useState(false);
+    const [showSatPanel, setShowSatPanel] = useState(false);
+    const [satellites, setSatellites] = useState<SatelliteData[]>([]);
+    const [satSource, setSatSource] = useState<'live' | 'mock' | 'loading'>('loading');
+    const [satSearch, setSatSearch] = useState('');
+    const [satCategoryFilter, setSatCategoryFilter] = useState<Set<string>>(new Set());
+    const [satSelected, setSatSelected] = useState<number | null>(null);
+    const [satLastUpdate, setSatLastUpdate] = useState('');
+    const satMarkerMapRef = useRef<Map<number, any>>(new Map());
+    const satPopupRef = useRef<any>(null);
+    const satUpdateRef = useRef<any>(null);
+    const satAnimRef = useRef<any>(null);
+
+    const fetchSatellites = useCallback(async () => {
+        try {
+            const res = await fetch('/mock-api/satellites?group=stations&limit=60');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data.source === 'error' || !data.satellites?.length) throw new Error(data.error || 'No data');
+            setSatellites(data.satellites); setSatSource('live');
+        } catch {
+            if (satellites.length === 0) { setSatellites(MOCK_SATELLITES); setSatSource('mock'); }
+        }
+        setSatLastUpdate(new Date().toLocaleTimeString('en-US', { hour12: false }));
+    }, []);
+
+    useEffect(() => {
+        if (!showSatellites) { if (satUpdateRef.current) clearInterval(satUpdateRef.current); return; }
+        fetchSatellites();
+        satUpdateRef.current = setInterval(fetchSatellites, 30000);
+        return () => { if (satUpdateRef.current) clearInterval(satUpdateRef.current); };
+    }, [showSatellites, fetchSatellites]);
+
+    // Simulate orbital motion between API polls
+    useEffect(() => {
+        if (!showSatellites || satellites.length === 0) return;
+        const interval = setInterval(() => {
+            setSatellites(prev => prev.map(s => {
+                const angularV = 360 / (s.period * 60); // deg/sec
+                const rad = s.inclination * Math.PI / 180;
+                const dlng = angularV * 2 * Math.cos(rad) * (0.9 + Math.random() * 0.2);
+                const dlat = angularV * 2 * Math.sin(rad) * Math.cos((s.lng + dlng) * Math.PI / 180) * (0.9 + Math.random() * 0.2);
+                let newLng = s.lng + dlng; if (newLng > 180) newLng -= 360; if (newLng < -180) newLng += 360;
+                let newLat = s.lat + dlat; if (newLat > 85) newLat = 170 - newLat; if (newLat < -85) newLat = -170 - newLat;
+                return { ...s, lat: newLat, lng: newLng };
+            }));
+        }, 2000);
+        return () => clearInterval(interval);
+    }, [showSatellites, satellites.length > 0]);
+
+    const filteredSatellites = useMemo(() => {
+        let s = satellites;
+        if (satCategoryFilter.size > 0) s = s.filter(x => satCategoryFilter.has(x.category));
+        if (satSearch) { const q = satSearch.toLowerCase(); s = s.filter(x => x.name.toLowerCase().includes(q) || x.country.toLowerCase().includes(q) || String(x.noradId).includes(q)); }
+        return s;
+    }, [satellites, satCategoryFilter, satSearch]);
+
+    const filteredSatsRef = useRef(filteredSatellites);
+    filteredSatsRef.current = filteredSatellites;
+    const satSelectedRef = useRef(satSelected);
+    satSelectedRef.current = satSelected;
+
     const [faceSearch, setFaceSearch] = useState('');
     const [faceSelected, setFaceSelected] = useState<Set<string>>(new Set()); // selected face IDs to show (empty = all)
     const [faceHidden, setFaceHidden] = useState<Set<string>>(new Set()); // hidden face IDs
@@ -861,7 +925,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -2755,6 +2819,88 @@ export default function MapIndex() {
         if (flightPopupRef.current) { flightPopupRef.current = null; }
     }, [loaded, layerFlights]);
 
+    // ═══ SATELLITE LAYER RENDERING (Globe only) ═══
+    const createSatMarkerEl = useCallback((s: SatelliteData, map: any, ml: any) => {
+        const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
+        const isStation = s.category === 'space-station';
+        const sz = isStation ? 10 : s.category === 'debris' ? 4 : 6;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tmap-sat-marker';
+        wrapper.style.cssText = 'pointer-events:auto !important;';
+        wrapper.innerHTML = `<div class="sat-inner" style="position:relative;width:${sz * 3}px;height:${sz * 3}px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.2s;">
+            <div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${cat.color};box-shadow:0 0 ${isStation ? 12 : 6}px ${cat.color}80${isStation ? `,0 0 24px ${cat.color}40` : ''};transition:box-shadow 0.2s;"></div>
+            ${isStation ? `<div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none;"><div style="font-size:8px;font-weight:800;color:${cat.color};text-shadow:0 1px 4px rgba(0,0,0,0.95);font-family:'JetBrains Mono',monospace;padding:1px 4px;background:rgba(0,0,0,0.5);border-radius:2px;">${s.name}</div></div>` : ''}
+        </div>`;
+        const inner = wrapper.querySelector('.sat-inner') as HTMLElement;
+        inner.addEventListener('mouseenter', () => { inner.style.transform = 'scale(2)'; inner.style.zIndex = '200'; });
+        inner.addEventListener('mouseleave', () => { inner.style.transform = 'scale(1)'; inner.style.zIndex = '1'; });
+        const entry = { marker: null as any, el: wrapper, data: s };
+        inner.addEventListener('click', (ev) => {
+            ev.stopPropagation(); ev.preventDefault();
+            const sd = entry.data; const ct = satCategoryConfig[sd.category] || satCategoryConfig.communication;
+            setSatSelected(sd.noradId);
+            if (satPopupRef.current) { satPopupRef.current.remove(); satPopupRef.current = null; }
+            const popup = new ml.Popup({ offset: [0, -14], closeButton: true, maxWidth: '340px', className: 'tmap-popup', anchor: 'bottom' })
+                .setLngLat([sd.lng, sd.lat])
+                .setHTML(`<div class="tmap-popup-inner" style="padding:14px 16px;">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                        <div style="width:36px;height:36px;border-radius:8px;background:${ct.color}18;border:1.5px solid ${ct.color}35;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${ct.icon}</div>
+                        <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--ax-text);">${sd.name}</div><div style="font-size:10px;color:var(--ax-text-dim);">NORAD ${sd.noradId} · ${sd.intlDesignator}</div></div>
+                        <span style="font-size:8px;font-weight:700;padding:2px 7px;border-radius:4px;background:${ct.color}15;color:${ct.color};border:1px solid ${ct.color}30;">${ct.label}</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;">${[
+                        ['Altitude',`${sd.alt.toLocaleString()} km`],['Velocity',`${sd.velocity} km/s`],
+                        ['Inclination',`${sd.inclination}°`],['Period',`${sd.period} min`],
+                        ['Orbit',sd.orbitType],['Country',sd.country || '—'],
+                        ['Launch',sd.launchDate || '—'],['Status',sd.status],
+                        ['Position',`${sd.lat.toFixed(2)}°, ${sd.lng.toFixed(2)}°`],['Category',ct.label],
+                    ].map(([l,v])=>`<div style="padding:2px 0;"><div style="font-size:8px;color:var(--ax-text-dim);font-weight:700;letter-spacing:0.06em;margin-bottom:1px;">${l}</div><div style="font-size:11px;color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v}</div></div>`).join('')}</div>
+                    <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--ax-border);display:flex;justify-content:space-between;"><span style="font-size:8px;color:var(--ax-text-dim);">Source: CelesTrak</span><span style="font-size:8px;color:${ct.color};font-weight:600;">${sd.orbitType}</span></div>
+                </div>`).addTo(map);
+            satPopupRef.current = popup;
+            popup.on('close', () => { setSatSelected(null); satPopupRef.current = null; });
+        });
+        const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([s.lng, s.lat]).addTo(map);
+        entry.marker = marker;
+        return entry;
+    }, []);
+
+    useEffect(() => {
+        if (!loaded) return;
+        const ml = (window as any).maplibregl;
+        if (!ml) return;
+        const isGlobe = !!mapRef.current?._isGlobe;
+        if (!showSatellites || !isGlobe) {
+            satMarkerMapRef.current.forEach(e => e.marker.remove()); satMarkerMapRef.current.clear();
+            if (satPopupRef.current) { satPopupRef.current.remove(); satPopupRef.current = null; }
+            if (satAnimRef.current) { cancelAnimationFrame(satAnimRef.current); satAnimRef.current = null; }
+            return;
+        }
+        let lastUp = 0;
+        const loop = (time: number) => {
+            const map = mapRef.current;
+            if (!map || !map._isGlobe) return;
+            if (time - lastUp < 800) { satAnimRef.current = requestAnimationFrame(loop); return; }
+            lastUp = time;
+            const cur = filteredSatsRef.current;
+            const ids = new Set(cur.map(s => s.noradId));
+            satMarkerMapRef.current.forEach((e, id) => { if (!ids.has(id)) { e.marker.remove(); satMarkerMapRef.current.delete(id); } });
+            cur.forEach(s => {
+                const ex = satMarkerMapRef.current.get(s.noradId);
+                if (ex) {
+                    ex.marker.setLngLat([s.lng, s.lat]); ex.data = s;
+                    if (satPopupRef.current && satSelectedRef.current === s.noradId) satPopupRef.current.setLngLat([s.lng, s.lat]);
+                } else {
+                    const entry = createSatMarkerEl(s, map, ml);
+                    satMarkerMapRef.current.set(s.noradId, entry);
+                }
+            });
+            satAnimRef.current = requestAnimationFrame(loop);
+        };
+        satAnimRef.current = requestAnimationFrame(loop);
+        return () => { if (satAnimRef.current) { cancelAnimationFrame(satAnimRef.current); satAnimRef.current = null; } };
+    }, [showSatellites, loaded, createSatMarkerEl]);
+
     // Object drawing click handler
     useEffect(() => {
         const map = mapRef.current;
@@ -3198,6 +3344,7 @@ export default function MapIndex() {
                 if (showRouteReplay) { setShowRouteReplay(false); setRrPlaying(false); return; }
                 if (locAnalyzerDrawing) { setLocAnalyzerDrawing(false); return; }
                 if (showLocAnalyzer) { setShowLocAnalyzer(false); setLocAnalyzerDrawing(false); return; }
+                if (showSatPanel) { setShowSatPanel(false); return; }
                 if (showFlightsPanel) { setShowFlightsPanel(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
@@ -3960,6 +4107,23 @@ export default function MapIndex() {
                                             {cinemaWaypointIdx === i && <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b' }} />}
                                         </button>)}
                                     </div>
+                                </div>}
+                            </div>
+
+                            {/* Satellite Tracking (Globe only) */}
+                            <div style={{ marginTop: 10, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
+                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Satellite Tracking</div>
+                                <button onClick={() => { if (!showSatellites) { if (active3D !== '3d-globe') setActive3D('3d-globe'); setShowSatellites(true); } else setShowSatellites(false); triggerTopLoader(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1.5px solid ${showSatellites ? '#06b6d440' : theme.border}`, background: showSatellites ? 'rgba(6,182,212,0.08)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                                    <span style={{ fontSize: 16 }}>🛰️</span>
+                                    <div style={{ flex: 1, textAlign: 'left' as const }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: showSatellites ? '#06b6d4' : theme.text }}>Satellite Tracker</div>
+                                        <div style={{ fontSize: 8, color: theme.textDim }}>{showSatellites ? `${filteredSatellites.length} objects · ${satSource === 'live' ? 'CelesTrak LIVE' : 'Mock data'}` : 'Track orbital objects on 3D globe'}</div>
+                                    </div>
+                                    <div style={{ width: 28, height: 16, borderRadius: 8, background: showSatellites ? '#06b6d4' : theme.border, position: 'relative' as const, flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute' as const, top: 2, left: showSatellites ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></div>
+                                </button>
+                                {showSatellites && <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
+                                    {Object.entries(satCategoryConfig).map(([k, v]) => { const c = filteredSatellites.filter(s => s.category === k).length; const on = satCategoryFilter.has(k); return c > 0 || on ? <button key={k} onClick={() => setSatCategoryFilter(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '2px 5px', borderRadius: 3, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: on ? v.color : theme.textDim }}>{v.icon}<span>{c}</span></button> : null; })}
+                                    <button onClick={() => { setShowSatPanel(true); triggerTopLoader(); }} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${showSatPanel ? '#06b6d440' : theme.border}`, background: showSatPanel ? '#06b6d408' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: showSatPanel ? '#06b6d4' : theme.textDim }}>📋 Panel</button>
                                 </div>}
                             </div>
                         </div>
@@ -5765,6 +5929,48 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>{(mockRoutes[rrPerson] || []).length} waypoints · {(mockRoutes[rrPerson] || []).filter(p => p.event).length} events</span>
                         <div style={{ flex: 1 }} />
                         <span style={{ fontSize: 9, color: '#ec4899', fontWeight: 600 }}>GPS + Kafka</span>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ SATELLITE PANEL ═══ */}
+                {showSatPanel && loaded && <div data-panel="satellites" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('satellites'); }} style={panelStyle('satellites', '380px', '#06b6d4')}>
+                    <PanelHeader id="satellites" icon="🛰️" title="Satellite Tracker" subtitle={`${filteredSatellites.length} objects · ${satSource === 'live' ? 'CelesTrak' : 'Mock'}`} color="#06b6d4" onClose={() => setShowSatPanel(false)} extra={<button onClick={() => { setShowSatellites(!showSatellites); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: showSatellites ? '#06b6d4' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: showSatellites ? 16 : 2, transition: 'left 0.2s' }} /></button>} />
+                    <PanelResizeGrip id="satellites" />
+                    {!isPanelMin('satellites') && <>
+                    {/* Category stats */}
+                    <div style={{ display: 'flex', gap: 3, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexWrap: 'wrap' as const }}>
+                        {Object.entries(satCategoryConfig).map(([k, v]) => { const c = satellites.filter(s => s.category === k).length; const on = satCategoryFilter.has(k); return c > 0 ? <button key={k} onClick={() => setSatCategoryFilter(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '3px 6px', borderRadius: 4, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: on ? v.color : theme.textDim }}>{v.icon} {c}</button> : null; })}
+                    </div>
+                    {/* Search */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${satSearch ? '#06b6d450' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                            <input value={satSearch} onChange={e => setSatSearch(e.target.value)} placeholder="Search satellite, NORAD ID..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                        </div>
+                    </div>
+                    {/* Satellite list */}
+                    <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {filteredSatellites.length === 0 ? <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, opacity: 0.15 }}>🛰️</div><div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 6 }}>No satellites match</div></div> :
+                        filteredSatellites.map(s => { const cat = satCategoryConfig[s.category] || satCategoryConfig.communication; const isSel = satSelected === s.noradId; return <div key={s.noradId} onClick={() => { setSatSelected(isSel ? null : s.noradId); const map = mapRef.current; if (map && !isSel) map.flyTo({ center: [s.lng, s.lat], zoom: Math.min(map.getZoom(), 4), duration: 1200 }); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer', background: isSel ? `${cat.color}06` : 'transparent', borderLeft: `3px solid ${isSel ? cat.color : 'transparent'}`, borderBottom: `1px solid ${theme.border}06`, transition: 'background 0.1s' }} onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}>
+                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: cat.color, boxShadow: `0 0 6px ${cat.color}60`, flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.name}</div>
+                                <div style={{ fontSize: 9, color: theme.textDim }}>{s.orbitType} · {s.alt.toLocaleString()} km · {s.velocity} km/s</div>
+                            </div>
+                            <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                                <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${cat.color}12`, color: cat.color }}>{cat.label}</span>
+                                <div style={{ fontSize: 8, color: theme.textDim, marginTop: 2, fontFamily: "'JetBrains Mono',monospace" }}>{s.noradId}</div>
+                            </div>
+                        </div>; })}
+                    </div>
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{filteredSatellites.length} objects · {satLastUpdate ? `${satLastUpdate}` : '...'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: satSource === 'live' ? '#22c55e' : '#f59e0b', boxShadow: satSource === 'live' ? '0 0 6px #22c55e60' : 'none' }} />
+                            <span style={{ fontSize: 9, color: '#06b6d4', fontWeight: 600 }}>{satSource === 'live' ? 'CelesTrak LIVE' : 'Mock Data'}</span>
+                        </div>
                     </div>
                     </>}
                 </div>}
