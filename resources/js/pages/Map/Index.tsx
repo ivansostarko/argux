@@ -4,7 +4,7 @@ import { router, usePage } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData, SatelliteData, POI } from '../../mock/map';
-import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig, MOCK_POIS, poiCategoryConfig } from '../../mock/map';
+import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig, MOCK_POIS, poiCategoryConfig, wmoWeatherCodes, getWeatherIcon, getWeatherLabel } from '../../mock/map';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
 import { mockVehicles } from '../../mock/vehicles';
@@ -580,6 +580,81 @@ export default function MapIndex() {
         return { total: pois.length, visible: filteredPOIs.length, counts };
     }, [pois, filteredPOIs]);
 
+    // ═══ WEATHER RADAR (Open-Meteo + RainViewer) ═══
+    const [layerWeather, setLayerWeather] = useState(false);
+    const [showWeatherPanel, setShowWeatherPanel] = useState(false);
+    const [wxData, setWxData] = useState<any>(null);
+    const [wxHistory, setWxHistory] = useState<any>(null);
+    const [wxHistLoading, setWxHistLoading] = useState(false);
+    const [wxSource, setWxSource] = useState<'live' | 'mock' | 'loading'>('loading');
+    const [wxRadarFrames, setWxRadarFrames] = useState<any[]>([]);
+    const [wxRadarHost, setWxRadarHost] = useState('https://tilecache.rainviewer.com');
+    const [wxRadarIdx, setWxRadarIdx] = useState(0);
+    const [wxRadarPlaying, setWxRadarPlaying] = useState(false);
+    const [wxClickMode, setWxClickMode] = useState(false);
+    const [wxSelectedPoint, setWxSelectedPoint] = useState<{ lat: number; lng: number } | null>(null);
+    const [wxTab, setWxTab] = useState<'current' | 'hourly' | 'forecast' | 'history'>('current');
+    const wxMarkerRef = useRef<any>(null);
+    const wxRadarIntervalRef = useRef<any>(null);
+
+    const fetchWeather = useCallback(async (lat: number, lng: number) => {
+        try {
+            const res = await fetch(`/mock-api/weather?lat=${lat}&lng=${lng}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setWxData(data); setWxSource(data.source === 'live' ? 'live' : 'mock');
+        } catch { setWxSource('mock'); }
+    }, []);
+
+    const fetchWxHistory = useCallback(async (lat: number, lng: number) => {
+        setWxHistLoading(true);
+        try {
+            const end = new Date(); end.setDate(end.getDate() - 1);
+            const start = new Date(); start.setDate(start.getDate() - 14);
+            const res = await fetch(`/mock-api/weather/history?lat=${lat}&lng=${lng}&start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            setWxHistory(await res.json());
+        } catch { setWxHistory(null); }
+        setWxHistLoading(false);
+    }, []);
+
+    const fetchRadarFrames = useCallback(async () => {
+        try {
+            const res = await fetch('/mock-api/weather/radar');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const allFrames = [...(data.past || []), ...(data.nowcast || [])];
+            setWxRadarFrames(allFrames);
+            setWxRadarHost(data.host || 'https://tilecache.rainviewer.com');
+            if (allFrames.length > 0) setWxRadarIdx(Math.max(0, (data.past || []).length - 1));
+        } catch {}
+    }, []);
+
+    useEffect(() => {
+        if (!layerWeather) {
+            if (wxRadarIntervalRef.current) { clearInterval(wxRadarIntervalRef.current); wxRadarIntervalRef.current = null; }
+            return;
+        }
+        // Fetch default location weather + radar
+        const map = mapRef.current;
+        const center = map ? map.getCenter() : { lat: 45.8131, lng: 15.9775 };
+        fetchWeather(center.lat, center.lng);
+        setWxSelectedPoint({ lat: center.lat, lng: center.lng });
+        fetchRadarFrames();
+        // Refresh radar every 5 minutes
+        wxRadarIntervalRef.current = setInterval(fetchRadarFrames, 300000);
+        return () => { if (wxRadarIntervalRef.current) clearInterval(wxRadarIntervalRef.current); };
+    }, [layerWeather, fetchWeather, fetchRadarFrames]);
+
+    // Radar animation playback
+    useEffect(() => {
+        if (!wxRadarPlaying || wxRadarFrames.length === 0) return;
+        const iv = setInterval(() => {
+            setWxRadarIdx(prev => (prev + 1) % wxRadarFrames.length);
+        }, 600);
+        return () => clearInterval(iv);
+    }, [wxRadarPlaying, wxRadarFrames.length]);
+
     // ═══ ROUTING / DIRECTIONS ═══
     type RouteProfile = 'car' | 'bike' | 'foot';
     interface RouteWaypoint { id: string; lat: number; lng: number; label: string; }
@@ -1094,7 +1169,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -3265,6 +3340,74 @@ export default function MapIndex() {
         return () => { map.off('click', onClick); map.getCanvas().style.cursor = ''; };
     }, [routePlacing, loaded, addRouteWaypoint]);
 
+    // ═══ WEATHER RADAR TILE LAYER ═══
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        if (!layerWeather || wxRadarFrames.length === 0) {
+            // Remove radar layers
+            try { if (map.getLayer('wx-radar-layer')) map.removeLayer('wx-radar-layer'); } catch {}
+            try { if (map.getSource('wx-radar-src')) map.removeSource('wx-radar-src'); } catch {}
+            try { if (map.getLayer('wx-cloud-layer')) map.removeLayer('wx-cloud-layer'); } catch {}
+            try { if (map.getSource('wx-cloud-src')) map.removeSource('wx-cloud-src'); } catch {}
+            return;
+        }
+        const frame = wxRadarFrames[wxRadarIdx];
+        if (!frame) return;
+        const tileUrl = `${wxRadarHost}${frame.path}/256/{z}/{x}/{y}/4/1_1.png`;
+        try {
+            if (map.getSource('wx-radar-src')) {
+                (map.getSource('wx-radar-src') as any).setTiles([tileUrl]);
+            } else {
+                map.addSource('wx-radar-src', { type: 'raster', tiles: [tileUrl], tileSize: 256, attribution: '© RainViewer' });
+                map.addLayer({ id: 'wx-radar-layer', type: 'raster', source: 'wx-radar-src', paint: { 'raster-opacity': 0.6, 'raster-saturation': 0.3 } });
+            }
+        } catch {}
+        // Cloud cover tile (infrared satellite from RainViewer)
+        try {
+            const cloudUrl = `${wxRadarHost}/v2/satellite/nowcast/256/{z}/{x}/{y}/0/0_0.png`;
+            if (map.getSource('wx-cloud-src')) {
+                (map.getSource('wx-cloud-src') as any).setTiles([cloudUrl]);
+            } else {
+                map.addSource('wx-cloud-src', { type: 'raster', tiles: [cloudUrl], tileSize: 256 });
+                // Insert below radar but above base tiles
+                const radarLayer = map.getLayer('wx-radar-layer') ? 'wx-radar-layer' : undefined;
+                map.addLayer({ id: 'wx-cloud-layer', type: 'raster', source: 'wx-cloud-src', paint: { 'raster-opacity': 0.25 } }, radarLayer);
+            }
+        } catch {}
+    }, [layerWeather, wxRadarFrames, wxRadarIdx, wxRadarHost, loaded]);
+
+    // Weather click handler — select point for weather data
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded || !wxClickMode) return;
+        map.getCanvas().style.cursor = 'crosshair';
+        const onClick = (e: any) => {
+            const pt = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+            setWxSelectedPoint(pt);
+            fetchWeather(pt.lat, pt.lng);
+            setWxTab('current');
+            setWxHistory(null);
+            setWxClickMode(false);
+            triggerTopLoader();
+            // Place marker
+            const ml = (window as any).maplibregl;
+            if (wxMarkerRef.current) wxMarkerRef.current.remove();
+            if (ml) {
+                const el = document.createElement('div');
+                el.innerHTML = '<div style="width:20px;height:20px;border-radius:50%;background:#0ea5e9;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:10px;">🌡️</div>';
+                wxMarkerRef.current = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([pt.lng, pt.lat]).addTo(map);
+            }
+        };
+        map.on('click', onClick);
+        return () => { map.off('click', onClick); map.getCanvas().style.cursor = ''; };
+    }, [wxClickMode, loaded, fetchWeather]);
+
+    // Cleanup weather marker when layer off
+    useEffect(() => {
+        if (!layerWeather) { if (wxMarkerRef.current) { wxMarkerRef.current.remove(); wxMarkerRef.current = null; } }
+    }, [layerWeather]);
+
     // Object drawing click handler
     useEffect(() => {
         const map = mapRef.current;
@@ -3712,6 +3855,8 @@ export default function MapIndex() {
                 if (showSatPanel) { setShowSatPanel(false); return; }
                 if (showFlightsPanel) { setShowFlightsPanel(false); return; }
                 if (showPOIPanel) { setShowPOIPanel(false); return; }
+                if (showWeatherPanel) { setShowWeatherPanel(false); return; }
+                if (wxClickMode) { setWxClickMode(false); return; }
                 if (routePlacing) { setRoutePlacing(false); return; }
                 if (showRoutePanel2) { setShowRoutePanel2(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
@@ -4511,7 +4656,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
-                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Layer buttons */}
                             {[
@@ -4521,6 +4666,7 @@ export default function MapIndex() {
                                 { key: 'face', icon: '🧑‍🦲', label: 'Face Recognition', color: '#ec4899', active: layerFace, toggle: () => { setLayerFace(!layerFace); triggerTopLoader(); }, panel: showFacePanel, openPanel: () => { setShowFacePanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFlightsPanel(false); triggerTopLoader(); }, desc: layerFace ? `${mockFaces.filter(f => !faceHidden.has(f.id) && (faceSelected.size === 0 || faceSelected.has(f.id))).length} visible · ${faceHidden.size} hidden` : 'Facial recognition captures' },
                                 { key: 'flights', icon: '✈️', label: 'Live Flights', color: '#06b6d4', active: layerFlights, toggle: () => { setLayerFlights(!layerFlights); triggerTopLoader(); }, panel: showFlightsPanel, openPanel: () => { setShowFlightsPanel(!showFlightsPanel); triggerTopLoader(); }, desc: layerFlights ? `${filteredFlights.length} aircraft · ${flightSource === 'live' ? 'LIVE' : 'Mock'}` : 'OpenSky Network ADS-B feed' },
                                 { key: 'poi', icon: '📍', label: 'Places of Interest', color: '#14b8a6', active: layerPOI, toggle: () => { setLayerPOI(!layerPOI); triggerTopLoader(); }, panel: showPOIPanel, openPanel: () => { setShowPOIPanel(!showPOIPanel); triggerTopLoader(); }, desc: layerPOI ? `${poiStats.visible} places · ${poiActiveCategories.size} categories` : 'Hospitals, police, banks, ATMs...' },
+                                { key: 'weather', icon: '🌦️', label: 'Weather Radar', color: '#0ea5e9', active: layerWeather, toggle: () => { setLayerWeather(!layerWeather); triggerTopLoader(); }, panel: showWeatherPanel, openPanel: () => { setShowWeatherPanel(!showWeatherPanel); triggerTopLoader(); }, desc: layerWeather ? `${wxData?.current?.temperature_2m ?? '—'}°C · ${getWeatherLabel(wxData?.current?.weather_code ?? 0)}` : 'Rain radar, forecast, history' },
                             ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {/* Toggle switch */}
                                 <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
@@ -6613,6 +6759,110 @@ export default function MapIndex() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: flightSource === 'live' ? '#22c55e' : flightSource === 'mock' ? '#f59e0b' : '#6b7280', boxShadow: flightSource === 'live' ? '0 0 6px #22c55e60' : 'none', animation: layerFlights ? 'tmap-tl-ring 2s infinite' : 'none' }} />
                             <span style={{ fontSize: 9, color: flightSource === 'live' ? '#06b6d4' : '#f59e0b', fontWeight: 600 }}>{flightSource === 'live' ? 'OpenSky LIVE' : flightSource === 'mock' ? 'Mock Data' : 'Connecting...'}</span>
+                        </div>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ WEATHER PANEL ═══ */}
+                {showWeatherPanel && loaded && <div data-panel="weather" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('weather'); }} style={panelStyle('weather', '400px', '#0ea5e9')}>
+                    <PanelHeader id="weather" icon="🌦️" title="Weather Radar" subtitle={wxData ? `${wxData.current?.temperature_2m ?? '—'}°C · ${getWeatherLabel(wxData.current?.weather_code ?? 0)}` : 'Loading...'} color="#0ea5e9" onClose={() => setShowWeatherPanel(false)} extra={<button onClick={() => { setLayerWeather(!layerWeather); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: layerWeather ? '#0ea5e9' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: layerWeather ? 16 : 2, transition: 'left 0.2s' }} /></button>} />
+                    <PanelResizeGrip id="weather" />
+                    {!isPanelMin('weather') && <>
+                    {/* Controls */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, display: 'flex', gap: 4 }}>
+                        <button onClick={() => setWxClickMode(!wxClickMode)} style={{ flex: 1, padding: '6px 0', borderRadius: 5, border: `1.5px solid ${wxClickMode ? '#0ea5e940' : theme.border}`, background: wxClickMode ? '#0ea5e910' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 700, color: wxClickMode ? '#0ea5e9' : theme.textDim }}>{wxClickMode ? '✏️ Click map...' : '📍 Select Location'}</button>
+                        <button onClick={() => { const map = mapRef.current; if (map) { const c = map.getCenter(); setWxSelectedPoint({ lat: c.lat, lng: c.lng }); fetchWeather(c.lat, c.lng); setWxTab('current'); triggerTopLoader(); } }} style={{ flex: 1, padding: '6px 0', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 700, color: theme.textDim }}>🎯 Map Center</button>
+                    </div>
+                    {wxSelectedPoint && <div style={{ padding: '4px 14px', fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono',monospace" }}>📍 {wxSelectedPoint.lat.toFixed(4)}, {wxSelectedPoint.lng.toFixed(4)}{wxData?.elevation ? ` · ${wxData.elevation}m elev` : ''}{wxData?.timezone ? ` · ${wxData.timezone}` : ''}</div>}
+
+                    {/* Rain Radar Controls */}
+                    {wxRadarFrames.length > 0 && <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10` }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 4 }}>RAIN RADAR</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button onClick={() => setWxRadarPlaying(!wxRadarPlaying)} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${wxRadarPlaying ? '#0ea5e940' : theme.border}`, background: wxRadarPlaying ? '#0ea5e910' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: wxRadarPlaying ? '#0ea5e9' : theme.textDim }}>{wxRadarPlaying ? '⏸' : '▶'}</button>
+                            <input type="range" min={0} max={wxRadarFrames.length - 1} value={wxRadarIdx} onChange={e => { setWxRadarIdx(parseInt(e.target.value)); setWxRadarPlaying(false); }} style={{ flex: 1, height: 4, accentColor: '#0ea5e9' }} />
+                            <span style={{ fontSize: 8, fontWeight: 700, color: '#0ea5e9', fontFamily: "'JetBrains Mono',monospace", width: 44, textAlign: 'right' as const }}>{wxRadarFrames[wxRadarIdx] ? new Date(wxRadarFrames[wxRadarIdx].time * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}</span>
+                        </div>
+                    </div>}
+
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        {(['current', 'hourly', 'forecast', 'history'] as const).map(t => <button key={t} onClick={() => { setWxTab(t); if (t === 'history' && !wxHistory && wxSelectedPoint) fetchWxHistory(wxSelectedPoint.lat, wxSelectedPoint.lng); }} style={{ flex: 1, padding: '7px 0', border: 'none', borderBottom: `2px solid ${wxTab === t ? '#0ea5e9' : 'transparent'}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 700, color: wxTab === t ? '#0ea5e9' : theme.textDim, transition: 'all 0.15s' }}>{t === 'current' ? '🌡️ Now' : t === 'hourly' ? '⏱️ Hourly' : t === 'forecast' ? '📅 7-Day' : '📊 History'}</button>)}
+                    </div>
+
+                    {/* Tab content */}
+                    <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {!wxData ? <div style={{ padding: 30, textAlign: 'center' as const }}><div className="tmap-spinner" style={{ width: 24, height: 24, border: `2px solid ${theme.border}`, borderTopColor: '#0ea5e9', borderRadius: '50%', animation: 'tmap-spin 0.7s linear infinite', margin: '0 auto' }} /><div style={{ fontSize: 10, color: theme.textDim, marginTop: 8 }}>Loading weather...</div></div> : <>
+
+                        {/* CURRENT */}
+                        {wxTab === 'current' && wxData.current && <div style={{ padding: '10px 14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                                <span style={{ fontSize: 40 }}>{getWeatherIcon(wxData.current.weather_code, !!wxData.current.is_day)}</span>
+                                <div><div style={{ fontSize: 32, fontWeight: 800, color: theme.text, fontFamily: "'JetBrains Mono',monospace", lineHeight: 1 }}>{wxData.current.temperature_2m}°</div><div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>{getWeatherLabel(wxData.current.weather_code)}</div><div style={{ fontSize: 9, color: theme.textDim }}>Feels like {wxData.current.apparent_temperature}°C</div></div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                                {[{ l: 'Humidity', v: `${wxData.current.relative_humidity_2m}%`, i: '💧' },{ l: 'Wind', v: `${wxData.current.wind_speed_10m} km/h`, i: '💨' },{ l: 'Gusts', v: `${wxData.current.wind_gusts_10m} km/h`, i: '🌪️' },{ l: 'Pressure', v: `${wxData.current.pressure_msl} hPa`, i: '🌡️' },{ l: 'Cloud', v: `${wxData.current.cloud_cover}%`, i: '☁️' },{ l: 'Rain', v: `${wxData.current.precipitation} mm`, i: '🌧️' }].map(k => <div key={k.l} style={{ padding: '6px', borderRadius: 5, border: `1px solid ${theme.border}`, textAlign: 'center' as const }}><div style={{ fontSize: 14 }}>{k.i}</div><div style={{ fontSize: 11, fontWeight: 700, color: theme.text, fontFamily: "'JetBrains Mono',monospace" }}>{k.v}</div><div style={{ fontSize: 7, color: theme.textDim }}>{k.l}</div></div>)}
+                            </div>
+                            <div style={{ marginTop: 8, padding: '6px 8px', borderRadius: 5, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 14 }}>🧭</span>
+                                <div style={{ flex: 1 }}><div style={{ fontSize: 10, fontWeight: 600, color: theme.text }}>Wind Direction: {wxData.current.wind_direction_10m}°</div><div style={{ fontSize: 9, color: theme.textDim }}>Surface pressure: {wxData.current.surface_pressure} hPa</div></div>
+                                <div style={{ width: 24, height: 24, borderRadius: '50%', border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ fontSize: 10, transform: `rotate(${wxData.current.wind_direction_10m}deg)` }}>↑</div></div>
+                            </div>
+                        </div>}
+
+                        {/* HOURLY */}
+                        {wxTab === 'hourly' && wxData.hourly && <div style={{ padding: '8px 14px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+                                {wxData.hourly.map((h: any, i: number) => { const hr = h.time?.split('T')[1]?.slice(0, 5) || `${i}:00`; return <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, background: i % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
+                                    <span style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, width: 32, fontFamily: "'JetBrains Mono',monospace" }}>{hr}</span>
+                                    <span style={{ fontSize: 14, width: 20, textAlign: 'center' as const }}>{getWeatherIcon(h.weather_code ?? 0)}</span>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: theme.text, width: 32, fontFamily: "'JetBrains Mono',monospace" }}>{h.temperature_2m}°</span>
+                                    <div style={{ flex: 1, height: 3, borderRadius: 2, background: `${theme.border}30`, overflow: 'hidden' }}><div style={{ width: `${h.cloud_cover || 0}%`, height: '100%', background: '#94a3b8', borderRadius: 2 }} /></div>
+                                    <span style={{ fontSize: 8, color: '#0ea5e9', width: 28, textAlign: 'right' as const }}>{h.precipitation_probability ?? 0}%</span>
+                                    <span style={{ fontSize: 8, color: theme.textDim, width: 36, textAlign: 'right' as const }}>{h.wind_speed_10m}km/h</span>
+                                </div>; })}
+                            </div>
+                        </div>}
+
+                        {/* 7-DAY FORECAST */}
+                        {wxTab === 'forecast' && wxData.daily?.time && <div style={{ padding: '8px 14px' }}>
+                            {wxData.daily.time.map((d: string, i: number) => { const dayName = new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); const tMax = wxData.daily.temperature_2m_max?.[i]; const tMin = wxData.daily.temperature_2m_min?.[i]; const code = wxData.daily.weather_code?.[i] ?? 0; const precip = wxData.daily.precipitation_sum?.[i] ?? 0; const wind = wxData.daily.wind_speed_10m_max?.[i] ?? 0; const uv = wxData.daily.uv_index_max?.[i] ?? 0; return <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 6px', borderRadius: 5, borderBottom: `1px solid ${theme.border}06` }}>
+                                <span style={{ fontSize: 18, width: 24, textAlign: 'center' as const }}>{getWeatherIcon(code)}</span>
+                                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 10, fontWeight: 700, color: theme.text }}>{dayName}</div><div style={{ fontSize: 8, color: theme.textDim }}>{getWeatherLabel(code)}</div></div>
+                                <div style={{ textAlign: 'right' as const, flexShrink: 0 }}><span style={{ fontSize: 12, fontWeight: 800, color: theme.text, fontFamily: "'JetBrains Mono',monospace" }}>{tMax}°</span><span style={{ fontSize: 10, color: theme.textDim, fontFamily: "'JetBrains Mono',monospace" }}> / {tMin}°</span></div>
+                                <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 1, flexShrink: 0, width: 50 }}>
+                                    {precip > 0 && <span style={{ fontSize: 7, color: '#0ea5e9' }}>🌧️ {precip}mm</span>}
+                                    <span style={{ fontSize: 7, color: theme.textDim }}>💨 {wind}km/h</span>
+                                    {uv > 0 && <span style={{ fontSize: 7, color: uv > 6 ? '#ef4444' : uv > 3 ? '#f59e0b' : '#22c55e' }}>UV {uv}</span>}
+                                </div>
+                            </div>; })}
+                        </div>}
+
+                        {/* HISTORY */}
+                        {wxTab === 'history' && <div style={{ padding: '8px 14px' }}>
+                            {wxHistLoading ? <div style={{ padding: 20, textAlign: 'center' as const }}><div className="tmap-spinner" style={{ width: 20, height: 20, border: `2px solid ${theme.border}`, borderTopColor: '#0ea5e9', borderRadius: '50%', animation: 'tmap-spin 0.7s linear infinite', margin: '0 auto' }} /><div style={{ fontSize: 9, color: theme.textDim, marginTop: 6 }}>Loading 14-day history...</div></div>
+                            : !wxHistory?.daily?.time ? <div style={{ padding: 20, textAlign: 'center' as const }}><div style={{ fontSize: 24, opacity: 0.15 }}>📊</div><div style={{ fontSize: 10, color: theme.textSecondary, marginTop: 4 }}>No historical data available</div><button onClick={() => { if (wxSelectedPoint) fetchWxHistory(wxSelectedPoint.lat, wxSelectedPoint.lng); }} style={{ marginTop: 8, padding: '5px 12px', borderRadius: 4, border: `1px solid #0ea5e930`, background: '#0ea5e908', color: '#0ea5e9', fontSize: 9, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>🔄 Load History</button></div>
+                            : <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 4 }}>LAST 14 DAYS</div>
+                                {wxHistory.daily.time.map((d: string, i: number) => { const dayName = new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); const tMax = wxHistory.daily.temperature_2m_max?.[i]; const tMin = wxHistory.daily.temperature_2m_min?.[i]; const code = wxHistory.daily.weather_code?.[i] ?? 0; const precip = wxHistory.daily.precipitation_sum?.[i] ?? 0; const wind = wxHistory.daily.wind_speed_10m_max?.[i] ?? 0; return <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 4, background: i % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
+                                    <span style={{ fontSize: 14, width: 20, textAlign: 'center' as const }}>{getWeatherIcon(code)}</span>
+                                    <span style={{ fontSize: 9, fontWeight: 600, color: theme.text, flex: 1 }}>{dayName}</span>
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: theme.text, fontFamily: "'JetBrains Mono',monospace" }}>{tMax}°/{tMin}°</span>
+                                    <span style={{ fontSize: 8, color: precip > 0 ? '#0ea5e9' : theme.textDim, width: 40, textAlign: 'right' as const }}>{precip > 0 ? `${precip}mm` : '—'}</span>
+                                    <span style={{ fontSize: 8, color: theme.textDim, width: 36, textAlign: 'right' as const }}>{wind}km/h</span>
+                                </div>; })}
+                            </div>}
+                        </div>}
+                        </>}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{wxRadarFrames.length} radar frames</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: wxSource === 'live' ? '#22c55e' : '#f59e0b', boxShadow: wxSource === 'live' ? '0 0 6px #22c55e60' : 'none' }} />
+                            <span style={{ fontSize: 9, color: '#0ea5e9', fontWeight: 600 }}>Open-Meteo + RainViewer</span>
                         </div>
                     </div>
                     </>}

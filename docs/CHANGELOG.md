@@ -1,5 +1,64 @@
 # Changelog
 
+## 0.25.58 - 2026-03-29
+
+### Implemented — Weather Radar Layer (/map → Layers)
+- **Weather Radar** layer with live precipitation radar, current conditions, hourly forecast, 7-day forecast, and 14-day historical weather lookup — powered by Open-Meteo (weather) and RainViewer (radar), both free, no API key.
+
+#### Data Sources (100% Open Source, No API Key)
+| Source | Endpoint | Data |
+|---|---|---|
+| **Open-Meteo** | `api.open-meteo.com/v1/forecast` | Current conditions, hourly forecast (24h), 7-day daily forecast |
+| **Open-Meteo Archive** | `archive-api.open-meteo.com/v1/archive` | Historical daily weather (up to years back) |
+| **RainViewer** | `api.rainviewer.com/public/weather-maps.json` | Precipitation radar tiles + infrared satellite/cloud tiles |
+
+#### Map Rendering
+- **Rain radar overlay**: RainViewer precipitation tiles at 60% opacity, color-coded (green→yellow→red→purple).
+- **Cloud/satellite overlay**: RainViewer infrared satellite tiles at 25% opacity, showing cloud cover.
+- **Radar animation**: Play/pause button + timeline slider scrubbing through past radar frames + nowcast (future prediction).
+- **Weather marker**: Click any point on map → blue 🌡️ marker placed, weather fetched for that location.
+- Works on all 2D tiles and 3D modes.
+
+#### Weather Panel — 4 Tabs
+
+**🌡️ Now (Current Conditions)**
+- Large weather icon + temperature (°C) + description + feels-like temperature.
+- 6 KPI cards: Humidity (%), Wind Speed (km/h), Wind Gusts (km/h), Pressure (hPa), Cloud Cover (%), Precipitation (mm).
+- Wind direction compass indicator + surface pressure.
+
+**⏱️ Hourly (Next 24 Hours)**
+- Hour-by-hour rows: time, weather icon, temperature, cloud cover bar, precipitation probability %, wind speed.
+
+**📅 7-Day Forecast**
+- Daily rows: weather icon, day name, description, max/min temperature, precipitation sum, wind max, UV index (color-coded: green/amber/red).
+
+**📊 History (Last 14 Days)**
+- Historical daily data: weather icon, date, max/min temp, precipitation, wind.
+- Fetches from Open-Meteo Archive API on demand.
+- "Load History" button for on-demand fetch.
+
+#### Panel Controls
+- **📍 Select Location**: Click on map to pick any point for weather data.
+- **🎯 Map Center**: Quick-fetch weather for current map center.
+- **Rain Radar**: Play/pause animation + timeline slider with timestamp display.
+- Coordinate display with elevation and timezone.
+
+#### Backend
+- `app/Http/Controllers/MockApi/WeatherController.php` (161 lines) — Laravel proxy.
+- `GET /mock-api/weather?lat=45.81&lng=15.98` → current + hourly + 7-day forecast.
+- `GET /mock-api/weather/history?lat=45.81&lng=15.98&start=2026-03-15&end=2026-03-28` → daily historical data.
+- `GET /mock-api/weather/radar` → RainViewer radar frame timestamps + tile host URL.
+- Caching: weather 5min, history 1h, radar 2min.
+- Hourly data compacted to 24 hours.
+- WMO weather code decoder with day/night icons (29 weather conditions).
+- Mock weather fallback when API unreachable.
+
+#### WMO Weather Codes Supported
+Clear sky, Mainly clear, Partly cloudy, Overcast, Fog, Rime fog, Light/Moderate/Dense drizzle, Slight/Moderate/Heavy rain, Slight/Moderate/Heavy snowfall, Rain showers (slight/moderate/violent), Snow showers, Thunderstorm, Thunderstorm with hail.
+
+#### Note on Network Domains
+`api.open-meteo.com`, `archive-api.open-meteo.com`, `api.rainviewer.com`, and `tilecache.rainviewer.com` must be in network allowed domains for live data. Without them, mock weather data is returned.
+
 ## 0.25.57 - 2026-03-29
 
 ### Enhanced — Route Planner / Directions (/map → Tools)

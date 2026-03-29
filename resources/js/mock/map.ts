@@ -297,3 +297,39 @@ export const MOCK_POIS: POI[] = [
     { id: 26, name: 'Veleposlanstvo SAD', lat: 45.8189, lng: 15.9812, category: 'embassy', subcategory: 'embassy', address: 'Ulica Thomasa Jeffersona 2', operator: 'United States' },
     { id: 27, name: 'Njemačko veleposlanstvo', lat: 45.8155, lng: 15.9845, category: 'embassy', subcategory: 'embassy', address: 'Ulica grada Vukovara 64', operator: 'Germany' },
 ];
+
+// ═══ WEATHER (Open-Meteo + RainViewer) ═══
+export const wmoWeatherCodes: Record<number, { label: string; icon: string; day: string; night: string }> = {
+    0: { label: 'Clear sky', icon: '☀️', day: '☀️', night: '🌙' },
+    1: { label: 'Mainly clear', icon: '🌤️', day: '🌤️', night: '🌙' },
+    2: { label: 'Partly cloudy', icon: '⛅', day: '⛅', night: '☁️' },
+    3: { label: 'Overcast', icon: '☁️', day: '☁️', night: '☁️' },
+    45: { label: 'Fog', icon: '🌫️', day: '🌫️', night: '🌫️' },
+    48: { label: 'Depositing rime fog', icon: '🌫️', day: '🌫️', night: '🌫️' },
+    51: { label: 'Light drizzle', icon: '🌦️', day: '🌦️', night: '🌧️' },
+    53: { label: 'Moderate drizzle', icon: '🌦️', day: '🌦️', night: '🌧️' },
+    55: { label: 'Dense drizzle', icon: '🌧️', day: '🌧️', night: '🌧️' },
+    61: { label: 'Slight rain', icon: '🌦️', day: '🌦️', night: '🌧️' },
+    63: { label: 'Moderate rain', icon: '🌧️', day: '🌧️', night: '🌧️' },
+    65: { label: 'Heavy rain', icon: '🌧️', day: '🌧️', night: '🌧️' },
+    71: { label: 'Slight snowfall', icon: '🌨️', day: '🌨️', night: '🌨️' },
+    73: { label: 'Moderate snowfall', icon: '🌨️', day: '🌨️', night: '🌨️' },
+    75: { label: 'Heavy snowfall', icon: '❄️', day: '❄️', night: '❄️' },
+    80: { label: 'Slight rain showers', icon: '🌦️', day: '🌦️', night: '🌧️' },
+    81: { label: 'Moderate rain showers', icon: '🌧️', day: '🌧️', night: '🌧️' },
+    82: { label: 'Violent rain showers', icon: '⛈️', day: '⛈️', night: '⛈️' },
+    85: { label: 'Slight snow showers', icon: '🌨️', day: '🌨️', night: '🌨️' },
+    86: { label: 'Heavy snow showers', icon: '❄️', day: '❄️', night: '❄️' },
+    95: { label: 'Thunderstorm', icon: '⛈️', day: '⛈️', night: '⛈️' },
+    96: { label: 'Thunderstorm with hail', icon: '⛈️', day: '⛈️', night: '⛈️' },
+    99: { label: 'Thunderstorm with heavy hail', icon: '⛈️', day: '⛈️', night: '⛈️' },
+};
+
+export const getWeatherIcon = (code: number, isDay: boolean = true): string => {
+    const entry = wmoWeatherCodes[code] || wmoWeatherCodes[0];
+    return isDay ? entry.day : entry.night;
+};
+
+export const getWeatherLabel = (code: number): string => {
+    return (wmoWeatherCodes[code] || wmoWeatherCodes[0]).label;
+};
