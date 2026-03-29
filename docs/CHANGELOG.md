@@ -1,5 +1,79 @@
 # Changelog
 
+## 0.25.59 - 2026-03-29
+
+### Implemented — UAV Fleet Management Page (/uav)
+Full CRUD page for managing unmanned aerial vehicles — responsive card grid, create/edit form modal (7 sections), detail modal (5 tabs), delete confirmation, search/sort/filter.
+
+#### Page Structure
+- **Header**: title, description, "+ Add UAV" button.
+- **6 KPI cards**: Total Fleet, Operational, Deployed, Standby, Maintenance, Total Flight Hours. Click KPI to filter by status.
+- **Filter bar**: Full-text search (callsign, model, operator, serial, operation), 6 type filter buttons (icons), sort dropdown (callsign/status/hours/battery/lastFlight), asc/desc toggle.
+- **Responsive card grid**: `grid-template-columns: repeat(auto-fill, minmax(340px, 1fr))`. Single column on mobile.
+
+#### UAV Cards
+- Type icon (colored circle), callsign (bold), status badge, manufacturer + model.
+- Edit (✏️) and Delete (🗑️) quick-action buttons with hover effects.
+- Type badge + Class badge.
+- 3-column stats: Flight Hours, Total Flights, Battery %.
+- Operator + Operation assignment line.
+- Last flight date.
+- 6 capability dots (GPS, RTK, Thermal, LiDAR, NVG, EW) with colored glow for active capabilities.
+
+#### Create/Edit Form Modal (7 sections)
+| Section | Fields |
+|---|---|
+| Identification | Callsign*, Model*, Manufacturer, Serial Number, Type (6 options), Class (5 options), Status (6 options), Firmware |
+| Physical Specs | Weight (kg), Max Payload (kg), Wingspan/Diagonal (cm), Endurance (min), Max Speed, Cruise Speed, Max Altitude, Max Range |
+| Battery / Power | Battery Type, Capacity (mAh), Voltage (V), Charge Cycles |
+| Sensors & Payload | 6 checkboxes (GPS, RTK, Thermal, LiDAR, Night Vision, EW), Camera Resolution, Gimbal Type |
+| Communication | Data Link, Frequency, Max Data Rate, Encrypted Link checkbox |
+| Assignment | Operator, Operation, Team, Home Base, Acquired date |
+| Notes | Multi-line textarea |
+
+#### Detail Modal (5 tabs)
+| Tab | Content |
+|---|---|
+| 📊 Overview | 3 KPI cards (hours, flights, battery), class, serial, firmware, home base, operator/operation/team, last flight, acquired date, notes |
+| 📐 Specs | Physical (weight, payload, wingspan), Performance (speeds, altitude, range, endurance), Battery (type, capacity, voltage, cycles, level bar) |
+| 🎯 Sensors | 6 capability status indicators (green/gray), camera resolution, gimbal type, sensor package list |
+| 📡 Comms | Data link, frequency, encrypted status, video feed, max data rate |
+| 📋 History | Total hours, total flights, last flight, last/next maintenance, battery cycles, acquisition date |
+- Footer: Edit + Delete buttons.
+
+#### Delete Confirmation
+- ⚠️ warning icon, UAV callsign in red, "cannot be undone" warning, Cancel + Remove buttons.
+
+#### 10 Mock UAVs
+| # | Callsign | Model | Type | Class | Status |
+|---|---|---|---|---|---|
+| 1 | HAWK-1 | Bayraktar Mini | Fixed-Wing | Tactical | Operational |
+| 2 | SHADOW-3 | DJI Matrice 350 RTK | Quadcopter | Surveillance | Deployed |
+| 3 | EAGLE-7 | Wingtra WingtraOne GEN II | VTOL | Reconnaissance | Operational |
+| 4 | REAPER-2 | Freefly Alta X | Octocopter | Cargo | Maintenance |
+| 5 | GHOST-1 | FLIR Black Hornet 4 | Micro | Reconnaissance | Standby |
+| 6 | CONDOR-4 | senseFly eBee X | Fixed-Wing | Surveillance | Operational |
+| 7 | PHANTOM-5 | DJI Mavic 3 Enterprise | Quadcopter | Surveillance | Operational |
+| 8 | VIPER-2 | Skydio X10 | Quadcopter | Tactical | Standby |
+| 9 | RELAY-1 | Inspired Flight IF1200A | Hexacopter | Communication | Operational |
+| 10 | RAPTOR-1 | AeroVironment Puma 3 AE | Fixed-Wing | Tactical | Retired |
+
+Each UAV has realistic specs: weight, payload, speeds, altitude, range, endurance, battery details, sensor package, communication parameters, and operational notes.
+
+#### Files Created
+- `resources/js/pages/UAV/Index.tsx` (386 lines)
+- `resources/js/mock/uav.ts` (225 lines) — types, interfaces, configs, mock data
+- `resources/css/pages/uav.css` (12 lines) — grid, card, battery, sensor tag styles
+- `resources/js/tests/UAV.test.ts` (176 lines) — mock data integrity tests
+
+#### Wiring
+- Route: `GET /uav` → `UAV/Index` (routes/web.php)
+- Sidebar: drone icon + "UAV Fleet" added to Subjects section
+- CSS: `@import './pages/uav.css'` added to app.css
+
+#### Note
+Drone operations on the map (flight planning, tracking, telemetry) will be implemented separately on the /map page.
+
 ## 0.25.58 - 2026-03-29
 
 ### Implemented — Weather Radar Layer (/map → Layers)

@@ -1,0 +1,12 @@
+/* ═══ UAV / DRONE MANAGEMENT ═══ */
+.uav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.uav-card { border-radius: 10px; border: 1px solid var(--ax-border); background: var(--ax-bg-card); transition: all 0.15s; cursor: pointer; overflow: hidden; }
+.uav-card:hover { border-color: var(--ax-accent); box-shadow: 0 4px 20px rgba(59,130,246,0.08); transform: translateY(-1px); }
+.uav-stat-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+.uav-sensor-tag { font-size: 8px; font-weight: 600; padding: 2px 6px; border-radius: 3px; background: rgba(59,130,246,0.08); color: var(--ax-accent); border: 1px solid rgba(59,130,246,0.15); }
+.uav-bat { display: flex; align-items: center; gap: 5px; }
+.uav-bat-shell { width: 32px; height: 14px; border-radius: 3px; border: 1.5px solid var(--ax-text-dim); position: relative; overflow: hidden; }
+.uav-bat-shell::after { content: ''; position: absolute; right: -5px; top: 3px; width: 3px; height: 6px; border-radius: 0 2px 2px 0; background: var(--ax-text-dim); }
+.uav-bat-fill { height: 100%; border-radius: 1px; transition: width 0.3s; }
+@media (max-width: 960px) { .uav-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .uav-grid { gap: 8px; } .uav-card { border-radius: 8px; } }
