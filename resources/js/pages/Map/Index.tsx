@@ -128,26 +128,28 @@ function MapBtn({ onClick, title, children, active }: { onClick: () => void; tit
 export default function MapIndex() {
     const { props } = usePage<any>();
     const googleMapsKey = props?.app?.googleMapsKey || (window as any).GOOGLE_MAPS_API_KEY || '';
-    const deckOverlayRef = useRef<any>(null);
-    const deckLoadingRef = useRef(false);
+    const googleMapRef = useRef<any>(null);
+    const googleMapDivRef = useRef<HTMLDivElement | null>(null);
+    const googleMapsLoadedRef = useRef(false);
 
-    // Load deck.gl from CDN for Google Photorealistic 3D Tiles
-    const loadDeckGL = useCallback(async (): Promise<any> => {
-        if ((window as any).deck) return (window as any).deck;
-        if (deckLoadingRef.current) { await new Promise(r => setTimeout(r, 500)); return (window as any).deck; }
-        deckLoadingRef.current = true;
-        const load = (url: string) => new Promise<void>((resolve, reject) => {
-            if (document.querySelector(`script[src="${url}"]`)) { resolve(); return; }
-            const s = document.createElement('script'); s.src = url; s.onload = () => resolve(); s.onerror = reject; document.head.appendChild(s);
-        });
-        try {
-            await load('https://unpkg.com/deck.gl@9.1.4/dist.min.js');
-            // Wait for global to be available
+    // Load Google Maps JavaScript API
+    const loadGoogleMapsAPI = useCallback(async (apiKey: string): Promise<boolean> => {
+        if ((window as any).google?.maps?.Map) return true;
+        if (googleMapsLoadedRef.current) {
             let attempts = 0;
-            while (!(window as any).deck && attempts < 20) { await new Promise(r => setTimeout(r, 100)); attempts++; }
-        } catch (e) { console.warn('Failed to load deck.gl from CDN:', e); }
-        deckLoadingRef.current = false;
-        return (window as any).deck;
+            while (!(window as any).google?.maps?.Map && attempts < 30) { await new Promise(r => setTimeout(r, 200)); attempts++; }
+            return !!(window as any).google?.maps?.Map;
+        }
+        googleMapsLoadedRef.current = true;
+        return new Promise((resolve) => {
+            const cbName = '_gmapsReady' + Date.now();
+            (window as any)[cbName] = () => { resolve(true); delete (window as any)[cbName]; };
+            const s = document.createElement('script');
+            s.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=${cbName}&v=weekly&loading=async`;
+            s.async = true; s.defer = true;
+            s.onerror = () => { resolve(false); googleMapsLoadedRef.current = false; };
+            document.head.appendChild(s);
+        });
     }, []);
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
@@ -3612,7 +3614,7 @@ export default function MapIndex() {
             try { if (map.getLayer('terrain-buildings')) map.removeLayer('terrain-buildings'); } catch {}
             try { if (map.getSource('terrain-buildings-src')) map.removeSource('terrain-buildings-src'); } catch {}
             // Cleanup realistic mode layers
-            try { if (deckOverlayRef.current) { map.removeControl(deckOverlayRef.current); deckOverlayRef.current = null; } } catch {}
+            try { if (googleMapRef.current) { googleMapRef.current = null; } if (googleMapDivRef.current) { googleMapDivRef.current.style.display = 'none'; } } catch {}
             try { if (map.getLayer('realistic-buildings-shadow')) map.removeLayer('realistic-buildings-shadow'); } catch {}
             try { if (map.getLayer('realistic-buildings')) map.removeLayer('realistic-buildings'); } catch {}
             try { if (map.getSource('realistic-buildings-src')) map.removeSource('realistic-buildings-src'); } catch {}
@@ -3670,7 +3672,7 @@ export default function MapIndex() {
                 const m = mapRef.current;
                 if (!m || mapVersionRef.current !== ver) return;
 
-                // Get Google Maps API key
+                // Get API key
                 let apiKey = googleMapsKey;
                 if (!apiKey) {
                     try {
@@ -3680,48 +3682,52 @@ export default function MapIndex() {
                 }
 
                 if (apiKey) {
-                    // ═══ Google Photorealistic 3D Tiles via deck.gl ═══
-                    try {
-                        const dk = await loadDeckGL();
-                        if (!dk || !dk.Tile3DLayer || !dk.MapboxOverlay) {
-                            console.warn('deck.gl not fully loaded, falling back');
-                            throw new Error('deck.gl unavailable');
+                    // ═══ Google Maps JS API — Photorealistic 3D Tiles ═══
+                    const loaded = await loadGoogleMapsAPI(apiKey);
+                    if (loaded && (window as any).google?.maps?.Map && mapVersionRef.current === ver) {
+                        try {
+                            // Create overlay div on top of MapLibre canvas
+                            const mapEl = mapContainer.current?.parentElement;
+                            if (!mapEl) throw new Error('No map container');
+
+                            let gDiv = googleMapDivRef.current;
+                            if (!gDiv) {
+                                gDiv = document.createElement('div');
+                                gDiv.id = 'google-3d-overlay';
+                                gDiv.style.cssText = 'position:absolute;inset:0;z-index:1;';
+                                mapEl.style.position = 'relative';
+                                mapEl.appendChild(gDiv);
+                                googleMapDivRef.current = gDiv;
+                            }
+                            gDiv.style.display = 'block';
+
+                            // Get current MapLibre viewport
+                            const center = m.getCenter();
+                            const zoom = Math.max(m.getZoom() || 16, 16);
+
+                            // Initialize Google Map with 3D tilt (enables Photorealistic 3D)
+                            const gMap = new (window as any).google.maps.Map(gDiv, {
+                                center: { lat: center.lat, lng: center.lng },
+                                zoom: zoom,
+                                tilt: 67.5,
+                                heading: m.getBearing() || -20,
+                                mapTypeId: 'satellite',
+                                mapId: 'ARGUX_3D_REALISTIC',
+                                disableDefaultUI: true,
+                                zoomControl: false,
+                                mapTypeControl: false,
+                                streetViewControl: false,
+                                fullscreenControl: false,
+                                gestureHandling: 'greedy',
+                                restriction: undefined,
+                            });
+                            googleMapRef.current = gMap;
+
+                            console.log('[ARGUX] Google Photorealistic 3D Tiles loaded');
+                            return;
+                        } catch (e) {
+                            console.warn('Google Maps 3D failed:', e);
                         }
-
-                        // Remove existing overlay if any
-                        if (deckOverlayRef.current) {
-                            try { m.removeControl(deckOverlayRef.current); } catch {}
-                            deckOverlayRef.current = null;
-                        }
-
-                        const GOOGLE_3D_TILES_URL = `https://tile.googleapis.com/v1/3dtiles/root.json?key=${apiKey}`;
-
-                        const tile3DLayer = new dk.Tile3DLayer({
-                            id: 'google-photorealistic-3d',
-                            data: GOOGLE_3D_TILES_URL,
-                            onTilesetLoad: (tileset: any) => {
-                                if (tileset?.options) {
-                                    tileset.options.onTraversalComplete = (selectedTiles: any[]) => selectedTiles;
-                                }
-                            },
-                            operation: 'terrain+draw',
-                        });
-
-                        const overlay = new dk.MapboxOverlay({
-                            interleaved: true,
-                            layers: [tile3DLayer],
-                        });
-
-                        m.addControl(overlay);
-                        deckOverlayRef.current = overlay;
-
-                        // Set camera for 3D view
-                        m.easeTo({ pitch: 65, zoom: Math.max(m.getZoom() || 16, 16), bearing: m.getBearing() || -20, duration: 1200 });
-
-                        console.log('[ARGUX] Google Photorealistic 3D Tiles loaded');
-                        return;
-                    } catch (e) {
-                        console.warn('Google 3D Tiles failed, falling back to satellite + buildings:', e);
                     }
                 }
 
@@ -4240,7 +4246,7 @@ export default function MapIndex() {
                                 ); })}
                             </div>
                             {active3D && <div style={{ marginTop: 8, padding: '5px 8px', borderRadius: 4, background: active3D === '3d-realistic' ? 'rgba(34,197,94,0.06)' : 'rgba(139,92,246,0.06)', border: `1px solid ${active3D === '3d-realistic' ? 'rgba(34,197,94,0.15)' : 'rgba(139,92,246,0.15)'}`, fontSize: 9, color: active3D === '3d-realistic' ? 'rgba(34,197,94,0.7)' : 'rgba(139,92,246,0.7)' }}>
-                                {active3D === '3d-realistic' ? <>🌏 {deckOverlayRef.current ? 'Google Photorealistic 3D Tiles' : 'Satellite + 3D Buildings'}</> : <>3D mode: {tiles3D.find(t => t.id === active3D)?.name}</>}. Click again to disable.
+                                {active3D === '3d-realistic' ? <>🌏 {googleMapRef.current ? 'Google Photorealistic 3D Tiles' : 'Satellite + 3D Buildings'}</> : <>3D mode: {tiles3D.find(t => t.id === active3D)?.name}</>}. Click again to disable.
                             </div>}
 
                             {/* Cinema Mode */}
