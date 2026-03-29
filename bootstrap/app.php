@@ -10,11 +10,22 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
     )
+    
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \App\Http\Middleware\SetLocale::class,
+                 \App\Http\Middleware\PermissiveCSP::class,
+            
+            
         ]);
+
+           $middleware->append([
+        \Illuminate\Http\Middleware\HandleCors::class,
+         \Illuminate\Http\Middleware\TrustProxies::class,
+     
+    ]);
+
     })
     ->withExceptions(function (Exceptions $exceptions) {
 

@@ -29,7 +29,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https: http:; connect-src 'self' https: http: ws: wss:; font-src 'self' data: https:; media-src 'self' blob: https: http:; worker-src 'self' blob:; frame-src 'self' https:; child-src 'self' blob:",
+      "csp": "default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss:; img-src * 'self' data: blob: https: http:; connect-src * 'self' https: http: ws: wss: data: blob:; script-src * 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src * 'self' 'unsafe-inline'; font-src * 'self' data: https: http:; media-src * 'self' blob: https: http: data:; worker-src * 'self' blob:; frame-src * 'self' https: http: blob: data:; child-src * 'self' blob:",
       "dangerousRemoteDomainIpcAccess": [
         {
           "scheme": "https",

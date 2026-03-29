@@ -128,8 +128,27 @@ function MapBtn({ onClick, title, children, active }: { onClick: () => void; tit
 export default function MapIndex() {
     const { props } = usePage<any>();
     const googleMapsKey = props?.app?.googleMapsKey || (window as any).GOOGLE_MAPS_API_KEY || '';
-    const [gmapsConfig, setGmapsConfig] = useState<{ hasKey: boolean; apiKey: string | null; endpoints: Record<string, string> } | null>(null);
-    const [gmapsSession, setGmapsSession] = useState<string | null>(null);
+    const deckOverlayRef = useRef<any>(null);
+    const deckLoadingRef = useRef(false);
+
+    // Load deck.gl from CDN for Google Photorealistic 3D Tiles
+    const loadDeckGL = useCallback(async (): Promise<any> => {
+        if ((window as any).deck) return (window as any).deck;
+        if (deckLoadingRef.current) { await new Promise(r => setTimeout(r, 500)); return (window as any).deck; }
+        deckLoadingRef.current = true;
+        const load = (url: string) => new Promise<void>((resolve, reject) => {
+            if (document.querySelector(`script[src="${url}"]`)) { resolve(); return; }
+            const s = document.createElement('script'); s.src = url; s.onload = () => resolve(); s.onerror = reject; document.head.appendChild(s);
+        });
+        try {
+            await load('https://unpkg.com/deck.gl@9.1.4/dist.min.js');
+            // Wait for global to be available
+            let attempts = 0;
+            while (!(window as any).deck && attempts < 20) { await new Promise(r => setTimeout(r, 100)); attempts++; }
+        } catch (e) { console.warn('Failed to load deck.gl from CDN:', e); }
+        deckLoadingRef.current = false;
+        return (window as any).deck;
+    }, []);
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const fpsRef = useRef<{ frames: number; lastTime: number; fps: number }>({ frames: 0, lastTime: performance.now(), fps: 0 });
@@ -3589,12 +3608,24 @@ export default function MapIndex() {
             try { if (map.getSource('3d-buildings-src')) map.removeSource('3d-buildings-src'); } catch {}
             try { map.setTerrain(null); } catch {}
             try { if (map.getSource('terrain-dem')) map.removeSource('terrain-dem'); } catch {}
+            // Cleanup terrain mode layers
+            try { if (map.getLayer('terrain-buildings')) map.removeLayer('terrain-buildings'); } catch {}
+            try { if (map.getSource('terrain-buildings-src')) map.removeSource('terrain-buildings-src'); } catch {}
             // Cleanup realistic mode layers
+            try { if (deckOverlayRef.current) { map.removeControl(deckOverlayRef.current); deckOverlayRef.current = null; } } catch {}
             try { if (map.getLayer('realistic-buildings-shadow')) map.removeLayer('realistic-buildings-shadow'); } catch {}
             try { if (map.getLayer('realistic-buildings')) map.removeLayer('realistic-buildings'); } catch {}
             try { if (map.getSource('realistic-buildings-src')) map.removeSource('realistic-buildings-src'); } catch {}
             try { if (map.getLayer('realistic-satellite-layer')) map.removeLayer('realistic-satellite-layer'); } catch {}
             try { if (map.getSource('realistic-satellite')) map.removeSource('realistic-satellite'); } catch {}
+            // Restore base tile URL after realistic mode swapped it to satellite
+            try {
+                const curTile = tiles2D.find(t => t.id === activeTile);
+                if (curTile?.url) {
+                    const src = map.getSource('base-tiles') as any;
+                    if (src?.setTiles) src.setTiles([curTile.url]);
+                }
+            } catch {}
         }
 
         if (active3D === '3d-buildings') {
@@ -3613,122 +3644,115 @@ export default function MapIndex() {
         } else if (active3D === '3d-terrain') {
             if (map._isGlobe) { rebuildMapForFlat(); return; }
             try {
-                if (!map.getSource('terrain-dem')) {
-                    map.addSource('terrain-dem', { type: 'raster-dem', tiles: ['https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png'], tileSize: 256 });
+                // Switch to satellite/topo base for terrain feel
+                const topoUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+                try { const src = map.getSource('base-tiles') as any; if (src?.setTiles) src.setTiles([topoUrl]); } catch {}
+
+                // Add 3D buildings for depth
+                if (!map.getSource('terrain-buildings-src')) {
+                    map.addSource('terrain-buildings-src', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
                 }
-                const applyTerrain = () => {
-                    if (mapVersionRef.current !== ver) return; // map was replaced
-                    try {
-                        mapRef.current?.setTerrain({ source: 'terrain-dem', exaggeration: 1.5 });
-                        mapRef.current?.easeTo({ pitch: 60, zoom: Math.max(mapRef.current.getZoom(), 10), duration: 800 });
-                    } catch (e) { console.warn('Terrain apply failed:', e); }
-                };
-                if (map.isSourceLoaded('terrain-dem')) applyTerrain();
-                else { map.once('sourcedata', (e: any) => { if (e.sourceId === 'terrain-dem' && e.isSourceLoaded) applyTerrain(); }); setTimeout(applyTerrain, 500); }
+                if (!map.getLayer('terrain-buildings')) {
+                    map.addLayer({ id: 'terrain-buildings', source: 'terrain-buildings-src', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 14, paint: {
+                        'fill-extrusion-color': '#2a3a5c',
+                        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10],
+                        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+                        'fill-extrusion-opacity': 0.7,
+                    }});
+                }
+                map.easeTo({ pitch: 60, zoom: Math.max(map.getZoom(), 10), duration: 800 });
             } catch (e) { console.warn('3D Terrain failed:', e); }
 
         } else if (active3D === '3d-realistic') {
             if (map._isGlobe) { rebuildMapForFlat(); return; }
-            try {
-                // Fetch Google Maps config from backend (reads API key from .env or credentials.json)
-                const setupGoogleTiles = async () => {
-                    let tileUrl = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
-                    let hasApiKey = false;
 
+            const setup3DRealistic = async () => {
+                const m = mapRef.current;
+                if (!m || mapVersionRef.current !== ver) return;
+
+                // Get Google Maps API key
+                let apiKey = googleMapsKey;
+                if (!apiKey) {
                     try {
-                        const cfgRes = await fetch('/mock-api/google-maps/config');
-                        if (cfgRes.ok) {
-                            const cfg = await cfgRes.json();
-                            setGmapsConfig(cfg);
-                            hasApiKey = cfg.hasKey;
+                        const res = await fetch('/mock-api/google-maps/config');
+                        if (res.ok) { const cfg = await res.json(); apiKey = cfg.apiKey || ''; }
+                    } catch {}
+                }
 
-                            if (cfg.hasKey && cfg.apiKey) {
-                                // Create session for optimal tile serving
-                                try {
-                                    const sessRes = await fetch('/mock-api/google-maps/session', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '' },
-                                        body: JSON.stringify({ mapType: 'satellite' }),
-                                    });
-                                    if (sessRes.ok) {
-                                        const sessData = await sessRes.json();
-                                        if (sessData.session) {
-                                            setGmapsSession(sessData.session);
-                                            tileUrl = `https://tile.googleapis.com/v1/2dtiles/{z}/{x}/{y}?session=${sessData.session}&key=${cfg.apiKey}`;
-                                        } else {
-                                            tileUrl = cfg.endpoints?.satellite || tileUrl;
-                                        }
-                                    }
-                                } catch { tileUrl = cfg.endpoints?.satellite || tileUrl; }
-                            }
+                if (apiKey) {
+                    // ═══ Google Photorealistic 3D Tiles via deck.gl ═══
+                    try {
+                        const dk = await loadDeckGL();
+                        if (!dk || !dk.Tile3DLayer || !dk.MapboxOverlay) {
+                            console.warn('deck.gl not fully loaded, falling back');
+                            throw new Error('deck.gl unavailable');
                         }
-                    } catch { /* fallback to free tiles */ }
 
-                    const m = mapRef.current;
-                    if (!m || mapVersionRef.current !== ver) return;
+                        // Remove existing overlay if any
+                        if (deckOverlayRef.current) {
+                            try { m.removeControl(deckOverlayRef.current); } catch {}
+                            deckOverlayRef.current = null;
+                        }
 
-                    // 1. Google Satellite tiles — high resolution
-                    if (!m.getSource('realistic-satellite')) {
-                        m.addSource('realistic-satellite', {
-                            type: 'raster',
-                            tiles: [
-                                tileUrl,
-                                tileUrl.replace('mt1', 'mt2').replace('mt0', 'mt2'),
-                                tileUrl.replace('mt1', 'mt3').replace('mt0', 'mt3'),
-                            ],
-                            tileSize: 256,
-                            attribution: hasApiKey ? '© Google Maps API' : '© Google Maps',
-                            maxzoom: 22,
+                        const GOOGLE_3D_TILES_URL = `https://tile.googleapis.com/v1/3dtiles/root.json?key=${apiKey}`;
+
+                        const tile3DLayer = new dk.Tile3DLayer({
+                            id: 'google-photorealistic-3d',
+                            data: GOOGLE_3D_TILES_URL,
+                            onTilesetLoad: (tileset: any) => {
+                                if (tileset?.options) {
+                                    tileset.options.onTraversalComplete = (selectedTiles: any[]) => selectedTiles;
+                                }
+                            },
+                            operation: 'terrain+draw',
                         });
-                    }
-                    const firstSymbol = m.getStyle().layers?.find((l: any) => l.type === 'symbol')?.id;
-                    if (!m.getLayer('realistic-satellite-layer')) {
-                        m.addLayer({ id: 'realistic-satellite-layer', type: 'raster', source: 'realistic-satellite', paint: { 'raster-opacity': 1, 'raster-saturation': 0.1, 'raster-contrast': 0.05 } }, firstSymbol);
-                    }
 
-                    // 2. Terrain DEM for elevation
-                    if (!m.getSource('terrain-dem')) {
-                        m.addSource('terrain-dem', { type: 'raster-dem', tiles: ['https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png'], tileSize: 256 });
-                    }
+                        const overlay = new dk.MapboxOverlay({
+                            interleaved: true,
+                            layers: [tile3DLayer],
+                        });
 
-                    // 3. 3D buildings — realistic colors matching satellite imagery
-                    if (!m.getSource('realistic-buildings-src')) {
-                        m.addSource('realistic-buildings-src', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
-                    }
-                    if (!m.getLayer('realistic-buildings')) {
-                        m.addLayer({ id: 'realistic-buildings', source: 'realistic-buildings-src', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 14, paint: {
-                            'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 10],
-                                0, '#d4d0c8', 15, '#c8c4bc', 30, '#bcb8b0', 60, '#b0aca4', 120, '#a4a098', 250, '#989490'],
-                            'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10],
-                            'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-                            'fill-extrusion-opacity': 0.9,
-                        }});
-                    }
-                    // 4. Building shadows layer for depth
-                    if (!m.getLayer('realistic-buildings-shadow')) {
-                        m.addLayer({ id: 'realistic-buildings-shadow', source: 'realistic-buildings-src', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 14, paint: {
-                            'fill-extrusion-color': '#000000',
-                            'fill-extrusion-height': ['*', ['coalesce', ['get', 'render_height'], 10], 0.05],
-                            'fill-extrusion-base': 0,
-                            'fill-extrusion-opacity': 0.15,
-                        }}, 'realistic-buildings');
-                    }
+                        m.addControl(overlay);
+                        deckOverlayRef.current = overlay;
 
-                    // 5. Apply terrain + camera angle
-                    const applyView = () => {
-                        if (mapVersionRef.current !== ver) return;
-                        try {
-                            m.setTerrain({ source: 'terrain-dem', exaggeration: 1.2 });
-                            m.easeTo({ pitch: 62, zoom: Math.max(m.getZoom() || 14, 14), bearing: m.getBearing() || -15, duration: 1200 });
-                        } catch (e) { console.warn('Realistic terrain apply failed:', e); }
-                    };
-                    if (m.isSourceLoaded('terrain-dem')) applyView();
-                    else { m.once('sourcedata', (e: any) => { if (e.sourceId === 'terrain-dem' && e.isSourceLoaded) applyView(); }); setTimeout(applyView, 800); }
-                };
+                        // Set camera for 3D view
+                        m.easeTo({ pitch: 65, zoom: Math.max(m.getZoom() || 16, 16), bearing: m.getBearing() || -20, duration: 1200 });
 
-                setupGoogleTiles();
+                        console.log('[ARGUX] Google Photorealistic 3D Tiles loaded');
+                        return;
+                    } catch (e) {
+                        console.warn('Google 3D Tiles failed, falling back to satellite + buildings:', e);
+                    }
+                }
 
-            } catch (e) { console.warn('3D Realistic failed:', e); }
+                // ═══ Fallback: ESRI Satellite + 3D Buildings ═══
+                const satUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+                try { const src = m.getSource('base-tiles') as any; if (src?.setTiles) src.setTiles([satUrl]); } catch {}
+
+                if (!m.getSource('realistic-buildings-src')) {
+                    m.addSource('realistic-buildings-src', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
+                }
+                if (!m.getLayer('realistic-buildings')) {
+                    m.addLayer({ id: 'realistic-buildings', source: 'realistic-buildings-src', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 14, paint: {
+                        'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 10],
+                            0, '#d4d0c8', 15, '#c8c4bc', 30, '#bcb8b0', 60, '#b0aca4', 120, '#a4a098', 250, '#989490'],
+                        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10],
+                        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+                        'fill-extrusion-opacity': 0.9,
+                    }});
+                }
+                if (!m.getLayer('realistic-buildings-shadow')) {
+                    m.addLayer({ id: 'realistic-buildings-shadow', source: 'realistic-buildings-src', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 14, paint: {
+                        'fill-extrusion-color': '#000000',
+                        'fill-extrusion-height': ['*', ['coalesce', ['get', 'render_height'], 10], 0.05],
+                        'fill-extrusion-base': 0,
+                        'fill-extrusion-opacity': 0.15,
+                    }}, 'realistic-buildings');
+                }
+                m.easeTo({ pitch: 62, zoom: Math.max(m.getZoom() || 14, 14), bearing: m.getBearing() || -15, duration: 1200 });
+            };
+
+            setup3DRealistic();
 
         } else {
             if (map._isGlobe) { rebuildMapForFlat(); }
@@ -4216,7 +4240,7 @@ export default function MapIndex() {
                                 ); })}
                             </div>
                             {active3D && <div style={{ marginTop: 8, padding: '5px 8px', borderRadius: 4, background: active3D === '3d-realistic' ? 'rgba(34,197,94,0.06)' : 'rgba(139,92,246,0.06)', border: `1px solid ${active3D === '3d-realistic' ? 'rgba(34,197,94,0.15)' : 'rgba(139,92,246,0.15)'}`, fontSize: 9, color: active3D === '3d-realistic' ? 'rgba(34,197,94,0.7)' : 'rgba(139,92,246,0.7)' }}>
-                                {active3D === '3d-realistic' ? <>🌏 Google Maps 3D Realistic{gmapsConfig?.hasKey ? <span style={{ marginLeft: 4, fontSize: 8, padding: '1px 4px', borderRadius: 3, background: '#22c55e15', color: '#22c55e', border: '1px solid #22c55e25' }}>API ✓</span> : <span style={{ marginLeft: 4, fontSize: 8, padding: '1px 4px', borderRadius: 3, background: '#f59e0b15', color: '#f59e0b', border: '1px solid #f59e0b25' }}>Free tiles</span>}</> : <>3D mode: {tiles3D.find(t => t.id === active3D)?.name}</>}. Click again to disable.
+                                {active3D === '3d-realistic' ? <>🌏 {deckOverlayRef.current ? 'Google Photorealistic 3D Tiles' : 'Satellite + 3D Buildings'}</> : <>3D mode: {tiles3D.find(t => t.id === active3D)?.name}</>}. Click again to disable.
                             </div>}
 
                             {/* Cinema Mode */}
