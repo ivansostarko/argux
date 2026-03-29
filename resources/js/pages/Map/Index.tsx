@@ -580,6 +580,87 @@ export default function MapIndex() {
         return { total: pois.length, visible: filteredPOIs.length, counts };
     }, [pois, filteredPOIs]);
 
+    // ═══ ROUTING / DIRECTIONS ═══
+    type RouteProfile = 'car' | 'bike' | 'foot';
+    interface RouteWaypoint { id: string; lat: number; lng: number; label: string; }
+    interface RouteResult { source: string; geometry: any; distance: number; duration: number; steps: any[]; waypoints: any[]; }
+    const [showRoutePanel2, setShowRoutePanel2] = useState(false);
+    const [routePlacing, setRoutePlacing] = useState(false);
+    const [routeProfile, setRouteProfile] = useState<RouteProfile>('car');
+    const [routeWaypoints, setRouteWaypoints] = useState<RouteWaypoint[]>([]);
+    const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
+    const [routeLoading, setRouteLoading] = useState(false);
+    const [routeError, setRouteError] = useState<string | null>(null);
+    const routeMarkerMapRef = useRef<Map<string, any>>(new Map());
+    const routeSourceAdded = useRef(false);
+
+    const addRouteWaypoint = useCallback((lat: number, lng: number) => {
+        const id = `wp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        const idx = routeWaypoints.length;
+        const label = idx === 0 ? 'Start' : `Waypoint ${idx}`;
+        setRouteWaypoints(prev => [...prev, { id, lat, lng, label }]);
+    }, [routeWaypoints.length]);
+
+    const removeRouteWaypoint = useCallback((id: string) => {
+        setRouteWaypoints(prev => prev.filter(w => w.id !== id));
+        setRouteResult(null); setRouteError(null);
+    }, []);
+
+    const moveRouteWaypoint = useCallback((fromIdx: number, toIdx: number) => {
+        setRouteWaypoints(prev => {
+            const arr = [...prev]; const [item] = arr.splice(fromIdx, 1); arr.splice(toIdx, 0, item);
+            return arr.map((w, i) => ({ ...w, label: i === 0 ? 'Start' : i === arr.length - 1 ? 'End' : `Waypoint ${i}` }));
+        });
+        setRouteResult(null);
+    }, []);
+
+    const clearRoute = useCallback(() => {
+        setRouteWaypoints([]); setRouteResult(null); setRouteError(null);
+        routeMarkerMapRef.current.forEach(m => m.remove()); routeMarkerMapRef.current.clear();
+        const map = mapRef.current;
+        if (map) { try { (map.getSource('route-line') as any)?.setData({ type: 'FeatureCollection', features: [] }); } catch {} }
+    }, []);
+
+    const reverseRoute = useCallback(() => {
+        setRouteWaypoints(prev => {
+            const reversed = [...prev].reverse();
+            return reversed.map((w, i) => ({ ...w, label: i === 0 ? 'Start' : i === reversed.length - 1 ? 'End' : `Waypoint ${i}` }));
+        });
+        setRouteResult(null);
+        routeMarkerMapRef.current.forEach(m => m.remove()); routeMarkerMapRef.current.clear();
+    }, []);
+
+    const calculateRoute = useCallback(async () => {
+        if (routeWaypoints.length < 2) return;
+        setRouteLoading(true); setRouteError(null);
+        try {
+            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
+            const res = await fetch('/mock-api/route', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                body: JSON.stringify({ waypoints: routeWaypoints.map(w => [w.lng, w.lat]), profile: routeProfile }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            setRouteResult(data);
+            // Update waypoint labels
+            setRouteWaypoints(prev => prev.map((w, i) => ({ ...w, label: i === 0 ? 'Start' : i === prev.length - 1 ? 'End' : `Waypoint ${i}` })));
+            // Fit map to route
+            const map = mapRef.current;
+            if (map && data.geometry?.coordinates?.length > 1) {
+                const coords = data.geometry.coordinates;
+                const lngs = coords.map((c: number[]) => c[0]); const lats = coords.map((c: number[]) => c[1]);
+                map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: 80, duration: 800 });
+            }
+        } catch (e: any) { setRouteError(e.message || 'Route calculation failed'); }
+        setRouteLoading(false);
+    }, [routeWaypoints, routeProfile]);
+
+    const formatRouteDist = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`;
+    const formatRouteDur = (s: number) => { const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h ${m}min` : `${m} min`; };
+    const routeProfileConfig: Record<RouteProfile, { icon: string; label: string; color: string }> = { car: { icon: '🚗', label: 'Driving', color: '#3b82f6' }, bike: { icon: '🚴', label: 'Cycling', color: '#22c55e' }, foot: { icon: '🚶', label: 'Walking', color: '#f59e0b' } };
+
     const [faceSearch, setFaceSearch] = useState('');
     const [faceSelected, setFaceSelected] = useState<Set<string>>(new Set()); // selected face IDs to show (empty = all)
     const [faceHidden, setFaceHidden] = useState<Set<string>>(new Set()); // hidden face IDs
@@ -1013,7 +1094,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -3096,6 +3177,94 @@ export default function MapIndex() {
         return () => { if (poiAnimRef.current) { cancelAnimationFrame(poiAnimRef.current); poiAnimRef.current = null; } };
     }, [layerPOI, loaded, createPOIMarkerEl]);
 
+    // ═══ ROUTING — Map Source + Waypoint Markers + Route Line ═══
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        // Ensure route source exists
+        if (!routeSourceAdded.current) {
+            try {
+                if (!map.getSource('route-line')) {
+                    map.addSource('route-line', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+                    map.addLayer({ id: 'route-line-casing', type: 'line', source: 'route-line', paint: { 'line-color': '#000000', 'line-width': 8, 'line-opacity': 0.3 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+                    map.addLayer({ id: 'route-line-main', type: 'line', source: 'route-line', paint: { 'line-color': '#3b82f6', 'line-width': 5, 'line-opacity': 0.9 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+                    map.addLayer({ id: 'route-line-arrow', type: 'symbol', source: 'route-line', layout: { 'symbol-placement': 'line', 'symbol-spacing': 80, 'text-field': '▸', 'text-size': 16, 'text-rotation-alignment': 'map', 'text-allow-overlap': true }, paint: { 'text-color': '#ffffff', 'text-opacity': 0.7 } });
+                    routeSourceAdded.current = true;
+                }
+            } catch {}
+        }
+    }, [loaded]);
+
+    // Update route line color based on profile
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        const color = routeProfileConfig[routeProfile]?.color || '#3b82f6';
+        try { if (map.getLayer('route-line-main')) map.setPaintProperty('route-line-main', 'line-color', color); } catch {}
+    }, [routeProfile, loaded]);
+
+    // Render route geometry
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        try {
+            const src = map.getSource('route-line') as any;
+            if (!src) return;
+            if (routeResult?.geometry) {
+                src.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: routeResult.geometry }] });
+            } else {
+                src.setData({ type: 'FeatureCollection', features: [] });
+            }
+        } catch {}
+    }, [routeResult, loaded]);
+
+    // Render waypoint markers
+    useEffect(() => {
+        const map = mapRef.current;
+        const ml = (window as any).maplibregl;
+        if (!map || !ml || !loaded) return;
+        const currentIds = new Set(routeWaypoints.map(w => w.id));
+        // Remove stale markers
+        routeMarkerMapRef.current.forEach((marker, id) => { if (!currentIds.has(id)) { marker.remove(); routeMarkerMapRef.current.delete(id); } });
+        // Add/update markers
+        routeWaypoints.forEach((w, idx) => {
+            const isStart = idx === 0;
+            const isEnd = idx === routeWaypoints.length - 1 && routeWaypoints.length > 1;
+            const color = isStart ? '#22c55e' : isEnd ? '#ef4444' : '#3b82f6';
+            const letter = isStart ? 'A' : isEnd ? String.fromCharCode(65 + idx) : String.fromCharCode(65 + idx);
+            const existing = routeMarkerMapRef.current.get(w.id);
+            if (existing) {
+                existing.setLngLat([w.lng, w.lat]);
+            } else {
+                const el = document.createElement('div');
+                el.style.cssText = 'pointer-events:auto;cursor:grab;';
+                el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;">
+                    <div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
+                        <span style="font-size:12px;font-weight:900;color:#fff;font-family:'JetBrains Mono',monospace;">${letter}</span>
+                    </div>
+                    <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid ${color};margin-top:-1px;"></div>
+                </div>`;
+                const marker = new ml.Marker({ element: el, anchor: 'bottom', draggable: true }).setLngLat([w.lng, w.lat]).addTo(map);
+                marker.on('dragend', () => {
+                    const pos = marker.getLngLat();
+                    setRouteWaypoints(prev => prev.map(wp => wp.id === w.id ? { ...wp, lat: pos.lat, lng: pos.lng } : wp));
+                    setRouteResult(null);
+                });
+                routeMarkerMapRef.current.set(w.id, marker);
+            }
+        });
+    }, [routeWaypoints, loaded]);
+
+    // Route placement click handler
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded || !routePlacing) return;
+        map.getCanvas().style.cursor = 'crosshair';
+        const onClick = (e: any) => { addRouteWaypoint(e.lngLat.lat, e.lngLat.lng); };
+        map.on('click', onClick);
+        return () => { map.off('click', onClick); map.getCanvas().style.cursor = ''; };
+    }, [routePlacing, loaded, addRouteWaypoint]);
+
     // Object drawing click handler
     useEffect(() => {
         const map = mapRef.current;
@@ -3543,6 +3712,8 @@ export default function MapIndex() {
                 if (showSatPanel) { setShowSatPanel(false); return; }
                 if (showFlightsPanel) { setShowFlightsPanel(false); return; }
                 if (showPOIPanel) { setShowPOIPanel(false); return; }
+                if (routePlacing) { setRoutePlacing(false); return; }
+                if (showRoutePanel2) { setShowRoutePanel2(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
                 if (showRulerPanel) { setShowRulerPanel(false); return; }
                 if (showZonePanel) { setShowZonePanel(false); return; }
@@ -4448,7 +4619,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'tools' ? ' dragging' : ''}${dragOverId === 'tools' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('tools') }} onDragOver={e => handleSectionDragOver(e, 'tools')} onDrop={() => handleSectionDrop('tools')}>
-                    <Section title="Tools" icon={Ico.tools} badge={(rulerActive ? 1 : 0) + (zoneDrawing ? 1 : 0)} dragHandle={dragHandleEl('tools')}>
+                    <Section title="Tools" icon={Ico.tools} badge={(rulerActive ? 1 : 0) + (zoneDrawing ? 1 : 0) + (routePlacing || routeWaypoints.length > 0 ? 1 : 0)} dragHandle={dragHandleEl('tools')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Ruler button */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -4482,6 +4653,22 @@ export default function MapIndex() {
                             </div>
                             {/* Active drawing indicator */}
                             {zoneDrawing && <div style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', fontSize: 9, color: '#8b5cf6', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>Drawing {zoneDrawing.shape} — {zoneDrawing.points.length} pts<button onClick={() => setZoneDrawing(null)} style={{ fontSize: 8, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Cancel</button></div>}
+
+                            {/* Route Planner button */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <button onClick={() => { if (routePlacing) setRoutePlacing(false); else { setRoutePlacing(true); triggerTopLoader(); } }} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: routePlacing ? '#10b981' : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
+                                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute' as const, top: 2, left: routePlacing ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                </button>
+                                <button onClick={() => { setShowRoutePanel2(true); triggerTopLoader(); }} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, border: `1px solid ${routePlacing ? '#10b98125' : showRoutePanel2 ? '#10b98140' : routeWaypoints.length > 0 ? '#10b98120' : theme.border}`, background: showRoutePanel2 ? 'rgba(16,185,129,0.06)' : routePlacing ? 'rgba(16,185,129,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.12s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showRoutePanel2 ? 'rgba(16,185,129,0.06)' : routePlacing ? 'rgba(16,185,129,0.03)' : 'transparent'; }}>
+                                    <span style={{ fontSize: 13 }}>🧭</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: routePlacing || routeWaypoints.length > 0 ? '#10b981' : theme.text }}>Route Planner</div>
+                                        <div style={{ fontSize: 9, color: theme.textDim }}>{routePlacing ? 'Click map to add waypoints' : routeResult ? `${formatRouteDist(routeResult.distance)} · ${formatRouteDur(routeResult.duration)}` : routeWaypoints.length > 0 ? `${routeWaypoints.length} waypoints` : 'Plan routes & get directions'}</div>
+                                    </div>
+                                    {routeWaypoints.length > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#10b98112', color: '#10b981', border: '1px solid #10b98120' }}>{routeWaypoints.length}</span>}
+                                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showRoutePanel2 ? '#10b981' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                                </button>
+                            </div>
                         </div>
                     </Section>
                     </div>
@@ -6247,6 +6434,92 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>{(mockRoutes[rrPerson] || []).length} waypoints · {(mockRoutes[rrPerson] || []).filter(p => p.event).length} events</span>
                         <div style={{ flex: 1 }} />
                         <span style={{ fontSize: 9, color: '#ec4899', fontWeight: 600 }}>GPS + Kafka</span>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ ROUTING PANEL ═══ */}
+                {showRoutePanel2 && loaded && <div data-panel="routing" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('routing'); }} style={panelStyle('routing', '380px', '#10b981')}>
+                    <PanelHeader id="routing" icon="🧭" title="Route Planner" subtitle={routeResult ? `${formatRouteDist(routeResult.distance)} · ${formatRouteDur(routeResult.duration)} · ${routeResult.source === 'osrm' ? 'OSRM' : 'Straight-line'}` : `${routeWaypoints.length} waypoints`} color="#10b981" onClose={() => setShowRoutePanel2(false)} />
+                    <PanelResizeGrip id="routing" />
+                    {!isPanelMin('routing') && <>
+                    {/* Profile selector */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, display: 'flex', gap: 4 }}>
+                        {(Object.entries(routeProfileConfig) as [RouteProfile, any][]).map(([k, v]) => <button key={k} onClick={() => { setRouteProfile(k); setRouteResult(null); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px 0', borderRadius: 5, border: `1.5px solid ${routeProfile === k ? v.color + '50' : theme.border}`, background: routeProfile === k ? `${v.color}10` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 700, color: routeProfile === k ? v.color : theme.textDim, transition: 'all 0.15s' }}><span style={{ fontSize: 14 }}>{v.icon}</span>{v.label}</button>)}
+                    </div>
+
+                    {/* Waypoints list */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em' }}>WAYPOINTS</span>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                                <button onClick={() => setRoutePlacing(!routePlacing)} style={{ fontSize: 8, fontWeight: 700, padding: '2px 8px', borderRadius: 3, border: `1px solid ${routePlacing ? '#10b98140' : theme.border}`, background: routePlacing ? '#10b98110' : 'transparent', color: routePlacing ? '#10b981' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit' }}>{routePlacing ? '✏️ Placing...' : '+ Add Point'}</button>
+                                {routeWaypoints.length >= 2 && <button onClick={reverseRoute} style={{ fontSize: 8, fontWeight: 700, padding: '2px 8px', borderRadius: 3, border: `1px solid #3b82f630`, background: '#3b82f606', color: '#3b82f6', cursor: 'pointer', fontFamily: 'inherit' }}>⇅ Reverse</button>}
+                                {routeWaypoints.length > 0 && <button onClick={clearRoute} style={{ fontSize: 8, fontWeight: 700, padding: '2px 8px', borderRadius: 3, border: `1px solid ${theme.danger}30`, background: `${theme.danger}06`, color: theme.danger, cursor: 'pointer', fontFamily: 'inherit' }}>✕ Clear</button>}
+                            </div>
+                        </div>
+                        {routeWaypoints.length === 0 ? <div style={{ padding: '14px 0', textAlign: 'center' as const }}><div style={{ fontSize: 20, opacity: 0.15 }}>🧭</div><div style={{ fontSize: 10, color: theme.textSecondary, marginTop: 4 }}>Click "Add Point" then click on the map</div><div style={{ fontSize: 9, color: theme.textDim, marginTop: 2 }}>Add at least 2 points to calculate route</div></div> :
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
+                            {routeWaypoints.map((w, i) => {
+                                const isStart = i === 0; const isEnd = i === routeWaypoints.length - 1 && routeWaypoints.length > 1;
+                                const color = isStart ? '#22c55e' : isEnd ? '#ef4444' : '#3b82f6';
+                                const letter = String.fromCharCode(65 + i);
+                                return <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 5, border: `1px solid ${theme.border}30`, background: 'rgba(255,255,255,0.01)' }}>
+                                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: color, border: '2px solid rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 1px 3px ${color}40` }}><span style={{ fontSize: 9, fontWeight: 900, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>{letter}</span></div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 600, color: theme.text }}>{w.label}</div>
+                                        <div style={{ fontSize: 8, color: theme.textDim, fontFamily: "'JetBrains Mono',monospace" }}>{w.lat.toFixed(5)}, {w.lng.toFixed(5)}</div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                                        {i > 0 && <button onClick={() => moveRouteWaypoint(i, i - 1)} style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: theme.textDim }}>▲</button>}
+                                        {i < routeWaypoints.length - 1 && <button onClick={() => moveRouteWaypoint(i, i + 1)} style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: theme.textDim }}>▼</button>}
+                                        <button onClick={() => removeRouteWaypoint(w.id)} style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${theme.danger}30`, background: `${theme.danger}06`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: theme.danger }}>✕</button>
+                                    </div>
+                                </div>;
+                            })}
+                        </div>}
+                        {routeWaypoints.length >= 2 && <button onClick={calculateRoute} disabled={routeLoading} style={{ width: '100%', marginTop: 8, padding: '8px 0', borderRadius: 6, border: 'none', background: routeLoading ? theme.border : '#10b981', color: '#fff', fontSize: 11, fontWeight: 700, cursor: routeLoading ? 'wait' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>{routeLoading ? <>⏳ Calculating...</> : <>🧭 Calculate Route</>}</button>}
+                        {routeError && <div style={{ marginTop: 6, padding: '5px 8px', borderRadius: 4, background: `${theme.danger}06`, border: `1px solid ${theme.danger}20`, fontSize: 9, color: theme.danger }}>{routeError}</div>}
+                    </div>
+
+                    {/* Route result */}
+                    {routeResult && <>
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}10` }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                            {[{ l: 'Distance', v: formatRouteDist(routeResult.distance), c: '#10b981' }, { l: 'Duration', v: formatRouteDur(routeResult.duration), c: '#3b82f6' }, { l: 'Profile', v: routeProfileConfig[routeProfile].label, c: routeProfileConfig[routeProfile].color }].map(k => <div key={k.l} style={{ flex: 1, padding: '6px 6px', borderRadius: 5, border: `1px solid ${theme.border}`, textAlign: 'center' as const }}><div style={{ fontSize: 13, fontWeight: 800, color: k.c, fontFamily: "'JetBrains Mono',monospace" }}>{k.v}</div><div style={{ fontSize: 7, color: theme.textDim }}>{k.l}</div></div>)}
+                        </div>
+                    </div>
+
+                    {/* Turn-by-turn directions */}
+                    <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        <div style={{ padding: '6px 14px' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 6 }}>DIRECTIONS</div>
+                            {routeResult.steps.filter((s: any) => s.instruction && s.type !== 'arrive').map((step: any, i: number) => {
+                                const dirIcon = step.type === 'depart' ? '🟢' : step.modifier?.includes('left') ? '↰' : step.modifier?.includes('right') ? '↱' : step.type === 'roundabout' ? '🔄' : step.type === 'fork' ? '⑂' : '↑';
+                                return <div key={i} onClick={() => { const map = mapRef.current; if (map && step.location?.length >= 2) map.flyTo({ center: [step.location[0], step.location[1]], zoom: 17, duration: 600 }); }} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: `1px solid ${theme.border}06`, cursor: step.location?.length >= 2 ? 'pointer' : 'default' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                    <div style={{ width: 22, height: 22, borderRadius: '50%', background: `${routeProfileConfig[routeProfile].color}12`, border: `1px solid ${routeProfileConfig[routeProfile].color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0, color: routeProfileConfig[routeProfile].color }}>{dirIcon}</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 600, color: theme.text }}>{step.instruction}</div>
+                                        <div style={{ fontSize: 8, color: theme.textDim }}>{formatRouteDist(step.distance)} · {formatRouteDur(step.duration)}{step.name ? ` · ${step.name}` : ''}</div>
+                                    </div>
+                                </div>;
+                            })}
+                            {/* Arrive */}
+                            <div style={{ display: 'flex', gap: 8, padding: '6px 0' }}>
+                                <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#ef444418', border: '1px solid #ef444430', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0 }}>🔴</div>
+                                <div><div style={{ fontSize: 10, fontWeight: 600, color: theme.text }}>Arrive at destination</div><div style={{ fontSize: 8, color: theme.textDim }}>End of route</div></div>
+                            </div>
+                        </div>
+                    </div>
+                    </>}
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{routeWaypoints.length} waypoints{routeResult ? ` · ${routeResult.steps.length} steps` : ''}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: routeResult?.source === 'osrm' ? '#22c55e' : routeResult ? '#f59e0b' : '#6b7280' }} />
+                            <span style={{ fontSize: 9, color: '#10b981', fontWeight: 600 }}>{routeResult?.source === 'osrm' ? 'OSRM Router' : routeResult?.source === 'straight-line' ? 'Straight-line' : 'Open Source'}</span>
+                        </div>
                     </div>
                     </>}
                 </div>}

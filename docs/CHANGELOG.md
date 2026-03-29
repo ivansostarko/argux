@@ -1,5 +1,99 @@
 # Changelog
 
+## 0.25.57 - 2026-03-29
+
+### Enhanced — Route Planner / Directions (/map → Tools)
+The routing/directions system was already implemented. This version adds enhancements and documents the full feature set.
+
+#### Added: Reverse Route
+- **⇅ Reverse** button in routing panel (visible when 2+ waypoints). Reverses all waypoints, updates labels (Start/End), clears previous result, rebuilds markers.
+
+#### Full Feature Summary (already implemented)
+
+##### How to Use
+1. Open **Tools** section in sidebar → click **🧭 Route Planner**
+2. Click **+ Add Point** → cursor becomes crosshair
+3. Click on map to place start point (A), then destination (B), and optional waypoints
+4. Select transport mode: 🚗 Driving, 🚴 Cycling, 🚶 Walking
+5. Click **🧭 Calculate Route** → route line appears on map with turn-by-turn directions
+
+##### Map Rendering
+- **Route line**: GeoJSON LineString rendered with 3 layers — black casing (8px, 30% opacity), colored main line (5px, profile-colored), white directional arrows (▸ symbols every 80px)
+- **Waypoint markers**: Draggable circular pins (28px) — A=green (start), B+=red (end), middle=blue. Drag to reposition → recalculate
+- Route line color changes with profile: blue (car), green (bike), amber (foot)
+
+##### Routing Panel
+- **Transport mode selector**: 3 buttons (Driving/Cycling/Walking) with profile-specific colors
+- **Waypoints list**: Lettered markers (A, B, C...), coordinates, ▲▼ reorder buttons, ✕ remove
+- **⇅ Reverse**: Swap start/end + all waypoints
+- **Calculate button**: Calls OSRM (or fallback)
+- **Route KPI cards**: Distance, Duration, Profile
+- **Turn-by-turn directions**: Each step with direction icon (🟢 depart, ↰ left, ↱ right, 🔄 roundabout, ↑ straight), instruction text, distance, duration, street name. Click step → camera flies to that location
+- **Arrive indicator**: 🔴 at end of directions
+- **Footer**: waypoint count, step count, OSRM Router / Straight-line / Open Source source badge
+
+##### Backend — OSRM (Open Source Routing Machine)
+- `app/Http/Controllers/MockApi/RoutingController.php` (194 lines)
+- `POST /mock-api/route` with body `{ waypoints: [[lng,lat],...], profile: "car"|"bike"|"foot" }`
+- Calls `router.project-osrm.org/route/v1/{profile}/{coords}` with full geometry, steps, annotations
+- Turn instruction builder: depart, arrive, turn left/right, new name, merge, ramp, fork, roundabout, exit roundabout, continue, end of road
+- 2-minute cache per route
+- **Fallback**: Straight-line routing with haversine distance + estimated duration (50/15/5 km/h for car/bike/foot) when OSRM is unreachable
+
+##### Note on Network Domains
+`router.project-osrm.org` must be in your network allowed domains for real road routing. Without it, the straight-line fallback provides distance estimates between waypoints.
+
+## 0.25.56 - 2026-03-29
+
+### Implemented — Route Planner / Directions (/map → Tools)
+- **Route Planner** in the Tools section. Click to place waypoints on map, calculate routes via OSRM (open source), get turn-by-turn directions. Fully open source, no paid API.
+
+#### How to Use
+1. Open **Tools** section in sidebar → click **🧭 Route Planner** toggle or arrow
+2. Click **+ Add Point**, then click on the map to place waypoints (A, B, C...)
+3. Select transport profile: 🚗 Driving, 🚴 Cycling, 🚶 Walking
+4. Click **🧭 Calculate Route** — route line renders on map with directions
+5. Click any direction step to fly camera to that location
+6. Drag waypoint markers on map to adjust — route auto-clears for recalculation
+
+#### Map Rendering
+- **Route line**: 3-layer rendering — black casing (8px, 30% opacity), colored main line (5px, profile color), white directional arrows (▸ symbols spaced along line).
+- **Waypoint markers**: Circular pins with letter labels (A=green start, B-Y=blue waypoints, Z=red end), white border, drop shadow, downward triangle pointer. **Draggable** — drag to reposition.
+- Route color changes with profile: blue (driving), green (cycling), amber (walking).
+- Map auto-fits to route bounds after calculation.
+
+#### Route Panel
+- **Profile selector**: 3 buttons — Driving 🚗, Cycling 🚴, Walking 🚶. Switching profile clears previous result.
+- **Waypoints list**: Each waypoint shows letter, label (Start/Waypoint N/End), coordinates. Reorder with ▲/▼ buttons. Remove with ✕. Clear All button.
+- **Calculate Route** button (requires ≥2 waypoints).
+- **Route summary**: 3 KPI cards — Distance, Duration, Profile.
+- **Turn-by-turn directions**: Scrollable list with direction icons (🟢 depart, ↰ left, ↱ right, 🔄 roundabout, ⑂ fork, ↑ straight). Each step shows instruction, distance, duration, street name. Click step to fly to location. Red 🔴 arrive marker at end.
+- **Footer**: waypoint count, step count, OSRM Router / Straight-line indicator.
+
+#### OSRM Backend (100% Open Source)
+- `app/Http/Controllers/MockApi/RoutingController.php` (175 lines) — Laravel proxy to OSRM demo server.
+- `POST /mock-api/route` with body `{ waypoints: [[lng,lat],...], profile: "car"|"bike"|"foot" }`.
+- Queries `router.project-osrm.org/route/v1/{profile}/{coords}` with full geometry (GeoJSON), steps, and annotations.
+- Builds human-readable turn-by-turn instructions from OSRM maneuver data (turn, merge, roundabout, fork, ramp, end of road, new name).
+- 2-minute cache per unique route.
+- **Fallback**: If OSRM is unreachable, calculates straight-line route with haversine distance and estimated duration based on average speeds (car: 50km/h, bike: 15km/h, foot: 5km/h).
+
+#### Waypoint Interactions
+- **Click map** to add waypoints (crosshair cursor during placement mode).
+- **Drag markers** on map — position updates, route clears for recalculation.
+- **Reorder** via ▲/▼ in panel — updates labels (A, B, C...) and clears route.
+- **Remove** individual waypoints via ✕ button.
+- **Clear All** removes all waypoints, markers, and route line.
+
+#### Technical
+- PanelId 'routing' added.
+- Route line: MapLibre GeoJSON source `route-line` with 3 layers (casing, main, arrows).
+- Waypoint markers: MapLibre Marker with `draggable: true`, `dragend` event updates state.
+- Placement mode: `routePlacing` state toggles map click handler + crosshair cursor.
+- Escape handler: routePlacing → showRoutePanel2 → close.
+- Tools badge updated to include routing state.
+- Note: `router.project-osrm.org` must be in network allowed domains for live routing.
+
 ## 0.25.55 - 2026-03-29
 
 ### Implemented — Places of Interest Layer (/map → Layers)

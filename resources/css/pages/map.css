@@ -259,3 +259,11 @@
 .tmap-poi-marker .poi-hit { pointer-events: auto !important; }
 .maplibregl-marker:has(.tmap-poi-marker) { overflow: visible !important; pointer-events: auto !important; z-index: 2; }
 .maplibregl-marker:has(.tmap-poi-marker):hover { z-index: 150 !important; }
+
+/* ═══ ROUTE MARKERS ═══ */
+.maplibregl-marker[style*="cursor: grab"] { overflow: visible !important; pointer-events: auto !important; z-index: 5; }
+.maplibregl-marker[style*="cursor: grab"]:hover { z-index: 100 !important; }
+
+/* ═══ ROUTE LINE ═══ */
+.maplibregl-marker:has([style*="cursor:grab"]) { overflow: visible !important; pointer-events: auto !important; z-index: 5; }
+.maplibregl-marker:has([style*="cursor:grab"]):hover { z-index: 200 !important; }
