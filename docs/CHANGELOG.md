@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.25.47 - 2026-03-29
+
+### Fixed — Satellite Markers: Interaction + Popup Visibility
+
+#### Marker Fix
+- **Root cause**: The old marker used `position:absolute;bottom:0;left:50%;transform:translateX(-50%)` inside a fixed-size wrapper. This caused MapLibre's internal marker container to clip overflow, making hover/click detection unreliable. The `translateX(-50%)` transform combined with `scale()` on hover shifted the transform origin unpredictably.
+- **Fix**: Rewrote marker structure using simple flex column layout — no `position:absolute`, no fixed wrapper dimensions, no compound transforms. The entire marker is a natural-flowing `display:flex;flex-direction:column;align-items:center` div. Transform origin set to `bottom center` so scaling expands upward from the globe surface point.
+- Click target is now `.sat-hit` class covering the entire marker area (dot + stalk + shadow). Hover applies `scale(1.5)` with z-index 200.
+
+#### Popup Fix
+- Popup uses `className: 'tmap-popup'` (the dark themed class with existing CSS).
+- Simplified popup offset to `[0, -8]` — no more complex stalkH calculations that broke with the anchor change.
+- Popup content uses `tmap-popup-inner` with CSS variables for proper dark theme rendering.
+- 3 KPI cards (Altitude, Velocity, Period) at top + 8-field data grid below.
+
+#### CSS Cleanup
+- Removed old `.sat-inner` rules, replaced with `.sat-hit` pointer-events.
+- Fixed `@keyframes tmap-sat-pulse` — removed `translateX(-50%)` from animation (was causing pulse ring to fly off-center).
+- Added `:hover` z-index override on `.maplibregl-marker:has(.tmap-sat-marker)`.
+
 ## 0.25.46 - 2026-03-29
 
 ### Updated — Satellite Markers: 3D Stalk Visualization

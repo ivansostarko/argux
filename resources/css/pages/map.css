@@ -240,9 +240,10 @@
 
 /* ═══ SATELLITE MARKERS 3D ═══ */
 .tmap-sat-marker { pointer-events: auto !important; overflow: visible !important; }
-.tmap-sat-marker .sat-inner { pointer-events: auto !important; }
-.maplibregl-marker:has(.tmap-sat-marker) { overflow: visible !important; pointer-events: auto !important; }
+.tmap-sat-marker .sat-hit { pointer-events: auto !important; }
+.maplibregl-marker:has(.tmap-sat-marker) { overflow: visible !important; pointer-events: auto !important; z-index: 1; }
+.maplibregl-marker:has(.tmap-sat-marker):hover { z-index: 200 !important; }
 @keyframes tmap-sat-pulse {
-    0% { transform: translateX(-50%) scale(1); opacity: 0.6; }
-    100% { transform: translateX(-50%) scale(2.5); opacity: 0; }
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(2.5); opacity: 0; }
 }

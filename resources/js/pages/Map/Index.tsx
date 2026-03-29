@@ -2825,101 +2825,64 @@ export default function MapIndex() {
         const isStation = s.category === 'space-station';
         const isDebris = s.category === 'debris';
 
-        // Stalk height: logarithmic scale — LEO(300km)=30px, MEO(20000km)=80px, GEO(36000km)=110px
-        const stalkH = Math.max(16, Math.min(120, Math.round(Math.log(Math.max(s.alt, 200)) * 12 - 40)));
-        // Satellite body size
-        const bodySz = isStation ? 14 : isDebris ? 5 : s.orbitType === 'GEO' ? 10 : 8;
-        const totalH = stalkH + bodySz + 20;
+        // Stalk height proportional to altitude (log scale)
+        const stalkH = Math.max(12, Math.min(100, Math.round(Math.log(Math.max(s.alt, 200)) * 10 - 30)));
+        const dotSz = isStation ? 12 : isDebris ? 4 : s.orbitType === 'GEO' ? 9 : 7;
+        const altLabel = s.alt > 9999 ? `${(s.alt / 1000).toFixed(0)}k` : String(s.alt);
 
         const wrapper = document.createElement('div');
         wrapper.className = 'tmap-sat-marker';
-        wrapper.style.cssText = `pointer-events:auto !important;width:60px;height:${totalH}px;position:relative;`;
 
-        // SVG icons per category
-        const satBody = isStation
-            ? `<div style="width:${bodySz}px;height:${bodySz}px;position:relative;">
-                <div style="width:${bodySz}px;height:${bodySz}px;border-radius:3px;background:linear-gradient(135deg,${cat.color},${cat.color}80);box-shadow:0 0 14px ${cat.color},0 0 28px ${cat.color}60,0 0 4px #fff;border:1px solid rgba(255,255,255,0.4);"></div>
-                <div style="position:absolute;top:50%;left:-${bodySz * 0.8}px;width:${bodySz * 2.6}px;height:2px;background:linear-gradient(90deg,${cat.color}20,${cat.color}80,${cat.color}20);transform:translateY(-50%);border-radius:1px;"></div>
-               </div>`
-            : isDebris
-            ? `<div style="width:${bodySz}px;height:${bodySz}px;border-radius:50%;background:${cat.color}80;box-shadow:0 0 4px ${cat.color}40;opacity:0.7;"></div>`
-            : s.category === 'navigation'
-            ? `<div style="width:${bodySz}px;height:${bodySz}px;position:relative;">
-                <div style="width:${bodySz}px;height:${bodySz}px;border-radius:50%;background:radial-gradient(circle at 35% 35%,${cat.color},${cat.color}60);box-shadow:0 0 10px ${cat.color}90,0 0 20px ${cat.color}40;border:1px solid rgba(255,255,255,0.3);"></div>
-                <div style="position:absolute;top:-1px;left:50%;width:1px;height:${bodySz + 2}px;background:${cat.color}60;transform:translateX(-50%);"></div>
-               </div>`
-            : s.category === 'starlink'
-            ? `<div style="width:${bodySz}px;height:${bodySz * 0.4}px;border-radius:1px;background:linear-gradient(90deg,${cat.color}40,${cat.color},${cat.color}40);box-shadow:0 0 6px ${cat.color}60;border:0.5px solid ${cat.color}80;"></div>`
-            : `<div style="width:${bodySz}px;height:${bodySz}px;position:relative;">
-                <div style="width:${bodySz}px;height:${bodySz}px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,${cat.color});box-shadow:0 0 10px ${cat.color},0 0 20px ${cat.color}50;border:1px solid rgba(255,255,255,0.3);"></div>
-                ${bodySz >= 8 ? `<div style="position:absolute;top:50%;left:-${bodySz * 0.6}px;width:${bodySz * 2.2}px;height:1.5px;background:linear-gradient(90deg,transparent,${cat.color}60,${cat.color},${cat.color}60,transparent);transform:translateY(-50%);"></div>` : ''}
-               </div>`;
-
-        // Pulsing ring animation for active stations
-        const pulseRing = isStation ? `<div style="position:absolute;top:${-bodySz / 2 - 3}px;left:50%;width:${bodySz + 6}px;height:${bodySz + 6}px;border-radius:50%;border:1px solid ${cat.color}40;transform:translateX(-50%);animation:tmap-sat-pulse 2s ease-out infinite;"></div>` : '';
-
-        wrapper.innerHTML = `<div class="sat-inner" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform 0.2s ease;">
-            ${/* Name label for important sats */ ''}
-            ${isStation || s.category === 'military' || s.category === 'scientific' ? `<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none;z-index:2;">
-                <div style="font-size:${isStation ? 8 : 7}px;font-weight:800;color:${cat.color};text-shadow:0 1px 4px rgba(0,0,0,0.95),0 0 10px rgba(0,0,0,0.8);font-family:'JetBrains Mono',monospace;padding:1px 5px;background:rgba(0,0,0,0.6);border-radius:3px;border:1px solid ${cat.color}25;">${s.name}</div>
-            </div>` : ''}
-            ${/* Satellite body at top */ ''}
-            <div class="sat-body" style="position:relative;z-index:2;flex-shrink:0;">
-                ${satBody}
-                ${pulseRing}
+        // Simple vertical flex layout — no absolute positioning
+        wrapper.innerHTML = `
+        <div class="sat-hit" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform 0.15s ease;transform-origin:bottom center;">
+            ${isStation || s.category === 'military' || s.category === 'scientific' ? `<div style="margin-bottom:2px;pointer-events:none;"><span style="font-size:${isStation ? 9 : 7}px;font-weight:800;color:${cat.color};text-shadow:0 0 6px rgba(0,0,0,1),0 0 12px rgba(0,0,0,0.8);font-family:'JetBrains Mono',monospace;padding:1px 5px;background:rgba(0,0,0,0.65);border-radius:3px;border:1px solid ${cat.color}30;white-space:nowrap;">${s.name}</span></div>` : ''}
+            <div style="position:relative;width:${dotSz + 8}px;height:${dotSz + 8}px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <div style="width:${dotSz}px;height:${dotSz}px;border-radius:${isStation ? '3px' : '50%'};background:${isStation ? `linear-gradient(135deg,${cat.color},${cat.color}90)` : `radial-gradient(circle at 35% 35%,#fff,${cat.color})`};box-shadow:0 0 ${dotSz}px ${cat.color},0 0 ${dotSz * 2}px ${cat.color}50;border:1px solid rgba(255,255,255,0.35);"></div>
+                ${isStation ? `<div style="position:absolute;top:50%;left:${-dotSz * 0.5}px;width:${dotSz * 3}px;height:2px;background:linear-gradient(90deg,transparent,${cat.color}70,${cat.color},${cat.color}70,transparent);transform:translateY(-50%);pointer-events:none;"></div>` : ''}
             </div>
-            ${/* Vertical stalk */ ''}
-            <div class="sat-stalk" style="width:1px;height:${stalkH}px;background:linear-gradient(to bottom,${cat.color}90,${cat.color}30,transparent);flex-shrink:0;"></div>
-            ${/* Ground shadow ring */ ''}
-            <div style="width:${isStation ? 12 : isDebris ? 4 : 8}px;height:${isStation ? 5 : isDebris ? 2 : 3}px;border-radius:50%;background:radial-gradient(ellipse,${cat.color}50,transparent);flex-shrink:0;"></div>
-            ${/* Altitude label on stalk */ ''}
-            ${!isDebris ? `<div style="position:absolute;top:${bodySz + 4}px;left:calc(50% + 5px);white-space:nowrap;pointer-events:none;">
-                <div style="font-size:6px;font-weight:700;color:${cat.color}80;text-shadow:0 1px 3px rgba(0,0,0,0.9);font-family:'JetBrains Mono',monospace;">${s.alt > 9999 ? `${(s.alt / 1000).toFixed(0)}k` : s.alt} km</div>
-            </div>` : ''}
+            ${!isDebris ? `<div style="pointer-events:none;margin-top:1px;"><span style="font-size:6px;font-weight:700;color:${cat.color};opacity:0.7;text-shadow:0 0 4px rgba(0,0,0,1);font-family:'JetBrains Mono',monospace;">${altLabel}km</span></div>` : ''}
+            <div style="width:1px;height:${stalkH}px;background:linear-gradient(to bottom,${cat.color}80,${cat.color}25,transparent);flex-shrink:0;pointer-events:none;"></div>
+            <div style="width:${isStation ? 10 : 6}px;height:${isStation ? 4 : 2}px;border-radius:50%;background:${cat.color}40;pointer-events:none;flex-shrink:0;"></div>
         </div>`;
 
-        const inner = wrapper.querySelector('.sat-inner') as HTMLElement;
-        inner.addEventListener('mouseenter', () => { inner.style.transform = 'translateX(-50%) scale(1.6)'; inner.style.zIndex = '200'; });
-        inner.addEventListener('mouseleave', () => { inner.style.transform = 'translateX(-50%) scale(1)'; inner.style.zIndex = '1'; });
+        const hitArea = wrapper.querySelector('.sat-hit') as HTMLElement;
+        hitArea.addEventListener('mouseenter', () => { hitArea.style.transform = 'scale(1.5)'; hitArea.style.zIndex = '200'; });
+        hitArea.addEventListener('mouseleave', () => { hitArea.style.transform = 'scale(1)'; hitArea.style.zIndex = '1'; });
 
         const entry = { marker: null as any, el: wrapper, data: s };
 
-        inner.addEventListener('click', (ev) => {
+        hitArea.addEventListener('click', (ev) => {
             ev.stopPropagation(); ev.preventDefault();
-            const sd = entry.data; const ct = satCategoryConfig[sd.category] || satCategoryConfig.communication;
+            const sd = entry.data;
+            const ct = satCategoryConfig[sd.category] || satCategoryConfig.communication;
             setSatSelected(sd.noradId);
             if (satPopupRef.current) { satPopupRef.current.remove(); satPopupRef.current = null; }
             const altFt = Math.round(sd.alt * 3281);
-            const spdMph = Math.round(sd.velocity * 2237);
-            const popup = new ml.Popup({ offset: [0, -(stalkH + bodySz + 6)], closeButton: true, maxWidth: '360px', className: 'tmap-popup', anchor: 'bottom' })
+            const spdKmh = Math.round(sd.velocity * 3600);
+            const popup = new ml.Popup({ offset: [0, -8], closeButton: true, maxWidth: '340px', className: 'tmap-popup', anchor: 'bottom' })
                 .setLngLat([sd.lng, sd.lat])
-                .setHTML(`<div class="tmap-popup-inner" style="padding:14px 16px;">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-                        <div style="width:40px;height:40px;border-radius:10px;background:radial-gradient(circle at 30% 30%,${ct.color}30,${ct.color}10);border:1.5px solid ${ct.color}35;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${ct.icon}</div>
-                        <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:var(--ax-text);">${sd.name}</div><div style="font-size:10px;color:var(--ax-text-dim);">NORAD ${sd.noradId} · ${sd.intlDesignator}</div></div>
-                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
-                            <span style="font-size:8px;font-weight:700;padding:2px 7px;border-radius:4px;background:${ct.color}15;color:${ct.color};border:1px solid ${ct.color}30;">${ct.label}</span>
-                            <span style="font-size:8px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,0.05);color:var(--ax-text-dim);border:1px solid var(--ax-border);">${sd.orbitType}</span>
+                .setHTML(`<div class="tmap-popup-inner" style="padding:12px 14px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <div style="width:34px;height:34px;border-radius:8px;background:${ct.color}15;border:1.5px solid ${ct.color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${ct.icon}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:800;color:var(--ax-text);">${sd.name}</div>
+                            <div style="font-size:9px;color:var(--ax-text-dim);">NORAD ${sd.noradId} · ${sd.intlDesignator}</div>
                         </div>
+                        <span style="font-size:7px;font-weight:700;padding:2px 6px;border-radius:3px;background:${ct.color}15;color:${ct.color};border:1px solid ${ct.color}30;">${sd.orbitType}</span>
                     </div>
-                    <div style="display:flex;gap:6px;margin-bottom:10px;">
-                        ${[
-                            { l: 'Altitude', v: `${sd.alt.toLocaleString()} km`, c: ct.color },
-                            { l: 'Velocity', v: `${sd.velocity} km/s`, c: '#22c55e' },
-                            { l: 'Period', v: `${sd.period} min`, c: '#f59e0b' },
-                        ].map(k => `<div style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--ax-border);text-align:center;"><div style="font-size:14px;font-weight:800;color:${k.c};font-family:'JetBrains Mono',monospace;">${k.v}</div><div style="font-size:8px;color:var(--ax-text-dim);margin-top:1px;">${k.l}</div></div>`).join('')}
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;">${[
-                        ['Inclination', `${sd.inclination}°`],
-                        ['Country', sd.country || '—'],
-                        ['Launch Date', sd.launchDate || '—'],
-                        ['Status', `<span style="color:${sd.status === 'active' ? '#22c55e' : '#6b7280'}">${sd.status}</span>`],
-                        ['Alt (ft)', `${altFt.toLocaleString()} ft`],
-                        ['Speed (mph)', `${spdMph.toLocaleString()} mph`],
-                        ['Latitude', `${sd.lat.toFixed(4)}°`],
-                        ['Longitude', `${sd.lng.toFixed(4)}°`],
-                    ].map(([l, v]) => `<div style="padding:2px 0;"><div style="font-size:8px;color:var(--ax-text-dim);font-weight:700;letter-spacing:0.06em;margin-bottom:1px;">${l}</div><div style="font-size:10px;color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v}</div></div>`).join('')}</div>
-                    <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--ax-border);display:flex;justify-content:space-between;align-items:center;"><span style="font-size:8px;color:var(--ax-text-dim);">Source: CelesTrak · NORAD</span><span style="font-size:8px;color:${ct.color};font-weight:600;">${sd.orbitType} Orbit</span></div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:8px;">${[
+                        { l: 'Altitude', v: `${sd.alt.toLocaleString()}km`, c: ct.color },
+                        { l: 'Velocity', v: `${sd.velocity}km/s`, c: '#22c55e' },
+                        { l: 'Period', v: `${sd.period}min`, c: '#f59e0b' },
+                    ].map(k => `<div style="padding:5px 6px;border-radius:5px;border:1px solid var(--ax-border);text-align:center;background:rgba(255,255,255,0.02);"><div style="font-size:13px;font-weight:800;color:${k.c};font-family:'JetBrains Mono',monospace;">${k.v}</div><div style="font-size:7px;color:var(--ax-text-dim);">${k.l}</div></div>`).join('')}</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;">${[
+                        ['Inclination', `${sd.inclination}°`], ['Country', sd.country || '—'],
+                        ['Launch', sd.launchDate || '—'], ['Status', sd.status],
+                        ['Category', ct.label], ['Orbit', sd.orbitType],
+                        ['Position', `${sd.lat.toFixed(2)}°, ${sd.lng.toFixed(2)}°`], ['Alt (ft)', `${altFt.toLocaleString()}`],
+                    ].map(([l, v]) => `<div style="padding:2px 0;"><div style="font-size:7px;color:var(--ax-text-dim);font-weight:700;letter-spacing:0.06em;">${l}</div><div style="font-size:10px;color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v}</div></div>`).join('')}</div>
+                    <div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--ax-border);display:flex;justify-content:space-between;"><span style="font-size:7px;color:var(--ax-text-dim);">CelesTrak · NORAD</span><span style="font-size:7px;color:${ct.color};font-weight:600;">${sd.orbitType}</span></div>
                 </div>`).addTo(map);
             satPopupRef.current = popup;
             popup.on('close', () => { setSatSelected(null); satPopupRef.current = null; });
