@@ -3,8 +3,8 @@ import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'rea
 import { router, usePage } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
-import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData, SatelliteData, POI } from '../../mock/map';
-import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig, MOCK_POIS, poiCategoryConfig, wmoWeatherCodes, getWeatherIcon, getWeatherLabel } from '../../mock/map';
+import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData, SatelliteData, POI, TrafficSegment, TrafficIncident } from '../../mock/map';
+import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig, MOCK_POIS, poiCategoryConfig, wmoWeatherCodes, getWeatherIcon, getWeatherLabel, trafficLevelConfig, trafficIncidentConfig, MOCK_TRAFFIC_SEGMENTS, MOCK_TRAFFIC_INCIDENTS } from '../../mock/map';
 import { mockUAVs, uavStatusConfig, uavTypeConfig, mockMissions, mockDetections, mockTelemetry, DRONE_VIDEO_URL, type UAV, type DroneMission, type AIDetection, type DroneTelemetry, type DroneWaypoint } from '../../mock/uav';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
@@ -679,6 +679,88 @@ export default function MapIndex() {
         return null;
     }, [uavSelectedDrone]);
 
+    // ═══ LIVE TRAFFIC ═══
+    const [layerTraffic, setLayerTraffic] = useState(false);
+    const [showTrafficPanel, setShowTrafficPanel] = useState(false);
+    const [trafficTab, setTrafficTab] = useState<'overview' | 'incidents' | 'roads'>('overview');
+    const [trafficShowIncidents, setTrafficShowIncidents] = useState(true);
+    const [trafficShowFlow, setTrafficShowFlow] = useState(true);
+    const [trafficSource, setTrafficSource] = useState<'tomtom' | 'mock' | 'loading'>('loading');
+    const [trafficApiKey, setTrafficApiKey] = useState('');
+    const [trafficTileUrl, setTrafficTileUrl] = useState<string | null>(null);
+    const [trafficIncidentsTileUrl, setTrafficIncidentsTileUrl] = useState<string | null>(null);
+    const [trafficLiveIncidents, setTrafficLiveIncidents] = useState<TrafficIncident[]>([]);
+    const [trafficLastUpdate, setTrafficLastUpdate] = useState('');
+    const trafficIncMarkerMapRef = useRef<Map<string, any>>(new Map());
+
+    // Fetch TomTom config on layer enable
+    const fetchTrafficConfig = useCallback(async () => {
+        try {
+            const res = await fetch('/mock-api/traffic/config');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const cfg = await res.json();
+            if (cfg.hasKey && cfg.apiKey) {
+                setTrafficApiKey(cfg.apiKey);
+                setTrafficTileUrl(cfg.tileUrls?.flow_relative || null);
+                setTrafficIncidentsTileUrl(cfg.tileUrls?.incidents_s1 || null);
+                setTrafficSource('tomtom');
+                return true;
+            }
+        } catch {}
+        setTrafficSource('mock');
+        return false;
+    }, []);
+
+    // Fetch live incidents from TomTom
+    const fetchTrafficIncidents = useCallback(async () => {
+        const map = mapRef.current;
+        if (!map || !trafficApiKey) return;
+        const b = map.getBounds();
+        try {
+            const res = await fetch(`/mock-api/traffic/incidents?south=${b.getSouth()}&north=${b.getNorth()}&west=${b.getWest()}&east=${b.getEast()}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data.source === 'tomtom' && data.incidents) {
+                setTrafficLiveIncidents(data.incidents);
+                setTrafficLastUpdate(new Date().toLocaleTimeString('en-US', { hour12: false }));
+            }
+        } catch {}
+    }, [trafficApiKey]);
+
+    useEffect(() => {
+        if (!layerTraffic) return;
+        fetchTrafficConfig().then(hasKey => {
+            if (hasKey) fetchTrafficIncidents();
+        });
+    }, [layerTraffic, fetchTrafficConfig, fetchTrafficIncidents]);
+
+    // Refetch incidents on map move (live only)
+    useEffect(() => {
+        if (!layerTraffic || trafficSource !== 'tomtom') return;
+        const map = mapRef.current;
+        if (!map) return;
+        const onMoveEnd = () => fetchTrafficIncidents();
+        map.on('moveend', onMoveEnd);
+        // Refresh every 2 min
+        const iv = setInterval(fetchTrafficIncidents, 120000);
+        return () => { map.off('moveend', onMoveEnd); clearInterval(iv); };
+    }, [layerTraffic, trafficSource, fetchTrafficIncidents]);
+
+    // Effective incidents (live or mock)
+    const trafficIncidents = useMemo(() => trafficSource === 'tomtom' && trafficLiveIncidents.length > 0 ? trafficLiveIncidents : MOCK_TRAFFIC_INCIDENTS, [trafficSource, trafficLiveIncidents]);
+
+    // Stats computed from effective data
+    const trafficStats = useMemo(() => {
+        const levels: Record<string, number> = { free: 0, light: 0, moderate: 0, heavy: 0, standstill: 0 };
+        if (trafficSource === 'mock') MOCK_TRAFFIC_SEGMENTS.forEach(s => levels[s.level]++);
+        const avgSpeed = trafficSource === 'mock' ? Math.round(MOCK_TRAFFIC_SEGMENTS.reduce((a, s) => a + s.speed, 0) / MOCK_TRAFFIC_SEGMENTS.length) : 0;
+        const totalDelay = trafficSource === 'mock' ? MOCK_TRAFFIC_SEGMENTS.reduce((a, s) => a + s.delay, 0) : trafficLiveIncidents.reduce((a, i) => a + (i.delay || 0), 0);
+        const congestionIdx = trafficSource === 'mock' ? Math.round(((levels.heavy + levels.standstill) / Math.max(MOCK_TRAFFIC_SEGMENTS.length, 1)) * 100) : 0;
+        const incBySev: Record<string, number> = { minor: 0, moderate: 0, major: 0, critical: 0 };
+        trafficIncidents.forEach(i => { if (incBySev[i.severity] !== undefined) incBySev[i.severity]++; });
+        return { levels, avgSpeed, totalDelay, congestionIdx, incidents: trafficIncidents.length, incBySev };
+    }, [trafficSource, trafficLiveIncidents, trafficIncidents]);
+
     // ═══ ROUTING / DIRECTIONS ═══
     type RouteProfile = 'car' | 'bike' | 'foot';
     interface RouteWaypoint { id: string; lat: number; lng: number; label: string; }
@@ -1193,7 +1275,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -3566,6 +3648,135 @@ export default function MapIndex() {
         }
     }, [layerUAV, loaded, uavShowRoutes, uavShowDetections, uavShowGeofence, deployedDrones, activeMissions, uavDetections]);
 
+    // ═══ LIVE TRAFFIC MAP RENDERING ═══
+    useEffect(() => {
+        const map = mapRef.current;
+        const ml = (window as any).maplibregl;
+        if (!map || !ml || !loaded || !map.getCanvas()) return;
+
+        if (!layerTraffic) {
+            // Cleanup all
+            ['traffic-flow-heavy', 'traffic-flow-moderate', 'traffic-flow-light', 'traffic-flow-free', 'traffic-flow-standstill', 'traffic-flow-casing'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            try { if (map.getSource('traffic-flow-src')) map.removeSource('traffic-flow-src'); } catch {}
+            try { if (map.getLayer('tomtom-flow-layer')) map.removeLayer('tomtom-flow-layer'); } catch {}
+            try { if (map.getSource('tomtom-flow-src')) map.removeSource('tomtom-flow-src'); } catch {}
+            try { if (map.getLayer('tomtom-incidents-layer')) map.removeLayer('tomtom-incidents-layer'); } catch {}
+            try { if (map.getSource('tomtom-incidents-src')) map.removeSource('tomtom-incidents-src'); } catch {}
+            trafficIncMarkerMapRef.current.forEach(m => m.remove()); trafficIncMarkerMapRef.current.clear();
+            return;
+        }
+
+        // ── Traffic Flow ──
+        if (trafficShowFlow) {
+            if (trafficTileUrl && trafficSource === 'tomtom') {
+                // ═══ LIVE: TomTom raster traffic flow tiles ═══
+                // Remove mock layers if present
+                ['traffic-flow-heavy', 'traffic-flow-moderate', 'traffic-flow-light', 'traffic-flow-free', 'traffic-flow-standstill', 'traffic-flow-casing'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+                try { if (map.getSource('traffic-flow-src')) map.removeSource('traffic-flow-src'); } catch {}
+
+                try {
+                    if (map.getSource('tomtom-flow-src')) {
+                        (map.getSource('tomtom-flow-src') as any).setTiles([trafficTileUrl]);
+                    } else {
+                        map.addSource('tomtom-flow-src', { type: 'raster', tiles: [trafficTileUrl], tileSize: 256, attribution: '© TomTom' });
+                        map.addLayer({ id: 'tomtom-flow-layer', type: 'raster', source: 'tomtom-flow-src', paint: { 'raster-opacity': 0.8 } });
+                    }
+                } catch (e) { console.warn('TomTom flow tiles failed:', e); }
+
+                // TomTom Incidents raster tiles (optional overlay)
+                if (trafficIncidentsTileUrl && trafficShowIncidents) {
+                    try {
+                        if (!map.getSource('tomtom-incidents-src')) {
+                            map.addSource('tomtom-incidents-src', { type: 'raster', tiles: [trafficIncidentsTileUrl], tileSize: 256 });
+                            map.addLayer({ id: 'tomtom-incidents-layer', type: 'raster', source: 'tomtom-incidents-src', paint: { 'raster-opacity': 0.7 } });
+                        }
+                    } catch {}
+                }
+            } else {
+                // ═══ FALLBACK: Mock GeoJSON road segments ═══
+                try { if (map.getLayer('tomtom-flow-layer')) map.removeLayer('tomtom-flow-layer'); } catch {}
+                try { if (map.getSource('tomtom-flow-src')) map.removeSource('tomtom-flow-src'); } catch {}
+
+                const features = MOCK_TRAFFIC_SEGMENTS.map(seg => ({
+                    type: 'Feature' as const, properties: { level: seg.level, speed: seg.speed, name: seg.name },
+                    geometry: { type: 'LineString' as const, coordinates: seg.coordinates }
+                }));
+                const fc = { type: 'FeatureCollection' as const, features };
+                try {
+                    if (map.getSource('traffic-flow-src')) {
+                        (map.getSource('traffic-flow-src') as any).setData(fc);
+                    } else {
+                        map.addSource('traffic-flow-src', { type: 'geojson', data: fc });
+                        map.addLayer({ id: 'traffic-flow-casing', type: 'line', source: 'traffic-flow-src', paint: { 'line-color': '#000', 'line-width': 7, 'line-opacity': 0.25 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+                        ['free', 'light', 'moderate', 'heavy', 'standstill'].forEach(level => {
+                            const col = trafficLevelConfig[level].color;
+                            map.addLayer({ id: `traffic-flow-${level}`, type: 'line', source: 'traffic-flow-src',
+                                filter: ['==', ['get', 'level'], level],
+                                paint: { 'line-color': col, 'line-width': 5, 'line-opacity': 0.85 },
+                                layout: { 'line-cap': 'round', 'line-join': 'round' }
+                            });
+                        });
+                    }
+                } catch {}
+            }
+        } else {
+            // Hide all flow layers
+            ['traffic-flow-heavy', 'traffic-flow-moderate', 'traffic-flow-light', 'traffic-flow-free', 'traffic-flow-standstill', 'traffic-flow-casing'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            try { if (map.getSource('traffic-flow-src')) map.removeSource('traffic-flow-src'); } catch {}
+            try { if (map.getLayer('tomtom-flow-layer')) map.removeLayer('tomtom-flow-layer'); } catch {}
+            try { if (map.getSource('tomtom-flow-src')) map.removeSource('tomtom-flow-src'); } catch {}
+        }
+
+        // ── Incident markers (both live and mock) ──
+        if (trafficShowIncidents) {
+            // Clear stale markers
+            const currentIds = new Set(trafficIncidents.map(i => i.id));
+            trafficIncMarkerMapRef.current.forEach((m, id) => { if (!currentIds.has(id)) { m.remove(); trafficIncMarkerMapRef.current.delete(id); } });
+
+            trafficIncidents.forEach(inc => {
+                if (trafficIncMarkerMapRef.current.has(inc.id)) return;
+                const cfg = trafficIncidentConfig[inc.type] || trafficIncidentConfig.hazard;
+                const sevCol = inc.severity === 'critical' ? '#7f1d1d' : inc.severity === 'major' ? '#ef4444' : inc.severity === 'moderate' ? '#f59e0b' : '#6b7280';
+                const el = document.createElement('div');
+                el.className = 'tmap-traffic-inc';
+                el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform 0.15s;">
+                    <div style="width:26px;height:26px;border-radius:6px;background:${cfg.color}20;border:2px solid ${cfg.color};box-shadow:0 2px 8px ${cfg.color}50;display:flex;align-items:center;justify-content:center;font-size:13px;">${cfg.icon}</div>
+                    <div style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:4px solid ${cfg.color};margin-top:-1px;"></div>
+                </div>`;
+                el.addEventListener('click', (ev) => { ev.stopPropagation();
+                    if (uavPopupRef.current) uavPopupRef.current.remove();
+                    const delayText = inc.delay ? ` · Delay: ${Math.round(inc.delay / 60)} min` : '';
+                    const lengthText = inc.length ? ` · ${(inc.length / 1000).toFixed(1)} km` : '';
+                    const popup = new ml.Popup({ offset: [0, -30], closeButton: true, maxWidth: '300px', className: 'tmap-popup', anchor: 'bottom' })
+                        .setLngLat([inc.lng, inc.lat]).setHTML(`<div class="tmap-popup-inner" style="padding:12px 14px;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                            <div style="width:28px;height:28px;border-radius:6px;background:${cfg.color}15;border:1.5px solid ${cfg.color}30;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">${cfg.icon}</div>
+                            <div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:800;color:var(--ax-text);">${inc.title}</div><div style="font-size:8px;color:var(--ax-text-dim);">${cfg.label} · ${inc.road}</div></div>
+                            <span style="font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;background:${sevCol}15;color:${sevCol};border:1px solid ${sevCol}30;">${inc.severity}</span>
+                        </div>
+                        <div style="font-size:10px;color:var(--ax-text-secondary);line-height:1.5;margin-bottom:4px;">${inc.description}</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;font-size:8px;color:var(--ax-text-dim);">
+                            ${inc.startTime ? `<span>🕐 ${inc.startTime.includes('T') ? new Date(inc.startTime).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : inc.startTime.split(' ')[1] || inc.startTime}</span>` : ''}
+                            ${inc.endTime ? `<span>→ ${inc.endTime.includes('T') ? new Date(inc.endTime).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : inc.endTime.split(' ')[1] || inc.endTime}</span>` : ''}
+                            ${delayText ? `<span style="color:#ef4444;">⏱${delayText}</span>` : ''}${lengthText ? `<span>${lengthText}</span>` : ''}
+                        </div>
+                        <div style="margin-top:4px;font-size:7px;color:var(--ax-text-dim);text-align:right;">Source: ${trafficSource === 'tomtom' ? 'TomTom LIVE' : 'Mock Data'}</div>
+                    </div>`).addTo(map);
+                    popup.on('close', () => { uavPopupRef.current = null; });
+                    uavPopupRef.current = popup;
+                });
+                el.addEventListener('mouseenter', () => { (el.firstElementChild as HTMLElement).style.transform = 'scale(1.2)'; });
+                el.addEventListener('mouseleave', () => { (el.firstElementChild as HTMLElement).style.transform = 'scale(1)'; });
+                const marker = new ml.Marker({ element: el, anchor: 'bottom' }).setLngLat([inc.lng, inc.lat]).addTo(map);
+                trafficIncMarkerMapRef.current.set(inc.id, marker);
+            });
+        } else {
+            trafficIncMarkerMapRef.current.forEach(m => m.remove()); trafficIncMarkerMapRef.current.clear();
+            try { if (map.getLayer('tomtom-incidents-layer')) map.removeLayer('tomtom-incidents-layer'); } catch {}
+            try { if (map.getSource('tomtom-incidents-src')) map.removeSource('tomtom-incidents-src'); } catch {}
+        }
+    }, [layerTraffic, loaded, trafficShowFlow, trafficShowIncidents, trafficSource, trafficTileUrl, trafficIncidentsTileUrl, trafficIncidents]);
+
     // Object drawing click handler
     useEffect(() => {
         const map = mapRef.current;
@@ -4016,6 +4227,7 @@ export default function MapIndex() {
                 if (showWeatherPanel) { setShowWeatherPanel(false); return; }
                 if (wxClickMode) { setWxClickMode(false); return; }
                 if (showUAVPanel) { setShowUAVPanel(false); return; }
+                if (showTrafficPanel) { setShowTrafficPanel(false); return; }
                 if (routePlacing) { setRoutePlacing(false); return; }
                 if (showRoutePanel2) { setShowRoutePanel2(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
@@ -4815,7 +5027,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
-                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0) + (layerUAV ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0) + (layerUAV ? 1 : 0) + (layerTraffic ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Layer buttons */}
                             {[
@@ -4827,6 +5039,7 @@ export default function MapIndex() {
                                 { key: 'poi', icon: '📍', label: 'Places of Interest', color: '#14b8a6', active: layerPOI, toggle: () => { setLayerPOI(!layerPOI); triggerTopLoader(); }, panel: showPOIPanel, openPanel: () => { setShowPOIPanel(!showPOIPanel); triggerTopLoader(); }, desc: layerPOI ? `${poiStats.visible} places · ${poiActiveCategories.size} categories` : 'Hospitals, police, banks, ATMs...' },
                                 { key: 'weather', icon: '🌦️', label: 'Weather Radar', color: '#0ea5e9', active: layerWeather, toggle: () => { setLayerWeather(!layerWeather); triggerTopLoader(); }, panel: showWeatherPanel, openPanel: () => { setShowWeatherPanel(!showWeatherPanel); triggerTopLoader(); }, desc: layerWeather ? `${wxData?.current?.temperature_2m ?? '—'}°C · ${getWeatherLabel(wxData?.current?.weather_code ?? 0)}` : 'Rain radar, forecast, history' },
                                 { key: 'uav', icon: '🛩️', label: 'UAV Drones', color: '#10b981', active: layerUAV, toggle: () => { setLayerUAV(!layerUAV); triggerTopLoader(); }, panel: showUAVPanel, openPanel: () => { setShowUAVPanel(!showUAVPanel); triggerTopLoader(); }, desc: layerUAV ? `${deployedDrones.length} active · ${activeMissions.length} missions` : 'Fleet tracking, missions, AI detections' },
+                                { key: 'traffic', icon: '🚦', label: 'Live Traffic', color: '#f97316', active: layerTraffic, toggle: () => { setLayerTraffic(!layerTraffic); triggerTopLoader(); }, panel: showTrafficPanel, openPanel: () => { setShowTrafficPanel(!showTrafficPanel); triggerTopLoader(); }, desc: layerTraffic ? `${trafficSource === 'tomtom' ? 'LIVE' : 'Mock'} · ${trafficStats.incidents} incidents` : 'TomTom traffic flow + incidents' },
                             ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {/* Toggle switch */}
                                 <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
@@ -6919,6 +7132,110 @@ export default function MapIndex() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: flightSource === 'live' ? '#22c55e' : flightSource === 'mock' ? '#f59e0b' : '#6b7280', boxShadow: flightSource === 'live' ? '0 0 6px #22c55e60' : 'none', animation: layerFlights ? 'tmap-tl-ring 2s infinite' : 'none' }} />
                             <span style={{ fontSize: 9, color: flightSource === 'live' ? '#06b6d4' : '#f59e0b', fontWeight: 600 }}>{flightSource === 'live' ? 'OpenSky LIVE' : flightSource === 'mock' ? 'Mock Data' : 'Connecting...'}</span>
+                        </div>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ TRAFFIC PANEL ═══ */}
+                {showTrafficPanel && loaded && <div data-panel="traffic" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select')) bringToFront('traffic'); }} style={panelStyle('traffic', '400px', '#f97316')}>
+                    <PanelHeader id="traffic" icon="🚦" title="Live Traffic" subtitle={`${trafficStats.congestionIdx}% congestion · ${trafficStats.incidents} incidents`} color="#f97316" onClose={() => setShowTrafficPanel(false)} extra={<button onClick={() => { setLayerTraffic(!layerTraffic); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: layerTraffic ? '#f97316' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: layerTraffic ? 16 : 2, transition: 'left 0.2s' }} /></button>} />
+                    <PanelResizeGrip id="traffic" />
+                    {!isPanelMin('traffic') && <>
+                    {/* Sub-layer toggles */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, display: 'flex', gap: 4 }}>
+                        <button onClick={() => setTrafficShowFlow(!trafficShowFlow)} style={{ flex: 1, padding: '4px 0', borderRadius: 4, border: `1px solid ${trafficShowFlow ? '#f9731630' : theme.border}`, background: trafficShowFlow ? '#f9731608' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: trafficShowFlow ? '#f97316' : theme.textDim }}>🛣️ Traffic Flow</button>
+                        <button onClick={() => setTrafficShowIncidents(!trafficShowIncidents)} style={{ flex: 1, padding: '4px 0', borderRadius: 4, border: `1px solid ${trafficShowIncidents ? '#ef444430' : theme.border}`, background: trafficShowIncidents ? '#ef444408' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: trafficShowIncidents ? '#ef4444' : theme.textDim }}>⚠️ Incidents</button>
+                    </div>
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        {(['overview', 'incidents', 'roads'] as const).map(t => <button key={t} onClick={() => setTrafficTab(t)} style={{ flex: 1, padding: '7px 0', border: 'none', borderBottom: `2px solid ${trafficTab === t ? '#f97316' : 'transparent'}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 700, color: trafficTab === t ? '#f97316' : theme.textDim, transition: 'all 0.15s' }}>{t === 'overview' ? '📊 Overview' : t === 'incidents' ? '⚠️ Incidents' : '🛣️ Roads'}</button>)}
+                    </div>
+
+                    <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {/* OVERVIEW */}
+                        {trafficTab === 'overview' && <div style={{ padding: '10px 14px' }}>
+                            {/* Congestion gauge */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, padding: '10px 12px', borderRadius: 8, border: `1px solid ${theme.border}`, background: 'rgba(255,255,255,0.01)' }}>
+                                <div style={{ position: 'relative', width: 56, height: 56, flexShrink: 0 }}>
+                                    <svg width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" fill="none" stroke={theme.border} strokeWidth="4" /><circle cx="28" cy="28" r="24" fill="none" stroke={trafficStats.congestionIdx > 60 ? '#ef4444' : trafficStats.congestionIdx > 30 ? '#f59e0b' : '#22c55e'} strokeWidth="4" strokeDasharray={`${trafficStats.congestionIdx * 1.5} 150`} strokeLinecap="round" transform="rotate(-90 28 28)" /></svg>
+                                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const }}><span style={{ fontSize: 14, fontWeight: 900, color: trafficStats.congestionIdx > 60 ? '#ef4444' : trafficStats.congestionIdx > 30 ? '#f59e0b' : '#22c55e', fontFamily: "'JetBrains Mono',monospace", lineHeight: 1 }}>{trafficStats.congestionIdx}</span><span style={{ fontSize: 6, color: theme.textDim }}>%</span></div>
+                                </div>
+                                <div><div style={{ fontSize: 13, fontWeight: 800, color: theme.text }}>Congestion Index</div><div style={{ fontSize: 9, color: theme.textDim }}>Avg speed {trafficStats.avgSpeed} km/h · Total delay {Math.round(trafficStats.totalDelay / 60)} min</div></div>
+                            </div>
+                            {/* Traffic level breakdown */}
+                            <div style={{ marginBottom: 10 }}>
+                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 6 }}>TRAFFIC CONDITIONS</div>
+                                <div style={{ display: 'flex', gap: 2, height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 6 }}>
+                                    {Object.entries(trafficStats.levels).map(([level, count]) => count > 0 ? <div key={level} style={{ flex: count, background: trafficLevelConfig[level].color, transition: 'flex 0.3s' }} title={`${trafficLevelConfig[level].label}: ${count}`} /> : null)}
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
+                                    {Object.entries(trafficLevelConfig).map(([level, cfg]) => <div key={level} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, flex: 1, minWidth: 65 }}>
+                                        <div style={{ width: 8, height: 8, borderRadius: 2, background: cfg.color, flexShrink: 0 }} />
+                                        <div style={{ flex: 1 }}><div style={{ fontSize: 9, fontWeight: 700, color: theme.text }}>{trafficStats.levels[level]}</div><div style={{ fontSize: 7, color: theme.textDim }}>{cfg.label}</div></div>
+                                    </div>)}
+                                </div>
+                            </div>
+                            {/* Incident summary */}
+                            <div>
+                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 6 }}>INCIDENTS BY SEVERITY</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4 }}>
+                                    {[{ l: 'Critical', v: trafficStats.incBySev.critical, c: '#7f1d1d' },{ l: 'Major', v: trafficStats.incBySev.major, c: '#ef4444' },{ l: 'Moderate', v: trafficStats.incBySev.moderate, c: '#f59e0b' },{ l: 'Minor', v: trafficStats.incBySev.minor, c: '#6b7280' }].map(k => <div key={k.l} style={{ padding: '6px 4px', borderRadius: 5, border: `1px solid ${theme.border}`, textAlign: 'center' as const }}><div style={{ fontSize: 14, fontWeight: 800, color: k.c, fontFamily: "'JetBrains Mono',monospace" }}>{k.v}</div><div style={{ fontSize: 7, color: theme.textDim }}>{k.l}</div></div>)}
+                                </div>
+                            </div>
+                            {/* Legend */}
+                            <div style={{ marginTop: 10, padding: '6px 8px', borderRadius: 5, border: `1px solid ${theme.border}`, fontSize: 8, color: theme.textDim }}>
+                                <div style={{ fontWeight: 700, marginBottom: 3 }}>LEGEND</div>
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+                                    {Object.entries(trafficLevelConfig).map(([, cfg]) => <span key={cfg.label} style={{ display: 'flex', alignItems: 'center', gap: 3 }}><div style={{ width: 12, height: 3, borderRadius: 1, background: cfg.color }} />{cfg.label} ({cfg.speed})</span>)}
+                                </div>
+                            </div>
+                        </div>}
+
+                        {/* INCIDENTS */}
+                        {trafficTab === 'incidents' && <div style={{ padding: '8px 14px' }}>
+                            {trafficIncidents.length === 0 ? <div style={{ padding: 20, textAlign: 'center' as const }}><div style={{ fontSize: 28, opacity: 0.15 }}>✅</div><div style={{ fontSize: 10, color: theme.textSecondary, marginTop: 4 }}>No active incidents</div></div> :
+                            trafficIncidents.map(inc => { const cfg = trafficIncidentConfig[inc.type] || trafficIncidentConfig.hazard; const sevCol = inc.severity === 'critical' ? '#7f1d1d' : inc.severity === 'major' ? '#ef4444' : inc.severity === 'moderate' ? '#f59e0b' : '#6b7280'; return <div key={inc.id} onClick={() => { const map = mapRef.current; if (map) map.flyTo({ center: [inc.lng, inc.lat], zoom: 16, duration: 800 }); }} style={{ padding: '8px 10px', borderRadius: 6, border: `1px solid ${theme.border}10`, marginBottom: 4, cursor: 'pointer', transition: 'background 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                    <div style={{ width: 26, height: 26, borderRadius: 6, background: `${cfg.color}15`, border: `1.5px solid ${cfg.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>{cfg.icon}</div>
+                                    <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, color: theme.text }}>{inc.title}</div><div style={{ fontSize: 8, color: theme.textDim }}>{inc.road} · {cfg.label}</div></div>
+                                    <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 5px', borderRadius: 3, background: `${sevCol}15`, color: sevCol, border: `1px solid ${sevCol}25`, flexShrink: 0 }}>{inc.severity}</span>
+                                </div>
+                                <div style={{ fontSize: 9, color: theme.textSecondary, marginBottom: 3, lineHeight: 1.4 }}>{inc.description}</div>
+                                <div style={{ display: 'flex', gap: 6, fontSize: 8, color: theme.textDim, flexWrap: 'wrap' as const }}>
+                                    <span>🕐 {inc.startTime.includes('T') ? new Date(inc.startTime).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : (inc.startTime.split(' ')[1] || inc.startTime)}{inc.endTime ? ` → ${inc.endTime.includes('T') ? new Date(inc.endTime).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : (inc.endTime.split(' ')[1] || inc.endTime)}` : ''}</span>
+                                    {(inc as any).lanes && <span>🚗 {(inc as any).lanes}</span>}
+                                    {(inc as any).detour && <span style={{ color: '#f59e0b' }}>⤴ Detour</span>}
+                                    {inc.delay ? <span style={{ color: '#ef4444' }}>⏱ +{Math.round(inc.delay / 60)}min</span> : null}
+                                    {inc.length ? <span>{(inc.length / 1000).toFixed(1)}km</span> : null}
+                                </div>
+                            </div>; })}
+                        </div>}
+
+                        {/* ROADS */}
+                        {trafficTab === 'roads' && <div style={{ padding: '8px 14px' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', marginBottom: 6 }}>MONITORED ROAD SEGMENTS</div>
+                            {MOCK_TRAFFIC_SEGMENTS.map(seg => { const cfg = trafficLevelConfig[seg.level]; const pct = Math.round((seg.speed / seg.freeFlowSpeed) * 100); return <div key={seg.id} onClick={() => { const map = mapRef.current; if (map && seg.coordinates.length > 0) { const mid = seg.coordinates[Math.floor(seg.coordinates.length / 2)]; map.flyTo({ center: [mid[0], mid[1]], zoom: 15, duration: 800 }); } }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 5, cursor: 'pointer', borderBottom: `1px solid ${theme.border}06` }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                <div style={{ width: 6, height: 22, borderRadius: 3, background: cfg.color, flexShrink: 0 }} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{seg.name}</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>{cfg.label} · {seg.delay > 0 ? `+${Math.round(seg.delay / 60)} min delay` : 'No delay'}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 800, color: cfg.color, fontFamily: "'JetBrains Mono',monospace" }}>{seg.speed}<span style={{ fontSize: 8, fontWeight: 600 }}>km/h</span></div>
+                                    <div style={{ width: 40, height: 3, borderRadius: 2, background: `${theme.border}30`, overflow: 'hidden', marginTop: 2 }}><div style={{ width: `${pct}%`, height: '100%', background: cfg.color, borderRadius: 2 }} /></div>
+                                </div>
+                            </div>; })}
+                        </div>}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{trafficIncidents.length} incidents{trafficLastUpdate ? ` · ${trafficLastUpdate}` : ''}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: trafficSource === 'tomtom' ? '#22c55e' : '#f59e0b', boxShadow: trafficSource === 'tomtom' ? '0 0 6px #22c55e60' : 'none' }} />
+                            <span style={{ fontSize: 9, color: '#f97316', fontWeight: 600 }}>{trafficSource === 'tomtom' ? 'TomTom LIVE' : 'Mock Data'}</span>
+                            {trafficSource === 'tomtom' && <button onClick={() => { fetchTrafficIncidents(); triggerTopLoader(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 9, color: theme.textDim, padding: 0 }}>🔄</button>}
                         </div>
                     </div>
                     </>}

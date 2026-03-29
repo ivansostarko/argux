@@ -277,3 +277,8 @@
 .maplibregl-marker:has(.tmap-uav-det) { overflow: visible !important; pointer-events: auto !important; z-index: 3; }
 @keyframes tmap-uav-pulse { 0%, 100% { box-shadow: 0 0 8px rgba(16,185,129,0.3), 0 2px 8px rgba(0,0,0,0.4); } 50% { box-shadow: 0 0 16px rgba(16,185,129,0.6), 0 2px 8px rgba(0,0,0,0.4); } }
 @keyframes tmap-uav-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ═══ TRAFFIC MARKERS ═══ */
+.tmap-traffic-inc { pointer-events: auto !important; overflow: visible !important; }
+.maplibregl-marker:has(.tmap-traffic-inc) { overflow: visible !important; pointer-events: auto !important; z-index: 6; }
+.maplibregl-marker:has(.tmap-traffic-inc):hover { z-index: 180 !important; }

@@ -169,6 +169,9 @@ Route::get('/mock-api/places', [\App\Http\Controllers\MockApi\OverpassController
 Route::get('/mock-api/weather', [\App\Http\Controllers\MockApi\WeatherController::class, 'current'])->name('mock-api.weather');
 Route::get('/mock-api/weather/history', [\App\Http\Controllers\MockApi\WeatherController::class, 'history'])->name('mock-api.weather.history');
 Route::get('/mock-api/weather/radar', [\App\Http\Controllers\MockApi\WeatherController::class, 'radar'])->name('mock-api.weather.radar');
+Route::get('/mock-api/traffic/config', [\App\Http\Controllers\MockApi\TrafficController::class, 'config'])->name('mock-api.traffic.config');
+Route::get('/mock-api/traffic/incidents', [\App\Http\Controllers\MockApi\TrafficController::class, 'incidents'])->name('mock-api.traffic.incidents');
+Route::get('/mock-api/traffic/flow', [\App\Http\Controllers\MockApi\TrafficController::class, 'flow'])->name('mock-api.traffic.flow');
 Route::post('/mock-api/route', [\App\Http\Controllers\MockApi\RoutingController::class, 'route'])->name('mock-api.route');
 Route::post('/mock-api/google-maps/session', [\App\Http\Controllers\MockApi\GoogleMapsController::class, 'createSession'])->name('mock-api.gmaps.session');
 Route::get('/mock-api/google-maps/config', [\App\Http\Controllers\MockApi\GoogleMapsController::class, 'config'])->name('mock-api.gmaps.config');

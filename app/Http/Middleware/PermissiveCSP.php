@@ -19,23 +19,25 @@ class PermissiveCSP
     {
         $response = $next($request);
 
-        $csp = implode('; ', [
-            "default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss:",
-            "script-src * 'self' 'unsafe-inline' 'unsafe-eval' blob:",
-            "style-src * 'self' 'unsafe-inline'",
-            "img-src * 'self' data: blob: https: http:",
-            "connect-src * 'self' https: http: ws: wss: data: blob:",
-            "font-src * 'self' data: https: http:",
-            "media-src * 'self' blob: https: http: data:",
-            "worker-src * 'self' blob:",
-            "frame-src * 'self' https: http: blob: data:",
-            "child-src * 'self' blob:",
-        ]);
-
-        $response->headers->set('Content-Security-Policy', $csp);
-
-        // Remove any restrictive headers that frameworks might add
+        // Remove ALL CSP headers that may have been set by other middleware, nginx, or Vite
+        $response->headers->remove('Content-Security-Policy');
+        $response->headers->remove('Content-Security-Policy-Report-Only');
         $response->headers->remove('X-Content-Security-Policy');
+        $response->headers->remove('X-WebKit-CSP');
+
+        // Set a single, fully permissive CSP — no 'none' anywhere
+        $response->headers->set('Content-Security-Policy',
+            "default-src * 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss:; " .
+            "script-src * 'unsafe-inline' 'unsafe-eval' blob:; " .
+            "style-src * 'unsafe-inline'; " .
+            "img-src * data: blob:; " .
+            "connect-src *; " .
+            "font-src * data:; " .
+            "media-src * blob: data:; " .
+            "worker-src * blob:; " .
+            "frame-src * blob: data:; " .
+            "child-src * blob:"
+        );
 
         return $response;
     }

@@ -333,3 +333,51 @@ export const getWeatherIcon = (code: number, isDay: boolean = true): string => {
 export const getWeatherLabel = (code: number): string => {
     return (wmoWeatherCodes[code] || wmoWeatherCodes[0]).label;
 };
+
+// ═══ LIVE TRAFFIC ═══
+export interface TrafficSegment { id: string; name: string; coordinates: number[][]; level: 'free' | 'light' | 'moderate' | 'heavy' | 'standstill'; speed: number; freeFlowSpeed: number; delay: number; }
+export interface TrafficIncident { id: string; type: 'accident' | 'construction' | 'closure' | 'event' | 'hazard' | 'police'; severity: 'minor' | 'moderate' | 'major' | 'critical'; title: string; description: string; lat: number; lng: number; road: string; startTime: string; endTime?: string; lanes?: string; detour?: boolean; delay?: number; length?: number; geometry?: any; }
+
+export const trafficLevelConfig: Record<string, { label: string; color: string; speed: string }> = {
+    free:       { label: 'Free Flow',   color: '#22c55e', speed: '> 80%' },
+    light:      { label: 'Light',       color: '#84cc16', speed: '60-80%' },
+    moderate:   { label: 'Moderate',    color: '#f59e0b', speed: '40-60%' },
+    heavy:      { label: 'Heavy',       color: '#ef4444', speed: '20-40%' },
+    standstill: { label: 'Standstill',  color: '#7f1d1d', speed: '< 20%' },
+};
+
+export const trafficIncidentConfig: Record<string, { label: string; color: string; icon: string }> = {
+    accident:     { label: 'Accident',     color: '#ef4444', icon: '💥' },
+    construction: { label: 'Construction', color: '#f59e0b', icon: '🚧' },
+    closure:      { label: 'Road Closure', color: '#7f1d1d', icon: '🚫' },
+    event:        { label: 'Event',        color: '#8b5cf6', icon: '🎪' },
+    hazard:       { label: 'Hazard',       color: '#f97316', icon: '⚠️' },
+    police:       { label: 'Police',       color: '#3b82f6', icon: '🚔' },
+};
+
+export const MOCK_TRAFFIC_SEGMENTS: TrafficSegment[] = [
+    { id: 'ts-1', name: 'Slavonska avenija (E)', coordinates: [[15.9600,45.8050],[15.9700,45.8045],[15.9800,45.8040],[15.9900,45.8038],[16.0000,45.8035]], level: 'heavy', speed: 22, freeFlowSpeed: 70, delay: 340 },
+    { id: 'ts-2', name: 'Slavonska avenija (W)', coordinates: [[16.0000,45.8030],[15.9900,45.8032],[15.9800,45.8035],[15.9700,45.8040],[15.9600,45.8045]], level: 'moderate', speed: 38, freeFlowSpeed: 70, delay: 180 },
+    { id: 'ts-3', name: 'Vukovarska (E)', coordinates: [[15.9650,45.8070],[15.9750,45.8068],[15.9850,45.8065],[15.9950,45.8062]], level: 'light', speed: 48, freeFlowSpeed: 60, delay: 45 },
+    { id: 'ts-4', name: 'Vukovarska (W)', coordinates: [[15.9950,45.8058],[15.9850,45.8060],[15.9750,45.8063],[15.9650,45.8066]], level: 'free', speed: 55, freeFlowSpeed: 60, delay: 0 },
+    { id: 'ts-5', name: 'Savska cesta (S)', coordinates: [[15.9695,45.8140],[15.9692,45.8100],[15.9688,45.8060],[15.9685,45.8020],[15.9682,45.7980]], level: 'moderate', speed: 32, freeFlowSpeed: 50, delay: 120 },
+    { id: 'ts-6', name: 'Savska cesta (N)', coordinates: [[15.9678,45.7980],[15.9680,45.8020],[15.9683,45.8060],[15.9686,45.8100],[15.9690,45.8140]], level: 'light', speed: 42, freeFlowSpeed: 50, delay: 35 },
+    { id: 'ts-7', name: 'Ilica (W)', coordinates: [[15.9770,45.8130],[15.9720,45.8133],[15.9670,45.8136],[15.9620,45.8139],[15.9570,45.8142]], level: 'heavy', speed: 15, freeFlowSpeed: 40, delay: 420 },
+    { id: 'ts-8', name: 'Ilica (E)', coordinates: [[15.9570,45.8146],[15.9620,45.8143],[15.9670,45.8140],[15.9720,45.8137],[15.9770,45.8134]], level: 'moderate', speed: 25, freeFlowSpeed: 40, delay: 150 },
+    { id: 'ts-9', name: 'Heinzelova (N)', coordinates: [[15.9890,45.8020],[15.9892,45.8060],[15.9895,45.8100],[15.9897,45.8140]], level: 'free', speed: 52, freeFlowSpeed: 60, delay: 0 },
+    { id: 'ts-10', name: 'Heinzelova (S)', coordinates: [[15.9893,45.8140],[15.9891,45.8100],[15.9889,45.8060],[15.9887,45.8020]], level: 'light', speed: 45, freeFlowSpeed: 60, delay: 30 },
+    { id: 'ts-11', name: 'Branimirova (E)', coordinates: [[15.9720,45.8070],[15.9780,45.8068],[15.9840,45.8066],[15.9900,45.8064]], level: 'standstill', speed: 5, freeFlowSpeed: 50, delay: 720 },
+    { id: 'ts-12', name: 'Branimirova (W)', coordinates: [[15.9900,45.8060],[15.9840,45.8062],[15.9780,45.8064],[15.9720,45.8066]], level: 'heavy', speed: 18, freeFlowSpeed: 50, delay: 380 },
+    { id: 'ts-13', name: 'Držićeva (S)', coordinates: [[15.9940,45.8150],[15.9938,45.8110],[15.9935,45.8070],[15.9932,45.8030]], level: 'moderate', speed: 30, freeFlowSpeed: 60, delay: 160 },
+    { id: 'ts-14', name: 'Avenija Dubrovnik', coordinates: [[15.9500,45.7900],[15.9580,45.7895],[15.9660,45.7890],[15.9740,45.7885],[15.9820,45.7880]], level: 'free', speed: 68, freeFlowSpeed: 80, delay: 0 },
+    { id: 'ts-15', name: 'Zeleni most → Kvaternik', coordinates: [[15.9780,45.8100],[15.9810,45.8120],[15.9830,45.8140],[15.9820,45.8160]], level: 'heavy', speed: 12, freeFlowSpeed: 40, delay: 510 },
+];
+
+export const MOCK_TRAFFIC_INCIDENTS: TrafficIncident[] = [
+    { id: 'ti-1', type: 'accident', severity: 'major', title: 'Multi-vehicle collision', description: '3-car collision blocking 2 lanes. Emergency services on scene.', lat: 45.8042, lng: 15.9820, road: 'Slavonska avenija', startTime: '2026-03-29 13:45', lanes: '2 of 3 blocked', detour: true },
+    { id: 'ti-2', type: 'construction', severity: 'moderate', title: 'Road resurfacing', description: 'Lane closure for road works. Expected completion 18:00.', lat: 45.8130, lng: 15.9680, road: 'Ilica', startTime: '2026-03-29 08:00', endTime: '2026-03-29 18:00', lanes: '1 of 2 closed' },
+    { id: 'ti-3', type: 'closure', severity: 'critical', title: 'Full road closure', description: 'Branimirova fully closed due to gas line repair. Detour via Vukovarska.', lat: 45.8066, lng: 15.9810, road: 'Branimirova', startTime: '2026-03-29 06:00', endTime: '2026-03-30 06:00', detour: true },
+    { id: 'ti-4', type: 'police', severity: 'minor', title: 'Police checkpoint', description: 'Routine traffic checkpoint. Expect minor delays.', lat: 45.8160, lng: 15.9830, road: 'Zeleni most', startTime: '2026-03-29 14:00', endTime: '2026-03-29 16:00' },
+    { id: 'ti-5', type: 'event', severity: 'moderate', title: 'Football match traffic', description: 'Maksimir stadium event. Heavy traffic expected in surrounding area.', lat: 45.8188, lng: 16.0180, road: 'Maksimirska', startTime: '2026-03-29 18:00', endTime: '2026-03-29 22:00' },
+    { id: 'ti-6', type: 'hazard', severity: 'minor', title: 'Debris on road', description: 'Fallen tree branch partially blocking right lane.', lat: 45.8100, lng: 15.9940, road: 'Heinzelova', startTime: '2026-03-29 12:30' },
+];

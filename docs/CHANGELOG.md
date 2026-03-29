@@ -1,5 +1,100 @@
 # Changelog
 
+## 0.25.62 - 2026-03-29
+
+### Upgraded — Live Traffic with TomTom API (/map → Layers)
+Traffic layer now uses **TomTom Traffic API** for real-time traffic flow tiles and live incident data. Falls back to mock data when no API key is configured.
+
+#### TomTom Integration (Free Tier — 2,500 requests/day)
+- **Traffic Flow tiles**: TomTom raster tiles (`api.tomtom.com/traffic/map/4/tile/flow/relative0`) rendered as a MapLibre raster layer at 80% opacity. Color-coded: green/yellow/orange/red/dark-red for free-flow to standstill.
+- **Traffic Incidents tiles**: TomTom incident raster tiles (`api.tomtom.com/traffic/map/4/tile/incidents/s1`) rendered at 70% opacity.
+- **Live Incidents API**: TomTom Incident Details v5 (`api.tomtom.com/traffic/services/5/incidentDetails`) fetched for current map viewport. Returns real accidents, construction, closures, hazards, events, police activity.
+- **Traffic Flow Segment API**: TomTom Flow Segment Data v4 for point-specific speed data.
+- Auto-refreshes incidents every 2 minutes + on map move.
+- 2-minute cache for incidents, 1-minute cache for flow segments.
+
+#### Backend
+- `app/Http/Controllers/MockApi/TrafficController.php` (209 lines) — Laravel proxy.
+- `GET /mock-api/traffic/config` → returns API key + tile URLs (flow + incidents).
+- `GET /mock-api/traffic/incidents?south=&north=&west=&east=` → live incidents from TomTom.
+- `GET /mock-api/traffic/flow?lat=&lng=` → flow segment data for a point.
+- TomTom icon categories mapped to incident types (accident/construction/closure/hazard/police/event).
+- Magnitude of delay mapped to severity (minor/moderate/major/critical).
+
+#### API Key Setup
+**Option A — `.env`:**
+```
+TOMTOM_API_KEY=your_key_here
+```
+
+**Option B — `credentials.json`:**
+```json
+{
+  "tomtom_api_key": "your_key_here"
+}
+```
+
+Get free key: `developer.tomtom.com` → Register → Get API Key. Free tier: 2,500 requests/day.
+
+#### What happens with/without API key
+| | With TomTom Key | Without Key |
+|---|---|---|
+| Flow visualization | Real-time raster tiles from TomTom | 15 mock GeoJSON road segments (Zagreb) |
+| Incidents | Live from TomTom API (real accidents, construction, etc.) | 6 mock incidents |
+| Source indicator | 🟢 TomTom LIVE | 🟡 Mock Data |
+| Auto-refresh | Every 2 min + on map move | Static |
+
+#### Panel Updates
+- Footer shows **TomTom LIVE** or **Mock Data** with colored indicator.
+- 🔄 refresh button for on-demand incident refresh (live mode).
+- Incidents tab handles both TomTom ISO timestamps and mock string timestamps.
+- Incidents show delay (minutes) and length (km) from TomTom API.
+
+#### Network Domains Required
+`api.tomtom.com` must be in network allowed domains for live traffic data.
+
+## 0.25.61 - 2026-03-29
+
+### Implemented — Live Traffic Layer (/map → Layers)
+Traffic flow visualization with color-coded road segments, incident markers, congestion index, and 3-tab control panel. Uses OpenStreetMap road geometry with mock traffic data.
+
+#### Map Rendering
+- **Traffic flow lines**: 15 road segments rendered as color-coded GeoJSON LineStrings — green (free flow), lime (light), amber (moderate), red (heavy), dark red (standstill). Dark casing for depth. Rounded caps/joins.
+- **Incident markers**: 6 incident types with icon badges (💥 accident, 🚧 construction, 🚫 closure, 🎪 event, ⚠️ hazard, 🚔 police). Click for detail popup with description, severity, time, lane info, detour status.
+- Sub-layer toggles: 🛣️ Traffic Flow and ⚠️ Incidents can be independently shown/hidden.
+
+#### Traffic Panel — 3 Tabs
+
+**📊 Overview**
+- **Congestion gauge**: SVG ring chart showing congestion index percentage (0-100%), color-coded (green/amber/red). Average speed and total delay.
+- **Traffic conditions bar**: Stacked horizontal bar chart showing segment count by level (free/light/moderate/heavy/standstill).
+- **Level breakdown**: 5 cards with colored indicators and segment counts.
+- **Incidents by severity**: 4 KPI cards (Critical/Major/Moderate/Minor).
+- **Legend**: Color key with speed percentage ranges.
+
+**⚠️ Incidents**
+- List of all active incidents with type icon, title, road name, severity badge, description, time range, lane info, detour availability. Click to fly to location.
+
+**🛣️ Roads**
+- All monitored road segments with: colored level bar, road name, flow level, delay in minutes, current speed (km/h), speed-vs-freeflow progress bar. Click to fly to segment midpoint.
+
+#### Mock Data (15 segments, 6 incidents — Zagreb roads)
+**Road segments**: Slavonska avenija (E/W), Vukovarska (E/W), Savska cesta (N/S), Ilica (E/W), Heinzelova (N/S), Branimirova (E/W), Držićeva (S), Avenija Dubrovnik, Zeleni most → Kvaternik. Realistic speed/delay values.
+
+**Incidents**: Multi-vehicle collision on Slavonska (major), Road resurfacing on Ilica (moderate), Full closure on Branimirova (critical), Police checkpoint at Zeleni most (minor), Football match traffic at Maksimir (moderate), Debris on Heinzelova (minor).
+
+#### Traffic Level Color Coding
+| Level | Color | Speed Range |
+|---|---|---|
+| Free Flow | Green (#22c55e) | > 80% of free flow |
+| Light | Lime (#84cc16) | 60-80% |
+| Moderate | Amber (#f59e0b) | 40-60% |
+| Heavy | Red (#ef4444) | 20-40% |
+| Standstill | Dark Red (#7f1d1d) | < 20% |
+
+#### Note
+This uses OpenStreetMap road geometry with simulated traffic data. For real-time traffic, a TomTom or HERE API key can be integrated. The mock data provides a realistic visualization of how live traffic would appear.
+
 ## 0.25.60 - 2026-03-29
 
 ### Implemented — UAV Drone Operations on Map (/map → Layers)
