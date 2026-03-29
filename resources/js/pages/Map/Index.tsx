@@ -5,6 +5,7 @@ import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData, SatelliteData, POI } from '../../mock/map';
 import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig, MOCK_POIS, poiCategoryConfig, wmoWeatherCodes, getWeatherIcon, getWeatherLabel } from '../../mock/map';
+import { mockUAVs, uavStatusConfig, uavTypeConfig, mockMissions, mockDetections, mockTelemetry, DRONE_VIDEO_URL, type UAV, type DroneMission, type AIDetection, type DroneTelemetry, type DroneWaypoint } from '../../mock/uav';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
 import { mockVehicles } from '../../mock/vehicles';
@@ -655,6 +656,29 @@ export default function MapIndex() {
         return () => clearInterval(iv);
     }, [wxRadarPlaying, wxRadarFrames.length]);
 
+    // ═══ UAV DRONE OPERATIONS ═══
+    const [layerUAV, setLayerUAV] = useState(false);
+    const [showUAVPanel, setShowUAVPanel] = useState(false);
+    const [uavTab, setUavTab] = useState<'fleet' | 'missions' | 'video' | 'detections' | 'telemetry'>('fleet');
+    const [uavMissions, setUavMissions] = useState<DroneMission[]>(mockMissions);
+    const [uavDetections] = useState<AIDetection[]>(mockDetections);
+    const [uavSelectedDrone, setUavSelectedDrone] = useState<number | null>(null);
+    const [uavSelectedMission, setUavSelectedMission] = useState<string | null>(null);
+    const [uavShowRoutes, setUavShowRoutes] = useState(true);
+    const [uavShowDetections, setUavShowDetections] = useState(true);
+    const [uavShowGeofence, setUavShowGeofence] = useState(true);
+    const [uavVideoActive, setUavVideoActive] = useState(false);
+    const uavMarkerMapRef = useRef<Map<number, any>>(new Map());
+    const uavDetMarkerMapRef = useRef<Map<string, any>>(new Map());
+    const uavPopupRef = useRef<any>(null);
+
+    const deployedDrones = useMemo(() => mockUAVs.filter(u => u.lat !== null && u.lng !== null && (u.status === 'operational' || u.status === 'deployed')), []);
+    const activeMissions = useMemo(() => uavMissions.filter(m => m.status === 'active'), [uavMissions]);
+    const uavTelemetry = useMemo(() => {
+        if (uavSelectedDrone && mockTelemetry[uavSelectedDrone]) return mockTelemetry[uavSelectedDrone];
+        return null;
+    }, [uavSelectedDrone]);
+
     // ═══ ROUTING / DIRECTIONS ═══
     type RouteProfile = 'car' | 'bike' | 'foot';
     interface RouteWaypoint { id: string; lat: number; lng: number; label: string; }
@@ -1169,7 +1193,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -3408,6 +3432,140 @@ export default function MapIndex() {
         if (!layerWeather) { if (wxMarkerRef.current) { wxMarkerRef.current.remove(); wxMarkerRef.current = null; } }
     }, [layerWeather]);
 
+    // ═══ UAV DRONE MAP RENDERING ═══
+    useEffect(() => {
+        const map = mapRef.current;
+        const ml = (window as any).maplibregl;
+        if (!map || !ml || !loaded) return;
+
+        if (!layerUAV) {
+            // Cleanup all UAV layers
+            uavMarkerMapRef.current.forEach(m => m.remove()); uavMarkerMapRef.current.clear();
+            uavDetMarkerMapRef.current.forEach(m => m.remove()); uavDetMarkerMapRef.current.clear();
+            if (uavPopupRef.current) { uavPopupRef.current.remove(); uavPopupRef.current = null; }
+            ['uav-routes', 'uav-routes-casing', 'uav-routes-arrows'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            try { if (map.getSource('uav-routes-src')) map.removeSource('uav-routes-src'); } catch {}
+            ['uav-geofence-fill', 'uav-geofence-line'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            try { if (map.getSource('uav-geofence-src')) map.removeSource('uav-geofence-src'); } catch {}
+            return;
+        }
+
+        // ── Drone markers ──
+        deployedDrones.forEach(drone => {
+            if (uavMarkerMapRef.current.has(drone.id)) return;
+            const tc = uavTypeConfig[drone.type];
+            const el = document.createElement('div');
+            el.className = 'tmap-uav-marker';
+            el.innerHTML = `<div class="uav-marker-hit" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform 0.15s;transform-origin:bottom center;">
+                <div style="position:relative;">
+                    <div style="width:34px;height:34px;border-radius:50%;background:rgba(16,185,129,0.15);border:2px solid #10b981;box-shadow:0 0 12px rgba(16,185,129,0.4),0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;animation:tmap-uav-pulse 2s ease-in-out infinite;">
+                        <span style="font-size:16px;">${tc.icon}</span>
+                    </div>
+                    <div style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:${drone.status === 'deployed' ? '#f59e0b' : '#22c55e'};border:2px solid #0d1117;animation:tmap-uav-blink 1.5s ease-in-out infinite;"></div>
+                </div>
+                <div style="margin-top:2px;padding:1px 6px;border-radius:3px;background:rgba(0,0,0,0.75);border:1px solid rgba(16,185,129,0.3);font-size:8px;font-weight:800;color:#10b981;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${drone.callsign}</div>
+            </div>`;
+            const hit = el.querySelector('.uav-marker-hit') as HTMLElement;
+            hit.addEventListener('mouseenter', () => { hit.style.transform = 'scale(1.2)'; });
+            hit.addEventListener('mouseleave', () => { hit.style.transform = 'scale(1)'; });
+            hit.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                setUavSelectedDrone(drone.id);
+                setShowUAVPanel(true); setUavTab('telemetry');
+                if (uavPopupRef.current) { uavPopupRef.current.remove(); uavPopupRef.current = null; }
+                const tel = mockTelemetry[drone.id];
+                const batCol = drone.batteryLevel > 50 ? '#22c55e' : drone.batteryLevel > 20 ? '#f59e0b' : '#ef4444';
+                const popup = new ml.Popup({ offset: [0, -40], closeButton: true, maxWidth: '320px', className: 'tmap-popup', anchor: 'bottom' })
+                    .setLngLat([drone.lng!, drone.lat!])
+                    .setHTML(`<div class="tmap-popup-inner" style="padding:12px 14px;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                            <div style="width:36px;height:36px;border-radius:8px;background:rgba(16,185,129,0.1);border:1.5px solid rgba(16,185,129,0.3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${tc.icon}</div>
+                            <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:var(--ax-text);">${drone.callsign}</div><div style="font-size:9px;color:var(--ax-text-dim);">${drone.manufacturer} ${drone.model}</div></div>
+                            <span style="font-size:7px;font-weight:700;padding:2px 6px;border-radius:3px;background:${uavStatusConfig[drone.status].color}15;color:${uavStatusConfig[drone.status].color};border:1px solid ${uavStatusConfig[drone.status].color}30;">${uavStatusConfig[drone.status].label}</span>
+                        </div>
+                        ${tel ? `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px;">
+                            ${[{l:'ALT',v:tel.altitude+'m',c:'#3b82f6'},{l:'SPD',v:tel.speed+'km/h',c:'#22c55e'},{l:'HDG',v:tel.heading+'°',c:'#f59e0b'},{l:'BAT',v:drone.batteryLevel+'%',c:batCol}].map(k => `<div style="text-align:center;padding:4px 2px;border-radius:4px;border:1px solid var(--ax-border);"><div style="font-size:11px;font-weight:800;color:${k.c};font-family:'JetBrains Mono',monospace;">${k.v}</div><div style="font-size:6px;color:var(--ax-text-dim);">${k.l}</div></div>`).join('')}
+                        </div>
+                        <div style="display:flex;gap:4px;font-size:8px;color:var(--ax-text-dim);">
+                            <span>📡 ${tel.signal}%</span><span>🛰️ ${tel.gpsLock} sats</span><span>🌡️ ${tel.temp}°C</span><span>💨 ${tel.windSpeed}km/h</span>
+                        </div>
+                        <div style="margin-top:4px;font-size:8px;"><span style="color:${tel.mode==='auto'?'#22c55e':'#f59e0b'};font-weight:700;">● ${tel.mode.toUpperCase()}</span> · ${tel.armed ? '🔴 ARMED' : '⚪ DISARMED'} · ${(tel.uptime/60).toFixed(0)}min uptime</div>` : ''}
+                        <div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--ax-border);display:flex;justify-content:space-between;font-size:7px;color:var(--ax-text-dim);">
+                            <span>${drone.totalFlightHours.toFixed(0)}h total · ${drone.totalFlights} flights</span>
+                            <span style="color:#10b981;font-weight:700;">${drone.homeBase}</span>
+                        </div>
+                    </div>`).addTo(map);
+                uavPopupRef.current = popup;
+                popup.on('close', () => { uavPopupRef.current = null; });
+            });
+            const marker = new ml.Marker({ element: el, anchor: 'bottom' }).setLngLat([drone.lng!, drone.lat!]).addTo(map);
+            uavMarkerMapRef.current.set(drone.id, marker);
+        });
+
+        // ── Flight routes ──
+        if (uavShowRoutes) {
+            const routeFeatures = activeMissions.filter(m => m.waypoints.length >= 2).map(m => ({
+                type: 'Feature' as const, properties: { missionId: m.id, name: m.name }, geometry: { type: 'LineString' as const, coordinates: m.waypoints.map(w => [w.lng, w.lat]) }
+            }));
+            const wpFeatures = activeMissions.flatMap(m => m.waypoints.map((w, i) => ({
+                type: 'Feature' as const, properties: { idx: i, action: w.action, alt: w.alt }, geometry: { type: 'Point' as const, coordinates: [w.lng, w.lat] }
+            })));
+            const fc = { type: 'FeatureCollection' as const, features: [...routeFeatures, ...wpFeatures] };
+            try {
+                if (map.getSource('uav-routes-src')) { (map.getSource('uav-routes-src') as any).setData(fc); }
+                else {
+                    map.addSource('uav-routes-src', { type: 'geojson', data: fc });
+                    map.addLayer({ id: 'uav-routes-casing', type: 'line', source: 'uav-routes-src', filter: ['==', '$type', 'LineString'], paint: { 'line-color': '#000', 'line-width': 5, 'line-opacity': 0.3, 'line-dasharray': [2, 1] }, layout: { 'line-cap': 'round' } });
+                    map.addLayer({ id: 'uav-routes', type: 'line', source: 'uav-routes-src', filter: ['==', '$type', 'LineString'], paint: { 'line-color': '#10b981', 'line-width': 3, 'line-opacity': 0.8, 'line-dasharray': [3, 2] }, layout: { 'line-cap': 'round' } });
+                    map.addLayer({ id: 'uav-routes-arrows', type: 'symbol', source: 'uav-routes-src', filter: ['==', '$type', 'LineString'], layout: { 'symbol-placement': 'line', 'symbol-spacing': 60, 'text-field': '▸', 'text-size': 14, 'text-rotation-alignment': 'map', 'text-allow-overlap': true }, paint: { 'text-color': '#10b981', 'text-opacity': 0.7 } });
+                }
+            } catch {}
+        }
+
+        // ── Geofence polygons ──
+        if (uavShowGeofence) {
+            const geoFeatures = activeMissions.filter(m => m.polygon && m.polygon.length >= 3).map(m => ({
+                type: 'Feature' as const, properties: { name: m.name }, geometry: { type: 'Polygon' as const, coordinates: [m.polygon!] }
+            }));
+            const gfc = { type: 'FeatureCollection' as const, features: geoFeatures };
+            try {
+                if (map.getSource('uav-geofence-src')) { (map.getSource('uav-geofence-src') as any).setData(gfc); }
+                else {
+                    map.addSource('uav-geofence-src', { type: 'geojson', data: gfc });
+                    map.addLayer({ id: 'uav-geofence-fill', type: 'fill', source: 'uav-geofence-src', paint: { 'fill-color': '#10b981', 'fill-opacity': 0.06 } });
+                    map.addLayer({ id: 'uav-geofence-line', type: 'line', source: 'uav-geofence-src', paint: { 'line-color': '#10b981', 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [4, 2] } });
+                }
+            } catch {}
+        }
+
+        // ── AI Detection markers ──
+        if (uavShowDetections) {
+            uavDetections.forEach(det => {
+                if (uavDetMarkerMapRef.current.has(det.id)) return;
+                const isVeh = det.type === 'vehicle'; const isPer = det.type === 'person';
+                const col = isVeh ? '#f59e0b' : isPer ? '#ef4444' : '#6b7280';
+                const icon = isVeh ? '🚗' : isPer ? '🚶' : det.type === 'animal' ? '🐕' : '❓';
+                const el = document.createElement('div');
+                el.className = 'tmap-uav-det';
+                el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+                    <div style="width:18px;height:18px;border-radius:50%;background:${col}20;border:1.5px solid ${col};display:flex;align-items:center;justify-content:center;font-size:9px;box-shadow:0 0 8px ${col}40;">${icon}</div>
+                    <div style="font-size:6px;font-weight:700;color:${col};margin-top:1px;background:rgba(0,0,0,0.7);padding:0 3px;border-radius:2px;">${det.confidence.toFixed(0)}%</div>
+                </div>`;
+                el.addEventListener('click', (ev) => { ev.stopPropagation(); if (uavPopupRef.current) uavPopupRef.current.remove();
+                    uavPopupRef.current = new ml.Popup({ offset: [0, -20], closeButton: true, maxWidth: '250px', className: 'tmap-popup' })
+                        .setLngLat([det.lng, det.lat]).setHTML(`<div class="tmap-popup-inner" style="padding:10px 12px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="font-size:16px;">${icon}</span><div style="flex:1;"><div style="font-size:11px;font-weight:700;color:var(--ax-text);">${det.label}</div><div style="font-size:8px;color:var(--ax-text-dim);">${det.type} · ${det.confidence.toFixed(1)}% confidence</div></div></div>
+                        <div style="font-size:8px;color:var(--ax-text-dim);">🕐 ${det.timestamp} · 🛩️ Drone #${det.droneId}</div>
+                    </div>`).addTo(map);
+                });
+                const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([det.lng, det.lat]).addTo(map);
+                uavDetMarkerMapRef.current.set(det.id, marker);
+            });
+        } else {
+            uavDetMarkerMapRef.current.forEach(m => m.remove()); uavDetMarkerMapRef.current.clear();
+        }
+    }, [layerUAV, loaded, uavShowRoutes, uavShowDetections, uavShowGeofence, deployedDrones, activeMissions, uavDetections]);
+
     // Object drawing click handler
     useEffect(() => {
         const map = mapRef.current;
@@ -3857,6 +4015,7 @@ export default function MapIndex() {
                 if (showPOIPanel) { setShowPOIPanel(false); return; }
                 if (showWeatherPanel) { setShowWeatherPanel(false); return; }
                 if (wxClickMode) { setWxClickMode(false); return; }
+                if (showUAVPanel) { setShowUAVPanel(false); return; }
                 if (routePlacing) { setRoutePlacing(false); return; }
                 if (showRoutePanel2) { setShowRoutePanel2(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
@@ -4656,7 +4815,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
-                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0) + (layerUAV ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Layer buttons */}
                             {[
@@ -4667,6 +4826,7 @@ export default function MapIndex() {
                                 { key: 'flights', icon: '✈️', label: 'Live Flights', color: '#06b6d4', active: layerFlights, toggle: () => { setLayerFlights(!layerFlights); triggerTopLoader(); }, panel: showFlightsPanel, openPanel: () => { setShowFlightsPanel(!showFlightsPanel); triggerTopLoader(); }, desc: layerFlights ? `${filteredFlights.length} aircraft · ${flightSource === 'live' ? 'LIVE' : 'Mock'}` : 'OpenSky Network ADS-B feed' },
                                 { key: 'poi', icon: '📍', label: 'Places of Interest', color: '#14b8a6', active: layerPOI, toggle: () => { setLayerPOI(!layerPOI); triggerTopLoader(); }, panel: showPOIPanel, openPanel: () => { setShowPOIPanel(!showPOIPanel); triggerTopLoader(); }, desc: layerPOI ? `${poiStats.visible} places · ${poiActiveCategories.size} categories` : 'Hospitals, police, banks, ATMs...' },
                                 { key: 'weather', icon: '🌦️', label: 'Weather Radar', color: '#0ea5e9', active: layerWeather, toggle: () => { setLayerWeather(!layerWeather); triggerTopLoader(); }, panel: showWeatherPanel, openPanel: () => { setShowWeatherPanel(!showWeatherPanel); triggerTopLoader(); }, desc: layerWeather ? `${wxData?.current?.temperature_2m ?? '—'}°C · ${getWeatherLabel(wxData?.current?.weather_code ?? 0)}` : 'Rain radar, forecast, history' },
+                                { key: 'uav', icon: '🛩️', label: 'UAV Drones', color: '#10b981', active: layerUAV, toggle: () => { setLayerUAV(!layerUAV); triggerTopLoader(); }, panel: showUAVPanel, openPanel: () => { setShowUAVPanel(!showUAVPanel); triggerTopLoader(); }, desc: layerUAV ? `${deployedDrones.length} active · ${activeMissions.length} missions` : 'Fleet tracking, missions, AI detections' },
                             ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {/* Toggle switch */}
                                 <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
@@ -6759,6 +6919,167 @@ export default function MapIndex() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: flightSource === 'live' ? '#22c55e' : flightSource === 'mock' ? '#f59e0b' : '#6b7280', boxShadow: flightSource === 'live' ? '0 0 6px #22c55e60' : 'none', animation: layerFlights ? 'tmap-tl-ring 2s infinite' : 'none' }} />
                             <span style={{ fontSize: 9, color: flightSource === 'live' ? '#06b6d4' : '#f59e0b', fontWeight: 600 }}>{flightSource === 'live' ? 'OpenSky LIVE' : flightSource === 'mock' ? 'Mock Data' : 'Connecting...'}</span>
+                        </div>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ UAV OPERATIONS PANEL ═══ */}
+                {showUAVPanel && loaded && <div data-panel="uavops" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a, video')) bringToFront('uavops'); }} style={panelStyle('uavops', '420px', '#10b981')}>
+                    <PanelHeader id="uavops" icon="🛩️" title="UAV Operations" subtitle={`${deployedDrones.length} drones · ${activeMissions.length} active missions`} color="#10b981" onClose={() => setShowUAVPanel(false)} extra={<button onClick={() => { setLayerUAV(!layerUAV); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: layerUAV ? '#10b981' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: layerUAV ? 16 : 2, transition: 'left 0.2s' }} /></button>} />
+                    <PanelResizeGrip id="uavops" />
+                    {!isPanelMin('uavops') && <>
+                    {/* Layer toggles */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, display: 'flex', gap: 4 }}>
+                        {[{ l: 'Routes', v: uavShowRoutes, s: setUavShowRoutes, i: '🗺️' },{ l: 'Detections', v: uavShowDetections, s: setUavShowDetections, i: '🎯' },{ l: 'Geofence', v: uavShowGeofence, s: setUavShowGeofence, i: '⬡' }].map(t => <button key={t.l} onClick={() => t.s(!t.v)} style={{ flex: 1, padding: '4px 0', borderRadius: 4, border: `1px solid ${t.v ? '#10b98130' : theme.border}`, background: t.v ? '#10b98108' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: t.v ? '#10b981' : theme.textDim }}>{t.i} {t.l}</button>)}
+                    </div>
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        {(['fleet', 'missions', 'video', 'detections', 'telemetry'] as const).map(t => <button key={t} onClick={() => setUavTab(t)} style={{ flex: 1, padding: '7px 0', border: 'none', borderBottom: `2px solid ${uavTab === t ? '#10b981' : 'transparent'}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: uavTab === t ? '#10b981' : theme.textDim, transition: 'all 0.15s' }}>{t === 'fleet' ? '🛩️ Fleet' : t === 'missions' ? '🗺️ Missions' : t === 'video' ? '📹 Video' : t === 'detections' ? '🎯 AI' : '📊 Telemetry'}</button>)}
+                    </div>
+
+                    <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {/* FLEET TAB */}
+                        {uavTab === 'fleet' && <div style={{ padding: '8px 14px' }}>
+                            {deployedDrones.length === 0 ? <div style={{ padding: 20, textAlign: 'center' as const }}><div style={{ fontSize: 28, opacity: 0.15 }}>🛩️</div><div style={{ fontSize: 10, color: theme.textSecondary, marginTop: 4 }}>No drones deployed</div></div> :
+                            deployedDrones.map(d => { const tc = uavTypeConfig[d.type]; const sc = uavStatusConfig[d.status]; const tel = mockTelemetry[d.id]; const sel = uavSelectedDrone === d.id; return <div key={d.id} onClick={() => { setUavSelectedDrone(sel ? null : d.id); const map = mapRef.current; if (map && !sel && d.lat && d.lng) map.flyTo({ center: [d.lng, d.lat], zoom: 16, duration: 800 }); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1px solid ${sel ? '#10b98140' : theme.border}10`, background: sel ? '#10b98106' : 'transparent', cursor: 'pointer', marginBottom: 4, transition: 'all 0.1s' }} onMouseEnter={e => !sel && (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')} onMouseLeave={e => !sel && (e.currentTarget.style.background = 'transparent')}>
+                                <div style={{ width: 32, height: 32, borderRadius: 8, background: `${tc.color}10`, border: `1.5px solid ${tc.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{tc.icon}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ fontSize: 12, fontWeight: 800, color: theme.text }}>{d.callsign}</span><span style={{ fontSize: 7, padding: '1px 5px', borderRadius: 3, background: `${sc.color}12`, color: sc.color, fontWeight: 700, border: `1px solid ${sc.color}25` }}>{sc.label}</span></div>
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{d.model}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                                    {tel ? <><div style={{ fontSize: 11, fontWeight: 700, color: tel.altitude > 0 ? '#10b981' : theme.textDim, fontFamily: "'JetBrains Mono',monospace" }}>{tel.altitude}m</div><div style={{ fontSize: 8, color: theme.textDim }}>{tel.speed}km/h · {d.batteryLevel}%</div></> : <div style={{ fontSize: 9, color: theme.textDim }}>Ground</div>}
+                                </div>
+                            </div>; })}
+                            {/* All fleet summary */}
+                            <div style={{ marginTop: 8, padding: '8px', borderRadius: 6, border: `1px solid ${theme.border}`, display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4 }}>
+                                {[{ l: 'Total Fleet', v: mockUAVs.length, c: '#3b82f6' },{ l: 'Deployed', v: deployedDrones.length, c: '#10b981' },{ l: 'Active Missions', v: activeMissions.length, c: '#f59e0b' }].map(k => <div key={k.l} style={{ textAlign: 'center' as const }}><div style={{ fontSize: 14, fontWeight: 800, color: k.c, fontFamily: "'JetBrains Mono',monospace" }}>{k.v}</div><div style={{ fontSize: 7, color: theme.textDim }}>{k.l}</div></div>)}
+                            </div>
+                        </div>}
+
+                        {/* MISSIONS TAB */}
+                        {uavTab === 'missions' && <div style={{ padding: '8px 14px' }}>
+                            {uavMissions.map(m => { const drone = mockUAVs.find(u => u.id === m.droneId); const sel = uavSelectedMission === m.id; const sc = m.status === 'active' ? '#22c55e' : m.status === 'completed' ? '#3b82f6' : m.status === 'paused' ? '#f59e0b' : m.status === 'aborted' ? '#ef4444' : '#6b7280'; return <div key={m.id} onClick={() => setUavSelectedMission(sel ? null : m.id)} style={{ padding: '8px 10px', borderRadius: 6, border: `1px solid ${sel ? '#10b98130' : theme.border}10`, background: sel ? '#10b98104' : 'transparent', marginBottom: 4, cursor: 'pointer' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                    <span style={{ fontSize: 7, padding: '1px 5px', borderRadius: 3, background: `${sc}12`, color: sc, fontWeight: 700, border: `1px solid ${sc}25` }}>{m.status}</span>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: theme.text, flex: 1 }}>{m.name}</span>
+                                    <span style={{ fontSize: 8, color: theme.textDim }}>{m.waypoints.length} WP</span>
+                                </div>
+                                <div style={{ display: 'flex', gap: 6, fontSize: 8, color: theme.textDim }}>
+                                    <span>🛩️ {drone?.callsign || `#${m.droneId}`}</span><span>📋 {m.type}</span>{m.schedule && <span>⏰ {m.schedule}</span>}
+                                </div>
+                                {sel && <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${theme.border}10` }}>
+                                    <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 4 }}>WAYPOINTS</div>
+                                    {m.waypoints.map((w, i) => <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 0', fontSize: 9 }} onClick={e => { e.stopPropagation(); const map = mapRef.current; if (map) map.flyTo({ center: [w.lng, w.lat], zoom: 17, duration: 600 }); }}>
+                                        <div style={{ width: 14, height: 14, borderRadius: '50%', background: i === 0 ? '#22c55e20' : i === m.waypoints.length - 1 ? '#ef444420' : '#3b82f620', border: `1px solid ${i === 0 ? '#22c55e' : i === m.waypoints.length - 1 ? '#ef4444' : '#3b82f6'}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, color: theme.text }}>{i + 1}</div>
+                                        <span style={{ flex: 1, color: theme.text, fontFamily: "'JetBrains Mono',monospace" }}>{w.lat.toFixed(4)}, {w.lng.toFixed(4)}</span>
+                                        <span style={{ color: '#3b82f6', fontSize: 8 }}>{w.alt}m</span>
+                                        <span style={{ color: theme.textDim, fontSize: 7, padding: '1px 4px', borderRadius: 2, background: `${theme.border}20` }}>{w.action}</span>
+                                    </div>)}
+                                    <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+                                        {m.status === 'active' && <button onClick={e => { e.stopPropagation(); setUavMissions(prev => prev.map(mm => mm.id === m.id ? { ...mm, status: 'paused' } : mm)); }} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid #f59e0b30`, background: '#f59e0b08', color: '#f59e0b', fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>⏸ Pause</button>}
+                                        {m.status === 'paused' && <button onClick={e => { e.stopPropagation(); setUavMissions(prev => prev.map(mm => mm.id === m.id ? { ...mm, status: 'active' } : mm)); }} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid #22c55e30`, background: '#22c55e08', color: '#22c55e', fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>▶ Resume</button>}
+                                        {m.status === 'planned' && <button onClick={e => { e.stopPropagation(); setUavMissions(prev => prev.map(mm => mm.id === m.id ? { ...mm, status: 'active' } : mm)); }} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid #22c55e30`, background: '#22c55e08', color: '#22c55e', fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>🚀 Launch</button>}
+                                        {(m.status === 'active' || m.status === 'paused') && <button onClick={e => { e.stopPropagation(); setUavMissions(prev => prev.map(mm => mm.id === m.id ? { ...mm, status: 'aborted' } : mm)); }} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid #ef444430`, background: '#ef444408', color: '#ef4444', fontSize: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>⏹ Abort</button>}
+                                    </div>
+                                </div>}
+                            </div>; })}
+                        </div>}
+
+                        {/* VIDEO TAB */}
+                        {uavTab === 'video' && <div style={{ padding: '8px 14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: theme.textDim }}>LIVE FEED</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={{ width: 6, height: 6, borderRadius: '50%', background: uavVideoActive ? '#ef4444' : '#6b7280', animation: uavVideoActive ? 'tmap-uav-blink 1s infinite' : 'none' }} /><span style={{ fontSize: 8, fontWeight: 700, color: uavVideoActive ? '#ef4444' : theme.textDim }}>{uavVideoActive ? 'LIVE' : 'OFF'}</span></div>
+                            </div>
+                            {/* Drone selector */}
+                            <div style={{ display: 'flex', gap: 3, marginBottom: 8, flexWrap: 'wrap' as const }}>
+                                {deployedDrones.map(d => <button key={d.id} onClick={() => { setUavSelectedDrone(d.id); setUavVideoActive(true); }} style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${uavSelectedDrone === d.id ? '#10b98140' : theme.border}`, background: uavSelectedDrone === d.id ? '#10b98108' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: uavSelectedDrone === d.id ? '#10b981' : theme.textDim }}>{uavTypeConfig[d.type].icon} {d.callsign}</button>)}
+                            </div>
+                            {/* Video player */}
+                            <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: `1px solid ${theme.border}`, background: '#000', aspectRatio: '16/9' }}>
+                                <video src={DRONE_VIDEO_URL} autoPlay={uavVideoActive} loop muted playsInline controls style={{ width: '100%', height: '100%', objectFit: 'cover' as const }} />
+                                {/* HUD overlay */}
+                                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                                    <div style={{ position: 'absolute', top: 6, left: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '2px 6px', borderRadius: 3, background: 'rgba(0,0,0,0.6)' }}><div style={{ width: 5, height: 5, borderRadius: '50%', background: '#ef4444', animation: 'tmap-uav-blink 1s infinite' }} /><span style={{ fontSize: 8, fontWeight: 700, color: '#ef4444' }}>REC</span></div>
+                                        <span style={{ fontSize: 8, fontWeight: 700, color: '#fff', padding: '2px 5px', borderRadius: 3, background: 'rgba(0,0,0,0.6)' }}>{uavSelectedDrone ? mockUAVs.find(u => u.id === uavSelectedDrone)?.callsign || '' : '—'}</span>
+                                    </div>
+                                    <div style={{ position: 'absolute', top: 6, right: 8, fontSize: 8, fontWeight: 700, color: '#fff', padding: '2px 5px', borderRadius: 3, background: 'rgba(0,0,0,0.6)', fontFamily: "'JetBrains Mono',monospace" }}>{new Date().toLocaleTimeString('en-US', { hour12: false })}</div>
+                                    {uavTelemetry && <div style={{ position: 'absolute', bottom: 6, left: 8, display: 'flex', gap: 4 }}>
+                                        {[{ l: 'ALT', v: `${uavTelemetry.altitude}m` },{ l: 'SPD', v: `${uavTelemetry.speed}km/h` },{ l: 'HDG', v: `${uavTelemetry.heading}°` },{ l: 'BAT', v: `${uavTelemetry.battery}%` }].map(k => <div key={k.l} style={{ padding: '2px 5px', borderRadius: 3, background: 'rgba(0,0,0,0.6)', textAlign: 'center' as const }}><div style={{ fontSize: 9, fontWeight: 800, color: '#10b981', fontFamily: "'JetBrains Mono',monospace" }}>{k.v}</div><div style={{ fontSize: 6, color: 'rgba(255,255,255,0.5)' }}>{k.l}</div></div>)}
+                                    </div>}
+                                    {/* Crosshair */}
+                                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 30, height: 30 }}>
+                                        <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="rgba(16,185,129,0.5)" strokeWidth="1"><line x1="15" y1="0" x2="15" y2="10"/><line x1="15" y1="20" x2="15" y2="30"/><line x1="0" y1="15" x2="10" y2="15"/><line x1="20" y1="15" x2="30" y2="15"/><circle cx="15" cy="15" r="6" fill="none"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* AI Detection toggle */}
+                            <div style={{ marginTop: 8, padding: '6px 8px', borderRadius: 6, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: 9, fontWeight: 700, color: theme.text }}>🧠 AI Object Detection</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ fontSize: 8, color: '#22c55e' }}>YOLOv8 Active</span>
+                                    <div style={{ width: 24, height: 12, borderRadius: 6, background: '#22c55e', position: 'relative' as const }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', position: 'absolute' as const, top: 2, left: 14 }} /></div>
+                                </div>
+                            </div>
+                        </div>}
+
+                        {/* DETECTIONS TAB */}
+                        {uavTab === 'detections' && <div style={{ padding: '8px 14px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 8 }}>
+                                {[{ l: 'Persons', v: uavDetections.filter(d => d.type === 'person').length, c: '#ef4444', i: '🚶' },{ l: 'Vehicles', v: uavDetections.filter(d => d.type === 'vehicle').length, c: '#f59e0b', i: '🚗' },{ l: 'Other', v: uavDetections.filter(d => d.type !== 'person' && d.type !== 'vehicle').length, c: '#6b7280', i: '❓' }].map(k => <div key={k.l} style={{ padding: '6px', borderRadius: 5, border: `1px solid ${theme.border}`, textAlign: 'center' as const }}><div style={{ fontSize: 12 }}>{k.i}</div><div style={{ fontSize: 14, fontWeight: 800, color: k.c, fontFamily: "'JetBrains Mono',monospace" }}>{k.v}</div><div style={{ fontSize: 7, color: theme.textDim }}>{k.l}</div></div>)}
+                            </div>
+                            {uavDetections.map(det => { const isVeh = det.type === 'vehicle'; const isPer = det.type === 'person'; const col = isVeh ? '#f59e0b' : isPer ? '#ef4444' : '#6b7280'; const icon = isVeh ? '🚗' : isPer ? '🚶' : '🐕'; return <div key={det.id} onClick={() => { const map = mapRef.current; if (map) map.flyTo({ center: [det.lng, det.lat], zoom: 18, duration: 600 }); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 5, cursor: 'pointer', borderBottom: `1px solid ${theme.border}06` }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                <div style={{ width: 22, height: 22, borderRadius: '50%', background: `${col}15`, border: `1px solid ${col}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flexShrink: 0 }}>{icon}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: theme.text }}>{det.label}</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>🛩️ #{det.droneId} · {det.timestamp.split(' ')[1]}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' as const, flexShrink: 0 }}><div style={{ fontSize: 11, fontWeight: 800, color: det.confidence > 90 ? '#22c55e' : det.confidence > 75 ? '#f59e0b' : '#ef4444', fontFamily: "'JetBrains Mono',monospace" }}>{det.confidence.toFixed(0)}%</div><div style={{ fontSize: 7, color: theme.textDim }}>conf</div></div>
+                            </div>; })}
+                        </div>}
+
+                        {/* TELEMETRY TAB */}
+                        {uavTab === 'telemetry' && <div style={{ padding: '8px 14px' }}>
+                            {/* Drone selector */}
+                            <div style={{ display: 'flex', gap: 3, marginBottom: 8, flexWrap: 'wrap' as const }}>
+                                {deployedDrones.map(d => <button key={d.id} onClick={() => setUavSelectedDrone(d.id)} style={{ flex: 1, padding: '5px 4px', borderRadius: 4, border: `1px solid ${uavSelectedDrone === d.id ? '#10b98140' : theme.border}`, background: uavSelectedDrone === d.id ? '#10b98108' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: uavSelectedDrone === d.id ? '#10b981' : theme.textDim }}>{d.callsign}</button>)}
+                            </div>
+                            {!uavTelemetry ? <div style={{ padding: 20, textAlign: 'center' as const }}><div style={{ fontSize: 24, opacity: 0.15 }}>📊</div><div style={{ fontSize: 10, color: theme.textSecondary, marginTop: 4 }}>Select a drone above</div></div> : <>
+                            {/* Main telemetry */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 8 }}>
+                                {[{ l: 'Altitude', v: `${uavTelemetry.altitude}m`, c: '#3b82f6', i: '🏔️' },{ l: 'Speed', v: `${uavTelemetry.speed}km/h`, c: '#22c55e', i: '⚡' },{ l: 'Heading', v: `${uavTelemetry.heading}°`, c: '#f59e0b', i: '🧭' },{ l: 'Battery', v: `${uavTelemetry.battery}%`, c: uavTelemetry.battery > 50 ? '#22c55e' : '#f59e0b', i: '🔋' }].map(k => <div key={k.l} style={{ padding: '6px 4px', borderRadius: 5, border: `1px solid ${theme.border}`, textAlign: 'center' as const }}><div style={{ fontSize: 10 }}>{k.i}</div><div style={{ fontSize: 14, fontWeight: 800, color: k.c, fontFamily: "'JetBrains Mono',monospace" }}>{k.v}</div><div style={{ fontSize: 7, color: theme.textDim }}>{k.l}</div></div>)}
+                            </div>
+                            {/* Status row */}
+                            <div style={{ display: 'flex', gap: 6, marginBottom: 8, padding: '8px', borderRadius: 6, border: `1px solid ${theme.border}`, alignItems: 'center' }}>
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: uavTelemetry.mode === 'auto' ? '#22c55e' : uavTelemetry.mode === 'rtl' ? '#ef4444' : '#f59e0b', boxShadow: `0 0 6px ${uavTelemetry.mode === 'auto' ? '#22c55e' : '#f59e0b'}60` }} />
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: theme.text }}>{uavTelemetry.mode.toUpperCase()}</span>
+                                </div>
+                                <span style={{ fontSize: 9, color: uavTelemetry.armed ? '#ef4444' : theme.textDim, fontWeight: 700 }}>{uavTelemetry.armed ? '🔴 ARMED' : '⚪ DISARMED'}</span>
+                            </div>
+                            {/* Extended telemetry */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                                {[{ l: 'Signal', v: `${uavTelemetry.signal}%`, i: '📡' },{ l: 'GPS Lock', v: `${uavTelemetry.gpsLock} sats`, i: '🛰️' },{ l: 'Temp', v: `${uavTelemetry.temp}°C`, i: '🌡️' },{ l: 'Wind', v: `${uavTelemetry.windSpeed}km/h`, i: '💨' },{ l: 'Uptime', v: `${(uavTelemetry.uptime / 60).toFixed(0)} min`, i: '⏱️' },{ l: 'Dist Home', v: `${uavTelemetry.distFromHome} km`, i: '🏠' }].map(k => <div key={k.l} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 4, border: `1px solid ${theme.border}06` }}>
+                                    <span style={{ fontSize: 10 }}>{k.i}</span><span style={{ flex: 1, fontSize: 9, color: theme.textDim }}>{k.l}</span><span style={{ fontSize: 10, fontWeight: 700, color: theme.text, fontFamily: "'JetBrains Mono',monospace" }}>{k.v}</span>
+                                </div>)}
+                            </div>
+                            {/* Quick commands */}
+                            <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4 }}>
+                                {[{ l: '🏠 RTL', c: '#ef4444' },{ l: '⏸ Loiter', c: '#f59e0b' },{ l: '🛬 Land', c: '#8b5cf6' }].map(cmd => <button key={cmd.l} style={{ padding: '6px 0', borderRadius: 4, border: `1px solid ${cmd.c}30`, background: `${cmd.c}06`, cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: cmd.c }}>{cmd.l}</button>)}
+                            </div>
+                            </>}
+                        </div>}
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{deployedDrones.length} drones · {uavDetections.length} detections</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e60' }} />
+                            <span style={{ fontSize: 9, color: '#10b981', fontWeight: 600 }}>ARGUX UAV Control</span>
                         </div>
                     </div>
                     </>}

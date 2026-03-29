@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.25.60 - 2026-03-29
+
+### Implemented — UAV Drone Operations on Map (/map → Layers)
+Full UAV drone operations layer with fleet tracking, mission control, live video stream, AI object detection, geofencing, and telemetry dashboard.
+
+#### Map Rendering
+- **Drone markers**: Animated pulsing circles (green glow) with type icon + callsign label. Status indicator dot (green=operational, amber=deployed) with blink animation. Click → detailed popup with telemetry HUD.
+- **Flight routes**: Dashed green lines connecting mission waypoints with directional arrows. Active missions only.
+- **Geofence polygons**: Semi-transparent green fill with dashed border for mission patrol zones.
+- **AI Detection markers**: Small colored circles (red=person, amber=vehicle, gray=other) with confidence % label. Click for detail popup.
+
+#### Drone Popup (on marker click)
+- Header: type icon, callsign, model, status badge.
+- 4 telemetry KPI cards: Altitude (m), Speed (km/h), Heading (°), Battery (%).
+- Status row: Signal %, GPS satellites, Temperature, Wind speed.
+- Mode indicator (AUTO/MANUAL/RTL) + Armed/Disarmed status + uptime.
+- Footer: total flight hours and flights.
+
+#### UAV Operations Panel — 5 Tabs
+
+**🛩️ Fleet** — Deployed drone list with type icon, callsign, status, model, altitude, speed, battery. Click to fly camera. Summary cards: Total Fleet, Deployed, Active Missions.
+
+**🗺️ Missions** — Mission list with status badge (active/planned/paused/completed/aborted), name, waypoint count, drone assignment, type, schedule. Expandable waypoint list with coordinates, altitude, action type. Click waypoint → fly to location. Mission controls: Launch, Pause, Resume, Abort.
+
+**📹 Video** — Live drone video feed with HUD overlay:
+- Mock video from `drone-video.mp4` URL.
+- Drone selector buttons for multi-drone switching.
+- REC indicator with blink animation + callsign + timestamp.
+- Telemetry overlay: ALT, SPD, HDG, BAT at bottom-left.
+- Crosshair SVG reticle at center.
+- AI Object Detection status indicator (YOLOv8 Active).
+
+**🎯 AI Detections** — Detection summary (Persons, Vehicles, Other) with counts. Detection list with type icon, label, drone ID, timestamp, confidence percentage (color-coded: green >90%, amber >75%, red <75%). Click to fly to detection location.
+
+**📊 Telemetry** — Full telemetry dashboard for selected drone:
+- Drone selector bar.
+- 4 main KPIs: Altitude, Speed, Heading, Battery.
+- Mode indicator (AUTO/MANUAL/RTL) with armed status.
+- Extended telemetry: Signal %, GPS Lock, Temperature, Wind, Uptime, Distance from Home.
+- Quick command buttons: RTL (Return to Launch), Loiter, Land.
+
+#### Layer Controls
+3 sub-layer toggles: Routes (flight paths), Detections (AI markers), Geofence (patrol zones).
+
+#### Mock Data Added to uav.ts
+- 4 drone missions (Perimeter Patrol, Zone Surveillance, Building Recon, Night Patrol).
+- 8 AI detections (4 persons, 3 vehicles, 1 animal) with confidence scores.
+- 4 drone telemetry records with full flight parameters.
+- `DRONE_VIDEO_URL` constant for mock video stream.
+
 ## 0.25.59 - 2026-03-29
 
 ### Implemented — UAV Fleet Management Page (/uav)

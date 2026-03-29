@@ -223,3 +223,59 @@ export const mockUAVs: UAV[] = [
         acquired: '2021-03-10', notes: 'Retired after 1247 flight hours. Battery degradation beyond 80%. Preserved for training reference.', photo: '',
     },
 ];
+
+// ═══ DRONE MISSIONS & MAP OPERATIONS ═══
+export const DRONE_VIDEO_URL = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/drone-video.mp4';
+
+export interface DroneWaypoint { id: string; lat: number; lng: number; alt: number; speed: number; action: 'flyover' | 'hover' | 'photo' | 'video' | 'scan' | 'return'; duration: number; }
+export interface DroneMission { id: string; name: string; droneId: number; status: 'planned' | 'active' | 'paused' | 'completed' | 'aborted'; type: 'patrol' | 'survey' | 'recon' | 'delivery' | 'search'; waypoints: DroneWaypoint[]; polygon?: number[][]; schedule?: string; repeat?: string; createdAt: string; }
+export interface AIDetection { id: string; type: 'person' | 'vehicle' | 'animal' | 'object'; confidence: number; lat: number; lng: number; timestamp: string; droneId: number; label: string; bbox?: { x: number; y: number; w: number; h: number }; }
+export interface DroneTelemetry { droneId: number; altitude: number; speed: number; heading: number; battery: number; signal: number; gpsLock: number; temp: number; windSpeed: number; mode: 'manual' | 'auto' | 'rtl' | 'loiter' | 'land'; armed: boolean; uptime: number; distFromHome: number; }
+
+export const mockMissions: DroneMission[] = [
+    { id: 'msn-1', name: 'Perimeter Patrol Alpha', droneId: 1, status: 'active', type: 'patrol', schedule: 'Every 4h', repeat: '6x daily',
+      waypoints: [
+        { id: 'wp1', lat: 45.8131, lng: 15.9775, alt: 120, speed: 45, action: 'flyover', duration: 0 },
+        { id: 'wp2', lat: 45.8200, lng: 15.9800, alt: 120, speed: 45, action: 'flyover', duration: 0 },
+        { id: 'wp3', lat: 45.8220, lng: 15.9900, alt: 100, speed: 30, action: 'hover', duration: 30 },
+        { id: 'wp4', lat: 45.8180, lng: 15.9950, alt: 100, speed: 45, action: 'photo', duration: 5 },
+        { id: 'wp5', lat: 45.8131, lng: 15.9775, alt: 120, speed: 45, action: 'return', duration: 0 },
+      ], polygon: [[15.9730,45.8100],[15.9990,45.8100],[15.9990,45.8240],[15.9730,45.8240],[15.9730,45.8100]], createdAt: '2026-03-28' },
+    { id: 'msn-2', name: 'Zone B Surveillance', droneId: 2, status: 'active', type: 'survey',
+      waypoints: [
+        { id: 'wp6', lat: 45.7922, lng: 15.9456, alt: 80, speed: 25, action: 'flyover', duration: 0 },
+        { id: 'wp7', lat: 45.7950, lng: 15.9500, alt: 80, speed: 20, action: 'scan', duration: 60 },
+        { id: 'wp8', lat: 45.7980, lng: 15.9520, alt: 80, speed: 20, action: 'scan', duration: 60 },
+        { id: 'wp9', lat: 45.7922, lng: 15.9456, alt: 80, speed: 30, action: 'return', duration: 0 },
+      ], createdAt: '2026-03-29' },
+    { id: 'msn-3', name: 'Building Recon', droneId: 7, status: 'planned', type: 'recon',
+      waypoints: [
+        { id: 'wp10', lat: 45.8150, lng: 15.9800, alt: 60, speed: 15, action: 'flyover', duration: 0 },
+        { id: 'wp11', lat: 45.8160, lng: 15.9820, alt: 40, speed: 10, action: 'video', duration: 120 },
+        { id: 'wp12', lat: 45.8155, lng: 15.9810, alt: 30, speed: 10, action: 'hover', duration: 60 },
+        { id: 'wp13', lat: 45.8150, lng: 15.9800, alt: 60, speed: 20, action: 'return', duration: 0 },
+      ], createdAt: '2026-03-29' },
+    { id: 'msn-4', name: 'Night Patrol Bravo', droneId: 1, status: 'completed', type: 'patrol', schedule: 'Once', waypoints: [
+        { id: 'wp14', lat: 45.8131, lng: 15.9775, alt: 150, speed: 50, action: 'flyover', duration: 0 },
+        { id: 'wp15', lat: 45.8250, lng: 15.9600, alt: 150, speed: 50, action: 'flyover', duration: 0 },
+        { id: 'wp16', lat: 45.8131, lng: 15.9775, alt: 150, speed: 50, action: 'return', duration: 0 },
+      ], createdAt: '2026-03-27' },
+];
+
+export const mockDetections: AIDetection[] = [
+    { id: 'det-1', type: 'person', confidence: 94.2, lat: 45.8195, lng: 15.9815, timestamp: '2026-03-29 14:32:15', droneId: 1, label: 'Person walking' },
+    { id: 'det-2', type: 'vehicle', confidence: 97.8, lat: 45.8188, lng: 15.9860, timestamp: '2026-03-29 14:32:18', droneId: 1, label: 'Black sedan, moving E' },
+    { id: 'det-3', type: 'person', confidence: 88.5, lat: 45.8201, lng: 15.9830, timestamp: '2026-03-29 14:32:22', droneId: 1, label: 'Person stationary' },
+    { id: 'det-4', type: 'vehicle', confidence: 91.3, lat: 45.7945, lng: 15.9490, timestamp: '2026-03-29 14:33:01', droneId: 2, label: 'White van, parked' },
+    { id: 'det-5', type: 'person', confidence: 82.1, lat: 45.7960, lng: 15.9510, timestamp: '2026-03-29 14:33:05', droneId: 2, label: 'Person near vehicle' },
+    { id: 'det-6', type: 'vehicle', confidence: 95.7, lat: 45.8162, lng: 15.9825, timestamp: '2026-03-29 14:34:10', droneId: 7, label: 'Silver SUV, moving N' },
+    { id: 'det-7', type: 'person', confidence: 79.4, lat: 45.8155, lng: 15.9805, timestamp: '2026-03-29 14:34:12', droneId: 7, label: 'Group of 3 persons' },
+    { id: 'det-8', type: 'animal', confidence: 72.0, lat: 45.8210, lng: 15.9900, timestamp: '2026-03-29 14:35:00', droneId: 1, label: 'Dog' },
+];
+
+export const mockTelemetry: Record<number, DroneTelemetry> = {
+    1: { droneId: 1, altitude: 118, speed: 42, heading: 45, battery: 94, signal: 95, gpsLock: 12, temp: 38, windSpeed: 12, mode: 'auto', armed: true, uptime: 4320, distFromHome: 1.2 },
+    2: { droneId: 2, altitude: 78, speed: 22, heading: 180, battery: 67, signal: 88, gpsLock: 14, temp: 42, windSpeed: 8, mode: 'auto', armed: true, uptime: 2700, distFromHome: 0.8 },
+    7: { droneId: 7, altitude: 0, speed: 0, heading: 0, battery: 55, signal: 100, gpsLock: 10, temp: 28, windSpeed: 0, mode: 'manual', armed: false, uptime: 0, distFromHome: 0 },
+    9: { droneId: 9, altitude: 245, speed: 32, heading: 270, battery: 78, signal: 82, gpsLock: 11, temp: 35, windSpeed: 15, mode: 'auto', armed: true, uptime: 1800, distFromHome: 3.4 },
+};
