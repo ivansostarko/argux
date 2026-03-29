@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.25.46 - 2026-03-29
+
+### Updated — Satellite Markers: 3D Stalk Visualization
+
+#### 3D Stalk Markers (altitude above globe)
+Each satellite now renders as a vertical "stalk" rising from the globe surface. The stalk height is proportional to orbital altitude on a logarithmic scale: LEO (~300 km) produces a 30px stalk, MEO (~20,000 km) ~80px, GEO (~36,000 km) ~110px. At the bottom of the stalk is an elliptical ground shadow showing the sub-satellite point, and at the top sits the 3D satellite body.
+
+#### Category-Specific Satellite Bodies
+- **Space Station** (ISS, CSS): Rounded square with solar panel "wings" extending horizontally, intense glow, pulsing ring animation (2s cycle), name label.
+- **Navigation** (GPS, GLONASS, Galileo, BeiDou): Radial gradient sphere with antenna spike, amber glow.
+- **Starlink**: Flat rectangular bar simulating the flat-panel design, subtle gray glow.
+- **Military**: Named label, radial gradient sphere with red glow + solar panel wings.
+- **Scientific** (Hubble): Named label, gradient sphere with panel wings, pink glow.
+- **Debris**: Small dim dot (5px), no label, minimal glow, short stalk.
+- **Other** (Communication, Weather, Earth Obs): Gradient sphere with radial highlight and horizontal solar panel line.
+
+#### Visual Elements Per Marker
+- **Satellite body** at stalk top with radial gradient + glow
+- **Vertical stalk line** fading from category color to transparent (gradient)
+- **Ground shadow** ellipse at stalk base (radial gradient fade)
+- **Altitude label** on stalk side (e.g. "420 km" or "36k km")
+- **Name label** above body for stations, military, scientific
+- **Pulse ring** animation for space stations
+
+#### Popup Redesign
+- 3 KPI cards at top: Altitude, Velocity, Period with large monospace numbers.
+- Dual-unit display: km + ft for altitude, km/s + mph for speed.
+- Orbit type badge next to category badge.
+- Status with green/gray color coding.
+- 8-field data grid: Inclination, Country, Launch Date, Status, Alt (ft), Speed (mph), Latitude, Longitude.
+- Popup offset calculated from stalk height so it appears above the satellite body.
+
+#### CSS
+- `@keyframes tmap-sat-pulse` for space station pulsing ring.
+- `.tmap-sat-marker` pointer-events and overflow fixes.
+- Marker anchor changed from `center` to `bottom` so stalk connects to surface point.
+
 ## 0.25.45 - 2026-03-29
 
 ### Implemented — Satellite Tracking on 3D Globe (/map)

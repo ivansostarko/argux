@@ -237,3 +237,12 @@
 .tmap-flight-marker .maplibregl-marker { overflow: visible !important; }
 .flight-inner { pointer-events: auto !important; }
 .maplibregl-marker:has(.tmap-flight-marker) { overflow: visible !important; pointer-events: auto !important; }
+
+/* ═══ SATELLITE MARKERS 3D ═══ */
+.tmap-sat-marker { pointer-events: auto !important; overflow: visible !important; }
+.tmap-sat-marker .sat-inner { pointer-events: auto !important; }
+.maplibregl-marker:has(.tmap-sat-marker) { overflow: visible !important; pointer-events: auto !important; }
+@keyframes tmap-sat-pulse {
+    0% { transform: translateX(-50%) scale(1); opacity: 0.6; }
+    100% { transform: translateX(-50%) scale(2.5); opacity: 0; }
+}
