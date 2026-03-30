@@ -860,6 +860,77 @@ export default function MapIndex() {
         return { total: MOCK_NFZ.length, visible: filteredNFZ.length, active: MOCK_NFZ.filter(n => n.active).length, counts };
     }, [filteredNFZ, nfzShowInactive]);
 
+    // ═══ GDELT NEWS MAP ═══
+    const [showNewsPanel, setShowNewsPanel] = useState(false);
+    const [newsQuery, setNewsQuery] = useState('');
+    const [newsTimespan, setNewsTimespan] = useState('24h');
+    const [newsTheme, setNewsTheme] = useState('');
+    const [newsLoading, setNewsLoading] = useState(false);
+    const [newsFeatures, setNewsFeatures] = useState<any[]>([]);
+    const [newsArticles, setNewsArticles] = useState<any[]>([]);
+    const [newsMeta, setNewsMeta] = useState<any>(null);
+    const [newsSelected, setNewsSelected] = useState<any>(null);
+    const [newsShowMarkers, setNewsShowMarkers] = useState(true);
+    const [newsShowHeatmap, setNewsShowHeatmap] = useState(false);
+    const newsMarkersRef = useRef<any[]>([]);
+
+    const gdeltThemes = [
+        { id: '', label: 'All Topics', icon: '🌐' },
+        { id: 'TERROR', label: 'Terrorism', icon: '💣' },
+        { id: 'PROTEST', label: 'Protests', icon: '✊' },
+        { id: 'MILITARY', label: 'Military', icon: '🎖️' },
+        { id: 'CRIME', label: 'Crime', icon: '🔫' },
+        { id: 'NATURAL_DISASTER', label: 'Disasters', icon: '🌊' },
+        { id: 'HEALTH_PANDEMIC', label: 'Pandemic', icon: '🦠' },
+        { id: 'ELECTION', label: 'Elections', icon: '🗳️' },
+        { id: 'ECON_BANKRUPTCY', label: 'Economy', icon: '📉' },
+        { id: 'REFUGEES', label: 'Refugees', icon: '🏕️' },
+        { id: 'CYBER_ATTACK', label: 'Cyber', icon: '💻' },
+        { id: 'ENV_CLIMATECHANGE', label: 'Climate', icon: '🌡️' },
+    ];
+
+    const fetchNews = useCallback(async (q?: string) => {
+        setNewsLoading(true);
+        setNewsSelected(null);
+        const query = (q ?? newsQuery).trim();
+        const params = new URLSearchParams();
+        if (query) params.set('query', query);
+        params.set('timespan', newsTimespan);
+        params.set('maxpoints', '250');
+        params.set('sort', 'date');
+        if (newsTheme) params.set('theme', newsTheme);
+
+        try {
+            // Fetch geo points via backend proxy (GDELT has no CORS)
+            const geoParams = new URLSearchParams({ query: query || '*', timespan: newsTimespan, maxpoints: '250', sort: 'date' });
+            if (newsTheme) geoParams.set('theme', newsTheme);
+            const geoRes = await fetch(`/mock-api/news/geo?${geoParams}`);
+            if (geoRes.ok) {
+                const geoJson = await geoRes.json();
+                const features = geoJson?.features || [];
+                setNewsFeatures(features);
+                setNewsMeta({ count: features.length, query: query || '*', timespan: newsTimespan, theme: newsTheme, fetchedAt: new Date().toISOString(), ...(geoJson?.meta || {}) });
+            } else {
+                setNewsFeatures([]);
+                setNewsMeta({ error: `Proxy returned ${geoRes.status}` });
+            }
+
+            // Fetch articles list via backend proxy
+            const docParams = new URLSearchParams({ query: query || '*', timespan: newsTimespan, maxrecords: '75', sort: 'DateDesc' });
+            if (newsTheme) docParams.set('theme', newsTheme);
+            const docRes = await fetch(`/mock-api/news/articles?${docParams}`);
+            if (docRes.ok) {
+                const docJson = await docRes.json();
+                setNewsArticles(docJson?.articles || []);
+            }
+        } catch (e) {
+            console.warn('GDELT fetch failed:', e);
+            setNewsFeatures([]);
+            setNewsMeta({ error: String(e) });
+        }
+        setNewsLoading(false);
+    }, [newsQuery, newsTimespan, newsTheme]);
+
     // ═══ ROUTING / DIRECTIONS ═══
     type RouteProfile = 'car' | 'bike' | 'foot';
     interface RouteWaypoint { id: string; lat: number; lng: number; label: string; }
@@ -1506,7 +1577,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic' | 'streetview' | 'vessels' | 'nfz' | 'vision' | 'google3d';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic' | 'streetview' | 'vessels' | 'nfz' | 'vision' | 'google3d' | 'news';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -4731,6 +4802,7 @@ export default function MapIndex() {
                 if (showNFZPanel) { setShowNFZPanel(false); return; }
                 if (showVisionPanel) { setShowVisionPanel(false); return; }
                 if (showGoogle3DPanel) { setShowGoogle3DPanel(false); return; }
+                if (showNewsPanel) { setShowNewsPanel(false); return; }
                 if (routePlacing) { setRoutePlacing(false); return; }
                 if (showRoutePanel2) { setShowRoutePanel2(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
@@ -5715,6 +5787,146 @@ export default function MapIndex() {
         } catch (e) { console.warn('Camera FOV render failed:', e); }
     }, [activeSourceMarkers, loaded, showCamFOV, active3D]);
 
+    // ═══ GDELT NEWS MARKERS RENDERING ═══
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+
+        // Remove old markers
+        newsMarkersRef.current.forEach(m => { try { m.remove(); } catch {} });
+        newsMarkersRef.current = [];
+
+        // Remove old layers/sources
+        ['news-heat', 'news-circles', 'news-labels'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+        try { if (map.getSource('news-src')) map.removeSource('news-src'); } catch {};
+
+        if (!newsShowMarkers || newsFeatures.length === 0) return;
+
+        // Build GeoJSON — GDELT GEO returns features with geometry + properties.html
+        const validFeatures = newsFeatures.filter((f: any) => f?.geometry?.coordinates?.length === 2 && f.geometry.coordinates[0] !== 0);
+
+        const fc: any = {
+            type: 'FeatureCollection',
+            features: validFeatures.map((f: any, i: number) => ({
+                type: 'Feature',
+                geometry: f.geometry,
+                properties: {
+                    id: i,
+                    name: f.properties?.name || '',
+                    html: f.properties?.html || '',
+                    count: f.properties?.count || f.properties?.nb || 1,
+                    tone: f.properties?.tone || 0,
+                }
+            }))
+        };
+
+        try {
+            map.addSource('news-src', { type: 'geojson', data: fc });
+
+            // Heatmap-style circles (sized by count)
+            map.addLayer({
+                id: 'news-circles',
+                type: 'circle',
+                source: 'news-src',
+                paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 1, 5, 5, 9, 20, 14, 100, 20],
+                    'circle-color': ['interpolate', ['linear'], ['get', 'tone'],
+                        -10, '#ef4444',  // very negative = red
+                        -3, '#f97316',   // negative = orange
+                        0, '#f59e0b',    // neutral = amber
+                        3, '#22c55e',    // positive = green
+                        10, '#06b6d4'    // very positive = cyan
+                    ],
+                    'circle-opacity': 0.7,
+                    'circle-stroke-width': 1.5,
+                    'circle-stroke-color': '#fff',
+                    'circle-stroke-opacity': 0.4,
+                }
+            });
+
+            // Location name labels
+            map.addLayer({
+                id: 'news-labels',
+                type: 'symbol',
+                source: 'news-src',
+                layout: {
+                    'text-field': ['get', 'name'],
+                    'text-size': 9,
+                    'text-offset': [0, 1.4],
+                    'text-anchor': 'top',
+                    'text-max-width': 12,
+                    'text-allow-overlap': false,
+                },
+                paint: {
+                    'text-color': '#f59e0b',
+                    'text-halo-color': 'rgba(0,0,0,0.7)',
+                    'text-halo-width': 1,
+                }
+            });
+
+            // Popup on click
+            const onClick = (e: any) => {
+                const feat = e.features?.[0];
+                if (!feat) return;
+                const coords = feat.geometry.coordinates.slice();
+                const props = feat.properties;
+                const name = props.name || 'Unknown';
+                const tone = parseFloat(props.tone) || 0;
+                const toneLabel = tone > 3 ? 'Positive' : tone < -3 ? 'Negative' : 'Neutral';
+                const toneColor = tone > 3 ? '#22c55e' : tone < -3 ? '#ef4444' : '#f59e0b';
+                const count = props.count || 1;
+
+                // GDELT returns HTML content in properties.html
+                let articlesHtml = '';
+                if (props.html) {
+                    // Clean up GDELT's HTML — extract links
+                    const div = document.createElement('div');
+                    div.innerHTML = props.html;
+                    const links = div.querySelectorAll('a');
+                    links.forEach(a => {
+                        articlesHtml += `<div style="margin:3px 0;display:flex;gap:4px;align-items:flex-start"><span style="color:#f59e0b;flex-shrink:0">▸</span><a href="${a.href}" target="_blank" rel="noopener" style="color:var(--ax-accent);text-decoration:none;font-size:9px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${a.textContent || a.href}</a></div>`;
+                    });
+                }
+
+                const html = `<div class="tmap-popup-card" style="min-width:240px;max-width:300px">
+                    <div class="tmap-popup-header" style="gap:8px">
+                        <div style="width:28px;height:28px;border-radius:6px;background:rgba(245,158,11,0.12);border:1.5px solid rgba(245,158,11,0.3);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">📰</div>
+                        <div class="tmap-popup-hinfo">
+                            <div class="tmap-popup-name" style="font-size:12px;font-weight:800">${name}</div>
+                            <div style="display:flex;gap:4px;margin-top:2px">
+                                <span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${toneColor}15;color:${toneColor};border:1px solid ${toneColor}30">${toneLabel}</span>
+                                <span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(245,158,11,0.1);color:#f59e0b;border:1px solid rgba(245,158,11,0.2)">${count} mention${count > 1 ? 's' : ''}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tmap-popup-grid">
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📍 Location</span><span class="tmap-popup-val">${name}</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📊 Tone</span><span class="tmap-popup-val" style="color:${toneColor};font-weight:700">${tone.toFixed(1)} (${toneLabel})</span></div>
+                        <div class="tmap-popup-row"><span class="tmap-popup-label">📰 Mentions</span><span class="tmap-popup-val">${count}</span></div>
+                    </div>
+                    ${articlesHtml ? `<div style="padding:6px 10px;border-top:1px solid var(--ax-border);max-height:120px;overflow-y:auto"><div style="font-size:7px;font-weight:700;color:var(--ax-text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px">ARTICLES</div>${articlesHtml}</div>` : ''}
+                    <div class="tmap-popup-coords">${coords[1].toFixed(4)}, ${coords[0].toFixed(4)}</div>
+                </div>`;
+
+                new (window as any).maplibregl.Popup({ maxWidth: '320px', offset: 8 })
+                    .setLngLat(coords)
+                    .setHTML(html)
+                    .addTo(map);
+            };
+
+            map.on('click', 'news-circles', onClick);
+            map.on('mouseenter', 'news-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'news-circles', () => { map.getCanvas().style.cursor = ''; });
+
+        } catch (e) { console.warn('News markers render failed:', e); }
+
+        return () => {
+            try { map.off('click', 'news-circles'); } catch {}
+            try { map.off('mouseenter', 'news-circles'); } catch {}
+            try { map.off('mouseleave', 'news-circles'); } catch {}
+        };
+    }, [newsFeatures, newsShowMarkers, loaded]);
+
     // Load MapLibre + map create/rebuild helpers
     const attachMapEvents = useCallback((map: any) => {
         map.on('mousemove', (e: any) => setCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
@@ -6359,6 +6571,16 @@ export default function MapIndex() {
                                 </div>
                                 {locAnalyzerResults && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#14b8a615', color: '#14b8a6', border: '1px solid #14b8a625' }}>{locAnalyzerResults.summary.riskScore}%</span>}
                                 <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={showLocAnalyzer ? '#14b8a6' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
+                            {/* GDELT News Map */}
+                            <button onClick={() => { setShowNewsPanel(true); if (newsFeatures.length === 0 && !newsLoading) fetchNews(); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1px solid ${newsFeatures.length > 0 ? '#f59e0b30' : theme.border}`, background: newsFeatures.length > 0 ? 'rgba(245,158,11,0.04)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.06)'; e.currentTarget.style.borderColor = '#f59e0b40'; }} onMouseLeave={e => { e.currentTarget.style.background = newsFeatures.length > 0 ? 'rgba(245,158,11,0.04)' : 'transparent'; e.currentTarget.style.borderColor = newsFeatures.length > 0 ? '#f59e0b30' : theme.border; }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 6, background: newsFeatures.length > 0 ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.06)', border: `1px solid ${newsFeatures.length > 0 ? '#f59e0b30' : '#f59e0b15'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📰</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: newsFeatures.length > 0 ? '#f59e0b' : theme.text }}>News Map</div>
+                                    <div style={{ fontSize: 8, color: theme.textDim }}>{newsFeatures.length > 0 ? `${newsFeatures.length} locations · GDELT` : 'Global news events · GDELT Project'}</div>
+                                </div>
+                                {newsFeatures.length > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#f59e0b15', color: '#f59e0b', border: '1px solid #f59e0b25' }}>{newsFeatures.length}</span>}
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
                             </button>
                         </div>
                     </Section>
@@ -8528,6 +8750,99 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                         <span style={{ fontSize: 8, color: theme.textDim }}>{nfzStats.visible} zones · {Object.values(nfzStats.counts).filter(v => v > 0).length} types</span>
                         <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 600 }}>AIP / NOTAM Mock Data</span>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ GDELT NEWS MAP PANEL ═══ */}
+                {showNewsPanel && loaded && <div data-panel="news" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, a')) bringToFront('news'); }} style={panelStyle('news', '420px', '#f59e0b')}>
+                    <PanelHeader id="news" icon="📰" title="News Map" subtitle={newsLoading ? 'Loading...' : newsMeta?.count ? `${newsMeta.count} locations · GDELT` : 'Global news intelligence'} color="#f59e0b" onClose={() => setShowNewsPanel(false)} />
+                    <PanelResizeGrip id="news" />
+                    {!isPanelMin('news') && <>
+
+                    {/* Search bar */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15` }}>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${newsQuery ? '#f59e0b50' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                                <span style={{ fontSize: 11 }}>🔍</span>
+                                <input value={newsQuery} onChange={e => setNewsQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') fetchNews(); }} placeholder="Search news... (e.g. war, protest, earthquake)" style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '7px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                            </div>
+                            <button onClick={() => fetchNews()} disabled={newsLoading} style={{ padding: '0 12px', borderRadius: 6, border: 'none', background: '#f59e0b', cursor: newsLoading ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 10, fontWeight: 700, color: '#000', transition: 'all 0.15s' }}>{newsLoading ? '⏳' : '🔎'}</button>
+                        </div>
+                    </div>
+
+                    {/* Theme quick filters */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}15` }}>
+                        <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 5 }}>CATEGORY</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 3 }}>
+                            {gdeltThemes.map(t => <button key={t.id} onClick={() => { setNewsTheme(t.id); setTimeout(() => fetchNews(), 50); }} style={{ padding: '3px 7px', borderRadius: 4, border: `1px solid ${newsTheme === t.id ? '#f59e0b40' : theme.border}`, background: newsTheme === t.id ? '#f59e0b12' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: newsTheme === t.id ? '#f59e0b' : theme.textDim, transition: 'all 0.1s', display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>{t.icon}</span>{t.label}</button>)}
+                        </div>
+                    </div>
+
+                    {/* Time range + display toggles */}
+                    <div style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 4, borderBottom: `1px solid ${theme.border}15` }}>
+                        <span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginRight: 4 }}>TIME</span>
+                        {[{ id: '15min', label: '15m' }, { id: '1h', label: '1h' }, { id: '6h', label: '6h' }, { id: '24h', label: '24h' }, { id: '3d', label: '3d' }, { id: '7d', label: '7d' }].map(t => <button key={t.id} onClick={() => { setNewsTimespan(t.id); setTimeout(() => fetchNews(), 50); }} style={{ padding: '3px 6px', borderRadius: 3, border: `1px solid ${newsTimespan === t.id ? '#f59e0b40' : theme.border}`, background: newsTimespan === t.id ? '#f59e0b12' : 'transparent', cursor: 'pointer', fontFamily: "'JetBrains Mono',monospace", fontSize: 8, fontWeight: 700, color: newsTimespan === t.id ? '#f59e0b' : theme.textDim }}>{t.label}</button>)}
+                        <div style={{ flex: 1 }} />
+                        <button onClick={() => setNewsShowMarkers(!newsShowMarkers)} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${newsShowMarkers ? '#f59e0b30' : theme.border}`, background: newsShowMarkers ? '#f59e0b08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: newsShowMarkers ? '#f59e0b' : theme.textDim }} title="Toggle markers">📍</button>
+                    </div>
+
+                    {/* Stats bar */}
+                    {newsMeta && !newsLoading && <div style={{ padding: '4px 14px', borderBottom: `1px solid ${theme.border}15`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e' }} /><span style={{ fontSize: 8, color: theme.textDim }}>GDELT GEO 2.0</span></div>
+                        <span style={{ fontSize: 8, fontWeight: 700, color: '#f59e0b', fontFamily: "'JetBrains Mono',monospace" }}>{newsMeta.count || 0} locations</span>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{newsArticles.length} articles</span>
+                        <div style={{ flex: 1 }} />
+                        <span style={{ fontSize: 7, color: theme.textDim }}>{newsMeta.fetchedAt ? `${new Date(newsMeta.fetchedAt).toLocaleTimeString()}` : ''}</span>
+                    </div>}
+
+                    {/* Loading */}
+                    {newsLoading && <div style={{ padding: '30px 0', textAlign: 'center' as const }}><div className="tmap-spinner" style={{ width: 22, height: 22, border: '2.5px solid rgba(245,158,11,0.2)', borderTop: '2.5px solid #f59e0b', borderRadius: '50%', margin: '0 auto 8px', animation: 'tmap-spin 0.8s linear infinite' }} /><div style={{ fontSize: 10, color: theme.textDim }}>Fetching from GDELT Project...</div></div>}
+
+                    {/* Article list */}
+                    {!newsLoading && <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {newsArticles.length === 0 && newsFeatures.length === 0 && !newsLoading && <div style={{ padding: '30px 14px', textAlign: 'center' as const }}>
+                            <div style={{ fontSize: 36, opacity: 0.15, marginBottom: 8 }}>📰</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>News Map</div>
+                            <div style={{ fontSize: 9, color: theme.textDim, marginTop: 4, lineHeight: 1.5 }}>Search for any topic or select a category above.<br/>GDELT monitors worldwide news in 65 languages<br/>and updates every 15 minutes.</div>
+                            <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginTop: 10, flexWrap: 'wrap' as const }}>
+                                {['Croatia', 'earthquake', 'NATO', 'surveillance', 'cybersecurity'].map(q => <button key={q} onClick={() => { setNewsQuery(q); fetchNews(q); }} style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 600, color: theme.textDim, transition: 'all 0.1s' }} onMouseEnter={e => { e.currentTarget.style.background = '#f59e0b08'; e.currentTarget.style.color = '#f59e0b'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = theme.textDim; }}>{q}</button>)}
+                            </div>
+                        </div>}
+
+                        {newsArticles.length > 0 && <div style={{ display: 'flex', flexDirection: 'column' as const }}>
+                            {newsArticles.slice(0, 50).map((art: any, i: number) => {
+                                const domain = art.domain || new URL(art.url).hostname.replace('www.', '');
+                                const date = art.seendate ? new Date(art.seendate.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z')) : null;
+                                const ago = date ? `${Math.round((Date.now() - date.getTime()) / 3600000)}h ago` : '';
+                                const countryCode = (art.sourcecountry || '').slice(0, 2).toUpperCase();
+                                return <a key={i} href={art.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', gap: 8, padding: '8px 14px', borderBottom: `1px solid ${theme.border}08`, textDecoration: 'none', transition: 'background 0.1s', cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.background = '#f59e0b06'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                    {art.socialimage && <div style={{ width: 56, height: 40, borderRadius: 4, overflow: 'hidden', flexShrink: 0, border: `1px solid ${theme.border}`, background: theme.bgInput }}><img src={art.socialimage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' as const }} onError={e => (e.currentTarget.style.display = 'none')} /></div>}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: theme.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>{art.title || 'Untitled'}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                                            <span style={{ fontSize: 8, fontWeight: 600, color: '#f59e0b', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{domain}</span>
+                                            {countryCode && <span style={{ fontSize: 7, padding: '1px 3px', borderRadius: 2, background: `${theme.border}60`, color: theme.textDim, fontWeight: 700 }}>{countryCode}</span>}
+                                            {ago && <span style={{ fontSize: 8, color: theme.textDim }}>{ago}</span>}
+                                            {art.language && <span style={{ fontSize: 7, color: theme.textDim }}>{art.language}</span>}
+                                        </div>
+                                    </div>
+                                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 4 }}><path d="M5 3h8v8M13 3L5 11"/></svg>
+                                </a>;
+                            })}
+                        </div>}
+                    </div>}
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 8, color: theme.textDim }}>Powered by</span>
+                            <span style={{ fontSize: 8, fontWeight: 700, color: '#f59e0b' }}>GDELT Project</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: newsFeatures.length > 0 ? '#22c55e' : '#6b7280', boxShadow: newsFeatures.length > 0 ? '0 0 6px #22c55e60' : 'none' }} />
+                            <span style={{ fontSize: 8, color: theme.textDim }}>Updated every 15 min · 65 languages</span>
+                        </div>
                     </div>
                     </>}
                 </div>}

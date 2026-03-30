@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.25.78 - 2026-03-30
+
+### Implemented — GDELT News Map (/map → Intelligence → News Map)
+Real-time geolocated global news intelligence powered by GDELT Project APIs. No mock data — 100% live data from the world's largest open-access spatio-temporal news dataset, covering 65 languages and updated every 15 minutes.
+
+#### Data Sources (Live, No API Key Required)
+- **GDELT GEO 2.0 API** — returns GeoJSON FeatureCollection of locations mentioned in news articles matching a query. Up to 250 points with article HTML popups, tone scores, and location names.
+- **GDELT DOC 2.0 API** — returns article list with title, URL, thumbnail image, domain, source country, language, and publication date.
+- Both APIs are completely free, no authentication required, CORS enabled.
+
+#### Panel Features
+1. **Search bar** — keyword search (e.g. "war", "protest", "earthquake"). GDELT searches English translations of all 65 monitored languages.
+2. **12 category filters** — quick-select GDELT themes:
+   - 🌐 All Topics, 💣 Terrorism, ✊ Protests, 🎖️ Military, 🔫 Crime, 🌊 Disasters, 🦠 Pandemic, 🗳️ Elections, 📉 Economy, 🏕️ Refugees, 💻 Cyber, 🌡️ Climate
+3. **6 time ranges** — 15m, 1h, 6h, 24h, 3d, 7d (offset from present)
+4. **Stats bar** — location count, article count, fetch timestamp, GDELT GEO 2.0 indicator
+5. **Article list** — up to 75 articles with:
+   - Thumbnail images from social sharing metadata
+   - Article titles (2-line clamp)
+   - Domain name, country code badge, time ago, language
+   - External link (opens in new tab)
+6. **Quick-try suggestions** — Croatia, earthquake, NATO, surveillance, cybersecurity
+7. **Marker toggle** button (📍) to show/hide map markers
+8. **Footer** — "Powered by GDELT Project · Updated every 15 min · 65 languages"
+
+#### Map Markers (MapLibre Layers)
+3 layers rendered from GDELT GeoJSON:
+
+| Layer | Type | What It Shows |
+|---|---|---|
+| `news-circles` | `circle` | Colored dots at each news location. Size = mention count (1→5px, 100→20px). Color = article tone (-10 red → 0 amber → +10 cyan). White stroke. |
+| `news-labels` | `symbol` | Location names below each dot (9px amber text, black halo). No overlap. |
+| (click popup) | popup | Full popup card with location name, tone score/label, mention count, and up to 5 article links extracted from GDELT's HTML. |
+
+**Tone color scale:**
+- 🔴 Very negative (< -3): `#ef4444`
+- 🟠 Negative (-3 to 0): `#f97316`
+- 🟡 Neutral (0): `#f59e0b`
+- 🟢 Positive (0 to +3): `#22c55e`
+- 🔵 Very positive (> +3): `#06b6d4`
+
+#### Backend Endpoints (proxy + cache)
+- `GET /mock-api/news/geo` — proxies GDELT GEO 2.0, 5-min cache
+- `GET /mock-api/news/articles` — proxies GDELT DOC 2.0, 5-min cache
+- `GET /mock-api/news/heatmap` — proxies GDELT heatmap mode (25K points), 10-min cache
+
+#### Frontend Direct Calls
+The panel fetches directly from GDELT APIs (they have CORS `*` headers) for lowest latency. Backend endpoints are available as fallback or for server-side caching.
+
+#### How GDELT Works
+- Monitors worldwide news from thousands of outlets in 65 languages
+- Machine-translates everything to English for unified search
+- Extracts locations mentioned in articles (geocoded to lat/lng)
+- Assigns tone scores (-100 to +100) via sentiment analysis
+- Tags articles with GKG themes (terrorism, protest, military, etc.)
+- Updates every 15 minutes
+- Completely free and open — no API key required
+
 ## 0.25.77 - 2026-03-30
 
 ### Implemented — Cesium 3D Terrain (/map → Tiles → 3D Terrain)

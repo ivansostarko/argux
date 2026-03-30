@@ -178,6 +178,9 @@ Route::post('/mock-api/route', [\App\Http\Controllers\MockApi\RoutingController:
 Route::post('/mock-api/google-maps/session', [\App\Http\Controllers\MockApi\GoogleMapsController::class, 'createSession'])->name('mock-api.gmaps.session');
 Route::get('/mock-api/google-maps/config', [\App\Http\Controllers\MockApi\GoogleMapsController::class, 'config'])->name('mock-api.gmaps.config');
 Route::get('/mock-api/cesium/config', [\App\Http\Controllers\MockApi\CesiumController::class, 'config'])->name('mock-api.cesium.config');
+Route::get('/mock-api/news/geo', [\App\Http\Controllers\MockApi\GdeltNewsController::class, 'geo'])->name('mock-api.news.geo');
+Route::get('/mock-api/news/articles', [\App\Http\Controllers\MockApi\GdeltNewsController::class, 'articles'])->name('mock-api.news.articles');
+Route::get('/mock-api/news/heatmap', [\App\Http\Controllers\MockApi\GdeltNewsController::class, 'heatmap'])->name('mock-api.news.heatmap');
 
 /*
 |--------------------------------------------------------------------------
