@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.25.70 - 2026-03-30
+
+### Implemented — No Fly Zones (/map → Layers → No Fly Zones)
+Airspace restriction visualization with 10 zone types, 20 realistic zones across Croatia and neighboring countries, colored polygon overlays with dashed borders, click popups with altitude/authority details, and a full filtering/search panel.
+
+#### How to Activate
+- Layers section → toggle **⛔ No Fly Zones** ON
+- Click arrow button to open the No Fly Zones panel
+
+#### 10 Zone Types
+| Type | Color | Icon | Description |
+|---|---|---|---|
+| Prohibited (P) | Red | ⛔ | No flight permitted — government, nuclear |
+| Restricted (R) | Amber | 🔒 | Restricted military/security areas |
+| Danger (D) | Dark Red | ⚠️ | Active military firing/training ranges |
+| CTR Zone | Blue | ✈️ | Airport control zones (5nm radius) |
+| TMA Area | Indigo | 🛫 | Terminal maneuvering areas (25nm radius) |
+| Military (MOA) | Grey | 🎖️ | Military operations areas, bases |
+| TFR (Temporary) | Pink | 📋 | NOTAM-based temporary restrictions |
+| Wildlife Protection | Green | 🦅 | Nature parks, bird nesting areas |
+| Prison/Facility | Brown | 🏛️ | Correctional facilities |
+| Nuclear Facility | Yellow | ☢️ | Nuclear power plants |
+
+#### 20 Mock Zones (Croatia + Region)
+- **5 Croatian CTRs**: Zagreb (LDZA), Split (LDSP), Dubrovnik (LDDU), Pula (LDPL), Zadar (LDZD)
+- **1 Croatian TMA**: Zagreb TMA (46km radius)
+- **1 Prohibited**: Banski Dvori (Government Palace)
+- **2 Restricted/Military**: Pleso Military, Zemunik Air Base
+- **2 Danger Areas**: Slunj firing range, Gakovo range
+- **1 Nuclear**: Krško NPP (Slovenia)
+- **1 NATO Base**: Aviano (Italy)
+- **1 TFR**: VIP diplomatic visit Zagreb (NOTAM A0342/26)
+- **1 Wildlife**: Kopački Rit Nature Park
+- **1 Prison**: Lepoglava correctional facility
+- **4 Regional CTRs**: Venice, Ljubljana, Budapest, Belgrade, Sarajevo
+
+#### Map Rendering (3 MapLibre layers)
+- **`nfz-fill`**: Colored polygon fill with type-specific opacity (8% for TMA up to 20% for Prohibited)
+- **`nfz-stroke`**: Dashed border line with type-specific width and 70% opacity
+- **`nfz-labels`**: Zone name + icon at center, scales with zoom, halo text for readability
+- Zones rendered as GeoJSON circle polygons (64-segment approximation from center + radius)
+- Click any zone → rich popup with altitude limits, authority, reason, active status
+
+#### No Fly Zones Panel (5 sections)
+1. **Type filter**: 10 toggle buttons with zone counts per type, All/Clear/Active toggle
+2. **Search**: Filter by name, ICAO code, authority, or reason
+3. **Stats row**: Total zones, Active count, Visible count, Types in use
+4. **Zone list**: Scrollable list with icon, name, ICAO badge, type label, authority, altitude range, active/inactive status. Click to fly map to zone.
+5. **Footer**: Zone count, data source (AIP/NOTAM Mock Data)
+
+#### Click Popup (Zone Info Card)
+- Zone icon + name + type label + ICAO code
+- Altitude limits: LOWER and UPPER with unit (ft)
+- Reason/description text
+- Authority name + active/inactive status badge
+
 ## 0.25.69 - 2026-03-30
 
 ### Implemented — Vessel Tracker (/map → Layers → Vessel Tracker)

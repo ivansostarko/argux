@@ -425,3 +425,57 @@ export const MOCK_VESSELS: VesselData[] = [
     { mmsi: 636098765, name: 'NORDIC CARRIER', callsign: 'D5GZ9', type: 'tanker', flag: 'LR', flagEmoji: '🇱🇷', lat: 44.4500, lng: 14.3500, course: 180, speed: 9.8, heading: 178, destination: 'OMISALJ', eta: '2026-03-29 18:00', status: 'Under way using engine', length: 274, width: 48, draught: 16.2, lastUpdate: '2026-03-29 14:26' },
     { mmsi: 211567890, name: 'ELBE FEEDER', callsign: 'DABM', type: 'cargo', flag: 'DE', flagEmoji: '🇩🇪', lat: 44.1200, lng: 15.2300, course: 135, speed: 7.5, heading: 132, destination: 'ZADAR', eta: '2026-03-29 19:00', status: 'Under way using engine', length: 120, width: 18, draught: 7.0, lastUpdate: '2026-03-29 14:24' },
 ];
+
+// ═══ NO FLY ZONES (Airspace Restrictions) ═══
+export type NFZType = 'prohibited' | 'restricted' | 'danger' | 'ctr' | 'tma' | 'military' | 'tfr' | 'wildlife' | 'prison' | 'nuclear';
+export interface NFZone {
+    id: string; name: string; type: NFZType; icao?: string;
+    lat: number; lng: number; radiusM: number;
+    polygon?: number[][]; // optional polygon override
+    altLower: number; altUpper: number; altUnit: string;
+    active: boolean; permanent: boolean;
+    authority: string; reason: string;
+    notam?: string; effectiveFrom?: string; effectiveTo?: string;
+    source: string;
+}
+
+export const nfzTypeConfig: Record<NFZType, { label: string; color: string; icon: string; fillOpacity: number; strokeWidth: number }> = {
+    prohibited: { label: 'Prohibited (P)', color: '#ef4444', icon: '⛔', fillOpacity: 0.20, strokeWidth: 2.5 },
+    restricted: { label: 'Restricted (R)', color: '#f59e0b', icon: '🔒', fillOpacity: 0.14, strokeWidth: 2 },
+    danger:     { label: 'Danger (D)',     color: '#dc2626', icon: '⚠️', fillOpacity: 0.16, strokeWidth: 2 },
+    ctr:        { label: 'CTR Zone',       color: '#3b82f6', icon: '✈️', fillOpacity: 0.08, strokeWidth: 1.5 },
+    tma:        { label: 'TMA Area',       color: '#6366f1', icon: '🛫', fillOpacity: 0.06, strokeWidth: 1 },
+    military:   { label: 'Military (MOA)', color: '#6b7280', icon: '🎖️', fillOpacity: 0.12, strokeWidth: 2 },
+    tfr:        { label: 'TFR (Temporary)',color: '#ec4899', icon: '📋', fillOpacity: 0.15, strokeWidth: 2 },
+    wildlife:   { label: 'Wildlife Prot.', color: '#22c55e', icon: '🦅', fillOpacity: 0.10, strokeWidth: 1.5 },
+    prison:     { label: 'Prison/Facility',color: '#78716c', icon: '🏛️', fillOpacity: 0.12, strokeWidth: 1.5 },
+    nuclear:    { label: 'Nuclear Facility',color: '#eab308', icon: '☢️', fillOpacity: 0.18, strokeWidth: 2.5 },
+};
+
+export const MOCK_NFZ: NFZone[] = [
+    // ── Croatia CTR / TMA ──
+    { id: 'ctr-ldza', name: 'Zagreb CTR', type: 'ctr', icao: 'LDZA', lat: 45.7429, lng: 16.0688, radiusM: 9260, altLower: 0, altUpper: 5000, altUnit: 'ft', active: true, permanent: true, authority: 'Croatia Control', reason: 'Zagreb International Airport control zone', source: 'AIP Croatia' },
+    { id: 'ctr-ldsp', name: 'Split CTR', type: 'ctr', icao: 'LDSP', lat: 43.5389, lng: 16.2980, radiusM: 9260, altLower: 0, altUpper: 4500, altUnit: 'ft', active: true, permanent: true, authority: 'Croatia Control', reason: 'Split Airport control zone', source: 'AIP Croatia' },
+    { id: 'ctr-lddu', name: 'Dubrovnik CTR', type: 'ctr', icao: 'LDDU', lat: 42.5614, lng: 18.2682, radiusM: 9260, altLower: 0, altUpper: 4500, altUnit: 'ft', active: true, permanent: true, authority: 'Croatia Control', reason: 'Dubrovnik Airport control zone', source: 'AIP Croatia' },
+    { id: 'ctr-ldpl', name: 'Pula CTR', type: 'ctr', icao: 'LDPL', lat: 44.8935, lng: 13.9222, radiusM: 9260, altLower: 0, altUpper: 4500, altUnit: 'ft', active: true, permanent: true, authority: 'Croatia Control', reason: 'Pula Airport control zone', source: 'AIP Croatia' },
+    { id: 'ctr-ldzd', name: 'Zadar CTR', type: 'ctr', icao: 'LDZD', lat: 44.1083, lng: 15.3467, radiusM: 9260, altLower: 0, altUpper: 4500, altUnit: 'ft', active: true, permanent: true, authority: 'Croatia Control', reason: 'Zadar Airport control zone', source: 'AIP Croatia' },
+    { id: 'tma-ldza', name: 'Zagreb TMA', type: 'tma', icao: 'LDZA', lat: 45.7429, lng: 16.0688, radiusM: 46300, altLower: 1000, altUpper: 19500, altUnit: 'ft', active: true, permanent: true, authority: 'Croatia Control', reason: 'Zagreb terminal maneuvering area', source: 'AIP Croatia' },
+    // ── Prohibited / Restricted ──
+    { id: 'p-banski', name: 'LDP1 Banski Dvori', type: 'prohibited', lat: 45.8133, lng: 15.9733, radiusM: 1852, altLower: 0, altUpper: 5000, altUnit: 'ft', active: true, permanent: true, authority: 'Croatia MOD', reason: 'Government buildings — Presidential & Government Palace', source: 'AIP Croatia' },
+    { id: 'r-pleso', name: 'LDR10 Pleso Military', type: 'restricted', lat: 45.7350, lng: 16.0500, radiusM: 5556, altLower: 0, altUpper: 10000, altUnit: 'ft', active: true, permanent: true, authority: 'Croatian Air Force', reason: 'Military airfield operations area', source: 'AIP Croatia' },
+    { id: 'r-zemunik', name: 'LDR11 Zemunik Military', type: 'military', lat: 44.1000, lng: 15.3833, radiusM: 9260, altLower: 0, altUpper: 25000, altUnit: 'ft', active: true, permanent: true, authority: 'Croatian Air Force', reason: 'Zemunik Air Base — military training area', source: 'AIP Croatia' },
+    { id: 'd-slunj', name: 'LDD1 Slunj Danger', type: 'danger', lat: 45.1167, lng: 15.5667, radiusM: 18520, altLower: 0, altUpper: 30000, altUnit: 'ft', active: true, permanent: true, authority: 'Croatian Army', reason: 'Military firing & training range — Eugen Kvaternik', source: 'AIP Croatia' },
+    { id: 'd-gakovo', name: 'LDD2 Gakovo Danger', type: 'danger', lat: 45.9167, lng: 18.9500, radiusM: 9260, altLower: 0, altUpper: 15000, altUnit: 'ft', active: true, permanent: true, authority: 'Croatian Army', reason: 'Military range area', source: 'AIP Croatia' },
+    // ── Regional examples ──
+    { id: 'p-krsko', name: 'Krško Nuclear', type: 'nuclear', lat: 45.9393, lng: 15.5158, radiusM: 5556, altLower: 0, altUpper: 8000, altUnit: 'ft', active: true, permanent: true, authority: 'Slovenia CAA', reason: 'Nuclear power plant — Krško NPP', source: 'AIP Slovenia' },
+    { id: 'r-aviano', name: 'Aviano NATO Base', type: 'military', lat: 46.0319, lng: 12.5965, radiusM: 9260, altLower: 0, altUpper: 25000, altUnit: 'ft', active: true, permanent: true, authority: 'Italian MOD / NATO', reason: 'NATO air base — USAF 31st Fighter Wing', source: 'AIP Italy' },
+    { id: 'tfr-vip1', name: 'TFR — VIP Movement Zagreb', type: 'tfr', lat: 45.8000, lng: 15.9800, radiusM: 3704, altLower: 0, altUpper: 3000, altUnit: 'ft', active: true, permanent: false, authority: 'Croatia Control', reason: 'Temporary flight restriction — VIP diplomatic visit', notam: 'A0342/26', effectiveFrom: '2026-03-28 06:00', effectiveTo: '2026-03-30 18:00', source: 'NOTAM' },
+    { id: 'w-kopacki', name: 'Kopački Rit Wildlife', type: 'wildlife', lat: 45.6000, lng: 18.8000, radiusM: 11112, altLower: 0, altUpper: 2000, altUnit: 'ft', active: true, permanent: true, authority: 'Croatia Nature Protection', reason: 'Nature park — bird nesting protected area (seasonal)', source: 'AIP Croatia' },
+    { id: 'r-lepoglava', name: 'Lepoglava Facility', type: 'prison', lat: 46.2083, lng: 16.0417, radiusM: 1852, altLower: 0, altUpper: 1500, altUnit: 'ft', active: true, permanent: true, authority: 'Croatia MOJ', reason: 'Maximum security correctional facility', source: 'AIP Croatia' },
+    // ── Italy / neighbor ──
+    { id: 'ctr-lipz', name: 'Venice CTR', type: 'ctr', icao: 'LIPZ', lat: 45.5053, lng: 12.3519, radiusM: 18520, altLower: 0, altUpper: 5000, altUnit: 'ft', active: true, permanent: true, authority: 'ENAV Italy', reason: 'Venice Marco Polo Airport CTR', source: 'AIP Italy' },
+    { id: 'ctr-ljlj', name: 'Ljubljana CTR', type: 'ctr', icao: 'LJLJ', lat: 46.2237, lng: 14.4576, radiusM: 9260, altLower: 0, altUpper: 4500, altUnit: 'ft', active: true, permanent: true, authority: 'Slovenia Control', reason: 'Ljubljana Jože Pučnik Airport CTR', source: 'AIP Slovenia' },
+    { id: 'ctr-lhbp', name: 'Budapest CTR', type: 'ctr', icao: 'LHBP', lat: 47.4369, lng: 19.2556, radiusM: 18520, altLower: 0, altUpper: 6000, altUnit: 'ft', active: true, permanent: true, authority: 'HungaroControl', reason: 'Budapest Liszt Ferenc Airport CTR', source: 'AIP Hungary' },
+    { id: 'ctr-lybe', name: 'Belgrade CTR', type: 'ctr', icao: 'LYBE', lat: 44.8184, lng: 20.3091, radiusM: 18520, altLower: 0, altUpper: 5000, altUnit: 'ft', active: true, permanent: true, authority: 'SMATSA', reason: 'Belgrade Nikola Tesla Airport CTR', source: 'AIP Serbia' },
+    { id: 'ctr-lqsa', name: 'Sarajevo CTR', type: 'ctr', icao: 'LQSA', lat: 43.8246, lng: 18.3315, radiusM: 9260, altLower: 0, altUpper: 10000, altUnit: 'ft', active: true, permanent: true, authority: 'BHDCA', reason: 'Sarajevo International Airport CTR', source: 'AIP Bosnia' },
+];

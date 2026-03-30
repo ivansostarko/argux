@@ -3,8 +3,8 @@ import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'rea
 import { router, usePage } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
-import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData, SatelliteData, POI, TrafficSegment, TrafficIncident, VesselData } from '../../mock/map';
-import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig, MOCK_POIS, poiCategoryConfig, wmoWeatherCodes, getWeatherIcon, getWeatherLabel, trafficLevelConfig, trafficIncidentConfig, MOCK_TRAFFIC_SEGMENTS, MOCK_TRAFFIC_INCIDENTS, vesselTypeConfig, MOCK_VESSELS } from '../../mock/map';
+import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData, SatelliteData, POI, TrafficSegment, TrafficIncident, VesselData, NFZone } from '../../mock/map';
+import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig, MOCK_POIS, poiCategoryConfig, wmoWeatherCodes, getWeatherIcon, getWeatherLabel, trafficLevelConfig, trafficIncidentConfig, MOCK_TRAFFIC_SEGMENTS, MOCK_TRAFFIC_INCIDENTS, vesselTypeConfig, MOCK_VESSELS, nfzTypeConfig, MOCK_NFZ } from '../../mock/map';
 import { mockUAVs, uavStatusConfig, uavTypeConfig, mockMissions, mockDetections, mockTelemetry, DRONE_VIDEO_URL, type UAV, type DroneMission, type AIDetection, type DroneTelemetry, type DroneWaypoint } from '../../mock/uav';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
@@ -815,6 +815,27 @@ export default function MapIndex() {
         return { total: vessels.length, visible: filteredVessels.length, counts, moving, avgSpeed };
     }, [vessels, filteredVessels]);
 
+    // ═══ NO FLY ZONES ═══
+    const [layerNFZ, setLayerNFZ] = useState(false);
+    const [showNFZPanel, setShowNFZPanel] = useState(false);
+    const [nfzTypeFilter, setNfzTypeFilter] = useState<Set<string>>(new Set(Object.keys(nfzTypeConfig)));
+    const [nfzSearch, setNfzSearch] = useState('');
+    const [nfzSelected, setNfzSelected] = useState<string | null>(null);
+    const [nfzShowInactive, setNfzShowInactive] = useState(false);
+
+    const filteredNFZ = useMemo(() => {
+        let z = MOCK_NFZ.filter(n => nfzTypeFilter.has(n.type));
+        if (!nfzShowInactive) z = z.filter(n => n.active);
+        if (nfzSearch) { const q = nfzSearch.toLowerCase(); z = z.filter(n => n.name.toLowerCase().includes(q) || n.reason.toLowerCase().includes(q) || (n.icao || '').toLowerCase().includes(q) || n.authority.toLowerCase().includes(q)); }
+        return z;
+    }, [nfzTypeFilter, nfzSearch, nfzShowInactive]);
+
+    const nfzStats = useMemo(() => {
+        const counts: Record<string, number> = {};
+        Object.keys(nfzTypeConfig).forEach(k => { counts[k] = MOCK_NFZ.filter(n => n.type === k && (nfzShowInactive || n.active)).length; });
+        return { total: MOCK_NFZ.length, visible: filteredNFZ.length, active: MOCK_NFZ.filter(n => n.active).length, counts };
+    }, [filteredNFZ, nfzShowInactive]);
+
     // ═══ ROUTING / DIRECTIONS ═══
     type RouteProfile = 'car' | 'bike' | 'foot';
     interface RouteWaypoint { id: string; lat: number; lng: number; label: string; }
@@ -1441,7 +1462,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic' | 'streetview' | 'vessels';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic' | 'streetview' | 'vessels' | 'nfz';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -4029,6 +4050,137 @@ export default function MapIndex() {
         return () => { if (vesselAnimRef.current) { cancelAnimationFrame(vesselAnimRef.current); vesselAnimRef.current = null; } };
     }, [layerVessels, loaded, vesselSource]);
 
+    // ═══ NO FLY ZONES RENDERING ═══
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        if (!layerNFZ) {
+            try { if (map.getLayer('nfz-fill')) map.removeLayer('nfz-fill'); } catch {}
+            try { if (map.getLayer('nfz-stroke')) map.removeLayer('nfz-stroke'); } catch {}
+            try { if (map.getLayer('nfz-labels')) map.removeLayer('nfz-labels'); } catch {}
+            try { if (map.getLayer('nfz-hatching')) map.removeLayer('nfz-hatching'); } catch {}
+            try { if (map.getSource('nfz-src')) map.removeSource('nfz-src'); } catch {}
+            return;
+        }
+
+        // Generate GeoJSON circle polygons for each zone
+        const makeCircle = (lat: number, lng: number, radiusM: number, steps: number = 64): number[][] => {
+            const coords: number[][] = [];
+            for (let i = 0; i <= steps; i++) {
+                const angle = (i / steps) * Math.PI * 2;
+                const dlat = (radiusM / 110540) * Math.cos(angle);
+                const dlng = (radiusM / (111320 * Math.cos(lat * Math.PI / 180))) * Math.sin(angle);
+                coords.push([lng + dlng, lat + dlat]);
+            }
+            return coords;
+        };
+
+        const features = filteredNFZ.map(z => {
+            const tc = nfzTypeConfig[z.type] || nfzTypeConfig.restricted;
+            const coords = z.polygon || makeCircle(z.lat, z.lng, z.radiusM);
+            return {
+                type: 'Feature' as const,
+                geometry: { type: 'Polygon' as const, coordinates: [coords] },
+                properties: {
+                    id: z.id, name: z.name, type: z.type, color: tc.color,
+                    fillOpacity: tc.fillOpacity, strokeWidth: tc.strokeWidth,
+                    icon: tc.icon, label: tc.label, active: z.active,
+                    altLower: z.altLower, altUpper: z.altUpper, altUnit: z.altUnit,
+                    authority: z.authority, reason: z.reason,
+                    permanent: z.permanent, icao: z.icao || '',
+                }
+            };
+        });
+
+        const fc = { type: 'FeatureCollection' as const, features };
+
+        try {
+            if (map.getSource('nfz-src')) {
+                (map.getSource('nfz-src') as any).setData(fc);
+            } else {
+                map.addSource('nfz-src', { type: 'geojson', data: fc });
+
+                // Fill layer
+                map.addLayer({
+                    id: 'nfz-fill', type: 'fill', source: 'nfz-src',
+                    paint: {
+                        'fill-color': ['get', 'color'],
+                        'fill-opacity': ['get', 'fillOpacity'],
+                    }
+                });
+
+                // Dashed stroke border
+                map.addLayer({
+                    id: 'nfz-stroke', type: 'line', source: 'nfz-src',
+                    paint: {
+                        'line-color': ['get', 'color'],
+                        'line-width': ['get', 'strokeWidth'],
+                        'line-opacity': 0.7,
+                        'line-dasharray': [4, 3],
+                    }
+                });
+
+                // Labels
+                map.addLayer({
+                    id: 'nfz-labels', type: 'symbol', source: 'nfz-src',
+                    layout: {
+                        'text-field': ['concat', ['get', 'icon'], ' ', ['get', 'name']],
+                        'text-size': ['interpolate', ['linear'], ['zoom'], 8, 8, 12, 11, 16, 13],
+                        'text-font': ['Open Sans Bold'],
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': false,
+                        'text-anchor': 'center',
+                    },
+                    paint: {
+                        'text-color': ['get', 'color'],
+                        'text-halo-color': 'rgba(0,0,0,0.75)',
+                        'text-halo-width': 1.5,
+                        'text-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0.4, 10, 0.8, 14, 1],
+                    },
+                    minzoom: 7,
+                });
+            }
+        } catch (e) { console.warn('NFZ render failed:', e); }
+
+        // Popup on click
+        const onClick = (e: any) => {
+            if (!e.features?.length) return;
+            const f = e.features[0];
+            const p = f.properties;
+            const tc = nfzTypeConfig[p.type as NFZone['type']] || nfzTypeConfig.restricted;
+            const ml = (window as any).maplibregl;
+            if (!ml) return;
+            const center = e.lngLat;
+            setNfzSelected(p.id);
+            new ml.Popup({ offset: 0, closeButton: true, maxWidth: '300px', className: 'tmap-popup', anchor: 'bottom' })
+                .setLngLat(center)
+                .setHTML(`<div class="tmap-popup-inner" style="padding:12px 14px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <div style="width:32px;height:32px;border-radius:7px;background:${tc.color}15;border:1.5px solid ${tc.color}30;display:flex;align-items:center;justify-content:center;font-size:16px;">${tc.icon}</div>
+                        <div><div style="font-size:13px;font-weight:800;color:var(--ax-text);">${p.name}</div><div style="font-size:9px;color:${tc.color};font-weight:600;">${tc.label}${p.icao ? ' · ' + p.icao : ''}</div></div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px;">
+                        <div style="text-align:center;padding:4px;border-radius:4px;border:1px solid var(--ax-border);"><div style="font-size:11px;font-weight:800;color:${tc.color};font-family:'JetBrains Mono',monospace;">${p.altLower}${p.altUnit}</div><div style="font-size:6px;color:var(--ax-text-dim);">LOWER</div></div>
+                        <div style="text-align:center;padding:4px;border-radius:4px;border:1px solid var(--ax-border);"><div style="font-size:11px;font-weight:800;color:${tc.color};font-family:'JetBrains Mono',monospace;">${p.altUpper}${p.altUnit}</div><div style="font-size:6px;color:var(--ax-text-dim);">UPPER</div></div>
+                    </div>
+                    <div style="font-size:9px;color:var(--ax-text-dim);margin-bottom:4px;line-height:1.5;">${p.reason}</div>
+                    <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--ax-text-dim);padding-top:4px;border-top:1px solid var(--ax-border);">
+                        <span>${p.authority}</span>
+                        <span style="color:${p.active === 'true' || p.active === true ? '#ef4444' : '#6b7280'};font-weight:700;">${p.active === 'true' || p.active === true ? '🔴 ACTIVE' : '⚪ INACTIVE'}</span>
+                    </div>
+                </div>`).addTo(map).on('close', () => setNfzSelected(null));
+        };
+        map.on('click', 'nfz-fill', onClick);
+        map.on('mouseenter', 'nfz-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'nfz-fill', () => { map.getCanvas().style.cursor = ''; });
+
+        return () => {
+            map.off('click', 'nfz-fill', onClick);
+            try { map.off('mouseenter', 'nfz-fill'); } catch {}
+            try { map.off('mouseleave', 'nfz-fill'); } catch {}
+        };
+    }, [layerNFZ, loaded, filteredNFZ]);
+
     // Object drawing click handler
     useEffect(() => {
         const map = mapRef.current;
@@ -4483,6 +4635,7 @@ export default function MapIndex() {
                 if (svActive) { setSvActive(false); setSvPicking(false); return; }
                 if (svPicking) { setSvPicking(false); return; }
                 if (showVesselPanel) { setShowVesselPanel(false); return; }
+                if (showNFZPanel) { setShowNFZPanel(false); return; }
                 if (routePlacing) { setRoutePlacing(false); return; }
                 if (showRoutePanel2) { setShowRoutePanel2(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
@@ -5586,7 +5739,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
-                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0) + (layerUAV ? 1 : 0) + (layerTraffic ? 1 : 0) + (layerVessels ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0) + (layerUAV ? 1 : 0) + (layerTraffic ? 1 : 0) + (layerVessels ? 1 : 0) + (layerNFZ ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Layer buttons */}
                             {[
@@ -5600,6 +5753,7 @@ export default function MapIndex() {
                                 { key: 'uav', icon: '🛩️', label: 'UAV Drones', color: '#10b981', active: layerUAV, toggle: () => { setLayerUAV(!layerUAV); triggerTopLoader(); }, panel: showUAVPanel, openPanel: () => { setShowUAVPanel(!showUAVPanel); triggerTopLoader(); }, desc: layerUAV ? `${deployedDrones.length} active · ${activeMissions.length} missions` : 'Fleet tracking, missions, AI detections' },
                                 { key: 'traffic', icon: '🚦', label: 'Live Traffic', color: '#f97316', active: layerTraffic, toggle: () => { setLayerTraffic(!layerTraffic); triggerTopLoader(); }, panel: showTrafficPanel, openPanel: () => { setShowTrafficPanel(!showTrafficPanel); triggerTopLoader(); }, desc: layerTraffic ? `${trafficSource === 'tomtom' ? 'LIVE' : 'Mock'} · ${trafficStats.incidents} incidents` : 'TomTom traffic flow + incidents' },
                                 { key: 'vessels', icon: '🚢', label: 'Vessel Tracker', color: '#0891b2', active: layerVessels, toggle: () => { setLayerVessels(!layerVessels); triggerTopLoader(); }, panel: showVesselPanel, openPanel: () => { setShowVesselPanel(!showVesselPanel); triggerTopLoader(); }, desc: layerVessels ? `${vesselStats.visible} vessels · ${vesselStats.moving} moving` : 'AIS ship tracking & maritime data' },
+                                { key: 'nfz', icon: '⛔', label: 'No Fly Zones', color: '#ef4444', active: layerNFZ, toggle: () => { setLayerNFZ(!layerNFZ); triggerTopLoader(); }, panel: showNFZPanel, openPanel: () => { setShowNFZPanel(!showNFZPanel); triggerTopLoader(); }, desc: layerNFZ ? `${nfzStats.visible} zones · ${nfzStats.active} active` : 'Airspace restrictions & prohibited areas' },
                             ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {/* Toggle switch */}
                                 <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
@@ -7707,6 +7861,63 @@ export default function MapIndex() {
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: flightSource === 'live' ? '#22c55e' : flightSource === 'mock' ? '#f59e0b' : '#6b7280', boxShadow: flightSource === 'live' ? '0 0 6px #22c55e60' : 'none', animation: layerFlights ? 'tmap-tl-ring 2s infinite' : 'none' }} />
                             <span style={{ fontSize: 9, color: flightSource === 'live' ? '#06b6d4' : '#f59e0b', fontWeight: 600 }}>{flightSource === 'live' ? 'OpenSky LIVE' : flightSource === 'mock' ? 'Mock Data' : 'Connecting...'}</span>
                         </div>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ NO FLY ZONES PANEL ═══ */}
+                {showNFZPanel && loaded && <div data-panel="nfz" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select')) bringToFront('nfz'); }} style={panelStyle('nfz', '400px', '#ef4444')}>
+                    <PanelHeader id="nfz" icon="⛔" title="No Fly Zones" subtitle={`${nfzStats.visible} zones · ${nfzStats.active} active`} color="#ef4444" onClose={() => setShowNFZPanel(false)} extra={<button onClick={() => { setLayerNFZ(!layerNFZ); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: layerNFZ ? '#ef4444' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: layerNFZ ? 16 : 2, transition: 'left 0.2s' }} /></button>} />
+                    <PanelResizeGrip id="nfz" />
+                    {!isPanelMin('nfz') && <>
+                    {/* Type filter */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, display: 'flex', flexWrap: 'wrap' as const, gap: 3 }}>
+                        {Object.entries(nfzTypeConfig).map(([k, v]) => { const on = nfzTypeFilter.has(k); const c = nfzStats.counts[k] || 0; return <button key={k} onClick={() => setNfzTypeFilter(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 6px', borderRadius: 4, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}10` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: on ? v.color : theme.textDim, transition: 'all 0.1s' }}>
+                            <span style={{ fontSize: 9 }}>{v.icon}</span><span>{v.label}</span>{c > 0 && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 3, background: `${v.color}15`, color: v.color }}>{c}</span>}
+                        </button>; })}
+                        <div style={{ width: '100%', display: 'flex', gap: 4, marginTop: 2 }}>
+                            <button onClick={() => setNfzTypeFilter(new Set(Object.keys(nfzTypeConfig)))} style={{ flex: 1, padding: '3px 0', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: theme.textDim }}>All Types</button>
+                            <button onClick={() => setNfzTypeFilter(new Set())} style={{ flex: 1, padding: '3px 0', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: theme.textDim }}>Clear</button>
+                            <button onClick={() => setNfzShowInactive(!nfzShowInactive)} style={{ flex: 1, padding: '3px 0', borderRadius: 3, border: `1px solid ${nfzShowInactive ? '#6b728030' : theme.border}`, background: nfzShowInactive ? '#6b728008' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: nfzShowInactive ? '#6b7280' : theme.textDim }}>{nfzShowInactive ? '👁 Inactive' : '🚫 Active Only'}</button>
+                        </div>
+                    </div>
+                    {/* Search */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${nfzSearch ? '#ef444450' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                            <input value={nfzSearch} onChange={e => setNfzSearch(e.target.value)} placeholder="Search name, ICAO, authority, reason..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                            {nfzSearch && <button onClick={() => setNfzSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', fontSize: 9, padding: 0 }}>✕</button>}
+                        </div>
+                    </div>
+                    {/* Stats */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4 }}>
+                        {[{ l: 'Total', v: nfzStats.total, c: '#ef4444' },{ l: 'Active', v: nfzStats.active, c: '#22c55e' },{ l: 'Visible', v: nfzStats.visible, c: '#3b82f6' },{ l: 'Types', v: Object.values(nfzStats.counts).filter(v => v > 0).length, c: '#f59e0b' }].map(k => <div key={k.l} style={{ textAlign: 'center' as const, padding: '4px', borderRadius: 4, border: `1px solid ${theme.border}` }}><div style={{ fontSize: 12, fontWeight: 800, color: k.c, fontFamily: "'JetBrains Mono',monospace" }}>{k.v}</div><div style={{ fontSize: 7, color: theme.textDim }}>{k.l}</div></div>)}
+                    </div>
+                    {/* Zone list */}
+                    <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {filteredNFZ.length === 0 ? <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, opacity: 0.15 }}>⛔</div><div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 6 }}>No zones match</div></div> :
+                        filteredNFZ.map(z => { const tc = nfzTypeConfig[z.type] || nfzTypeConfig.restricted; const isSel = nfzSelected === z.id; return <div key={z.id} onClick={() => { setNfzSelected(isSel ? null : z.id); const map = mapRef.current; if (map && !isSel) map.flyTo({ center: [z.lng, z.lat], zoom: Math.max(map.getZoom(), 10), duration: 800 }); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer', background: isSel ? `${tc.color}06` : 'transparent', borderLeft: `3px solid ${isSel ? tc.color : 'transparent'}`, borderBottom: `1px solid ${theme.border}06`, transition: 'background 0.1s' }} onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, background: `${tc.color}10`, border: `1.5px solid ${tc.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, position: 'relative' as const }}>
+                                {tc.icon}
+                                {z.active && <div style={{ position: 'absolute' as const, top: -2, right: -2, width: 6, height: 6, borderRadius: '50%', background: '#ef4444', border: '1px solid #0d1117' }} />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{z.name}</span>
+                                    {z.icao && <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: '#3b82f610', color: '#3b82f6', fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", flexShrink: 0 }}>{z.icao}</span>}
+                                </div>
+                                <div style={{ fontSize: 9, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{tc.label} · {z.authority}{!z.permanent ? ' · TEMPORARY' : ''}</div>
+                            </div>
+                            <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: tc.color, fontFamily: "'JetBrains Mono',monospace" }}>{z.altLower}–{z.altUpper}<span style={{ fontSize: 7 }}>{z.altUnit}</span></div>
+                                <div style={{ fontSize: 8, color: z.active ? '#ef4444' : '#6b7280', fontWeight: 600 }}>{z.active ? '● ACTIVE' : '○ Inactive'}</div>
+                            </div>
+                        </div>; })}
+                    </div>
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{nfzStats.visible} zones · {Object.values(nfzStats.counts).filter(v => v > 0).length} types</span>
+                        <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 600 }}>AIP / NOTAM Mock Data</span>
                     </div>
                     </>}
                 </div>}
