@@ -290,3 +290,23 @@
 .tmap-vessel-marker .vessel-hit { filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4)); }
 .tmap-vessel-marker .vessel-hit:hover { filter: drop-shadow(0 2px 8px rgba(8,145,178,0.5)); }
 @keyframes tmap-vessel-wake { 0% { opacity: 0.4; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(2.5); } }
+
+/* ═══ VISION MODE OVERLAYS ═══ */
+.tmap-nvg-scanlines {
+    animation: tmap-nvg-scan 4s linear infinite;
+}
+@keyframes tmap-nvg-scan {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 100px; }
+}
+
+.tmap-snow-particles {
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Ccircle cx='50' cy='80' r='1.5' fill='white' opacity='0.6'/%3E%3Ccircle cx='150' cy='30' r='1' fill='white' opacity='0.4'/%3E%3Ccircle cx='250' cy='120' r='2' fill='white' opacity='0.5'/%3E%3Ccircle cx='350' cy='70' r='1' fill='white' opacity='0.3'/%3E%3Ccircle cx='80' cy='200' r='1.5' fill='white' opacity='0.5'/%3E%3Ccircle cx='180' cy='250' r='1' fill='white' opacity='0.4'/%3E%3Ccircle cx='300' cy='180' r='2' fill='white' opacity='0.6'/%3E%3Ccircle cx='120' cy='320' r='1' fill='white' opacity='0.3'/%3E%3Ccircle cx='220' cy='350' r='1.5' fill='white' opacity='0.5'/%3E%3Ccircle cx='370' cy='300' r='1' fill='white' opacity='0.4'/%3E%3Ccircle cx='30' cy='380' r='2' fill='white' opacity='0.5'/%3E%3Ccircle cx='280' cy='390' r='1' fill='white' opacity='0.3'/%3E%3C/svg%3E");
+    animation: tmap-snow-fall 8s linear infinite;
+    opacity: 0.7;
+}
+@keyframes tmap-snow-fall {
+    0% { background-position: 0 -400px; }
+    100% { background-position: -100px 400px; }
+}

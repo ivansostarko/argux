@@ -4325,6 +4325,20 @@ export default function MapIndex() {
     const [activeTile, setActiveTile] = useState<TileId>('dark');
     const [active3D, setActive3D] = useState<TileId | null>(null);
 
+    // ═══ 3D VISION MODES ═══
+    type VisionMode = 'normal' | 'nvg' | 'flir' | 'anime' | 'noir' | 'snow';
+    const [visionMode, setVisionMode] = useState<VisionMode>('normal');
+    const visionModes: { id: VisionMode; name: string; icon: string; desc: string; css: string; overlay?: string }[] = [
+        { id: 'normal', name: 'Normal', icon: '👁', desc: 'Standard view', css: 'none' },
+        { id: 'nvg', name: 'NVG', icon: '🟢', desc: 'Night Vision Goggles', css: 'brightness(0.6) contrast(1.6) saturate(0) sepia(1) hue-rotate(70deg) saturate(3) brightness(0.85)' },
+        { id: 'flir', name: 'FLIR', icon: '🔥', desc: 'Thermal Imaging', css: 'brightness(0.7) contrast(2.2) saturate(0) invert(1) hue-rotate(180deg)' },
+        { id: 'anime', name: 'Anime', icon: '🌸', desc: 'Anime / Cel-Shaded', css: 'contrast(1.35) saturate(1.8) brightness(1.05)' },
+        { id: 'noir', name: 'Noir', icon: '🎬', desc: 'Film Noir B&W', css: 'grayscale(1) contrast(1.5) brightness(0.85)' },
+        { id: 'snow', name: 'Snow', icon: '❄️', desc: 'Arctic / Snow Storm', css: 'brightness(1.3) contrast(0.85) saturate(0.4) sepia(0.15) hue-rotate(185deg)' },
+    ];
+    // Reset vision mode when 3D is deactivated
+    useEffect(() => { if (!active3D) setVisionMode('normal'); }, [active3D]);
+
     // ═══ CINEMA MODE ═══
     const [cinemaMode, setCinemaMode] = useState(false);
     const [cinemaSpeed, setCinemaSpeed] = useState(0.15);
@@ -5832,6 +5846,34 @@ export default function MapIndex() {
                                 </div>}
                             </div>
 
+                            {/* Vision Modes (only when 3D active) */}
+                            {active3D && <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
+                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Vision Mode</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                                    {visionModes.map(vm => {
+                                        const isActive = visionMode === vm.id;
+                                        const accentColor = vm.id === 'nvg' ? '#00ff00' : vm.id === 'flir' ? '#ff6b35' : vm.id === 'anime' ? '#ec4899' : vm.id === 'noir' ? '#9ca3af' : vm.id === 'snow' ? '#93c5fd' : '#8b5cf6';
+                                        return <button key={vm.id} onClick={() => { setVisionMode(vm.id); triggerTopLoader(); }} style={{
+                                            display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3,
+                                            padding: '8px 4px', borderRadius: 6,
+                                            border: `1.5px solid ${isActive ? accentColor + '50' : theme.border}`,
+                                            background: isActive ? `${accentColor}10` : 'transparent',
+                                            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                                            position: 'relative' as const, overflow: 'hidden' as const,
+                                        }} onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = `${accentColor}06`; e.currentTarget.style.borderColor = `${accentColor}30`; }} onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = isActive ? `${accentColor}50` : theme.border; }}>
+                                            <span style={{ fontSize: 16, lineHeight: 1 }}>{vm.icon}</span>
+                                            <span style={{ fontSize: 9, fontWeight: 700, color: isActive ? accentColor : theme.text }}>{vm.name}</span>
+                                            <span style={{ fontSize: 7, color: theme.textDim, textAlign: 'center' as const, lineHeight: 1.2 }}>{vm.desc}</span>
+                                            {isActive && vm.id !== 'normal' && <div style={{ position: 'absolute' as const, top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: accentColor, boxShadow: `0 0 6px ${accentColor}` }} />}
+                                        </button>;
+                                    })}
+                                </div>
+                                {visionMode !== 'normal' && <div style={{ marginTop: 6, padding: '5px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', fontSize: 9, color: 'rgba(139,92,246,0.7)', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'space-between' }}>
+                                    <span>{visionModes.find(v => v.id === visionMode)?.icon} {visionModes.find(v => v.id === visionMode)?.name} mode active</span>
+                                    <button onClick={() => setVisionMode('normal')} style={{ padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(139,92,246,0.2)', background: 'rgba(139,92,246,0.08)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: 'rgba(139,92,246,0.7)' }}>Reset</button>
+                                </div>}
+                            </div>}
+
                             {/* Satellite Tracking (Globe only) */}
                             <div style={{ marginTop: 10, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
                                 <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Satellite Tracking</div>
@@ -6188,7 +6230,34 @@ export default function MapIndex() {
 
             {/* Map */}
             <div className="tmap-container" ref={mapContainerRef}>
-                {!webglFailed && <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />}
+                {!webglFailed && <div ref={mapContainer} style={{ width: '100%', height: '100%', filter: visionMode !== 'normal' ? (visionModes.find(v => v.id === visionMode)?.css || 'none') : 'none', transition: 'filter 0.5s ease' }} />}
+
+                {/* Vision Mode Overlays */}
+                {visionMode === 'nvg' && <div className="tmap-vision-overlay tmap-nvg-overlay" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 3 }}>
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,20,0,0.6) 100%)', mixBlendMode: 'multiply' as const }} />
+                    <div className="tmap-nvg-scanlines" style={{ position: 'absolute' as const, inset: 0, opacity: 0.08, background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,255,0,0.15) 2px, rgba(0,255,0,0.15) 3px)' }} />
+                    <div style={{ position: 'absolute' as const, inset: 0, border: '3px solid rgba(0,255,0,0.15)', borderRadius: '50%', margin: '-10%' }} />
+                    <div style={{ position: 'absolute' as const, top: 8, left: '50%', transform: 'translateX(-50%)', padding: '2px 10px', borderRadius: 3, background: 'rgba(0,40,0,0.7)', border: '1px solid rgba(0,255,0,0.3)', fontSize: 9, fontWeight: 700, color: '#00ff00', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.1em' }}>NVG ACTIVE</div>
+                </div>}
+                {visionMode === 'flir' && <div className="tmap-vision-overlay tmap-flir-overlay" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 3 }}>
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.3) 100%)' }} />
+                    <div style={{ position: 'absolute' as const, top: 8, left: '50%', transform: 'translateX(-50%)', padding: '2px 10px', borderRadius: 3, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)', fontSize: 9, fontWeight: 700, color: '#fff', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.1em' }}>FLIR THERMAL</div>
+                    <div style={{ position: 'absolute' as const, bottom: 10, right: 10, width: 80, height: 10, borderRadius: 2, background: 'linear-gradient(90deg, #000 0%, #00f 20%, #0ff 40%, #0f0 55%, #ff0 70%, #f00 85%, #fff 100%)', border: '1px solid rgba(255,255,255,0.2)' }} />
+                    <div style={{ position: 'absolute' as const, bottom: 22, right: 10, fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.5)', fontFamily: "'JetBrains Mono',monospace" }}>COLD ← → HOT</div>
+                </div>}
+                {visionMode === 'anime' && <div className="tmap-vision-overlay tmap-anime-overlay" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 3 }}>
+                    <div style={{ position: 'absolute' as const, top: 8, left: '50%', transform: 'translateX(-50%)', padding: '2px 12px', borderRadius: 10, background: 'linear-gradient(135deg, rgba(236,72,153,0.7) 0%, rgba(168,85,247,0.7) 100%)', border: '1px solid rgba(255,255,255,0.3)', fontSize: 9, fontWeight: 800, color: '#fff', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.05em' }}>✨ ANIME MODE ✨</div>
+                </div>}
+                {visionMode === 'noir' && <div className="tmap-vision-overlay tmap-noir-overlay" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 3 }}>
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.4) 100%)' }} />
+                    <div style={{ position: 'absolute' as const, inset: 0, opacity: 0.04, background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 1px, rgba(255,255,255,0.1) 1px, rgba(255,255,255,0.1) 2px)' }} />
+                    <div style={{ position: 'absolute' as const, top: 8, left: '50%', transform: 'translateX(-50%)', padding: '2px 10px', borderRadius: 3, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.15)', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.6)', fontFamily: "'Source Code Pro',monospace", fontStyle: 'italic' as const }}>FILM NOIR</div>
+                </div>}
+                {visionMode === 'snow' && <div className="tmap-vision-overlay tmap-snow-overlay" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 3, overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, rgba(200,220,255,0.05) 0%, rgba(150,180,220,0.15) 100%)' }} />
+                    <div className="tmap-snow-particles" />
+                    <div style={{ position: 'absolute' as const, top: 8, left: '50%', transform: 'translateX(-50%)', padding: '2px 10px', borderRadius: 3, background: 'rgba(100,130,170,0.5)', border: '1px solid rgba(200,220,255,0.3)', fontSize: 9, fontWeight: 700, color: '#e0eaff', fontFamily: "'JetBrains Mono',monospace" }}>❄️ ARCTIC MODE</div>
+                </div>}
 
                 {/* WebGL Fallback UI */}
                 {webglFailed && <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', background: '#0a0e16', zIndex: 25 }}>

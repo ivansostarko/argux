@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.25.71 - 2026-03-30
+
+### Implemented — 3D Vision Modes (/map → Tiles → Vision Mode)
+6 visual filter modes available when any 3D tile mode is active. Applies real-time CSS filters to the map with themed HUD overlays — NVG scanlines, FLIR thermal scale, anime bloom, noir vignette, and snow particles.
+
+#### How to Activate
+1. Enable any **3D mode** (Buildings, Globe, Terrain, or Realistic)
+2. **Vision Mode** grid appears in the Tiles sidebar section
+3. Click any mode to apply instantly. Click again or "Reset" to return to normal.
+
+#### 6 Vision Modes
+
+| Mode | Icon | CSS Filter | Overlay |
+|---|---|---|---|
+| **Normal** | 👁 | None | None |
+| **NVG** | 🟢 | brightness(0.6) contrast(1.6) sepia→hue-rotate(70°) saturate(3) | Green scan lines, vignette, circular border, "NVG ACTIVE" badge |
+| **FLIR** | 🔥 | brightness(0.7) contrast(2.2) grayscale invert hue-rotate(180°) | Thermal color scale bar (cold→hot), vignette, "FLIR THERMAL" badge |
+| **Anime** | 🌸 | contrast(1.35) saturate(1.8) brightness(1.05) | Gradient pink/purple "✨ ANIME MODE ✨" badge |
+| **Noir** | 🎬 | grayscale(1) contrast(1.5) brightness(0.85) | Film grain scan lines, heavy vignette, italic "FILM NOIR" badge |
+| **Snow** | ❄️ | brightness(1.3) contrast(0.85) saturate(0.4) sepia(0.15) hue-rotate(185°) | Falling snow particles (SVG animation), blue tint, "❄️ ARCTIC MODE" badge |
+
+#### Sidebar UI
+- **3x2 grid** of vision mode buttons with icon, name, description
+- Active mode shows colored dot indicator and accent border
+- Each mode has its own accent color (NVG=green, FLIR=orange, Anime=pink, Noir=grey, Snow=blue)
+- Info bar shows current mode name with Reset button
+- Grid only visible when a 3D mode is active
+- Automatically resets to Normal when 3D mode is deactivated
+
+#### Overlay Effects
+- **NVG**: Animated scan lines (CSS repeating-linear-gradient, scrolling), radial vignette, circular scope border
+- **FLIR**: Thermal color gradient bar (bottom-right), radial vignette
+- **Anime**: Minimal overlay — the filter does the heavy lifting (high saturation + contrast)
+- **Noir**: Film grain effect (subtle repeating lines), deep vignette
+- **Snow**: Animated falling snow particles (SVG pattern, 8s loop with diagonal drift), blue atmospheric tint
+
+#### Technical
+- CSS `filter` property on the map container div with 0.5s ease transition
+- Overlays rendered as absolutely positioned divs with `pointer-events: none` (don't block map interaction)
+- Snow particles use an inline SVG data URI as background-image with CSS animation
+- NVG scan lines scroll vertically at 4s cycle
+- Vision mode auto-resets when 3D is deactivated (`useEffect` dependency on `active3D`)
+
 ## 0.25.70 - 2026-03-30
 
 ### Implemented — No Fly Zones (/map → Layers → No Fly Zones)
