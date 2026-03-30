@@ -131,6 +131,29 @@ export default function MapIndex() {
     const googleMapsKey = props?.app?.googleMapsKey || (window as any).GOOGLE_MAPS_API_KEY || '';
     const googleMapRef = useRef<any>(null);
     const googleMapDivRef = useRef<HTMLDivElement | null>(null);
+    const cesiumViewerRef = useRef<any>(null);
+    const cesiumDivRef = useRef<HTMLDivElement | null>(null);
+
+    // Load CesiumJS from CDN
+    const loadCesiumJS = useCallback(async (): Promise<boolean> => {
+        if ((window as any).Cesium) return true;
+        return new Promise((resolve) => {
+            // CSS
+            if (!document.querySelector('link[href*="cesium"]')) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Widgets/widgets.css';
+                document.head.appendChild(link);
+            }
+            // JS
+            const script = document.createElement('script');
+            script.src = 'https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js';
+            script.async = true;
+            script.onload = () => resolve(true);
+            script.onerror = () => { console.warn('CesiumJS CDN load failed'); resolve(false); };
+            document.head.appendChild(script);
+        });
+    }, []);
     const googleMapsLoadedRef = useRef(false);
 
     // Load Google Maps JavaScript API
@@ -201,29 +224,30 @@ export default function MapIndex() {
         { id: 'app-audio', label: 'Mobile Audio', group: 'Mobile App', color: '#a855f7', icon: '🔊', shape: 'circle' },
         { id: 'app-camera', label: 'Mobile Camera', group: 'Mobile App', color: '#14b8a6', icon: '📱', shape: 'circle' },
     ];
-    interface SourceMarker { id: string; sourceId: SourceId; lat: number; lng: number; label: string; status: 'online' | 'offline' | 'degraded'; detail: string; personId?: number; personName?: string; personLastName?: string; personNickname?: string; personAvatar?: string; risk?: string; accuracy?: string; lastUpdated?: string; phoneType?: 'ios' | 'android'; battery?: number; deviceId?: number; signal?: number; orgId?: number; orgName?: string; orgAvatar?: string; }
+    interface SourceMarker { id: string; sourceId: SourceId; lat: number; lng: number; label: string; status: 'online' | 'offline' | 'degraded'; detail: string; personId?: number; personName?: string; personLastName?: string; personNickname?: string; personAvatar?: string; risk?: string; accuracy?: string; lastUpdated?: string; phoneType?: 'ios' | 'android'; battery?: number; deviceId?: number; signal?: number; orgId?: number; orgName?: string; orgAvatar?: string; camHeading?: number; camFov?: number; camRange?: number; camType?: 'fixed' | 'ptz' | 'dome' | 'bullet'; }
     const [hiddenSources, setHiddenSources] = useState<Set<string>>(new Set());
+    const [showCamFOV, setShowCamFOV] = useState(true);
     const mockSourceMarkers: SourceMarker[] = [
-        // Public Cameras (8)
-        { id: 'sc1', sourceId: 'cam-public', lat: 45.8131, lng: 15.9775, label: 'Ban Jelačić Square Cam', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Uptime: 99.8%', deviceId: 101, lastUpdated: '5s ago' },
-        { id: 'sc2', sourceId: 'cam-public', lat: 45.8155, lng: 15.9690, label: 'Ilica Street Cam #1', status: 'online', detail: 'Resolution: 1080p · FPS: 25 · Uptime: 98.5%', deviceId: 102, lastUpdated: '8s ago' },
-        { id: 'sc3', sourceId: 'cam-public', lat: 45.8048, lng: 15.9620, label: 'Savska Cesta Intersection', status: 'degraded', detail: 'Resolution: 1080p · FPS: 15 · Signal weak', deviceId: 103, lastUpdated: '2m ago' },
-        { id: 'sc4', sourceId: 'cam-public', lat: 45.8100, lng: 15.9930, label: 'Maksimir Park Entrance', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Night vision enabled', deviceId: 104, lastUpdated: '3s ago' },
-        { id: 'sc5', sourceId: 'cam-public', lat: 45.8000, lng: 15.9710, label: 'Main Station South', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Facial recognition active', deviceId: 105, lastUpdated: '1s ago' },
-        { id: 'sc6', sourceId: 'cam-public', lat: 45.8195, lng: 15.9555, label: 'Črnomerec Junction', status: 'offline', detail: 'Maintenance since 2026-03-20', deviceId: 106, lastUpdated: '3d ago' },
-        { id: 'sc7', sourceId: 'cam-public', lat: 45.8060, lng: 16.0010, label: 'Dubrava Overpass', status: 'online', detail: 'Resolution: 1080p · FPS: 25', deviceId: 107, lastUpdated: '12s ago' },
-        { id: 'sc8', sourceId: 'cam-public', lat: 45.8210, lng: 15.9850, label: 'Kaptol Area Cam', status: 'online', detail: 'Resolution: 4K · PTZ · FPS: 30', deviceId: 108, lastUpdated: '2s ago' },
-        // Hidden Cameras (5)
-        { id: 'sh1', sourceId: 'cam-hidden', lat: 45.8142, lng: 15.9760, label: 'OP-HAWK Unit Alpha', status: 'online', detail: 'Covert · Battery: 89% · Last ping: 2m ago', deviceId: 201, personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 89, signal: 95, lastUpdated: '2m ago' },
-        { id: 'sh2', sourceId: 'cam-hidden', lat: 45.8088, lng: 15.9680, label: 'OP-HAWK Unit Bravo', status: 'online', detail: 'Covert · Battery: 72% · Last ping: 5m ago', deviceId: 202, personId: 12, personName: 'Ivan', personLastName: 'Babić', personNickname: 'Ghost', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', battery: 72, signal: 88, lastUpdated: '5m ago' },
-        { id: 'sh3', sourceId: 'cam-hidden', lat: 45.8170, lng: 15.9810, label: 'OP-HAWK Unit Charlie', status: 'degraded', detail: 'Covert · Battery: 23% · Low battery warning', deviceId: 203, orgId: 1, orgName: 'Alpha Security', orgAvatar: '', risk: 'Medium', battery: 23, signal: 45, lastUpdated: '8m ago' },
-        { id: 'sh4', sourceId: 'cam-hidden', lat: 45.8050, lng: 15.9900, label: 'OP-HAWK Unit Delta', status: 'online', detail: 'Covert · Battery: 95% · Last ping: 1m ago', deviceId: 204, personId: 3, personName: 'Ahmed', personLastName: 'Al-Rashid', personNickname: 'Mike', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 95, signal: 92, lastUpdated: '1m ago' },
-        { id: 'sh5', sourceId: 'cam-hidden', lat: 45.8120, lng: 15.9580, label: 'OP-HAWK Unit Echo', status: 'offline', detail: 'Covert · Device unreachable since 18:00', deviceId: 205, orgId: 2, orgName: 'Rashid Holdings', orgAvatar: '', risk: 'High', battery: 0, signal: 0, lastUpdated: '6h ago' },
-        // Private Cameras (4)
-        { id: 'sp1', sourceId: 'cam-private', lat: 45.8115, lng: 15.9830, label: 'ASG HQ Interior #1', status: 'online', detail: 'Private · Restricted access · Recording', deviceId: 301, orgId: 1, orgName: 'Alpha Security', orgAvatar: '', risk: 'High', battery: 100, signal: 100, lastUpdated: '1s ago' },
-        { id: 'sp2', sourceId: 'cam-private', lat: 45.8117, lng: 15.9835, label: 'ASG HQ Interior #2', status: 'online', detail: 'Private · Restricted access · Recording', deviceId: 302, orgId: 1, orgName: 'Alpha Security', orgAvatar: '', risk: 'High', battery: 100, signal: 98, lastUpdated: '3s ago' },
-        { id: 'sp3', sourceId: 'cam-private', lat: 45.8070, lng: 15.9750, label: 'Safehouse Bravo Cam', status: 'online', detail: 'Private · Motion-triggered · 128GB storage', deviceId: 303, personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 100, signal: 90, lastUpdated: '10s ago' },
-        { id: 'sp4', sourceId: 'cam-private', lat: 45.8190, lng: 15.9700, label: 'Drop Point Zulu Cam', status: 'degraded', detail: 'Private · Intermittent connection', deviceId: 304, orgId: 2, orgName: 'Rashid Holdings', orgAvatar: '', risk: 'Critical', battery: 56, signal: 32, lastUpdated: '12m ago' },
+        // Public Cameras (8) — with FOV data
+        { id: 'sc1', sourceId: 'cam-public', lat: 45.8131, lng: 15.9775, label: 'Ban Jelačić Square Cam', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Uptime: 99.8%', deviceId: 101, lastUpdated: '5s ago', camHeading: 220, camFov: 90, camRange: 120, camType: 'dome' },
+        { id: 'sc2', sourceId: 'cam-public', lat: 45.8155, lng: 15.9690, label: 'Ilica Street Cam #1', status: 'online', detail: 'Resolution: 1080p · FPS: 25 · Uptime: 98.5%', deviceId: 102, lastUpdated: '8s ago', camHeading: 95, camFov: 65, camRange: 80, camType: 'bullet' },
+        { id: 'sc3', sourceId: 'cam-public', lat: 45.8048, lng: 15.9620, label: 'Savska Cesta Intersection', status: 'degraded', detail: 'Resolution: 1080p · FPS: 15 · Signal weak', deviceId: 103, lastUpdated: '2m ago', camHeading: 45, camFov: 110, camRange: 100, camType: 'dome' },
+        { id: 'sc4', sourceId: 'cam-public', lat: 45.8100, lng: 15.9930, label: 'Maksimir Park Entrance', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Night vision enabled', deviceId: 104, lastUpdated: '3s ago', camHeading: 180, camFov: 70, camRange: 150, camType: 'bullet' },
+        { id: 'sc5', sourceId: 'cam-public', lat: 45.8000, lng: 15.9710, label: 'Main Station South', status: 'online', detail: 'Resolution: 4K · FPS: 30 · Facial recognition active', deviceId: 105, lastUpdated: '1s ago', camHeading: 350, camFov: 85, camRange: 100, camType: 'dome' },
+        { id: 'sc6', sourceId: 'cam-public', lat: 45.8195, lng: 15.9555, label: 'Črnomerec Junction', status: 'offline', detail: 'Maintenance since 2026-03-20', deviceId: 106, lastUpdated: '3d ago', camHeading: 130, camFov: 90, camRange: 90, camType: 'dome' },
+        { id: 'sc7', sourceId: 'cam-public', lat: 45.8060, lng: 16.0010, label: 'Dubrava Overpass', status: 'online', detail: 'Resolution: 1080p · FPS: 25', deviceId: 107, lastUpdated: '12s ago', camHeading: 270, camFov: 75, camRange: 200, camType: 'bullet' },
+        { id: 'sc8', sourceId: 'cam-public', lat: 45.8210, lng: 15.9850, label: 'Kaptol Area Cam', status: 'online', detail: 'Resolution: 4K · PTZ · FPS: 30', deviceId: 108, lastUpdated: '2s ago', camHeading: 160, camFov: 60, camRange: 250, camType: 'ptz' },
+        // Hidden Cameras (5) — with FOV data
+        { id: 'sh1', sourceId: 'cam-hidden', lat: 45.8142, lng: 15.9760, label: 'OP-HAWK Unit Alpha', status: 'online', detail: 'Covert · Battery: 89% · Last ping: 2m ago', deviceId: 201, personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 89, signal: 95, lastUpdated: '2m ago', camHeading: 190, camFov: 55, camRange: 40, camType: 'fixed' },
+        { id: 'sh2', sourceId: 'cam-hidden', lat: 45.8088, lng: 15.9680, label: 'OP-HAWK Unit Bravo', status: 'online', detail: 'Covert · Battery: 72% · Last ping: 5m ago', deviceId: 202, personId: 12, personName: 'Ivan', personLastName: 'Babić', personNickname: 'Ghost', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', battery: 72, signal: 88, lastUpdated: '5m ago', camHeading: 315, camFov: 50, camRange: 35, camType: 'fixed' },
+        { id: 'sh3', sourceId: 'cam-hidden', lat: 45.8170, lng: 15.9810, label: 'OP-HAWK Unit Charlie', status: 'degraded', detail: 'Covert · Battery: 23% · Low battery warning', deviceId: 203, orgId: 1, orgName: 'Alpha Security', orgAvatar: '', risk: 'Medium', battery: 23, signal: 45, lastUpdated: '8m ago', camHeading: 70, camFov: 45, camRange: 30, camType: 'fixed' },
+        { id: 'sh4', sourceId: 'cam-hidden', lat: 45.8050, lng: 15.9900, label: 'OP-HAWK Unit Delta', status: 'online', detail: 'Covert · Battery: 95% · Last ping: 1m ago', deviceId: 204, personId: 3, personName: 'Ahmed', personLastName: 'Al-Rashid', personNickname: 'Mike', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 95, signal: 92, lastUpdated: '1m ago', camHeading: 240, camFov: 60, camRange: 45, camType: 'fixed' },
+        { id: 'sh5', sourceId: 'cam-hidden', lat: 45.8120, lng: 15.9580, label: 'OP-HAWK Unit Echo', status: 'offline', detail: 'Covert · Device unreachable since 18:00', deviceId: 205, orgId: 2, orgName: 'Rashid Holdings', orgAvatar: '', risk: 'High', battery: 0, signal: 0, lastUpdated: '6h ago', camHeading: 0, camFov: 50, camRange: 35, camType: 'fixed' },
+        // Private Cameras (4) — with FOV data
+        { id: 'sp1', sourceId: 'cam-private', lat: 45.8115, lng: 15.9830, label: 'ASG HQ Interior #1', status: 'online', detail: 'Private · Restricted access · Recording', deviceId: 301, orgId: 1, orgName: 'Alpha Security', orgAvatar: '', risk: 'High', battery: 100, signal: 100, lastUpdated: '1s ago', camHeading: 145, camFov: 110, camRange: 25, camType: 'dome' },
+        { id: 'sp2', sourceId: 'cam-private', lat: 45.8117, lng: 15.9835, label: 'ASG HQ Interior #2', status: 'online', detail: 'Private · Restricted access · Recording', deviceId: 302, orgId: 1, orgName: 'Alpha Security', orgAvatar: '', risk: 'High', battery: 100, signal: 98, lastUpdated: '3s ago', camHeading: 280, camFov: 90, camRange: 20, camType: 'dome' },
+        { id: 'sp3', sourceId: 'cam-private', lat: 45.8070, lng: 15.9750, label: 'Safehouse Bravo Cam', status: 'online', detail: 'Private · Motion-triggered · 128GB storage', deviceId: 303, personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 100, signal: 90, lastUpdated: '10s ago', camHeading: 30, camFov: 75, camRange: 50, camType: 'bullet' },
+        { id: 'sp4', sourceId: 'cam-private', lat: 45.8190, lng: 15.9700, label: 'Drop Point Zulu Cam', status: 'degraded', detail: 'Private · Intermittent connection', deviceId: 304, orgId: 2, orgName: 'Rashid Holdings', orgAvatar: '', risk: 'Critical', battery: 56, signal: 32, lastUpdated: '12m ago', camHeading: 110, camFov: 65, camRange: 60, camType: 'bullet' },
         // GPS Trackers (7)
         { id: 'sg1', sourceId: 'gps', lat: 45.8138, lng: 15.9780, label: 'GPS-001 (Horvat Vehicle)', status: 'online', detail: 'Speed: 0 km/h · Parked · Battery: 94%', deviceId: 401, personId: 1, personName: 'Marko', personLastName: 'Horvat', personNickname: 'Hawk', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'Critical', battery: 94, signal: 98, lastUpdated: '10s ago' },
         { id: 'sg2', sourceId: 'gps', lat: 45.8075, lng: 15.9850, label: 'GPS-002 (Babić Vehicle)', status: 'online', detail: 'Speed: 42 km/h · Moving SE · Battery: 88%', deviceId: 402, personId: 12, personName: 'Ivan', personLastName: 'Babić', personNickname: 'Ghost', personAvatar: 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg', risk: 'High', battery: 88, signal: 91, lastUpdated: '5s ago' },
@@ -4201,6 +4225,7 @@ export default function MapIndex() {
         };
     }, [layerNFZ, loaded, filteredNFZ]);
 
+
     // Object drawing click handler
     useEffect(() => {
         const map = mapRef.current;
@@ -4921,6 +4946,11 @@ export default function MapIndex() {
             // Cleanup terrain mode layers
             try { if (map.getLayer('terrain-buildings')) map.removeLayer('terrain-buildings'); } catch {}
             try { if (map.getSource('terrain-buildings-src')) map.removeSource('terrain-buildings-src'); } catch {}
+            // Cleanup Cesium terrain overlay
+            try { if (cesiumViewerRef.current) { cesiumViewerRef.current.destroy(); cesiumViewerRef.current = null; } } catch {}
+            try { if (cesiumDivRef.current) { cesiumDivRef.current.style.display = 'none'; } } catch {}
+            // Restore MapLibre visibility after Cesium/Google overlay
+            try { if (mapContainer.current) mapContainer.current.style.opacity = '1'; } catch {}
             // Cleanup realistic mode layers
             try { if (googleMapRef.current) { googleMapRef.current = null; } if (googleMapDivRef.current) { googleMapDivRef.current.style.display = 'none'; } } catch {}
             try { if (map.getLayer('realistic-buildings-shadow')) map.removeLayer('realistic-buildings-shadow'); } catch {}
@@ -4953,25 +4983,137 @@ export default function MapIndex() {
 
         } else if (active3D === '3d-terrain') {
             if (map._isGlobe) { rebuildMapForFlat(); return; }
-            try {
-                // Switch to satellite/topo base for terrain feel
-                const topoUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
-                try { const src = map.getSource('base-tiles') as any; if (src?.setTiles) src.setTiles([topoUrl]); } catch {}
 
-                // Add 3D buildings for depth
-                if (!map.getSource('terrain-buildings-src')) {
-                    map.addSource('terrain-buildings-src', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
+            const setupCesiumTerrain = async () => {
+                const m = mapRef.current;
+                if (!m || mapVersionRef.current !== ver) return;
+
+                // Get Cesium ion token
+                let cesiumToken = props?.app?.cesiumIonToken || (window as any).CESIUM_ION_TOKEN || '';
+                if (!cesiumToken) {
+                    try {
+                        const res = await fetch('/mock-api/cesium/config');
+                        if (res.ok) { const cfg = await res.json(); cesiumToken = cfg.token || ''; }
+                    } catch {}
                 }
-                if (!map.getLayer('terrain-buildings')) {
-                    map.addLayer({ id: 'terrain-buildings', source: 'terrain-buildings-src', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 14, paint: {
-                        'fill-extrusion-color': '#2a3a5c',
-                        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10],
-                        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-                        'fill-extrusion-opacity': 0.7,
-                    }});
+
+                const loaded = await loadCesiumJS();
+                const Cesium = (window as any).Cesium;
+
+                if (!loaded || !Cesium) {
+                    // Fallback: ESRI Topo + buildings (original behavior)
+                    console.warn('CesiumJS not available — using fallback terrain');
+                    try {
+                        const topoUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+                        try { const src = m.getSource('base-tiles') as any; if (src?.setTiles) src.setTiles([topoUrl]); } catch {}
+                        if (!m.getSource('terrain-buildings-src')) m.addSource('terrain-buildings-src', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
+                        if (!m.getLayer('terrain-buildings')) m.addLayer({ id: 'terrain-buildings', source: 'terrain-buildings-src', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 14, paint: { 'fill-extrusion-color': '#2a3a5c', 'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 10], 'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0], 'fill-extrusion-opacity': 0.7 } });
+                        m.easeTo({ pitch: 60, zoom: Math.max(m.getZoom(), 10), duration: 800 });
+                    } catch {}
+                    return;
                 }
-                map.easeTo({ pitch: 60, zoom: Math.max(map.getZoom(), 10), duration: 800 });
-            } catch (e) { console.warn('3D Terrain failed:', e); }
+
+                // Set Cesium ion token
+                if (cesiumToken) Cesium.Ion.defaultAccessToken = cesiumToken;
+
+                // Create or show Cesium overlay div
+                let cDiv = cesiumDivRef.current;
+                const container = mapContainer.current?.parentElement;
+                if (!cDiv && container) {
+                    cDiv = document.createElement('div');
+                    cDiv.id = 'cesium-terrain-overlay';
+                    cDiv.style.cssText = 'position:absolute;inset:0;z-index:1;pointer-events:auto;';
+                    container.appendChild(cDiv);
+                    cesiumDivRef.current = cDiv;
+                }
+                if (cDiv) cDiv.style.display = 'block';
+
+                // Destroy previous viewer if any
+                if (cesiumViewerRef.current) {
+                    try { cesiumViewerRef.current.destroy(); } catch {}
+                    cesiumViewerRef.current = null;
+                }
+
+                try {
+                    // Get MapLibre camera position
+                    const center = m.getCenter();
+                    const zoom = m.getZoom();
+
+                    // Create Cesium Viewer
+                    const viewer = new Cesium.Viewer(cDiv, {
+                        terrain: cesiumToken ? Cesium.Terrain.fromWorldTerrain({ requestWaterMask: true, requestVertexNormals: true }) : undefined,
+                        baseLayerPicker: false,
+                        geocoder: false,
+                        homeButton: false,
+                        sceneModePicker: false,
+                        selectionIndicator: false,
+                        navigationHelpButton: false,
+                        animation: false,
+                        timeline: false,
+                        fullscreenButton: false,
+                        infoBox: false,
+                        creditContainer: document.createElement('div'), // hide credits in a detached div
+                        skyBox: false,
+                        skyAtmosphere: new Cesium.SkyAtmosphere(),
+                        scene3DOnly: true,
+                        shadows: true,
+                        terrainShadows: Cesium.ShadowMode.RECEIVE_ONLY,
+                        msaaSamples: 4,
+                    });
+
+                    // Add OSM Buildings if token available
+                    if (cesiumToken) {
+                        try {
+                            const osmBuildings = await Cesium.createOsmBuildingsAsync();
+                            viewer.scene.primitives.add(osmBuildings);
+                        } catch (e) { console.warn('Cesium OSM Buildings failed:', e); }
+                    }
+
+                    // Style the scene
+                    viewer.scene.globe.enableLighting = true;
+                    viewer.scene.fog.enabled = true;
+                    viewer.scene.fog.density = 0.0002;
+                    viewer.scene.globe.depthTestAgainstTerrain = true;
+
+                    // Fly camera to MapLibre position
+                    const alt = Math.max(200, 50000 / Math.pow(2, zoom - 8));
+                    viewer.camera.flyTo({
+                        destination: Cesium.Cartesian3.fromDegrees(center.lng, center.lat, alt),
+                        orientation: { heading: Cesium.Math.toRadians(m.getBearing() || 0), pitch: Cesium.Math.toRadians(-35), roll: 0 },
+                        duration: 1.5,
+                    });
+
+                    cesiumViewerRef.current = viewer;
+
+                    // Sync: when Cesium camera moves, update MapLibre (for coordinate display)
+                    viewer.camera.moveEnd.addEventListener(() => {
+                        const mapCur = mapRef.current;
+                        if (!mapCur || !cesiumViewerRef.current) return;
+                        try {
+                            const camPos = viewer.camera.positionCartographic;
+                            if (camPos) {
+                                const lng = Cesium.Math.toDegrees(camPos.longitude);
+                                const lat = Cesium.Math.toDegrees(camPos.latitude);
+                                setCoords({ lat, lng });
+                            }
+                        } catch {}
+                    });
+
+                    // Hide MapLibre map underneath (Cesium takes over)
+                    if (mapContainer.current) mapContainer.current.style.opacity = '0';
+                } catch (e) {
+                    console.warn('Cesium Viewer init failed:', e);
+                    // Fallback
+                    if (cDiv) cDiv.style.display = 'none';
+                    if (mapContainer.current) mapContainer.current.style.opacity = '1';
+                    try {
+                        const topoUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+                        try { const src = m.getSource('base-tiles') as any; if (src?.setTiles) src.setTiles([topoUrl]); } catch {}
+                        m.easeTo({ pitch: 60, zoom: Math.max(m.getZoom(), 10), duration: 800 });
+                    } catch {}
+                }
+            };
+            setupCesiumTerrain();
 
         } else if (active3D === '3d-realistic') {
             if (map._isGlobe) { rebuildMapForFlat(); return; }
@@ -5503,6 +5645,76 @@ export default function MapIndex() {
         return () => { cancelled = true; map.off('moveend', onMoveEnd); if (trafficParticleAnimRef.current) { cancelAnimationFrame(trafficParticleAnimRef.current); trafficParticleAnimRef.current = null; } if (speedIv) clearInterval(speedIv); };
     }, [active3D, layerTraffic, trafficShowFlow, loaded, trafficSource, fetchTrafficRoads, fetchLiveTrafficSpeeds]);
 
+    // ═══ CAMERA FOV (Field of View) RENDERING ═══
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+
+        const camMarkers = activeSourceMarkers.filter(m => m.sourceId.startsWith('cam-') && m.camHeading != null && m.camFov != null && m.camRange != null);
+        const hasCams = camMarkers.length > 0 && showCamFOV;
+
+        if (!hasCams) {
+            ['cam-fov-fill', 'cam-fov-stroke', 'cam-fov-3d', 'cam-fov-dir'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            try { if (map.getSource('cam-fov-src')) map.removeSource('cam-fov-src'); } catch {}
+            try { if (map.getSource('cam-fov-dir-src')) map.removeSource('cam-fov-dir-src'); } catch {}
+            return;
+        }
+
+        const M2LNG = 0.0000127;
+        const M2LAT = 0.000009;
+
+        const makeFovSector = (lat: number, lng: number, headingDeg: number, fovDeg: number, rangeM: number, steps: number = 24): number[][] => {
+            const coords: number[][] = [[lng, lat]];
+            const startAngle = headingDeg - fovDeg / 2;
+            const endAngle = headingDeg + fovDeg / 2;
+            for (let i = 0; i <= steps; i++) {
+                const angle = startAngle + (endAngle - startAngle) * (i / steps);
+                const rad = (90 - angle) * Math.PI / 180;
+                coords.push([lng + rangeM * M2LNG * Math.cos(rad), lat + rangeM * M2LAT * Math.sin(rad)]);
+            }
+            coords.push([lng, lat]);
+            return coords;
+        };
+
+        const makeDirLine = (lat: number, lng: number, headingDeg: number, rangeM: number): number[][] => {
+            const rad = (90 - headingDeg) * Math.PI / 180;
+            return [[lng, lat], [lng + rangeM * M2LNG * Math.cos(rad), lat + rangeM * M2LAT * Math.sin(rad)]];
+        };
+
+        const sourceColors: Record<string, string> = { 'cam-public': '#3b82f6', 'cam-hidden': '#ef4444', 'cam-private': '#8b5cf6' };
+
+        const fovFeatures = camMarkers.map(c => ({
+            type: 'Feature' as const,
+            geometry: { type: 'Polygon' as const, coordinates: [makeFovSector(c.lat, c.lng, c.camHeading!, c.camFov!, c.camRange!)] },
+            properties: { id: c.id, color: sourceColors[c.sourceId] || '#3b82f6', opacity: c.status === 'offline' ? 0.04 : c.status === 'degraded' ? 0.08 : 0.12, strokeOpacity: c.status === 'offline' ? 0.1 : 0.35, height: c.camType === 'ptz' ? 10 : c.camType === 'dome' ? 8 : 5 }
+        }));
+
+        const dirFeatures = camMarkers.filter(c => c.status !== 'offline').map(c => ({
+            type: 'Feature' as const,
+            geometry: { type: 'LineString' as const, coordinates: makeDirLine(c.lat, c.lng, c.camHeading!, c.camRange!) },
+            properties: { color: sourceColors[c.sourceId] || '#3b82f6' }
+        }));
+
+        const fovFC = { type: 'FeatureCollection' as const, features: fovFeatures };
+        const dirFC = { type: 'FeatureCollection' as const, features: dirFeatures };
+        const is3D = !!active3D;
+
+        try {
+            if (map.getSource('cam-fov-src')) { (map.getSource('cam-fov-src') as any).setData(fovFC); }
+            else { map.addSource('cam-fov-src', { type: 'geojson', data: fovFC }); }
+            if (map.getSource('cam-fov-dir-src')) { (map.getSource('cam-fov-dir-src') as any).setData(dirFC); }
+            else { map.addSource('cam-fov-dir-src', { type: 'geojson', data: dirFC }); }
+
+            if (!map.getLayer('cam-fov-fill')) map.addLayer({ id: 'cam-fov-fill', type: 'fill', source: 'cam-fov-src', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['get', 'opacity'] } });
+            if (!map.getLayer('cam-fov-stroke')) map.addLayer({ id: 'cam-fov-stroke', type: 'line', source: 'cam-fov-src', paint: { 'line-color': ['get', 'color'], 'line-width': 1.5, 'line-opacity': ['get', 'strokeOpacity'], 'line-dasharray': [3, 2] } });
+            if (!map.getLayer('cam-fov-dir')) map.addLayer({ id: 'cam-fov-dir', type: 'line', source: 'cam-fov-dir-src', paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [6, 4] } });
+
+            if (is3D && !map.getLayer('cam-fov-3d')) {
+                map.addLayer({ id: 'cam-fov-3d', type: 'fill-extrusion', source: 'cam-fov-src', paint: { 'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-height': ['get', 'height'], 'fill-extrusion-base': 0, 'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.05, 16, 0.12, 19, 0.2] } });
+            } else if (!is3D) { try { if (map.getLayer('cam-fov-3d')) map.removeLayer('cam-fov-3d'); } catch {} }
+        } catch (e) { console.warn('Camera FOV render failed:', e); }
+    }, [activeSourceMarkers, loaded, showCamFOV, active3D]);
+
     // Load MapLibre + map create/rebuild helpers
     const attachMapEvents = useCallback((map: any) => {
         map.on('mousemove', (e: any) => setCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
@@ -5801,9 +6013,20 @@ export default function MapIndex() {
                                     </div>
                                 </div>;
                             })}
-                            {activeSourceCount > 0 && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, borderTop: `1px solid ${theme.border}` }}>
-                                <span style={{ fontSize: 9, color: theme.textDim }}>{activeSourceMarkers.length} markers visible</span>
-                                <button onClick={() => { setActiveSources(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, fontWeight: 600, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Disable All</button>
+                            {activeSourceCount > 0 && <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, paddingTop: 4, borderTop: `1px solid ${theme.border}` }}>
+                                {/* Camera FOV toggle */}
+                                {activeSourceMarkers.some(m => m.sourceId.startsWith('cam-')) && <button onClick={() => { setShowCamFOV(!showCamFOV); triggerTopLoader(); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', borderRadius: 5, border: `1px solid ${showCamFOV ? '#8b5cf640' : theme.border}`, background: showCamFOV ? '#8b5cf608' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left' as const, transition: 'all 0.1s' }}>
+                                    <span style={{ fontSize: 12 }}>📐</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: showCamFOV ? '#8b5cf6' : theme.text }}>Camera FOV Projection</div>
+                                        <div style={{ fontSize: 8, color: theme.textDim }}>{showCamFOV ? `${activeSourceMarkers.filter(m => m.sourceId.startsWith('cam-') && m.camHeading !== undefined).length} camera cones visible` : 'Show where cameras are looking'}{active3D ? ' · 3D' : ' · 2D'}</div>
+                                    </div>
+                                    <div style={{ width: 24, height: 14, borderRadius: 7, background: showCamFOV ? '#8b5cf6' : theme.border, position: 'relative' as const, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: showCamFOV ? 12 : 2, transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.3)' }} /></div>
+                                </button>}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontSize: 9, color: theme.textDim }}>{activeSourceMarkers.length} markers visible</span>
+                                    <button onClick={() => { setActiveSources(new Set()); triggerTopLoader(); }} style={{ fontSize: 8, fontWeight: 600, color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Disable All</button>
+                                </div>
                             </div>}
                         </div>
                     </Section>
@@ -5863,8 +6086,8 @@ export default function MapIndex() {
                                     </button>
                                 ); })}
                             </div>
-                            {active3D && <div style={{ marginTop: 8, padding: '5px 8px', borderRadius: 4, background: active3D === '3d-realistic' ? 'rgba(34,197,94,0.06)' : 'rgba(139,92,246,0.06)', border: `1px solid ${active3D === '3d-realistic' ? 'rgba(34,197,94,0.15)' : 'rgba(139,92,246,0.15)'}`, fontSize: 9, color: active3D === '3d-realistic' ? 'rgba(34,197,94,0.7)' : 'rgba(139,92,246,0.7)' }}>
-                                {active3D === '3d-realistic' ? <>🌏 {googleMapRef.current ? 'Google Photorealistic 3D Tiles' : 'Satellite + 3D Buildings'}</> : <>3D mode: {tiles3D.find(t => t.id === active3D)?.name}</>}. Click again to disable.
+                            {active3D && <div style={{ marginTop: 8, padding: '5px 8px', borderRadius: 4, background: active3D === '3d-realistic' ? 'rgba(34,197,94,0.06)' : active3D === '3d-terrain' ? 'rgba(245,158,11,0.06)' : 'rgba(139,92,246,0.06)', border: `1px solid ${active3D === '3d-realistic' ? 'rgba(34,197,94,0.15)' : active3D === '3d-terrain' ? 'rgba(245,158,11,0.15)' : 'rgba(139,92,246,0.15)'}`, fontSize: 9, color: active3D === '3d-realistic' ? 'rgba(34,197,94,0.7)' : active3D === '3d-terrain' ? 'rgba(245,158,11,0.7)' : 'rgba(139,92,246,0.7)' }}>
+                                {active3D === '3d-realistic' ? <>🌏 {googleMapRef.current ? 'Google Photorealistic 3D Tiles' : 'Satellite + 3D Buildings'}</> : active3D === '3d-terrain' ? <>🗻 {cesiumViewerRef.current ? 'Cesium World Terrain + OSM Buildings' : 'ESRI Topo + 3D Buildings'}</> : <>3D mode: {tiles3D.find(t => t.id === active3D)?.name}</>}. Click again to disable.
                             </div>}
 
                             {/* Cinema Mode */}

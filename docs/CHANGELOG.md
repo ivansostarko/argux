@@ -1,5 +1,122 @@
 # Changelog
 
+## 0.25.77 - 2026-03-30
+
+### Implemented — Cesium 3D Terrain (/map → Tiles → 3D Terrain)
+3D Terrain mode now loads CesiumJS v1.125 from CDN and creates a full Cesium Viewer overlay on top of MapLibre with Cesium World Terrain (water mask + vertex normals), OSM Buildings, lighting, fog, and shadows.
+
+#### How It Works
+1. Click **3D Terrain** in Tiles → 3D Modes section
+2. CesiumJS loads from CDN (CSS + JS)
+3. Fetches Cesium ion token from `GET /mock-api/cesium/config`
+4. Creates `Cesium.Viewer` overlay div on top of MapLibre
+5. Loads `Cesium.Terrain.fromWorldTerrain()` with water mask + vertex normals
+6. Adds OSM Buildings primitive
+7. Syncs camera from MapLibre position (center, zoom, bearing → Cesium heading)
+8. Hides MapLibre underneath (opacity: 0)
+
+#### Features
+- **Cesium World Terrain** — high-resolution global terrain with oceans/rivers
+- **OSM Buildings** — 3D building footprints worldwide
+- **Lighting** — globe lighting enabled for day/night shading
+- **Fog** — atmospheric fog (density 0.0002) for depth effect
+- **Shadows** — terrain receives shadows
+- **MSAA** — 4x multi-sample anti-aliasing
+- **Camera sync** — coordinates display updates as you navigate Cesium
+- **Fallback** — if CesiumJS fails to load, falls back to ESRI Topo + MapLibre buildings
+
+#### Deactivation
+- Click 3D Terrain again to deactivate
+- Cesium Viewer is destroyed, overlay hidden
+- MapLibre opacity restored to 1 (visible again)
+
+#### Backend
+- New `CesiumController.php` — `GET /mock-api/cesium/config`
+- Returns token, default asset IDs (World Terrain: 1, OSM Buildings: 96188, Bing: 2)
+- Token sources (priority): `CESIUM_ION_TOKEN` env → `services.cesium.token` config → `credentials.json`
+- Setup hint if no token configured
+
+#### Setup
+```
+.env: CESIUM_ION_TOKEN=your_token
+```
+Free account: https://ion.cesium.com/signup
+
+#### Sidebar
+- Status bar shows amber color with "🗻 Cesium World Terrain + OSM Buildings" when active
+- Falls back to "ESRI Topo + 3D Buildings" text if CesiumJS unavailable
+
+## 0.25.76 - 2026-03-30
+
+### Implemented — Camera FOV Projection (/map → Sources)
+Geographically locates cameras and projects their field of view onto the 2D and 3D map. Each camera shows a directional cone/wedge indicating exactly where it's looking, how wide its view is, and how far it can see.
+
+#### How to Activate
+1. **Sources** section → enable any Camera source (Public, Hidden, or Private)
+2. **Camera FOV Projection** toggle appears automatically when cameras are active
+3. FOV cones render on the map immediately
+
+#### What You See
+Each camera projects a **colored wedge polygon** from its position outward:
+```
+                  ╱‾‾‾‾‾‾‾‾‾‾‾‾╲    ← Arc edge (FOV angle)
+                ╱                  ╲
+              ╱      VISIBLE         ╲   ← Fill (translucent color)
+            ╱         AREA             ╲
+          ╱                              ╲
+        📹─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ → Direction line (dashed)
+          ╲                              ╱
+            ╲                          ╱
+              ╲                      ╱
+                ╲                  ╱
+                  ╲______________╱
+```
+
+#### 5 MapLibre Layers
+| Layer | Type | Purpose |
+|---|---|---|
+| `cam-fov-fill` | fill | Translucent colored wedge (6-18% opacity, zoom-dependent) |
+| `cam-fov-stroke` | line | Dashed border around FOV cone (3,2 dash pattern) |
+| `cam-fov-direction` | line | Dashed center direction line from camera to max range |
+| `cam-fov-center` | circle | Bright dot at camera position with white stroke |
+| `cam-fov-3d` | fill-extrusion | 3D extruded cone (5-30m height, only when 3D active) |
+
+#### Color Coding by Camera Type
+| Source | Color | Example |
+|---|---|---|
+| Public Camera | Blue (#3b82f6) | Ban Jelačić Cam, Street cams |
+| Hidden Camera | Red (#ef4444) | OP-HAWK units |
+| Private Camera | Amber (#f59e0b) | ASG HQ Interior, Safehouse |
+
+Offline cameras render at 30% opacity.
+
+#### Camera FOV Data (17 cameras)
+Each camera now has:
+- **Heading** (0-360°) — direction the camera faces
+- **FOV angle** (45-110°) — field of view width
+- **Range** (20-250m) — effective viewing distance
+- **Type** — fixed, PTZ, dome, bullet
+
+| Camera | Heading | FOV | Range | Type |
+|---|---|---|---|---|
+| Ban Jelačić Square | 220° | 90° | 120m | dome |
+| Ilica Street #1 | 95° | 65° | 80m | bullet |
+| Kaptol Area (PTZ) | 160° | 60° | 250m | ptz |
+| OP-HAWK Alpha | 190° | 55° | 40m | fixed |
+| Safehouse Bravo | 30° | 75° | 50m | bullet |
+
+#### 3D Mode
+When any 3D tile mode is active, FOV cones are also rendered as **fill-extrusion** polygons — translucent 3D volumes rising from the ground (5-30m height depending on zoom). This creates a dramatic "surveillance dome" effect visible from the tilted camera.
+
+#### Click Popup
+Click any FOV cone → popup shows camera name, type badge, and 3 telemetry gauges:
+- **HEADING** (degrees)
+- **FOV** (degrees)
+- **RANGE** (meters)
+
+#### Sidebar Toggle
+"📐 Camera FOV Projection" button appears in Sources section when cameras are enabled. Shows count of active FOV cones and "3D" indicator when 3D mode is active.
+
 ## 0.25.75 - 2026-03-30
 - Removed Aerial View feature (tab, state, backend endpoint, route).
 - Google 3D panel simplified to single-purpose 3D Maps controls (no tabs).

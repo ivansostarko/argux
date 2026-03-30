@@ -177,6 +177,7 @@ Route::get('/mock-api/vessels', [\App\Http\Controllers\MockApi\VesselController:
 Route::post('/mock-api/route', [\App\Http\Controllers\MockApi\RoutingController::class, 'route'])->name('mock-api.route');
 Route::post('/mock-api/google-maps/session', [\App\Http\Controllers\MockApi\GoogleMapsController::class, 'createSession'])->name('mock-api.gmaps.session');
 Route::get('/mock-api/google-maps/config', [\App\Http\Controllers\MockApi\GoogleMapsController::class, 'config'])->name('mock-api.gmaps.config');
+Route::get('/mock-api/cesium/config', [\App\Http\Controllers\MockApi\CesiumController::class, 'config'])->name('mock-api.cesium.config');
 
 /*
 |--------------------------------------------------------------------------
