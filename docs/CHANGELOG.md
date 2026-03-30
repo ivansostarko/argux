@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.25.68 - 2026-03-30
+
+### Implemented — Google Street View (/map → Tools)
+Interactive Google Street View panorama integrated into the map. Click anywhere on the map to open a Street View panel with full panoramic view, HUD overlay, compass, and navigation controls.
+
+#### How to Use
+1. Open **Tools** section → click **Street View** toggle or button
+2. Cursor becomes crosshair — click anywhere on the map
+3. Street View panel opens with panoramic view of that location
+4. Navigate: drag to look around, click arrows to move along streets
+5. Use quick-turn buttons (Left 90°, Right 90°, Level) for fast orientation
+
+#### Street View Panel
+- **Resizable panel** (default 520px width) or **fullscreen mode** (⛶ button)
+- **Google StreetViewPanorama** rendered with full interactivity:
+  - Drag to pan/rotate view
+  - Click road arrows to walk along streets
+  - Zoom in/out
+  - Road name labels visible
+- **HUD Overlay** (non-interactive, on top of panorama):
+  - 🟢 LIVE indicator + GPS coordinates
+  - Heading (HDG), Pitch, Zoom telemetry readout
+  - Compass rose (N indicator rotates with heading)
+  - Google attribution badge
+- **Header controls**:
+  - 📍 Pick new location (re-enters click-to-select mode)
+  - 🎯 Fly map camera to current Street View location
+  - ⛶ Toggle fullscreen
+  - ✕ Close
+- **Footer controls**: ↶ Left 90°, ↷ Right 90°, ⊝ Level (reset pitch to 0°)
+
+#### Map Integration
+- **Pegman marker**: Yellow person-icon marker placed on map at Street View location
+- Marker follows position as user navigates along streets in the panorama
+- **Coverage check**: Uses `StreetViewService.getPanorama()` to verify coverage within 100m radius
+- **Reverse geocoding**: Address auto-updates as user moves to new positions
+- **No coverage fallback**: Shows "No Street View Available" message with re-pick button
+
+#### Sidebar Button (Tools section)
+- Toggle switch (amber) + Street View button
+- Shows current address when active, "LIVE" badge
+- Click toggle to enter pick mode, click button to re-open panel
+
+#### Google Maps API Setup
+Requires Google Maps JavaScript API with Street View enabled. Same API key as 3D Realistic:
+- `.env`: `GOOGLE_MAPS_API_KEY=your_key`
+- `credentials.json`: `{ "google_maps_key": "your_key" }`
+
+#### Technical
+- Reuses existing `loadGoogleMapsAPI()` loader (shared with 3D Realistic mode)
+- `StreetViewPanorama` with `addressControl: false`, custom HUD instead
+- POV (heading/pitch) and zoom tracked in React state, synced from Google Events
+- Position changes trigger reverse geocoding + map marker update
+- Panel supports both floating and fullscreen modes
+- Escape key closes panel, pick mode, and fullscreen
+
 ## 0.25.67 - 2026-03-30
 
 ### Upgraded — Realistic 3D Traffic: Road-Following Vehicles

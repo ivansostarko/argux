@@ -842,6 +842,118 @@ export default function MapIndex() {
     const formatRouteDur = (s: number) => { const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h ${m}min` : `${m} min`; };
     const routeProfileConfig: Record<RouteProfile, { icon: string; label: string; color: string }> = { car: { icon: '🚗', label: 'Driving', color: '#3b82f6' }, bike: { icon: '🚴', label: 'Cycling', color: '#22c55e' }, foot: { icon: '🚶', label: 'Walking', color: '#f59e0b' } };
 
+    // ═══ GOOGLE STREET VIEW ═══
+    const [svActive, setSvActive] = useState(false);
+    const [svPicking, setSvPicking] = useState(false);
+    const [svLocation, setSvLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [svHeading, setSvHeading] = useState(0);
+    const [svPitch, setSvPitch] = useState(0);
+    const [svZoom, setSvZoom] = useState(1);
+    const [svAddress, setSvAddress] = useState('');
+    const [svAvailable, setSvAvailable] = useState(true);
+    const [svFullscreen, setSvFullscreen] = useState(false);
+    const [svApiReady, setSvApiReady] = useState(false);
+    const svPanoRef = useRef<any>(null);
+    const svContainerRef = useRef<HTMLDivElement>(null);
+    const svMarkerRef = useRef<any>(null);
+
+    const initStreetView = useCallback(async (lat: number, lng: number) => {
+        let apiKey = googleMapsKey;
+        if (!apiKey) {
+            try { const res = await fetch('/mock-api/google-maps/config'); if (res.ok) { const cfg = await res.json(); apiKey = cfg.apiKey || ''; } } catch {}
+        }
+        if (!apiKey) { setSvAvailable(false); return; }
+        const loaded = await loadGoogleMapsAPI(apiKey);
+        if (!loaded || !(window as any).google?.maps) { setSvAvailable(false); return; }
+        setSvApiReady(true);
+
+        // Check street view coverage
+        const sv = new (window as any).google.maps.StreetViewService();
+        sv.getPanorama({ location: { lat, lng }, radius: 100, source: 'outdoor' }, (data: any, status: string) => {
+            if (status === 'OK' && data?.location?.latLng) {
+                const pos = { lat: data.location.latLng.lat(), lng: data.location.latLng.lng() };
+                setSvLocation(pos);
+                setSvAddress(data.location.description || `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`);
+                setSvAvailable(true);
+                setSvActive(true);
+                // Place marker on map
+                const ml = (window as any).maplibregl;
+                if (ml && mapRef.current) {
+                    if (svMarkerRef.current) svMarkerRef.current.remove();
+                    const el = document.createElement('div');
+                    el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;"><div style="width:32px;height:32px;border-radius:50%;background:rgba(251,191,36,0.15);border:2.5px solid #fbbf24;box-shadow:0 0 12px rgba(251,191,36,0.4);display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24"><circle cx="12" cy="5" r="4"/><path d="M12 10c-3 0-8 1.5-8 4v2h16v-2c0-2.5-5-4-8-4z"/></svg></div><div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #fbbf24;margin-top:-1px;"></div></div>`;
+                    svMarkerRef.current = new ml.Marker({ element: el, anchor: 'bottom' }).setLngLat([pos.lng, pos.lat]).addTo(mapRef.current);
+                }
+                // Render panorama after panel mounts
+                setTimeout(() => renderPanorama(pos, data.location.pano), 100);
+            } else {
+                setSvAvailable(false);
+                setSvLocation({ lat, lng });
+                setSvActive(true);
+            }
+        });
+    }, [googleMapsKey, loadGoogleMapsAPI]);
+
+    const renderPanorama = useCallback((pos: { lat: number; lng: number }, panoId?: string) => {
+        const container = svContainerRef.current;
+        if (!container || !(window as any).google?.maps) return;
+        const pano = new (window as any).google.maps.StreetViewPanorama(container, {
+            position: { lat: pos.lat, lng: pos.lng },
+            pov: { heading: svHeading, pitch: svPitch },
+            zoom: svZoom,
+            pano: panoId || undefined,
+            addressControl: false,
+            showRoadLabels: true,
+            motionTracking: false,
+            motionTrackingControl: false,
+            fullscreenControl: false,
+            zoomControl: true,
+            panControl: true,
+            linksControl: true,
+            enableCloseButton: false,
+        });
+        svPanoRef.current = pano;
+        pano.addListener('pov_changed', () => {
+            const pov = pano.getPov();
+            setSvHeading(Math.round(pov.heading));
+            setSvPitch(Math.round(pov.pitch));
+        });
+        pano.addListener('zoom_changed', () => setSvZoom(pano.getZoom()));
+        pano.addListener('position_changed', () => {
+            const p = pano.getPosition();
+            if (p) {
+                const newPos = { lat: p.lat(), lng: p.lng() };
+                setSvLocation(newPos);
+                if (svMarkerRef.current) svMarkerRef.current.setLngLat([newPos.lng, newPos.lat]);
+                // Reverse geocode for address
+                if ((window as any).google?.maps?.Geocoder) {
+                    new (window as any).google.maps.Geocoder().geocode({ location: newPos }, (results: any[], status: string) => {
+                        if (status === 'OK' && results?.[0]) setSvAddress(results[0].formatted_address);
+                    });
+                }
+            }
+        });
+    }, [svHeading, svPitch, svZoom]);
+
+    // Street View pick click handler
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded || !svPicking) return;
+        map.getCanvas().style.cursor = 'crosshair';
+        const onClick = (e: any) => {
+            setSvPicking(false);
+            initStreetView(e.lngLat.lat, e.lngLat.lng);
+            triggerTopLoader();
+        };
+        map.on('click', onClick);
+        return () => { map.off('click', onClick); map.getCanvas().style.cursor = ''; };
+    }, [svPicking, loaded, initStreetView]);
+
+    // Cleanup SV marker
+    useEffect(() => {
+        if (!svActive && svMarkerRef.current) { svMarkerRef.current.remove(); svMarkerRef.current = null; }
+    }, [svActive]);
+
     const [faceSearch, setFaceSearch] = useState('');
     const [faceSelected, setFaceSelected] = useState<Set<string>>(new Set()); // selected face IDs to show (empty = all)
     const [faceHidden, setFaceHidden] = useState<Set<string>>(new Set()); // hidden face IDs
@@ -1275,7 +1387,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic' | 'streetview';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -4228,6 +4340,8 @@ export default function MapIndex() {
                 if (wxClickMode) { setWxClickMode(false); return; }
                 if (showUAVPanel) { setShowUAVPanel(false); return; }
                 if (showTrafficPanel) { setShowTrafficPanel(false); return; }
+                if (svActive) { setSvActive(false); setSvPicking(false); return; }
+                if (svPicking) { setSvPicking(false); return; }
                 if (routePlacing) { setRoutePlacing(false); return; }
                 if (showRoutePanel2) { setShowRoutePanel2(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
@@ -5442,7 +5556,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'tools' ? ' dragging' : ''}${dragOverId === 'tools' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('tools') }} onDragOver={e => handleSectionDragOver(e, 'tools')} onDrop={() => handleSectionDrop('tools')}>
-                    <Section title="Tools" icon={Ico.tools} badge={(rulerActive ? 1 : 0) + (zoneDrawing ? 1 : 0) + (routePlacing || routeWaypoints.length > 0 ? 1 : 0)} dragHandle={dragHandleEl('tools')}>
+                    <Section title="Tools" icon={Ico.tools} badge={(rulerActive ? 1 : 0) + (zoneDrawing ? 1 : 0) + (routePlacing || routeWaypoints.length > 0 ? 1 : 0) + (svActive ? 1 : 0)} dragHandle={dragHandleEl('tools')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Ruler button */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -5490,6 +5604,20 @@ export default function MapIndex() {
                                     </div>
                                     {routeWaypoints.length > 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#10b98112', color: '#10b981', border: '1px solid #10b98120' }}>{routeWaypoints.length}</span>}
                                     <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showRoutePanel2 ? '#10b981' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                                </button>
+                            </div>
+                            {/* Street View button */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <button onClick={() => { setSvPicking(!svPicking); if (svPicking) setSvPicking(false); }} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: svPicking ? '#fbbf24' : svActive ? '#fbbf2480' : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
+                                    <div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute' as const, top: 2, left: svPicking || svActive ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                </button>
+                                <button onClick={() => { if (svActive) { setSvActive(true); } else { setSvPicking(true); } triggerTopLoader(); }} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, border: `1px solid ${svPicking ? '#fbbf2425' : svActive ? '#fbbf2440' : theme.border}`, background: svActive ? 'rgba(251,191,36,0.06)' : svPicking ? 'rgba(251,191,36,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.12s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(251,191,36,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = svActive ? 'rgba(251,191,36,0.06)' : svPicking ? 'rgba(251,191,36,0.03)' : 'transparent'; }}>
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={svActive || svPicking ? '#fbbf24' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="7" r="5"/><path d="M12 12v6"/><path d="M8 22h8"/><circle cx="12" cy="7" r="1.5" fill={svActive || svPicking ? '#fbbf24' : theme.textDim}/></svg>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: svActive || svPicking ? '#fbbf24' : theme.text }}>Street View</div>
+                                        <div style={{ fontSize: 9, color: theme.textDim }}>{svPicking ? 'Click on map to open...' : svActive ? svAddress || 'Viewing...' : 'Google Street View panorama'}</div>
+                                    </div>
+                                    {svActive && <span style={{ fontSize: 7, fontWeight: 800, padding: '2px 5px', borderRadius: 3, background: '#fbbf2412', color: '#fbbf24', border: '1px solid #fbbf2420' }}>LIVE</span>}
                                 </button>
                             </div>
                         </div>
@@ -7439,6 +7567,80 @@ export default function MapIndex() {
                         </div>
                     </div>
                     </>}
+                </div>}
+
+                {/* ═══ STREET VIEW PANEL ═══ */}
+                {svActive && loaded && <div data-panel="streetview" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input')) bringToFront('streetview'); }} style={{ ...panelStyle('streetview', svFullscreen ? '100%' : '520px', '#fbbf24'), ...(svFullscreen ? { position: 'fixed' as const, inset: 0, width: '100%', maxHeight: '100vh', borderRadius: 0, zIndex: 400, border: 'none' } : {}) }}>
+                    {/* Header */}
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="none"><circle cx="12" cy="7" r="5"/><path d="M12 12v6"/><path d="M8 22h8" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round"/></svg>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: theme.text }}>Street View</div>
+                            <div style={{ fontSize: 9, color: theme.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{svAddress || (svLocation ? `${svLocation.lat.toFixed(5)}, ${svLocation.lng.toFixed(5)}` : 'Select a location')}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+                            <button onClick={() => setSvPicking(true)} title="Pick new location" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${svPicking ? '#fbbf2440' : theme.border}`, background: svPicking ? '#fbbf2410' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: svPicking ? '#fbbf24' : theme.textDim }}>📍</button>
+                            <button onClick={() => { const map = mapRef.current; if (map && svLocation) map.flyTo({ center: [svLocation.lng, svLocation.lat], zoom: 17, duration: 800 }); }} title="Fly to location" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: theme.textDim }}>🎯</button>
+                            <button onClick={() => setSvFullscreen(!svFullscreen)} title={svFullscreen ? 'Exit fullscreen' : 'Fullscreen'} style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: theme.textDim }}>{svFullscreen ? '⊡' : '⛶'}</button>
+                            <button onClick={() => { setSvActive(false); setSvPicking(false); setSvFullscreen(false); }} title="Close" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: theme.textDim }}>✕</button>
+                        </div>
+                    </div>
+
+                    {/* Panorama container */}
+                    <div style={{ flex: 1, position: 'relative' as const, minHeight: svFullscreen ? 0 : 320, background: '#0a0a0a' }}>
+                        {!svAvailable ? (
+                            <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', height: '100%', padding: 30 }}>
+                                <div style={{ fontSize: 40, opacity: 0.2, marginBottom: 8 }}>🚫</div>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: theme.text, marginBottom: 4 }}>No Street View Available</div>
+                                <div style={{ fontSize: 10, color: theme.textDim, textAlign: 'center' as const }}>
+                                    {!svApiReady ? 'Google Maps API key required. Add GOOGLE_MAPS_API_KEY to .env or credentials.json.' : 'No Street View coverage at this location. Try a nearby road or intersection.'}
+                                </div>
+                                <button onClick={() => setSvPicking(true)} style={{ marginTop: 12, padding: '6px 16px', borderRadius: 5, border: `1px solid #fbbf2430`, background: '#fbbf2408', color: '#fbbf24', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>📍 Pick Another Location</button>
+                            </div>
+                        ) : (
+                            <div ref={svContainerRef} style={{ width: '100%', height: '100%', minHeight: svFullscreen ? '100%' : 320 }} />
+                        )}
+
+                        {/* HUD Overlay */}
+                        {svAvailable && svLocation && <div style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 2 }}>
+                            {/* Top-left: coordinates + heading */}
+                            <div style={{ position: 'absolute' as const, top: 8, left: 8, display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
+                                <div style={{ padding: '3px 8px', borderRadius: 4, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 4px #22c55e' }} />
+                                    <span style={{ fontSize: 9, fontWeight: 700, color: '#22c55e' }}>LIVE</span>
+                                    <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', fontFamily: "'JetBrains Mono',monospace" }}>{svLocation.lat.toFixed(5)}, {svLocation.lng.toFixed(5)}</span>
+                                </div>
+                                <div style={{ padding: '2px 8px', borderRadius: 4, background: 'rgba(0,0,0,0.5)', fontSize: 8, color: 'rgba(255,255,255,0.5)', fontFamily: "'JetBrains Mono',monospace" }}>
+                                    HDG {svHeading}° · PITCH {svPitch}° · ZOOM {svZoom}x
+                                </div>
+                            </div>
+
+                            {/* Top-right: compass */}
+                            <div style={{ position: 'absolute' as const, top: 8, right: 8 }}>
+                                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ transform: `rotate(${-svHeading}deg)`, transition: 'transform 0.3s ease', fontSize: 10, lineHeight: 1 }}>
+                                        <span style={{ color: '#ef4444', fontWeight: 900, fontSize: 11 }}>N</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Bottom: Google attribution */}
+                            <div style={{ position: 'absolute' as const, bottom: 6, right: 8, padding: '2px 6px', borderRadius: 3, background: 'rgba(0,0,0,0.5)', fontSize: 7, color: 'rgba(255,255,255,0.4)' }}>Google Street View</div>
+                        </div>}
+                    </div>
+
+                    {/* Footer controls */}
+                    <div style={{ padding: '8px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', gap: 3 }}>
+                            <button onClick={() => { if (svPanoRef.current) { const pov = svPanoRef.current.getPov(); svPanoRef.current.setPov({ heading: pov.heading - 90, pitch: 0 }); } }} style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: theme.textDim }}>↶ Left 90°</button>
+                            <button onClick={() => { if (svPanoRef.current) { const pov = svPanoRef.current.getPov(); svPanoRef.current.setPov({ heading: pov.heading + 90, pitch: 0 }); } }} style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: theme.textDim }}>↷ Right 90°</button>
+                            <button onClick={() => { if (svPanoRef.current) svPanoRef.current.setPov({ heading: svPanoRef.current.getPov().heading, pitch: 0 }); }} style={{ padding: '4px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: theme.textDim }}>⊝ Level</button>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: svAvailable ? '#22c55e' : '#ef4444', boxShadow: svAvailable ? '0 0 6px #22c55e60' : 'none' }} />
+                            <span style={{ fontSize: 9, color: '#fbbf24', fontWeight: 600 }}>Google Maps API</span>
+                        </div>
+                    </div>
                 </div>}
 
                 {/* ═══ TRAFFIC PANEL ═══ */}
