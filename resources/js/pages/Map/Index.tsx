@@ -4724,100 +4724,19 @@ export default function MapIndex() {
     // ═══ 3D TRAFFIC PARTICLE SYSTEM ═══
     const trafficParticlesRef = useRef<any>(null);
     const trafficParticleAnimRef = useRef<number | null>(null);
-    const trafficVehicleImagesLoaded = useRef(false);
     const trafficLiveSpeedsRef = useRef<Map<number, { current: number; freeFlow: number }>>(new Map());
-
-    // Register vehicle icon images on map
-    const registerVehicleImages = useCallback((map: any) => {
-        if (trafficVehicleImagesLoaded.current) return;
-        const vehicles: Record<string, { w: number; h: number; draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void }> = {
-            'veh-car': { w: 24, h: 12, draw: (ctx, w, h) => {
-                ctx.fillStyle = '#e2e8f0'; ctx.fillRect(2, 1, w - 4, h - 2);
-                ctx.fillStyle = '#1e293b'; ctx.fillRect(4, 2, 5, h - 4); ctx.fillRect(w - 9, 2, 5, h - 4); // windows
-                ctx.fillStyle = '#fbbf24'; ctx.fillRect(w - 3, 3, 2, 2); ctx.fillRect(w - 3, h - 5, 2, 2); // headlights
-                ctx.fillStyle = '#ef4444'; ctx.fillRect(1, 3, 2, 2); ctx.fillRect(1, h - 5, 2, 2); // taillights
-            }},
-            'veh-car-red': { w: 24, h: 12, draw: (ctx, w, h) => {
-                ctx.fillStyle = '#dc2626'; ctx.fillRect(2, 1, w - 4, h - 2);
-                ctx.fillStyle = '#1e293b'; ctx.fillRect(4, 2, 5, h - 4); ctx.fillRect(w - 9, 2, 5, h - 4);
-                ctx.fillStyle = '#fbbf24'; ctx.fillRect(w - 3, 3, 2, 2); ctx.fillRect(w - 3, h - 5, 2, 2);
-                ctx.fillStyle = '#fca5a5'; ctx.fillRect(1, 3, 2, 2); ctx.fillRect(1, h - 5, 2, 2);
-            }},
-            'veh-car-blue': { w: 24, h: 12, draw: (ctx, w, h) => {
-                ctx.fillStyle = '#2563eb'; ctx.fillRect(2, 1, w - 4, h - 2);
-                ctx.fillStyle = '#1e293b'; ctx.fillRect(4, 2, 5, h - 4); ctx.fillRect(w - 9, 2, 5, h - 4);
-                ctx.fillStyle = '#fbbf24'; ctx.fillRect(w - 3, 3, 2, 2); ctx.fillRect(w - 3, h - 5, 2, 2);
-                ctx.fillStyle = '#93c5fd'; ctx.fillRect(1, 3, 2, 2); ctx.fillRect(1, h - 5, 2, 2);
-            }},
-            'veh-car-black': { w: 24, h: 12, draw: (ctx, w, h) => {
-                ctx.fillStyle = '#1e293b'; ctx.fillRect(2, 1, w - 4, h - 2);
-                ctx.fillStyle = '#0f172a'; ctx.fillRect(4, 2, 5, h - 4); ctx.fillRect(w - 9, 2, 5, h - 4);
-                ctx.fillStyle = '#fbbf24'; ctx.fillRect(w - 3, 3, 2, 2); ctx.fillRect(w - 3, h - 5, 2, 2);
-                ctx.fillStyle = '#ef4444'; ctx.fillRect(1, 3, 2, 2); ctx.fillRect(1, h - 5, 2, 2);
-            }},
-            'veh-truck': { w: 32, h: 14, draw: (ctx, w, h) => {
-                // Cab
-                ctx.fillStyle = '#f59e0b'; ctx.fillRect(w - 12, 1, 11, h - 2);
-                ctx.fillStyle = '#1e293b'; ctx.fillRect(w - 10, 2, 4, h - 4); // cab window
-                // Cargo
-                ctx.fillStyle = '#94a3b8'; ctx.fillRect(1, 0, w - 13, h);
-                ctx.strokeStyle = '#64748b'; ctx.lineWidth = 0.5; ctx.strokeRect(1, 0, w - 13, h);
-                ctx.fillStyle = '#fbbf24'; ctx.fillRect(w - 2, 3, 2, 2); ctx.fillRect(w - 2, h - 5, 2, 2);
-                ctx.fillStyle = '#ef4444'; ctx.fillRect(0, 4, 2, 2); ctx.fillRect(0, h - 6, 2, 2);
-            }},
-            'veh-bus': { w: 36, h: 14, draw: (ctx, w, h) => {
-                ctx.fillStyle = '#16a34a'; ctx.fillRect(1, 0, w - 2, h);
-                // Windows
-                ctx.fillStyle = '#86efac'; for (let x = 5; x < w - 8; x += 5) { ctx.fillRect(x, 2, 3, h - 4); }
-                ctx.fillStyle = '#fbbf24'; ctx.fillRect(w - 2, 3, 2, 3); ctx.fillRect(w - 2, h - 6, 2, 3);
-                ctx.fillStyle = '#ef4444'; ctx.fillRect(0, 3, 2, 3); ctx.fillRect(0, h - 6, 2, 3);
-            }},
-            'veh-van': { w: 28, h: 13, draw: (ctx, w, h) => {
-                ctx.fillStyle = '#f8fafc'; ctx.fillRect(1, 0, w - 2, h);
-                ctx.fillStyle = '#1e293b'; ctx.fillRect(w - 8, 2, 5, h - 4); // front window
-                ctx.fillStyle = '#cbd5e1'; ctx.fillRect(3, 1, w - 13, h - 2); // cargo body
-                ctx.fillStyle = '#fbbf24'; ctx.fillRect(w - 2, 3, 2, 2); ctx.fillRect(w - 2, h - 5, 2, 2);
-                ctx.fillStyle = '#ef4444'; ctx.fillRect(0, 4, 2, 2); ctx.fillRect(0, h - 6, 2, 2);
-            }},
-            'veh-moto': { w: 18, h: 8, draw: (ctx, w, h) => {
-                ctx.fillStyle = '#e11d48'; ctx.fillRect(4, 1, w - 8, h - 2);
-                ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(w - 3, h / 2, 2, 0, Math.PI * 2); ctx.fill(); // headlight
-                ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(3, h / 2, 1.5, 0, Math.PI * 2); ctx.fill(); // taillight
-                ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(w - 7, h / 2, 1, 0, Math.PI * 2); ctx.fill(); // rider
-            }},
-        };
-
-        const ratio = 2; // Fixed ratio — avoids fractional devicePixelRatio mismatches
-        Object.entries(vehicles).forEach(([name, cfg]) => {
-            if (map.hasImage(name)) return;
-            const cw = cfg.w * ratio;
-            const ch = cfg.h * ratio;
-            const canvas = document.createElement('canvas');
-            canvas.width = cw; canvas.height = ch;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return;
-            ctx.scale(ratio, ratio);
-            cfg.draw(ctx, cfg.w, cfg.h);
-            const imgData = ctx.getImageData(0, 0, cw, ch);
-            map.addImage(name, { width: cw, height: ch, data: new Uint8Array(imgData.data.buffer) }, { pixelRatio: ratio, sdf: false });
-        });
-        trafficVehicleImagesLoaded.current = true;
-    }, []);
 
     // Fetch live speeds from TomTom for each road segment
     const fetchLiveTrafficSpeeds = useCallback(async () => {
         if (!trafficApiKey || trafficSource !== 'tomtom') return;
         const newSpeeds = new Map<number, { current: number; freeFlow: number }>();
-        // Query flow for each segment midpoint (batch — max 15 calls, cached server-side)
         const promises = MOCK_TRAFFIC_SEGMENTS.map(async (seg, idx) => {
             const mid = seg.coordinates[Math.floor(seg.coordinates.length / 2)];
             try {
                 const res = await fetch(`/mock-api/traffic/flow?lat=${mid[1]}&lng=${mid[0]}`);
                 if (!res.ok) return;
                 const data = await res.json();
-                if (data.flow) {
-                    newSpeeds.set(idx, { current: data.flow.currentSpeed || seg.speed, freeFlow: data.flow.freeFlowSpeed || seg.freeFlowSpeed });
-                }
+                if (data.flow) newSpeeds.set(idx, { current: data.flow.currentSpeed || seg.speed, freeFlow: data.flow.freeFlowSpeed || seg.freeFlowSpeed });
             } catch {}
         });
         await Promise.allSettled(promises);
@@ -4832,139 +4751,190 @@ export default function MapIndex() {
 
         if (!shouldRun) {
             if (trafficParticleAnimRef.current) { cancelAnimationFrame(trafficParticleAnimRef.current); trafficParticleAnimRef.current = null; }
-            try { if (map.getLayer('traffic-vehicles')) map.removeLayer('traffic-vehicles'); } catch {}
-            try { if (map.getLayer('traffic-vehicles-shadow')) map.removeLayer('traffic-vehicles-shadow'); } catch {}
-            try { if (map.getLayer('traffic-headlights')) map.removeLayer('traffic-headlights'); } catch {}
-            try { if (map.getSource('traffic-particles-src')) map.removeSource('traffic-particles-src'); } catch {}
+            try { if (map.getLayer('traffic-3d-vehicles')) map.removeLayer('traffic-3d-vehicles'); } catch {}
+            try { if (map.getLayer('traffic-3d-shadow')) map.removeLayer('traffic-3d-shadow'); } catch {}
+            try { if (map.getLayer('traffic-3d-windows')) map.removeLayer('traffic-3d-windows'); } catch {}
+            try { if (map.getSource('traffic-3d-src')) map.removeSource('traffic-3d-src'); } catch {}
             // Legacy cleanup
-            ['traffic-particles-glow', 'traffic-particles', 'traffic-particles-tail'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            ['traffic-vehicles', 'traffic-vehicles-shadow', 'traffic-headlights', 'traffic-particles-glow', 'traffic-particles', 'traffic-particles-tail'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            try { if (map.getSource('traffic-particles-src')) map.removeSource('traffic-particles-src'); } catch {}
             trafficParticlesRef.current = null;
             return;
         }
 
-        registerVehicleImages(map);
-
-        // Fetch live speeds if TomTom is active
         if (trafficSource === 'tomtom') fetchLiveTrafficSpeeds();
 
-        const vehicleTypes = ['veh-car', 'veh-car-red', 'veh-car-blue', 'veh-car-black', 'veh-truck', 'veh-bus', 'veh-van', 'veh-moto'];
-        const vehicleWeights = [30, 12, 10, 15, 8, 4, 10, 11]; // probability weights
-        const totalWeight = vehicleWeights.reduce((a, b) => a + b, 0);
-        const pickVehicle = (): string => {
-            let r = Math.random() * totalWeight; for (let i = 0; i < vehicleTypes.length; i++) { r -= vehicleWeights[i]; if (r <= 0) return vehicleTypes[i]; } return vehicleTypes[0];
+        // ── Vehicle type definitions (real-world meters) ──
+        const vehicleDefs = [
+            { type: 'sedan',   len: 4.2, wid: 1.8, hgt: 1.5, color: '#c8ccd4', winColor: '#1a2740', weight: 28 },
+            { type: 'sedan-r', len: 4.2, wid: 1.8, hgt: 1.5, color: '#b91c1c', winColor: '#1a2740', weight: 10 },
+            { type: 'sedan-b', len: 4.2, wid: 1.8, hgt: 1.5, color: '#1d4ed8', winColor: '#1a2740', weight: 8 },
+            { type: 'sedan-k', len: 4.2, wid: 1.8, hgt: 1.5, color: '#1e293b', winColor: '#0f172a', weight: 12 },
+            { type: 'suv',     len: 4.8, wid: 2.0, hgt: 1.8, color: '#64748b', winColor: '#1a2740', weight: 10 },
+            { type: 'truck',   len: 8.0, wid: 2.5, hgt: 3.8, color: '#94a3b8', winColor: '#475569', weight: 7, speedMod: 0.7 },
+            { type: 'bus',     len: 11.0, wid: 2.5, hgt: 3.2, color: '#15803d', winColor: '#86efac', weight: 3, speedMod: 0.65 },
+            { type: 'van',     len: 5.5, wid: 2.0, hgt: 2.4, color: '#f1f5f9', winColor: '#1a2740', weight: 9 },
+            { type: 'pickup',  len: 5.2, wid: 2.0, hgt: 1.9, color: '#78716c', winColor: '#1a2740', weight: 6 },
+            { type: 'moto',    len: 2.0, wid: 0.7, hgt: 1.1, color: '#be123c', winColor: '#0f172a', weight: 7, speedMod: 1.1 },
+        ];
+        const totalWeight = vehicleDefs.reduce((a, v) => a + v.weight, 0);
+        const pickVehicle = () => { let r = Math.random() * totalWeight; for (const v of vehicleDefs) { r -= v.weight; if (r <= 0) return v; } return vehicleDefs[0]; };
+
+        // ── Meters → degrees at lat ~45.8 ──
+        const M2LNG = 0.0000127;
+        const M2LAT = 0.000009;
+
+        // ── Build oriented rectangle polygon ──
+        const buildPoly = (lng: number, lat: number, heading: number, lenM: number, widM: number): number[][] => {
+            const rad = (heading - 90) * Math.PI / 180;
+            const cosH = Math.cos(rad);
+            const sinH = Math.sin(rad);
+            const hl = lenM / 2;
+            const hw = widM / 2;
+            return [[-hl, -hw], [hl, -hw], [hl, hw], [-hl, hw], [-hl, -hw]].map(([dx, dy]) => [
+                lng + (dx * cosH - dy * sinH) * M2LNG,
+                lat + (dx * sinH + dy * cosH) * M2LAT
+            ]);
+        };
+
+        // ── Window polygon (smaller, offset toward front) ──
+        const buildWinPoly = (lng: number, lat: number, heading: number, lenM: number, widM: number): number[][] => {
+            const rad = (heading - 90) * Math.PI / 180;
+            const cosH = Math.cos(rad);
+            const sinH = Math.sin(rad);
+            return [[lenM * 0.15, -widM * 0.32], [lenM * 0.38, -widM * 0.32], [lenM * 0.38, widM * 0.32], [lenM * 0.15, widM * 0.32], [lenM * 0.15, -widM * 0.32]].map(([dx, dy]) => [
+                lng + (dx * cosH - dy * sinH) * M2LNG,
+                lat + (dx * sinH + dy * cosH) * M2LAT
+            ]);
         };
 
         const segments = MOCK_TRAFFIC_SEGMENTS;
 
-        interface Particle { segIdx: number; progress: number; speed: number; lng: number; lat: number; heading: number; level: string; vehicle: string; lane: number; }
+        interface Particle3D {
+            segIdx: number; progress: number; speed: number;
+            lng: number; lat: number; heading: number;
+            veh: typeof vehicleDefs[0]; lane: number;
+        }
 
-        const particles: Particle[] = [];
+        // ── Create particles ──
+        const particles: Particle3D[] = [];
         segments.forEach((seg, si) => {
-            // Use live speed if available
             const liveSpeed = trafficLiveSpeedsRef.current.get(si);
             const actualSpeed = liveSpeed ? liveSpeed.current : seg.speed;
             const freeFlow = liveSpeed ? liveSpeed.freeFlow : seg.freeFlowSpeed;
             const ratio = freeFlow > 0 ? actualSpeed / freeFlow : 0.5;
-            const effectiveLevel = ratio > 0.8 ? 'free' : ratio > 0.6 ? 'light' : ratio > 0.4 ? 'moderate' : ratio > 0.2 ? 'heavy' : 'standstill';
+            const level = ratio > 0.8 ? 'free' : ratio > 0.6 ? 'light' : ratio > 0.4 ? 'moderate' : ratio > 0.2 ? 'heavy' : 'standstill';
+            const count = level === 'standstill' ? 10 : level === 'heavy' ? 8 : level === 'moderate' ? 7 : 5;
 
-            const count = effectiveLevel === 'standstill' ? 12 : effectiveLevel === 'heavy' ? 10 : effectiveLevel === 'moderate' ? 8 : 6;
+            // Segment length in meters
+            let segLenM = 0;
+            for (let i = 1; i < seg.coordinates.length; i++) {
+                const dlng = (seg.coordinates[i][0] - seg.coordinates[i - 1][0]) / M2LNG;
+                const dlat = (seg.coordinates[i][1] - seg.coordinates[i - 1][1]) / M2LAT;
+                segLenM += Math.sqrt(dlng * dlng + dlat * dlat);
+            }
+
             for (let p = 0; p < count; p++) {
-                const progress = p / count + (Math.random() * 0.04);
-                // Speed derived from actual km/h → animation progress per frame
-                const baseSpeedFactor = Math.max(actualSpeed, 2) / 5000;
-                const vehicle = pickVehicle();
-                // Trucks/buses move slightly slower
-                const vehFactor = vehicle.includes('truck') || vehicle.includes('bus') ? 0.75 : vehicle.includes('moto') ? 1.15 : 1.0;
-                const lane = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 0.00004); // slight lateral offset for multi-lane feel
-                particles.push({ segIdx: si, progress: progress % 1, speed: baseSpeedFactor * vehFactor + Math.random() * baseSpeedFactor * 0.15, lng: 0, lat: 0, heading: 0, level: effectiveLevel, vehicle, lane });
+                const veh = pickVehicle();
+                const progress = (p / count) + Math.random() * (0.8 / count);
+                const speedMs = (actualSpeed * 1000 / 3600) * (veh.speedMod || 1.0);
+                const progressPerSec = segLenM > 0 ? speedMs / segLenM : 0.005;
+                const lane = (Math.random() > 0.5 ? 1 : -1) * (1.5 + Math.random() * 1.5);
+                particles.push({ segIdx: si, progress: progress % 1, speed: progressPerSec, lng: 0, lat: 0, heading: 0, veh, lane });
             }
         });
 
-        const interpolate = (seg: typeof segments[0], t: number, laneOffset: number): [number, number, number] => {
+        // ── Interpolate position with lane offset ──
+        const interp = (seg: typeof segments[0], t: number, laneM: number): [number, number, number] => {
             const coords = seg.coordinates;
             if (coords.length < 2) return [coords[0][0], coords[0][1], 0];
-            const totalT = Math.max(0, Math.min(1, t));
-            const segCount = coords.length - 1;
-            const rawIdx = totalT * segCount;
-            const idx = Math.min(Math.floor(rawIdx), segCount - 1);
-            const frac = rawIdx - idx;
-            const baseLng = coords[idx][0] + (coords[idx + 1][0] - coords[idx][0]) * frac;
-            const baseLat = coords[idx][1] + (coords[idx + 1][1] - coords[idx][1]) * frac;
+            const ct = Math.max(0, Math.min(0.999, t));
+            const n = coords.length - 1;
+            const ri = ct * n;
+            const idx = Math.min(Math.floor(ri), n - 1);
+            const f = ri - idx;
+            const bLng = coords[idx][0] + (coords[idx + 1][0] - coords[idx][0]) * f;
+            const bLat = coords[idx][1] + (coords[idx + 1][1] - coords[idx][1]) * f;
             const dx = coords[idx + 1][0] - coords[idx][0];
             const dy = coords[idx + 1][1] - coords[idx][1];
             const heading = Math.atan2(dx, dy) * 180 / Math.PI;
-            // Perpendicular offset for lane simulation
-            const perpLng = -dy * laneOffset * 30;
-            const perpLat = dx * laneOffset * 30;
-            return [baseLng + perpLng, baseLat + perpLat, heading];
+            const len = Math.sqrt(dx * dx + dy * dy) || 1;
+            return [bLng - (dy / len) * laneM * M2LNG, bLat + (dx / len) * laneM * M2LAT, heading];
         };
 
+        // ── Init layers ──
         const emptyFC = { type: 'FeatureCollection' as const, features: [] as any[] };
         try {
-            if (!map.getSource('traffic-particles-src')) {
-                map.addSource('traffic-particles-src', { type: 'geojson', data: emptyFC });
+            if (!map.getSource('traffic-3d-src')) {
+                map.addSource('traffic-3d-src', { type: 'geojson', data: emptyFC });
 
-                // Shadow/ground contact
-                map.addLayer({ id: 'traffic-vehicles-shadow', type: 'circle', source: 'traffic-particles-src', paint: {
-                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 2, 16, 5, 19, 8],
-                    'circle-color': '#000000', 'circle-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.05, 17, 0.15],
-                    'circle-blur': 0.8, 'circle-translate': [1, 1]
-                }});
+                map.addLayer({ id: 'traffic-3d-shadow', type: 'fill', source: 'traffic-3d-src',
+                    filter: ['==', ['get', 'part'], 'body'],
+                    paint: { 'fill-color': '#000', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.02, 17, 0.1, 20, 0.18] }
+                });
 
-                // Vehicle icons
-                map.addLayer({ id: 'traffic-vehicles', type: 'symbol', source: 'traffic-particles-src', layout: {
-                    'icon-image': ['get', 'vehicle'],
-                    'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.3, 15, 0.7, 18, 1.2, 20, 1.8],
-                    'icon-rotate': ['get', 'heading'],
-                    'icon-rotation-alignment': 'map',
-                    'icon-pitch-alignment': 'map',
-                    'icon-allow-overlap': true,
-                    'icon-ignore-placement': true,
-                }, paint: {
-                    'icon-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.4, 15, 0.8, 18, 1.0],
-                }});
+                map.addLayer({ id: 'traffic-3d-vehicles', type: 'fill-extrusion', source: 'traffic-3d-src',
+                    filter: ['==', ['get', 'part'], 'body'],
+                    paint: {
+                        'fill-extrusion-color': ['get', 'color'],
+                        'fill-extrusion-height': ['get', 'height'],
+                        'fill-extrusion-base': 0,
+                        'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.3, 16, 0.8, 19, 0.95],
+                    }
+                });
 
-                // Headlight glow (in front of vehicle)
-                map.addLayer({ id: 'traffic-headlights', type: 'circle', source: 'traffic-particles-src', paint: {
-                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 1, 17, 3, 20, 5],
-                    'circle-color': '#fef3c7',
-                    'circle-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.0, 16, 0.2, 19, 0.5],
-                    'circle-blur': 0.6,
-                }, minzoom: 14 });
+                map.addLayer({ id: 'traffic-3d-windows', type: 'fill-extrusion', source: 'traffic-3d-src',
+                    filter: ['==', ['get', 'part'], 'window'],
+                    paint: {
+                        'fill-extrusion-color': ['get', 'color'],
+                        'fill-extrusion-height': ['get', 'height'],
+                        'fill-extrusion-base': ['get', 'base'],
+                        'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.2, 17, 0.65, 20, 0.8],
+                    }
+                });
             }
-        } catch (e) { console.warn('Traffic vehicles init failed:', e); return; }
+        } catch (e) { console.warn('Traffic 3D init failed:', e); return; }
 
         trafficParticlesRef.current = particles;
 
+        // ── Animation loop (~20fps for fill-extrusion perf) ──
         let lastFrame = 0;
         const animate = (time: number) => {
             if (!mapRef.current || !trafficParticlesRef.current) return;
-            const dt = time - lastFrame;
-            if (dt < 33) { trafficParticleAnimRef.current = requestAnimationFrame(animate); return; }
+            const dt = (time - lastFrame) / 1000;
+            if (dt < 0.05) { trafficParticleAnimRef.current = requestAnimationFrame(animate); return; }
             lastFrame = time;
-            const pts = trafficParticlesRef.current as Particle[];
+
+            const pts = trafficParticlesRef.current as Particle3D[];
             const features: any[] = [];
+
             pts.forEach(p => {
-                p.progress += p.speed * (dt / 16.67);
+                p.progress += p.speed * dt;
                 if (p.progress >= 1) p.progress -= 1;
                 const seg = segments[p.segIdx];
-                const [lng, lat, heading] = interpolate(seg, p.progress, p.lane);
+                const [lng, lat, heading] = interp(seg, p.progress, p.lane);
                 p.lng = lng; p.lat = lat; p.heading = heading;
-                features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] }, properties: { vehicle: p.vehicle, heading, level: p.level, color: trafficLevelConfig[p.level]?.color || '#22c55e' } });
+
+                features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [buildPoly(lng, lat, heading, p.veh.len, p.veh.wid)] },
+                    properties: { part: 'body', color: p.veh.color, height: p.veh.hgt, type: p.veh.type } });
+
+                if (p.veh.hgt > 1.2 && p.veh.type !== 'moto') {
+                    features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [buildWinPoly(lng, lat, heading, p.veh.len, p.veh.wid)] },
+                        properties: { part: 'window', color: p.veh.winColor, height: p.veh.hgt + 0.4, base: p.veh.hgt * 0.6, type: p.veh.type } });
+                }
             });
-            try { const src = mapRef.current.getSource('traffic-particles-src') as any; if (src) src.setData({ type: 'FeatureCollection', features }); } catch {}
+
+            try { const src = mapRef.current.getSource('traffic-3d-src') as any; if (src) src.setData({ type: 'FeatureCollection', features }); } catch {}
             trafficParticleAnimRef.current = requestAnimationFrame(animate);
         };
         trafficParticleAnimRef.current = requestAnimationFrame(animate);
 
-        // Refresh live speeds every 2 min
         const speedIv = trafficSource === 'tomtom' ? setInterval(fetchLiveTrafficSpeeds, 120000) : null;
-
         return () => {
             if (trafficParticleAnimRef.current) { cancelAnimationFrame(trafficParticleAnimRef.current); trafficParticleAnimRef.current = null; }
             if (speedIv) clearInterval(speedIv);
         };
-    }, [active3D, layerTraffic, trafficShowFlow, loaded, trafficSource, registerVehicleImages, fetchLiveTrafficSpeeds]);
+    }, [active3D, layerTraffic, trafficShowFlow, loaded, trafficSource, fetchLiveTrafficSpeeds]);
 
     // Load MapLibre + map create/rebuild helpers
     const attachMapEvents = useCallback((map: any) => {

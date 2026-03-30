@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.25.65 - 2026-03-30
+
+### Upgraded — True 3D Extruded Traffic Vehicles
+
+Complete rewrite of the traffic particle system. Replaced 2D canvas sprite icons with **real 3D extruded polygons** using MapLibre's `fill-extrusion` layer. Vehicles are now actual 3D boxes with correct real-world dimensions, oriented along streets, moving at physically accurate speeds.
+
+#### 3D Vehicle Rendering
+Each vehicle is a **rotated GeoJSON polygon** extruded to its real-world height:
+- **Body**: `fill-extrusion` layer — colored 3D box with real dimensions
+- **Windows/cabin**: Second `fill-extrusion` layer — darker glass rectangle on top of body, offset toward front
+- **Ground shadow**: Flat `fill` layer underneath for depth
+
+#### 10 Vehicle Types with Real Dimensions
+| Type | Length | Width | Height | Color | Frequency |
+|---|---|---|---|---|---|
+| Sedan (silver) | 4.2m | 1.8m | 1.5m | #c8ccd4 | 28% |
+| Sedan (red) | 4.2m | 1.8m | 1.5m | #b91c1c | 10% |
+| Sedan (blue) | 4.2m | 1.8m | 1.5m | #1d4ed8 | 8% |
+| Sedan (black) | 4.2m | 1.8m | 1.5m | #1e293b | 12% |
+| SUV | 4.8m | 2.0m | 1.8m | #64748b | 10% |
+| Truck | 8.0m | 2.5m | 3.8m | #94a3b8 | 7% (0.7x speed) |
+| Bus | 11.0m | 2.5m | 3.2m | #15803d | 3% (0.65x speed) |
+| Van | 5.5m | 2.0m | 2.4m | #f1f5f9 | 9% |
+| Pickup | 5.2m | 2.0m | 1.9m | #78716c | 6% |
+| Motorcycle | 2.0m | 0.7m | 1.1m | #be123c | 7% (1.1x speed) |
+
+#### Street Orientation
+Vehicles are oriented along the road using a **rotated rectangle polygon**:
+- Heading computed from road segment direction vector (`atan2`)
+- Rectangle vertices rotated by heading angle (cos/sin transform)
+- Meters converted to degrees: `1m ≈ 0.0000127° lng`, `1m ≈ 0.000009° lat` at lat 45.8°
+
+#### Multi-Lane Positioning
+Each vehicle has a random perpendicular offset of ±1.5m to ±3m from the road centerline, computed from the road's normal vector. Creates realistic multi-lane traffic appearance.
+
+#### Physically Accurate Speeds
+- Speed derived from **real km/h** (live TomTom or mock data):
+  `speedMs = actualSpeed × 1000 / 3600 × vehicleSpeedModifier`
+  `progressPerSecond = speedMs / segmentLengthInMeters`
+- Segment lengths computed in meters from coordinate distances
+- Animation uses real `dt` in seconds (not frame-based)
+- 20fps cap (fill-extrusion is heavier than circles)
+- Trucks at 0.7x, buses at 0.65x, motorcycles at 1.1x of road speed
+
+#### What It Looks Like in 3D
+From the tilted 3D camera:
+- Silver/red/blue/black **car boxes** (1.5m tall) flowing along roads
+- Taller **white vans** (2.4m) and **grey trucks** (3.8m) moving slower
+- **Green buses** (3.2m, longest) crawling in heavy traffic
+- Dark **window glass** rectangles on top of each vehicle body
+- **Ground shadows** for depth perception
+- All vehicles properly oriented parallel to the road direction
+
 ## 0.25.64 - 2026-03-30
 
 ### Upgraded — 3D Traffic Particle System with Real Vehicles & Live API Data
