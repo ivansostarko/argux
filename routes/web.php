@@ -173,6 +173,7 @@ Route::get('/mock-api/traffic/config', [\App\Http\Controllers\MockApi\TrafficCon
 Route::get('/mock-api/traffic/incidents', [\App\Http\Controllers\MockApi\TrafficController::class, 'incidents'])->name('mock-api.traffic.incidents');
 Route::get('/mock-api/traffic/flow', [\App\Http\Controllers\MockApi\TrafficController::class, 'flow'])->name('mock-api.traffic.flow');
 Route::get('/mock-api/traffic/roads', [\App\Http\Controllers\MockApi\TrafficController::class, 'roads'])->name('mock-api.traffic.roads');
+Route::get('/mock-api/vessels', [\App\Http\Controllers\MockApi\VesselController::class, 'index'])->name('mock-api.vessels');
 Route::post('/mock-api/route', [\App\Http\Controllers\MockApi\RoutingController::class, 'route'])->name('mock-api.route');
 Route::post('/mock-api/google-maps/session', [\App\Http\Controllers\MockApi\GoogleMapsController::class, 'createSession'])->name('mock-api.gmaps.session');
 Route::get('/mock-api/google-maps/config', [\App\Http\Controllers\MockApi\GoogleMapsController::class, 'config'])->name('mock-api.gmaps.config');

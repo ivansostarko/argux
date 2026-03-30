@@ -1,5 +1,85 @@
 # Changelog
 
+## 0.25.69 - 2026-03-30
+
+### Implemented — Vessel Tracker (/map → Layers → Vessel Tracker)
+Full AIS-based maritime vessel tracking with live API integration, SVG ship markers, detailed popups, type filtering, and a dedicated vessel list panel.
+
+#### How to Activate
+- Layers section → toggle **🚢 Vessel Tracker** ON
+- Click the arrow button to open the Vessel Tracker panel
+
+#### Data Sources
+1. **AISHub API** (free, requires registration at aishub.net): Live AIS vessel positions, speeds, headings, destinations. Set `AISHUB_API_KEY` in `.env` or `credentials.json`.
+2. **Mock fallback**: 18 realistic vessels in the Adriatic Sea (Croatian ferries, cargo ships, tankers, fishing boats, military, sailing, tugs, high-speed craft).
+
+#### 18 Mock Vessels (Adriatic Sea)
+| Vessel | Type | Flag | Speed | Destination |
+|---|---|---|---|---|
+| JADROLINIJA MARKO POLO | Passenger | 🇭🇷 HR | 14.2 kn | SPLIT |
+| PETAR HEKTOROVIĆ | Passenger | 🇭🇷 HR | 11.8 kn | STARI GRAD |
+| MSC LUCIA | Cargo | 🇵🇦 PA | 12.5 kn | PIRAEUS |
+| OLYMPIC TRUST | Tanker | 🇱🇷 LR | 10.1 kn | TRIESTE |
+| TIRRENIA SHARDEN | Passenger | 🇮🇹 IT | 18.3 kn | ANCONA |
+| HAMBURG EXPRESS | Cargo | 🇩🇪 DE | 8.2 kn | PLOCE |
+| ADRIATIC JET | High-Speed | 🇵🇦 PA | 28.5 kn | BRAC |
+| ...and 11 more (fishing, sailing, military, tug, etc.) |
+
+#### Map Markers (SVG Ship Icons)
+- Custom SVG ship shapes with bow pointing in heading direction
+- Color-coded by vessel type (green=cargo, red=tanker, blue=passenger, etc.)
+- Name label underneath each marker
+- Green dot indicator on moving vessels (speed > 0.5 kn)
+- Hover: scale up 1.25x with glow shadow
+- rAF rendering loop (1 fps update) avoids React re-renders
+
+#### Click Popup (Rich Vessel Card)
+- Vessel icon, name, flag emoji, type, MMSI
+- 4 telemetry gauges: Speed (kn), Course (°), Heading (°), Draught (m)
+- Detail fields: Callsign, IMO, Size (L×W), Status, Destination, ETA, Position
+- AIS source badge (LIVE vs Mock)
+- Speed color coding: green (>15kn), blue (>5kn), amber (>0.5kn), grey (anchored)
+
+#### Vessel Tracker Panel (5 sections)
+1. **Type Filter**: 9 type toggle buttons (Cargo, Tanker, Passenger, Fishing, Military, Sailing, Tug, High-Speed, Other) with counts. All/Clear/Refresh buttons.
+2. **Search**: Filter by name, MMSI, callsign, destination, or flag.
+3. **Stats Row**: Total vessels, Moving count, Average speed, Active types.
+4. **Vessel List**: Scrollable list with icon, name, flag, type, destination, speed, course, length. Click to fly map to vessel. Selected vessel highlighted with colored left border.
+5. **Footer**: Vessel count, last update time, data source indicator (AISHub LIVE / Mock AIS Data).
+
+#### Backend
+- `GET /mock-api/vessels?south=&north=&west=&east=` — bbox-filtered vessel query
+- `app/Http/Controllers/MockApi/VesselController.php` (147 lines)
+- AISHub API integration with ship type mapping (IMO codes → our types)
+- Navigation status decoder (0=Under way, 1=At anchor, 5=Moored, 7=Fishing, etc.)
+- 3-minute server-side cache per bbox area
+- Mock fallback when no API key configured
+
+#### 9 Vessel Types
+| Type | Color | Icon | Example |
+|---|---|---|---|
+| Cargo | #22c55e | 🚢 | MSC LUCIA, HAMBURG EXPRESS |
+| Tanker | #ef4444 | 🛢️ | OLYMPIC TRUST, NORDIC CARRIER |
+| Passenger | #3b82f6 | 🚢 | JADROLINIJA MARKO POLO |
+| Fishing | #f59e0b | 🎣 | GDANSK FISHER, MORNAR |
+| Military | #6b7280 | ⚓ | JAGOR |
+| Sailing | #06b6d4 | ⛵ | LADY SOPHIA, WINDSTAR BREEZE |
+| Tug | #8b5cf6 | 🚤 | NEPTUN |
+| High-Speed | #ec4899 | 🚀 | ADRIATIC JET |
+| Other | #64748b | 🔹 | Unclassified vessels |
+
+#### Auto-Refresh
+- Vessel positions refresh every 3 minutes
+- Manual refresh via panel button
+- Data source status indicator (green dot = live, amber = mock)
+
+#### Files Created/Modified
+- `app/Http/Controllers/MockApi/VesselController.php` — NEW (147 lines)
+- `resources/js/mock/map.ts` — UPDATED (+85 lines, 18 vessels + types)
+- `resources/js/pages/Map/Index.tsx` — UPDATED (vessel state, rendering, panel)
+- `resources/css/pages/map.css` — UPDATED (+vessel marker CSS)
+- `routes/web.php` — UPDATED (+1 route)
+
 ## 0.25.68 - 2026-03-30
 
 ### Implemented — Google Street View (/map → Tools)

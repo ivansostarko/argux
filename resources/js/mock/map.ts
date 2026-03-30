@@ -381,3 +381,47 @@ export const MOCK_TRAFFIC_INCIDENTS: TrafficIncident[] = [
     { id: 'ti-5', type: 'event', severity: 'moderate', title: 'Football match traffic', description: 'Maksimir stadium event. Heavy traffic expected in surrounding area.', lat: 45.8188, lng: 16.0180, road: 'Maksimirska', startTime: '2026-03-29 18:00', endTime: '2026-03-29 22:00' },
     { id: 'ti-6', type: 'hazard', severity: 'minor', title: 'Debris on road', description: 'Fallen tree branch partially blocking right lane.', lat: 45.8100, lng: 15.9940, road: 'Heinzelova', startTime: '2026-03-29 12:30' },
 ];
+
+// ═══ VESSEL TRACKER (AIS — Marine Traffic) ═══
+export type VesselType = 'cargo' | 'tanker' | 'passenger' | 'fishing' | 'military' | 'sailing' | 'tug' | 'hsc' | 'other';
+export interface VesselData {
+    mmsi: number; name: string; callsign: string; imo?: number;
+    type: VesselType; flag: string; flagEmoji: string;
+    lat: number; lng: number; course: number; speed: number; heading: number;
+    destination: string; eta?: string; status: string;
+    length: number; width: number; draught: number;
+    lastUpdate: string;
+}
+
+export const vesselTypeConfig: Record<VesselType, { label: string; color: string; icon: string }> = {
+    cargo:     { label: 'Cargo',      color: '#22c55e', icon: '🚢' },
+    tanker:    { label: 'Tanker',     color: '#ef4444', icon: '🛢️' },
+    passenger: { label: 'Passenger',  color: '#3b82f6', icon: '🚢' },
+    fishing:   { label: 'Fishing',    color: '#f59e0b', icon: '🎣' },
+    military:  { label: 'Military',   color: '#6b7280', icon: '⚓' },
+    sailing:   { label: 'Sailing',    color: '#06b6d4', icon: '⛵' },
+    tug:       { label: 'Tug',        color: '#8b5cf6', icon: '🚤' },
+    hsc:       { label: 'High-Speed', color: '#ec4899', icon: '🚀' },
+    other:     { label: 'Other',      color: '#64748b', icon: '🔹' },
+};
+
+export const MOCK_VESSELS: VesselData[] = [
+    { mmsi: 238712000, name: 'JADROLINIJA MARKO POLO', callsign: '9A3721', type: 'passenger', flag: 'HR', flagEmoji: '🇭🇷', lat: 43.5120, lng: 16.4380, course: 195, speed: 14.2, heading: 192, destination: 'SPLIT', eta: '2026-03-29 16:30', status: 'Under way using engine', length: 131, width: 20, draught: 5.2, lastUpdate: '2026-03-29 14:32' },
+    { mmsi: 238456000, name: 'PETAR HEKTOROVIĆ', callsign: '9A2456', type: 'passenger', flag: 'HR', flagEmoji: '🇭🇷', lat: 43.3280, lng: 16.6920, course: 310, speed: 11.8, heading: 308, destination: 'STARI GRAD', status: 'Under way using engine', length: 98, width: 18, draught: 3.8, lastUpdate: '2026-03-29 14:30' },
+    { mmsi: 356789000, name: 'MSC LUCIA', callsign: 'CQBR7', type: 'cargo', flag: 'PA', flagEmoji: '🇵🇦', lat: 43.1450, lng: 16.1200, course: 135, speed: 12.5, heading: 138, destination: 'PIRAEUS', eta: '2026-03-31 08:00', status: 'Under way using engine', length: 294, width: 32, draught: 12.1, lastUpdate: '2026-03-29 14:28' },
+    { mmsi: 636019123, name: 'OLYMPIC TRUST', callsign: 'D5GR2', type: 'tanker', flag: 'LR', flagEmoji: '🇱🇷', lat: 42.8900, lng: 15.8500, course: 320, speed: 10.1, heading: 318, destination: 'TRIESTE', eta: '2026-03-30 14:00', status: 'Under way using engine', length: 228, width: 32, draught: 14.5, lastUpdate: '2026-03-29 14:25' },
+    { mmsi: 247321000, name: 'TIRRENIA SHARDEN', callsign: 'IBDZ', type: 'passenger', flag: 'IT', flagEmoji: '🇮🇹', lat: 42.6500, lng: 15.2000, course: 45, speed: 18.3, heading: 48, destination: 'ANCONA', eta: '2026-03-29 22:00', status: 'Under way using engine', length: 214, width: 26, draught: 6.8, lastUpdate: '2026-03-29 14:31' },
+    { mmsi: 211445670, name: 'HAMBURG EXPRESS', callsign: 'DABL', type: 'cargo', flag: 'DE', flagEmoji: '🇩🇪', lat: 43.6800, lng: 15.4500, course: 160, speed: 8.2, heading: 158, destination: 'PLOCE', eta: '2026-03-29 20:00', status: 'Under way using engine', length: 332, width: 43, draught: 13.5, lastUpdate: '2026-03-29 14:29' },
+    { mmsi: 238890000, name: 'SILBA', callsign: '9A5890', type: 'passenger', flag: 'HR', flagEmoji: '🇭🇷', lat: 44.2800, lng: 14.7600, course: 225, speed: 9.5, heading: 222, destination: 'ZADAR', status: 'Under way using engine', length: 75, width: 14, draught: 3.0, lastUpdate: '2026-03-29 14:33' },
+    { mmsi: 538006789, name: 'STAR EXPLORER', callsign: 'V7A67', type: 'cargo', flag: 'MH', flagEmoji: '🇲🇭', lat: 42.4200, lng: 16.8900, course: 280, speed: 11.0, heading: 278, destination: 'RIJEKA', eta: '2026-04-01 06:00', status: 'Under way using engine', length: 189, width: 28, draught: 9.8, lastUpdate: '2026-03-29 14:27' },
+    { mmsi: 238111000, name: 'DUBROVNIK', callsign: '9A1234', type: 'passenger', flag: 'HR', flagEmoji: '🇭🇷', lat: 42.6480, lng: 18.0900, course: 340, speed: 16.5, heading: 338, destination: 'DUBROVNIK', eta: '2026-03-29 15:00', status: 'Under way using engine', length: 142, width: 22, draught: 5.5, lastUpdate: '2026-03-29 14:30' },
+    { mmsi: 238654000, name: 'NEPTUN', callsign: '9A6540', type: 'tug', flag: 'HR', flagEmoji: '🇭🇷', lat: 43.5080, lng: 16.4320, course: 90, speed: 3.2, heading: 85, destination: 'SPLIT PORT', status: 'Under way using engine', length: 32, width: 10, draught: 4.2, lastUpdate: '2026-03-29 14:34' },
+    { mmsi: 261234000, name: 'GDANSK FISHER', callsign: 'SPB12', type: 'fishing', flag: 'PL', flagEmoji: '🇵🇱', lat: 43.0500, lng: 15.5800, course: 180, speed: 4.8, heading: 175, destination: 'FISHING GROUNDS', status: 'Engaged in fishing', length: 24, width: 7, draught: 3.1, lastUpdate: '2026-03-29 14:20' },
+    { mmsi: 238777000, name: 'MORNAR', callsign: '9A7770', type: 'fishing', flag: 'HR', flagEmoji: '🇭🇷', lat: 43.4200, lng: 15.9800, course: 90, speed: 2.1, heading: 88, destination: 'FISHING', status: 'Engaged in fishing', length: 18, width: 5, draught: 2.5, lastUpdate: '2026-03-29 14:18' },
+    { mmsi: 249345000, name: 'LADY SOPHIA', callsign: '9HA45', type: 'sailing', flag: 'MT', flagEmoji: '🇲🇹', lat: 43.3500, lng: 16.3200, course: 210, speed: 6.2, heading: 205, destination: 'HVAR', status: 'Under sail', length: 42, width: 8, draught: 3.5, lastUpdate: '2026-03-29 14:22' },
+    { mmsi: 245678000, name: 'WINDSTAR BREEZE', callsign: 'PBGH', type: 'sailing', flag: 'NL', flagEmoji: '🇳🇱', lat: 42.7500, lng: 17.6500, course: 350, speed: 7.5, heading: 348, destination: 'KORCULA', status: 'Under sail', length: 58, width: 10, draught: 4.0, lastUpdate: '2026-03-29 14:15' },
+    { mmsi: 238999000, name: 'JAGOR', callsign: '9A9990', type: 'military', flag: 'HR', flagEmoji: '🇭🇷', lat: 43.5200, lng: 16.4100, course: 270, speed: 0.5, heading: 0, destination: 'SPLIT NAVAL BASE', status: 'At anchor', length: 85, width: 13, draught: 4.0, lastUpdate: '2026-03-29 14:35' },
+    { mmsi: 372456000, name: 'ADRIATIC JET', callsign: '3FNK2', type: 'hsc', flag: 'PA', flagEmoji: '🇵🇦', lat: 43.4500, lng: 16.3000, course: 140, speed: 28.5, heading: 142, destination: 'BRAC', eta: '2026-03-29 14:50', status: 'Under way using engine', length: 45, width: 12, draught: 2.0, lastUpdate: '2026-03-29 14:33' },
+    { mmsi: 636098765, name: 'NORDIC CARRIER', callsign: 'D5GZ9', type: 'tanker', flag: 'LR', flagEmoji: '🇱🇷', lat: 44.4500, lng: 14.3500, course: 180, speed: 9.8, heading: 178, destination: 'OMISALJ', eta: '2026-03-29 18:00', status: 'Under way using engine', length: 274, width: 48, draught: 16.2, lastUpdate: '2026-03-29 14:26' },
+    { mmsi: 211567890, name: 'ELBE FEEDER', callsign: 'DABM', type: 'cargo', flag: 'DE', flagEmoji: '🇩🇪', lat: 44.1200, lng: 15.2300, course: 135, speed: 7.5, heading: 132, destination: 'ZADAR', eta: '2026-03-29 19:00', status: 'Under way using engine', length: 120, width: 18, draught: 7.0, lastUpdate: '2026-03-29 14:24' },
+];

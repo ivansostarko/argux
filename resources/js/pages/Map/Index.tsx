@@ -3,8 +3,8 @@ import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'rea
 import { router, usePage } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
-import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData, SatelliteData, POI, TrafficSegment, TrafficIncident } from '../../mock/map';
-import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig, MOCK_POIS, poiCategoryConfig, wmoWeatherCodes, getWeatherIcon, getWeatherLabel, trafficLevelConfig, trafficIncidentConfig, MOCK_TRAFFIC_SEGMENTS, MOCK_TRAFFIC_INCIDENTS } from '../../mock/map';
+import type { AnomalyEvent, PredRiskEntry, PatternEntry, IncidentEvent, CompareMetric, RoutePoint, FlightData, SatelliteData, POI, TrafficSegment, TrafficIncident, VesselData } from '../../mock/map';
+import { anomalyTypes, patternCategories, incidentTypes, heatCalPersonInfo, MOCK_ANOMALIES, MOCK_PREDICTIONS, MOCK_PATTERNS, MOCK_INCIDENTS, MOCK_ROUTES, cityCoords, keyboardShortcuts as mapShortcuts, MOCK_FLIGHTS, flightCategoryConfig, MOCK_SATELLITES, satCategoryConfig, MOCK_POIS, poiCategoryConfig, wmoWeatherCodes, getWeatherIcon, getWeatherLabel, trafficLevelConfig, trafficIncidentConfig, MOCK_TRAFFIC_SEGMENTS, MOCK_TRAFFIC_INCIDENTS, vesselTypeConfig, MOCK_VESSELS } from '../../mock/map';
 import { mockUAVs, uavStatusConfig, uavTypeConfig, mockMissions, mockDetections, mockTelemetry, DRONE_VIDEO_URL, type UAV, type DroneMission, type AIDetection, type DroneTelemetry, type DroneWaypoint } from '../../mock/uav';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
@@ -761,6 +761,60 @@ export default function MapIndex() {
         return { levels, avgSpeed, totalDelay, congestionIdx, incidents: trafficIncidents.length, incBySev };
     }, [trafficSource, trafficLiveIncidents, trafficIncidents]);
 
+    // ═══ VESSEL TRACKER (AIS) ═══
+    const [layerVessels, setLayerVessels] = useState(false);
+    const [showVesselPanel, setShowVesselPanel] = useState(false);
+    const [vessels, setVessels] = useState<VesselData[]>([]);
+    const [vesselSource, setVesselSource] = useState<'live' | 'mock' | 'loading'>('loading');
+    const [vesselSearch, setVesselSearch] = useState('');
+    const [vesselTypeFilter, setVesselTypeFilter] = useState<Set<string>>(new Set(Object.keys(vesselTypeConfig)));
+    const [vesselSelected, setVesselSelected] = useState<number | null>(null);
+    const [vesselLastUpdate, setVesselLastUpdate] = useState('');
+    const vesselMarkerMapRef = useRef<Map<number, any>>(new Map());
+    const vesselPopupRef = useRef<any>(null);
+    const vesselAnimRef = useRef<any>(null);
+
+    const fetchVessels = useCallback(async () => {
+        const map = mapRef.current;
+        if (!map) return;
+        const b = map.getBounds();
+        try {
+            const res = await fetch(`/mock-api/vessels?south=${b.getSouth()}&north=${b.getNorth()}&west=${b.getWest()}&east=${b.getEast()}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data.source !== 'error' && data.source !== 'mock' && data.vessels?.length > 0) {
+                setVessels(data.vessels); setVesselSource('live');
+            } else throw new Error('No live data');
+        } catch {
+            if (vessels.length === 0) { setVessels(MOCK_VESSELS); setVesselSource('mock'); }
+        }
+        setVesselLastUpdate(new Date().toLocaleTimeString('en-US', { hour12: false }));
+    }, []);
+
+    useEffect(() => {
+        if (!layerVessels) return;
+        fetchVessels();
+        const iv = setInterval(fetchVessels, 180000); // Refresh every 3 min
+        return () => clearInterval(iv);
+    }, [layerVessels, fetchVessels]);
+
+    const filteredVessels = useMemo(() => {
+        let v = vessels.filter(vs => vesselTypeFilter.has(vs.type));
+        if (vesselSearch) { const q = vesselSearch.toLowerCase(); v = v.filter(vs => vs.name.toLowerCase().includes(q) || vs.callsign.toLowerCase().includes(q) || String(vs.mmsi).includes(q) || vs.destination.toLowerCase().includes(q) || vs.flag.toLowerCase().includes(q)); }
+        return v;
+    }, [vessels, vesselTypeFilter, vesselSearch]);
+
+    const filteredVesselsRef = useRef(filteredVessels);
+    filteredVesselsRef.current = filteredVessels;
+
+    const vesselStats = useMemo(() => {
+        const counts: Record<string, number> = {};
+        Object.keys(vesselTypeConfig).forEach(k => { counts[k] = vessels.filter(v => v.type === k).length; });
+        const moving = vessels.filter(v => v.speed > 0.5).length;
+        const avgSpeed = vessels.length > 0 ? Math.round(vessels.reduce((a, v) => a + v.speed, 0) / vessels.length * 10) / 10 : 0;
+        return { total: vessels.length, visible: filteredVessels.length, counts, moving, avgSpeed };
+    }, [vessels, filteredVessels]);
+
     // ═══ ROUTING / DIRECTIONS ═══
     type RouteProfile = 'car' | 'bike' | 'foot';
     interface RouteWaypoint { id: string; lat: number; lng: number; label: string; }
@@ -1387,7 +1441,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic' | 'streetview';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic' | 'streetview' | 'vessels';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -3889,6 +3943,92 @@ export default function MapIndex() {
         }
     }, [layerTraffic, loaded, trafficShowFlow, trafficShowIncidents, trafficSource, trafficTileUrl, trafficIncidentsTileUrl, trafficIncidents]);
 
+    // ═══ VESSEL TRACKER RENDERING ═══
+    useEffect(() => {
+        if (!loaded) return;
+        const ml = (window as any).maplibregl;
+        if (!ml) return;
+        if (!layerVessels) {
+            vesselMarkerMapRef.current.forEach(e => e.marker.remove()); vesselMarkerMapRef.current.clear();
+            if (vesselPopupRef.current) { vesselPopupRef.current.remove(); vesselPopupRef.current = null; }
+            if (vesselAnimRef.current) { cancelAnimationFrame(vesselAnimRef.current); vesselAnimRef.current = null; }
+            return;
+        }
+        let lastUp = 0;
+        const loop = (time: number) => {
+            const map = mapRef.current;
+            if (!map) { vesselAnimRef.current = requestAnimationFrame(loop); return; }
+            if (time - lastUp < 1000) { vesselAnimRef.current = requestAnimationFrame(loop); return; }
+            lastUp = time;
+            const cur = filteredVesselsRef.current;
+            const ids = new Set(cur.map(v => v.mmsi));
+            vesselMarkerMapRef.current.forEach((e, id) => { if (!ids.has(id)) { e.marker.remove(); vesselMarkerMapRef.current.delete(id); } });
+            cur.forEach(v => {
+                if (vesselMarkerMapRef.current.has(v.mmsi)) {
+                    vesselMarkerMapRef.current.get(v.mmsi)!.marker.setLngLat([v.lng, v.lat]);
+                    return;
+                }
+                const tc = vesselTypeConfig[v.type] || vesselTypeConfig.other;
+                const isMoving = v.speed > 0.5;
+                const el = document.createElement('div');
+                el.className = 'tmap-vessel-marker';
+                el.innerHTML = `<div class="vessel-hit" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform 0.15s;transform-origin:center center;">
+                    <div style="transform:rotate(${v.heading}deg);display:flex;flex-direction:column;align-items:center;">
+                        <svg width="20" height="28" viewBox="0 0 20 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10 1 L17 10 L17 24 Q17 27 10 27 Q3 27 3 24 L3 10 Z" fill="${tc.color}" stroke="${tc.color}" stroke-width="0.5" opacity="0.9"/>
+                            <path d="M10 1 L14 7 L6 7 Z" fill="${tc.color}" stroke="rgba(255,255,255,0.3)" stroke-width="0.3"/>
+                            <rect x="5" y="10" width="10" height="5" rx="1" fill="rgba(255,255,255,0.2)"/>
+                            <rect x="6" y="16" width="8" height="3" rx="0.5" fill="rgba(0,0,0,0.15)"/>
+                            ${isMoving ? `<line x1="10" y1="0" x2="10" y2="-3" stroke="${tc.color}" stroke-width="1.5" opacity="0.5"/>` : ''}
+                        </svg>
+                    </div>
+                    <div style="margin-top:1px;padding:1px 5px;border-radius:3px;background:rgba(0,0,0,0.75);border:1px solid ${tc.color}40;font-size:7px;font-weight:700;color:${tc.color};font-family:'JetBrains Mono',monospace;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;">${v.name.length > 12 ? v.name.slice(0, 12) + '…' : v.name}</div>
+                </div>`;
+                const hit = el.querySelector('.vessel-hit') as HTMLElement;
+                hit.addEventListener('mouseenter', () => { hit.style.transform = 'scale(1.25)'; hit.style.zIndex = '150'; });
+                hit.addEventListener('mouseleave', () => { hit.style.transform = 'scale(1)'; hit.style.zIndex = '1'; });
+                hit.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    setVesselSelected(v.mmsi);
+                    if (vesselPopupRef.current) vesselPopupRef.current.remove();
+                    const spdCol = v.speed > 15 ? '#22c55e' : v.speed > 5 ? '#3b82f6' : v.speed > 0.5 ? '#f59e0b' : '#6b7280';
+                    const popup = new ml.Popup({ offset: [0, -32], closeButton: true, maxWidth: '320px', className: 'tmap-popup', anchor: 'bottom' })
+                        .setLngLat([v.lng, v.lat])
+                        .setHTML(`<div class="tmap-popup-inner" style="padding:12px 14px;">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                                <div style="width:36px;height:36px;border-radius:8px;background:${tc.color}15;border:1.5px solid ${tc.color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${tc.icon}</div>
+                                <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:var(--ax-text);">${v.name}</div><div style="font-size:9px;color:var(--ax-text-dim);">${v.flagEmoji} ${v.flag} · ${tc.label} · MMSI ${v.mmsi}</div></div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px;">
+                                ${[{l:'SPD',v:`${v.speed}kn`,c:spdCol},{l:'CRS',v:`${v.course}°`,c:'#3b82f6'},{l:'HDG',v:`${v.heading}°`,c:'#f59e0b'},{l:'DRT',v:`${v.draught}m`,c:'#8b5cf6'}].map(k => `<div style="text-align:center;padding:4px 2px;border-radius:4px;border:1px solid var(--ax-border);"><div style="font-size:11px;font-weight:800;color:${k.c};font-family:'JetBrains Mono',monospace;">${k.v}</div><div style="font-size:6px;color:var(--ax-text-dim);">${k.l}</div></div>`).join('')}
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:3px;font-size:9px;">
+                                ${[
+                                    v.callsign ? `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">Callsign</span><span style="color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v.callsign}</span></div>` : '',
+                                    v.imo ? `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">IMO</span><span style="color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v.imo}</span></div>` : '',
+                                    `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">Size</span><span style="color:var(--ax-text);">${v.length}m × ${v.width}m</span></div>`,
+                                    `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">Status</span><span style="color:${isMoving ? '#22c55e' : '#f59e0b'};">${v.status}</span></div>`,
+                                    v.destination ? `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">Destination</span><span style="color:var(--ax-text);font-weight:700;">${v.destination}</span></div>` : '',
+                                    v.eta ? `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">ETA</span><span style="color:var(--ax-text);">${v.eta}</span></div>` : '',
+                                    `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">Position</span><span style="color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v.lat.toFixed(4)}°N ${v.lng.toFixed(4)}°E</span></div>`,
+                                ].filter(Boolean).join('')}
+                            </div>
+                            <div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--ax-border);display:flex;justify-content:space-between;font-size:7px;color:var(--ax-text-dim);">
+                                <span>Updated: ${v.lastUpdate}</span><span style="color:${tc.color};font-weight:700;">AIS ${vesselSource === 'live' ? 'LIVE' : 'Mock'} · Digitraffic</span>
+                            </div>
+                        </div>`).addTo(map);
+                    vesselPopupRef.current = popup;
+                    popup.on('close', () => { setVesselSelected(null); vesselPopupRef.current = null; });
+                });
+                const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([v.lng, v.lat]).addTo(map);
+                vesselMarkerMapRef.current.set(v.mmsi, { marker, el, data: v });
+            });
+            vesselAnimRef.current = requestAnimationFrame(loop);
+        };
+        vesselAnimRef.current = requestAnimationFrame(loop);
+        return () => { if (vesselAnimRef.current) { cancelAnimationFrame(vesselAnimRef.current); vesselAnimRef.current = null; } };
+    }, [layerVessels, loaded, vesselSource]);
+
     // Object drawing click handler
     useEffect(() => {
         const map = mapRef.current;
@@ -4342,6 +4482,7 @@ export default function MapIndex() {
                 if (showTrafficPanel) { setShowTrafficPanel(false); return; }
                 if (svActive) { setSvActive(false); setSvPicking(false); return; }
                 if (svPicking) { setSvPicking(false); return; }
+                if (showVesselPanel) { setShowVesselPanel(false); return; }
                 if (routePlacing) { setRoutePlacing(false); return; }
                 if (showRoutePanel2) { setShowRoutePanel2(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
@@ -5445,7 +5586,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
-                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0) + (layerUAV ? 1 : 0) + (layerTraffic ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0) + (layerUAV ? 1 : 0) + (layerTraffic ? 1 : 0) + (layerVessels ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Layer buttons */}
                             {[
@@ -5458,6 +5599,7 @@ export default function MapIndex() {
                                 { key: 'weather', icon: '🌦️', label: 'Weather Radar', color: '#0ea5e9', active: layerWeather, toggle: () => { setLayerWeather(!layerWeather); triggerTopLoader(); }, panel: showWeatherPanel, openPanel: () => { setShowWeatherPanel(!showWeatherPanel); triggerTopLoader(); }, desc: layerWeather ? `${wxData?.current?.temperature_2m ?? '—'}°C · ${getWeatherLabel(wxData?.current?.weather_code ?? 0)}` : 'Rain radar, forecast, history' },
                                 { key: 'uav', icon: '🛩️', label: 'UAV Drones', color: '#10b981', active: layerUAV, toggle: () => { setLayerUAV(!layerUAV); triggerTopLoader(); }, panel: showUAVPanel, openPanel: () => { setShowUAVPanel(!showUAVPanel); triggerTopLoader(); }, desc: layerUAV ? `${deployedDrones.length} active · ${activeMissions.length} missions` : 'Fleet tracking, missions, AI detections' },
                                 { key: 'traffic', icon: '🚦', label: 'Live Traffic', color: '#f97316', active: layerTraffic, toggle: () => { setLayerTraffic(!layerTraffic); triggerTopLoader(); }, panel: showTrafficPanel, openPanel: () => { setShowTrafficPanel(!showTrafficPanel); triggerTopLoader(); }, desc: layerTraffic ? `${trafficSource === 'tomtom' ? 'LIVE' : 'Mock'} · ${trafficStats.incidents} incidents` : 'TomTom traffic flow + incidents' },
+                                { key: 'vessels', icon: '🚢', label: 'Vessel Tracker', color: '#0891b2', active: layerVessels, toggle: () => { setLayerVessels(!layerVessels); triggerTopLoader(); }, panel: showVesselPanel, openPanel: () => { setShowVesselPanel(!showVesselPanel); triggerTopLoader(); }, desc: layerVessels ? `${vesselStats.visible} vessels · ${vesselStats.moving} moving` : 'AIS ship tracking & maritime data' },
                             ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {/* Toggle switch */}
                                 <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
@@ -7564,6 +7706,66 @@ export default function MapIndex() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: flightSource === 'live' ? '#22c55e' : flightSource === 'mock' ? '#f59e0b' : '#6b7280', boxShadow: flightSource === 'live' ? '0 0 6px #22c55e60' : 'none', animation: layerFlights ? 'tmap-tl-ring 2s infinite' : 'none' }} />
                             <span style={{ fontSize: 9, color: flightSource === 'live' ? '#06b6d4' : '#f59e0b', fontWeight: 600 }}>{flightSource === 'live' ? 'OpenSky LIVE' : flightSource === 'mock' ? 'Mock Data' : 'Connecting...'}</span>
+                        </div>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ VESSEL TRACKER PANEL ═══ */}
+                {showVesselPanel && loaded && <div data-panel="vessels" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select')) bringToFront('vessels'); }} style={panelStyle('vessels', '400px', '#0891b2')}>
+                    <PanelHeader id="vessels" icon="🚢" title="Vessel Tracker" subtitle={`${vesselStats.visible} vessels · ${vesselStats.moving} moving · ${vesselStats.avgSpeed} kn avg`} color="#0891b2" onClose={() => setShowVesselPanel(false)} extra={<button onClick={() => { setLayerVessels(!layerVessels); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: layerVessels ? '#0891b2' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: layerVessels ? 16 : 2, transition: 'left 0.2s' }} /></button>} />
+                    <PanelResizeGrip id="vessels" />
+                    {!isPanelMin('vessels') && <>
+                    {/* Type filter */}
+                    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, display: 'flex', flexWrap: 'wrap' as const, gap: 3 }}>
+                        {Object.entries(vesselTypeConfig).map(([k, v]) => { const on = vesselTypeFilter.has(k); const c = vesselStats.counts[k] || 0; return <button key={k} onClick={() => setVesselTypeFilter(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 6px', borderRadius: 4, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}10` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: on ? v.color : theme.textDim, transition: 'all 0.1s' }}>
+                            <span style={{ fontSize: 10 }}>{v.icon}</span><span>{v.label}</span>{c > 0 && <span style={{ fontSize: 7, padding: '0 3px', borderRadius: 3, background: `${v.color}15`, color: v.color }}>{c}</span>}
+                        </button>; })}
+                        <div style={{ width: '100%', display: 'flex', gap: 4, marginTop: 2 }}>
+                            <button onClick={() => setVesselTypeFilter(new Set(Object.keys(vesselTypeConfig)))} style={{ flex: 1, padding: '3px 0', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: theme.textDim }}>All Types</button>
+                            <button onClick={() => setVesselTypeFilter(new Set())} style={{ flex: 1, padding: '3px 0', borderRadius: 3, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: theme.textDim }}>Clear</button>
+                            <button onClick={() => { fetchVessels(); triggerTopLoader(); }} style={{ flex: 1, padding: '3px 0', borderRadius: 3, border: `1px solid #0891b230`, background: '#0891b208', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: '#0891b2' }}>🔄 Refresh</button>
+                        </div>
+                    </div>
+                    {/* Search */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${vesselSearch ? '#0891b250' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
+                            <input value={vesselSearch} onChange={e => setVesselSearch(e.target.value)} placeholder="Search name, MMSI, callsign, destination..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                            {vesselSearch && <button onClick={() => setVesselSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', fontSize: 9, padding: 0 }}>✕</button>}
+                        </div>
+                    </div>
+                    {/* Stats row */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4 }}>
+                        {[{ l: 'Total', v: vesselStats.total, c: '#0891b2', i: '🚢' },{ l: 'Moving', v: vesselStats.moving, c: '#22c55e', i: '▶' },{ l: 'Avg Speed', v: `${vesselStats.avgSpeed}kn`, c: '#3b82f6', i: '⚡' },{ l: 'Types', v: Object.values(vesselStats.counts).filter(v => v > 0).length, c: '#f59e0b', i: '📊' }].map(k => <div key={k.l} style={{ textAlign: 'center' as const, padding: '4px', borderRadius: 4, border: `1px solid ${theme.border}` }}><div style={{ fontSize: 12, fontWeight: 800, color: k.c, fontFamily: "'JetBrains Mono',monospace" }}>{k.v}</div><div style={{ fontSize: 7, color: theme.textDim }}>{k.l}</div></div>)}
+                    </div>
+                    {/* Vessel list */}
+                    <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {filteredVessels.length === 0 ? <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, opacity: 0.15 }}>🚢</div><div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 6 }}>No vessels match</div></div> :
+                        filteredVessels.map(v => { const tc = vesselTypeConfig[v.type] || vesselTypeConfig.other; const isSel = vesselSelected === v.mmsi; const isMoving = v.speed > 0.5; return <div key={v.mmsi} onClick={() => { setVesselSelected(isSel ? null : v.mmsi); const map = mapRef.current; if (map && !isSel) map.flyTo({ center: [v.lng, v.lat], zoom: Math.max(map.getZoom(), 12), duration: 800 }); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer', background: isSel ? `${tc.color}06` : 'transparent', borderLeft: `3px solid ${isSel ? tc.color : 'transparent'}`, borderBottom: `1px solid ${theme.border}06`, transition: 'background 0.1s' }} onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, background: `${tc.color}10`, border: `1.5px solid ${tc.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, position: 'relative' as const }}>
+                                {tc.icon}
+                                {isMoving && <div style={{ position: 'absolute' as const, top: -2, right: -2, width: 6, height: 6, borderRadius: '50%', background: '#22c55e', border: '1px solid #0d1117' }} />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{v.name}</span>
+                                    <span style={{ fontSize: 10, flexShrink: 0 }}>{v.flagEmoji}</span>
+                                </div>
+                                <div style={{ fontSize: 9, color: theme.textDim }}>{tc.label} · {v.callsign || `MMSI ${v.mmsi}`}{v.destination ? ` → ${v.destination}` : ''}</div>
+                            </div>
+                            <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: isMoving ? '#22c55e' : '#6b7280', fontFamily: "'JetBrains Mono',monospace" }}>{v.speed}<span style={{ fontSize: 8 }}>kn</span></div>
+                                <div style={{ fontSize: 8, color: theme.textDim }}>{v.course}° · {v.length}m</div>
+                            </div>
+                        </div>; })}
+                    </div>
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{vesselStats.visible} vessels · {vesselLastUpdate || '...'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: vesselSource === 'live' ? '#22c55e' : '#f59e0b', boxShadow: vesselSource === 'live' ? '0 0 6px #22c55e60' : 'none' }} />
+                            <span style={{ fontSize: 9, color: '#0891b2', fontWeight: 600 }}>{vesselSource === 'live' ? 'Digitraffic.fi LIVE' : 'Mock AIS Data'}</span>
                         </div>
                     </div>
                     </>}
