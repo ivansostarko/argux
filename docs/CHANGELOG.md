@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.25.67 - 2026-03-30
+
+### Upgraded — Realistic 3D Traffic: Road-Following Vehicles
+
+Complete physics and rendering rewrite. Vehicles now **follow road curves precisely**, move at **realistic speeds**, and have **multi-part 3D bodies** (chassis + cabin + windows).
+
+#### Distance-Based Road Following
+- Pre-computes **cumulative distance** along each road's coordinate array.
+- Vehicles store their position as `distM` (meters traveled), not `progress` (0-1).
+- Each frame: `distM += speedMs × dt` — advances by real meters.
+- Position found via **binary search** on the cumulative distance array → exact interpolation between two road coordinates.
+- Vehicles follow every curve, turn, and bend in the road geometry.
+
+#### Realistic Speeds
+- Speed stored as `speedMs` (meters/second), computed from km/h: `speed = kmh / 3.6`
+- A car at 50 km/h = 13.9 m/s → traverses a 500m road in 36 seconds (visible, believable).
+- Congestion factor: 35-75% of road maxspeed (no TomTom key) or real TomTom current speed.
+- Minimum speed 5 km/h (even in heavy congestion, cars still creep).
+- Large `dt` gaps (>0.5s) skipped to avoid teleporting after tab-switch.
+
+#### Multi-Part 3D Vehicle Design (4 extrusion layers)
+| Layer | What | Example |
+|---|---|---|
+| `traffic-3d-shadow` | Ground shadow (flat fill, black) | Dark contact patch |
+| `traffic-3d-vehicles` | Lower body/chassis | Car body 0.8m, colored |
+| `traffic-3d-cabin` | Upper cabin/roof | Car cabin up to 1.5m, slightly darker color |
+| `traffic-3d-windows` | Glass strip | Dark glass band around cabin mid-height |
+
+**Cars**: Rectangular chassis (4.5m × 1.8m × 0.8m) + narrower cabin offset toward front (1.5m tall) + dark glass strip.
+**Trucks**: Cargo box (rear, full width, tall) + colored cab (front, slightly taller) + cab window strip.
+**Buses**: Long body (12m) + full cabin + green-tinted windows.
+**Motorcycles**: Small chassis only (2.2m × 0.8m × 0.6m), no cabin.
+
+#### Reduced Density (More Realistic)
+| Road | Vehicles/100m | Previously |
+|---|---|---|
+| Motorway | 6 | was 8 |
+| Primary | 4 | was 5 |
+| Residential | 1.2 | was 1.5 |
+
+Max 16 vehicles per road segment (was 20).
+
 ## 0.25.66 - 2026-03-30
 
 ### Upgraded — 3D Traffic Vehicles on Real Streets (OpenStreetMap)

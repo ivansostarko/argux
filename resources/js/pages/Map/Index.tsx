@@ -4727,6 +4727,7 @@ export default function MapIndex() {
     const trafficRoadsRef = useRef<any[]>([]);
     const trafficRoadsFetchedRef = useRef('');
     const trafficLiveSpeedsRef = useRef<Map<number, { current: number; freeFlow: number }>>(new Map());
+    const trafficRoadDistancesRef = useRef<Map<number, number[]>>(new Map());
 
     const fetchTrafficRoads = useCallback(async () => {
         const map = mapRef.current;
@@ -4765,7 +4766,7 @@ export default function MapIndex() {
         const shouldRun = is3D && layerTraffic && trafficShowFlow;
         if (!shouldRun) {
             if (trafficParticleAnimRef.current) { cancelAnimationFrame(trafficParticleAnimRef.current); trafficParticleAnimRef.current = null; }
-            ['traffic-3d-vehicles', 'traffic-3d-shadow', 'traffic-3d-windows'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            ['traffic-3d-vehicles', 'traffic-3d-shadow', 'traffic-3d-windows', 'traffic-3d-cabin', 'traffic-3d-cargo'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
             try { if (map.getSource('traffic-3d-src')) map.removeSource('traffic-3d-src'); } catch {}
             ['traffic-vehicles', 'traffic-vehicles-shadow', 'traffic-headlights', 'traffic-particles-glow', 'traffic-particles', 'traffic-particles-tail'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
             try { if (map.getSource('traffic-particles-src')) map.removeSource('traffic-particles-src'); } catch {}
@@ -4773,53 +4774,105 @@ export default function MapIndex() {
             return;
         }
 
-        const vehDefs = [
-            { type: 'sedan',   len: 4.5, wid: 1.8, hgt: 1.5, color: '#cbd5e1', wc: '#1e293b', w: 25 },
-            { type: 'sedan-r', len: 4.5, wid: 1.8, hgt: 1.5, color: '#b91c1c', wc: '#1e293b', w: 8 },
-            { type: 'sedan-b', len: 4.5, wid: 1.8, hgt: 1.5, color: '#1d4ed8', wc: '#1e293b', w: 7 },
-            { type: 'sedan-k', len: 4.5, wid: 1.8, hgt: 1.5, color: '#334155', wc: '#0f172a', w: 10 },
-            { type: 'sedan-w', len: 4.5, wid: 1.8, hgt: 1.5, color: '#f1f5f9', wc: '#1e293b', w: 9 },
-            { type: 'suv',     len: 4.8, wid: 2.0, hgt: 1.8, color: '#57534e', wc: '#1e293b', w: 7 },
-            { type: 'suv-w',   len: 4.8, wid: 2.0, hgt: 1.8, color: '#e7e5e4', wc: '#1e293b', w: 5 },
-            { type: 'truck',   len: 10.0, wid: 2.5, hgt: 4.0, color: '#94a3b8', wc: '#475569', w: 4, sm: 0.7 },
-            { type: 'truck-y', len: 8.0, wid: 2.5, hgt: 3.5, color: '#ca8a04', wc: '#475569', w: 2, sm: 0.7 },
-            { type: 'bus',     len: 12.0, wid: 2.55, hgt: 3.3, color: '#166534', wc: '#86efac', w: 2, sm: 0.6 },
-            { type: 'van',     len: 5.5, wid: 2.0, hgt: 2.4, color: '#f1f5f9', wc: '#1e293b', w: 6 },
-            { type: 'van-b',   len: 5.5, wid: 2.0, hgt: 2.4, color: '#1e40af', wc: '#1e293b', w: 3 },
-            { type: 'pickup',  len: 5.4, wid: 2.0, hgt: 1.9, color: '#78716c', wc: '#1e293b', w: 4 },
-            { type: 'moto',    len: 2.2, wid: 0.8, hgt: 1.2, color: '#be123c', wc: '#0f172a', w: 3, sm: 1.05 },
-        ];
-        const twt = vehDefs.reduce((a, v) => a + v.w, 0);
-        const pickV = () => { let r = Math.random() * twt; for (const v of vehDefs) { r -= v.w; if (r <= 0) return v; } return vehDefs[0]; };
-
+        // ── Geo constants ──
         const M2LNG = 0.0000127;
         const M2LAT = 0.000009;
-        const bP = (lng: number, lat: number, h: number, l: number, w: number): number[][] => {
-            const rad = (h - 90) * Math.PI / 180; const c = Math.cos(rad), s = Math.sin(rad); const hl = l / 2, hw = w / 2;
-            return [[-hl,-hw],[hl,-hw],[hl,hw],[-hl,hw],[-hl,-hw]].map(([dx,dy]) => [lng+(dx*c-dy*s)*M2LNG, lat+(dx*s+dy*c)*M2LAT]);
-        };
-        const bW = (lng: number, lat: number, h: number, l: number, w: number): number[][] => {
-            const rad = (h - 90) * Math.PI / 180; const c = Math.cos(rad), s = Math.sin(rad);
-            return [[l*0.12,-w*0.3],[l*0.38,-w*0.3],[l*0.38,w*0.3],[l*0.12,w*0.3],[l*0.12,-w*0.3]].map(([dx,dy]) => [lng+(dx*c-dy*s)*M2LNG, lat+(dx*s+dy*c)*M2LAT]);
+
+        // ── Pre-compute cumulative distances along each road ──
+        const computeCumDist = (coords: number[][]): number[] => {
+            const d = [0];
+            for (let i = 1; i < coords.length; i++) {
+                const dlng = (coords[i][0] - coords[i - 1][0]) / M2LNG;
+                const dlat = (coords[i][1] - coords[i - 1][1]) / M2LAT;
+                d.push(d[i - 1] + Math.sqrt(dlng * dlng + dlat * dlat));
+            }
+            return d;
         };
 
-        interface P3D { ri: number; p: number; spd: number; lng: number; lat: number; hd: number; v: typeof vehDefs[0]; ln: number; }
+        // ── Interpolate position at a given distance along the road ──
+        const interpAtDist = (coords: number[][], cumDist: number[], dist: number, laneM: number): [number, number, number] => {
+            const totalLen = cumDist[cumDist.length - 1] || 1;
+            const d = ((dist % totalLen) + totalLen) % totalLen; // wrap around
 
-        const itp = (coords: number[][], t: number, lnM: number): [number, number, number] => {
-            if (coords.length < 2) return [coords[0][0], coords[0][1], 0];
-            const ct = Math.max(0, Math.min(0.9999, t)); const n = coords.length - 1; const ri = ct * n; const idx = Math.min(Math.floor(ri), n - 1); const f = ri - idx;
-            const bLng = coords[idx][0] + (coords[idx + 1][0] - coords[idx][0]) * f;
-            const bLat = coords[idx][1] + (coords[idx + 1][1] - coords[idx][1]) * f;
-            const dx = coords[idx + 1][0] - coords[idx][0]; const dy = coords[idx + 1][1] - coords[idx][1];
-            const hd = Math.atan2(dx, dy) * 180 / Math.PI;
-            const len = Math.sqrt(dx * dx + dy * dy) || 0.0001;
-            return [bLng - (dy / len) * lnM * M2LNG, bLat + (dx / len) * lnM * M2LAT, hd];
+            // Find which segment we're on via binary search
+            let lo = 0, hi = cumDist.length - 1;
+            while (lo < hi - 1) { const mid = (lo + hi) >> 1; if (cumDist[mid] <= d) lo = mid; else hi = mid; }
+
+            const segStart = cumDist[lo];
+            const segEnd = cumDist[lo + 1] || segStart + 1;
+            const f = (d - segStart) / (segEnd - segStart); // fraction along this segment
+
+            const lng = coords[lo][0] + (coords[lo + 1][0] - coords[lo][0]) * f;
+            const lat = coords[lo][1] + (coords[lo + 1][1] - coords[lo][1]) * f;
+
+            // Heading from this segment's direction
+            const dx = coords[lo + 1][0] - coords[lo][0];
+            const dy = coords[lo + 1][1] - coords[lo][1];
+            const heading = Math.atan2(dx, dy) * 180 / Math.PI;
+
+            // Lane offset perpendicular to road
+            const segLen = Math.sqrt(dx * dx + dy * dy) || 0.0001;
+            const perpLng = -(dy / segLen) * laneM * M2LNG;
+            const perpLat = (dx / segLen) * laneM * M2LAT;
+
+            return [lng + perpLng, lat + perpLat, heading];
         };
 
-        const rLen = (coords: number[][]): number => {
-            let l = 0; for (let i = 1; i < coords.length; i++) { const dlng = (coords[i][0] - coords[i - 1][0]) / M2LNG; const dlat = (coords[i][1] - coords[i - 1][1]) / M2LAT; l += Math.sqrt(dlng * dlng + dlat * dlat); }
-            return Math.max(l, 10);
+        // ── Build oriented polygon from center point ──
+        const rotPoly = (lng: number, lat: number, hd: number, parts: number[][]): number[][] => {
+            const rad = (hd - 90) * Math.PI / 180;
+            const c = Math.cos(rad), s = Math.sin(rad);
+            return parts.map(([dx, dy]) => [lng + (dx * c - dy * s) * M2LNG, lat + (dx * s + dy * c) * M2LAT]);
         };
+
+        // ── Vehicle shape builders (return multiple extrusion parts) ──
+        const carBody = (l: number, w: number): number[][] => {
+            const hl = l / 2, hw = w / 2;
+            return [[-hl, -hw], [hl, -hw], [hl, hw], [-hl, hw], [-hl, -hw]];
+        };
+        const carCabin = (l: number, w: number): number[][] => {
+            // Cabin sits on top of body, narrower and offset toward front
+            const cw = w * 0.42;
+            return [[-l * 0.15, -cw], [l * 0.28, -cw], [l * 0.28, cw], [-l * 0.15, cw], [-l * 0.15, -cw]];
+        };
+        const truckCab = (l: number, w: number): number[][] => {
+            const hw = w / 2;
+            return [[l * 0.3, -hw], [l * 0.5, -hw], [l * 0.5, hw], [l * 0.3, hw], [l * 0.3, -hw]];
+        };
+        const truckCargo = (l: number, w: number): number[][] => {
+            const hw = w / 2;
+            return [[-l * 0.5, -hw * 0.95], [l * 0.25, -hw * 0.95], [l * 0.25, hw * 0.95], [-l * 0.5, hw * 0.95], [-l * 0.5, -hw * 0.95]];
+        };
+
+        // ── Vehicle definitions ──
+        const vehDefs = [
+            { type: 'sedan',   l: 4.5, w: 1.8, bodyH: 0.8, cabinH: 1.5, color: '#cbd5e1', cabColor: '#94a3b8', winColor: '#1e293b', wt: 25 },
+            { type: 'sedan-r', l: 4.5, w: 1.8, bodyH: 0.8, cabinH: 1.5, color: '#b91c1c', cabColor: '#991b1b', winColor: '#1e293b', wt: 8 },
+            { type: 'sedan-b', l: 4.5, w: 1.8, bodyH: 0.8, cabinH: 1.5, color: '#1d4ed8', cabColor: '#1e40af', winColor: '#1e293b', wt: 7 },
+            { type: 'sedan-k', l: 4.5, w: 1.8, bodyH: 0.8, cabinH: 1.5, color: '#334155', cabColor: '#1e293b', winColor: '#0f172a', wt: 10 },
+            { type: 'sedan-w', l: 4.5, w: 1.8, bodyH: 0.8, cabinH: 1.5, color: '#f1f5f9', cabColor: '#e2e8f0', winColor: '#334155', wt: 9 },
+            { type: 'suv',     l: 4.9, w: 2.0, bodyH: 1.0, cabinH: 1.8, color: '#57534e', cabColor: '#44403c', winColor: '#1e293b', wt: 7 },
+            { type: 'suv-w',   l: 4.9, w: 2.0, bodyH: 1.0, cabinH: 1.8, color: '#e7e5e4', cabColor: '#d6d3d1', winColor: '#334155', wt: 5 },
+            { type: 'truck',   l: 10.0, w: 2.5, bodyH: 1.2, cabinH: 4.0, color: '#94a3b8', cabColor: '#f59e0b', winColor: '#475569', wt: 4, sm: 0.7, isTruck: true },
+            { type: 'truck-y', l: 8.5, w: 2.5, bodyH: 1.2, cabinH: 3.5, color: '#78716c', cabColor: '#ca8a04', winColor: '#475569', wt: 2, sm: 0.7, isTruck: true },
+            { type: 'bus',     l: 12.0, w: 2.55, bodyH: 1.0, cabinH: 3.2, color: '#166534', cabColor: '#15803d', winColor: '#86efac', wt: 2, sm: 0.6 },
+            { type: 'van',     l: 5.8, w: 2.0, bodyH: 1.0, cabinH: 2.4, color: '#f1f5f9', cabColor: '#e2e8f0', winColor: '#334155', wt: 6 },
+            { type: 'van-b',   l: 5.8, w: 2.0, bodyH: 1.0, cabinH: 2.4, color: '#1e40af', cabColor: '#1d4ed8', winColor: '#1e293b', wt: 3 },
+            { type: 'pickup',  l: 5.5, w: 2.0, bodyH: 0.9, cabinH: 1.9, color: '#78716c', cabColor: '#57534e', winColor: '#1e293b', wt: 4 },
+            { type: 'moto',    l: 2.2, w: 0.8, bodyH: 0.6, cabinH: 1.1, color: '#be123c', cabColor: '#9f1239', winColor: '#0f172a', wt: 3, sm: 1.05 },
+        ];
+        const totalWt = vehDefs.reduce((a, v) => a + v.wt, 0);
+        const pickV = () => { let r = Math.random() * totalWt; for (const v of vehDefs) { r -= v.wt; if (r <= 0) return v; } return vehDefs[0]; };
+
+        interface P3D {
+            roadIdx: number;
+            distM: number;      // current distance traveled in meters
+            speedMs: number;    // meters per second
+            lng: number; lat: number; heading: number;
+            veh: typeof vehDefs[0];
+            lane: number;
+            totalLen: number;   // total road length for wrapping
+        }
 
         let cancelled = false;
         const setup = async () => {
@@ -4827,57 +4880,138 @@ export default function MapIndex() {
             if (cancelled || !mapRef.current) return;
             if (trafficSource === 'tomtom') fetchLiveTrafficSpeeds();
 
-            const dens: Record<string, number> = { motorway: 8, trunk: 6, primary: 5, secondary: 4, tertiary: 3, residential: 1.5, unclassified: 1 };
-            const particles: P3D[] = [];
+            // Pre-compute cumulative distances
+            const cumDists = new Map<number, number[]>();
             roads.forEach((road: any, ri: number) => {
-                const coords = road.coords; if (!coords || coords.length < 2) return;
-                const lenM = rLen(coords); if (lenM < 20) return;
-                const d = dens[road.highway] || 2;
-                const count = Math.max(1, Math.min(20, Math.round((lenM / 100) * d)));
+                if (road.coords?.length >= 2) cumDists.set(ri, computeCumDist(road.coords));
+            });
+            trafficRoadDistancesRef.current = cumDists;
+
+            const dens: Record<string, number> = { motorway: 6, trunk: 5, primary: 4, secondary: 3, tertiary: 2.5, residential: 1.2, unclassified: 0.8 };
+            const particles: P3D[] = [];
+
+            roads.forEach((road: any, ri: number) => {
+                const coords = road.coords;
+                if (!coords || coords.length < 2) return;
+                const cd = cumDists.get(ri);
+                if (!cd) return;
+                const totalLen = cd[cd.length - 1];
+                if (totalLen < 25) return;
+
+                const d = dens[road.highway] || 1.5;
+                const count = Math.max(1, Math.min(16, Math.round((totalLen / 100) * d)));
+
                 const liveSpd = trafficLiveSpeedsRef.current.get(road.id);
-                const baseKmh = liveSpd ? liveSpd.current : road.maxspeed * (0.4 + Math.random() * 0.5);
+                // Real speed in km/h — much calmer with congestion factor
+                const baseKmh = liveSpd ? liveSpd.current : road.maxspeed * (0.35 + Math.random() * 0.4);
+
                 for (let p = 0; p < count; p++) {
-                    const v = pickV();
-                    if ((road.highway === 'residential' || road.highway === 'unclassified') && (v.type.includes('truck') || v.type.includes('bus'))) continue;
-                    const prog = (p / count) + Math.random() * (0.7 / count);
-                    const spdKmh = baseKmh * (v.sm || 1.0) * (0.85 + Math.random() * 0.3);
-                    const spdMs = spdKmh * 1000 / 3600;
-                    const lnR = road.lanes >= 2 ? 2.5 : 1.2;
-                    const ln = road.oneway ? (Math.random() - 0.5) * lnR : (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * (lnR - 0.8));
-                    particles.push({ ri, p: prog % 1, spd: spdMs / lenM, lng: 0, lat: 0, hd: 0, v, ln });
+                    const veh = pickV();
+                    if ((road.highway === 'residential' || road.highway === 'unclassified') && (veh.type.includes('truck') || veh.type.includes('bus'))) continue;
+
+                    const startDist = (p / count) * totalLen + Math.random() * (totalLen / count) * 0.6;
+                    const spdKmh = Math.max(5, baseKmh * (veh.sm || 1.0) * (0.8 + Math.random() * 0.25));
+                    const speedMs = spdKmh / 3.6; // km/h to m/s
+
+                    const lnR = road.lanes >= 2 ? 2.2 : 1.0;
+                    const lane = road.oneway
+                        ? (Math.random() - 0.5) * lnR
+                        : (Math.random() > 0.5 ? 1 : -1) * (0.6 + Math.random() * (lnR - 0.6));
+
+                    particles.push({ roadIdx: ri, distM: startDist % totalLen, speedMs, lng: 0, lat: 0, heading: 0, veh, lane, totalLen });
                 }
             });
-            if (cancelled) return;
 
-            const m = mapRef.current; if (!m) return;
+            if (cancelled) return;
+            const m = mapRef.current;
+            if (!m) return;
+
             const eFC = { type: 'FeatureCollection' as const, features: [] as any[] };
             try {
                 if (!m.getSource('traffic-3d-src')) {
                     m.addSource('traffic-3d-src', { type: 'geojson', data: eFC });
-                    m.addLayer({ id: 'traffic-3d-shadow', type: 'fill', source: 'traffic-3d-src', filter: ['==', ['get', 'pt'], 'b'], paint: { 'fill-color': '#000', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.02, 17, 0.1, 20, 0.18] } });
-                    m.addLayer({ id: 'traffic-3d-vehicles', type: 'fill-extrusion', source: 'traffic-3d-src', filter: ['==', ['get', 'pt'], 'b'], paint: { 'fill-extrusion-color': ['get', 'cl'], 'fill-extrusion-height': ['get', 'ht'], 'fill-extrusion-base': 0, 'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.3, 16, 0.8, 19, 0.95] } });
-                    m.addLayer({ id: 'traffic-3d-windows', type: 'fill-extrusion', source: 'traffic-3d-src', filter: ['==', ['get', 'pt'], 'w'], paint: { 'fill-extrusion-color': ['get', 'cl'], 'fill-extrusion-height': ['get', 'ht'], 'fill-extrusion-base': ['get', 'bs'], 'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.2, 17, 0.6, 20, 0.8] } });
+                    // Ground shadow
+                    m.addLayer({ id: 'traffic-3d-shadow', type: 'fill', source: 'traffic-3d-src',
+                        filter: ['==', ['get', 'pt'], 'b'],
+                        paint: { 'fill-color': '#000', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.01, 17, 0.08, 20, 0.15] } });
+                    // Vehicle lower body
+                    m.addLayer({ id: 'traffic-3d-vehicles', type: 'fill-extrusion', source: 'traffic-3d-src',
+                        filter: ['==', ['get', 'pt'], 'b'],
+                        paint: { 'fill-extrusion-color': ['get', 'cl'], 'fill-extrusion-height': ['get', 'ht'],
+                            'fill-extrusion-base': 0,
+                            'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.25, 16, 0.75, 19, 0.95] } });
+                    // Cabin / upper body
+                    m.addLayer({ id: 'traffic-3d-cabin', type: 'fill-extrusion', source: 'traffic-3d-src',
+                        filter: ['==', ['get', 'pt'], 'c'],
+                        paint: { 'fill-extrusion-color': ['get', 'cl'], 'fill-extrusion-height': ['get', 'ht'],
+                            'fill-extrusion-base': ['get', 'bs'],
+                            'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.2, 16, 0.7, 19, 0.9] } });
+                    // Windows
+                    m.addLayer({ id: 'traffic-3d-windows', type: 'fill-extrusion', source: 'traffic-3d-src',
+                        filter: ['==', ['get', 'pt'], 'w'],
+                        paint: { 'fill-extrusion-color': ['get', 'cl'], 'fill-extrusion-height': ['get', 'ht'],
+                            'fill-extrusion-base': ['get', 'bs'],
+                            'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.15, 17, 0.5, 20, 0.75] } });
                 }
             } catch (e) { console.warn('Traffic 3D init failed:', e); return; }
 
             trafficParticlesRef.current = particles;
+
             let lastFrame = 0;
             const animate = (time: number) => {
                 if (cancelled || !mapRef.current || !trafficParticlesRef.current) return;
                 const dt = (time - lastFrame) / 1000;
                 if (dt < 0.05) { trafficParticleAnimRef.current = requestAnimationFrame(animate); return; }
+                if (dt > 0.5) { lastFrame = time; trafficParticleAnimRef.current = requestAnimationFrame(animate); return; } // skip large gaps
                 lastFrame = time;
-                const pts = trafficParticlesRef.current as P3D[]; const rds = trafficRoadsRef.current; const features: any[] = [];
-                pts.forEach(pt => {
-                    pt.p += pt.spd * dt; if (pt.p >= 1) pt.p -= 1;
-                    const road = rds[pt.ri]; if (!road?.coords) return;
-                    const [lng, lat, hd] = itp(road.coords, pt.p, pt.ln);
-                    pt.lng = lng; pt.lat = lat; pt.hd = hd;
-                    features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [bP(lng, lat, hd, pt.v.len, pt.v.wid)] }, properties: { pt: 'b', cl: pt.v.color, ht: pt.v.hgt } });
-                    if (pt.v.hgt > 1.2 && !pt.v.type.includes('moto')) {
-                        features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [bW(lng, lat, hd, pt.v.len, pt.v.wid)] }, properties: { pt: 'w', cl: pt.v.wc, ht: pt.v.hgt + 0.4, bs: pt.v.hgt * 0.55 } });
+
+                const pts = trafficParticlesRef.current as P3D[];
+                const rds = trafficRoadsRef.current;
+                const cdMap = trafficRoadDistancesRef.current;
+                const features: any[] = [];
+
+                pts.forEach(p => {
+                    // Advance by real distance
+                    p.distM += p.speedMs * dt;
+                    if (p.distM >= p.totalLen) p.distM -= p.totalLen;
+                    if (p.distM < 0) p.distM += p.totalLen;
+
+                    const road = rds[p.roadIdx];
+                    const cd = cdMap.get(p.roadIdx);
+                    if (!road?.coords || !cd) return;
+
+                    const [lng, lat, heading] = interpAtDist(road.coords, cd, p.distM, p.lane);
+                    p.lng = lng; p.lat = lat; p.heading = heading;
+                    const v = p.veh;
+
+                    if (v.isTruck) {
+                        // Truck: cab + cargo as separate parts
+                        features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [rotPoly(lng, lat, heading, truckCargo(v.l, v.w))] },
+                            properties: { pt: 'b', cl: v.color, ht: v.cabinH } });
+                        features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [rotPoly(lng, lat, heading, truckCab(v.l, v.w))] },
+                            properties: { pt: 'c', cl: v.cabColor, ht: v.cabinH + 0.3, bs: 0 } });
+                        // Cab windows
+                        const cabWin = [[v.l * 0.32, -v.w * 0.35], [v.l * 0.46, -v.w * 0.35], [v.l * 0.46, v.w * 0.35], [v.l * 0.32, v.w * 0.35], [v.l * 0.32, -v.w * 0.35]];
+                        features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [rotPoly(lng, lat, heading, cabWin)] },
+                            properties: { pt: 'w', cl: v.winColor, ht: v.cabinH + 0.6, bs: v.cabinH * 0.5 } });
+                    } else {
+                        // Car/SUV/Van/Bus: body + cabin + windows
+                        // Lower body (chassis)
+                        features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [rotPoly(lng, lat, heading, carBody(v.l, v.w))] },
+                            properties: { pt: 'b', cl: v.color, ht: v.bodyH } });
+
+                        if (v.type !== 'moto') {
+                            // Upper cabin
+                            features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [rotPoly(lng, lat, heading, carCabin(v.l, v.w))] },
+                                properties: { pt: 'c', cl: v.cabColor, ht: v.cabinH, bs: v.bodyH } });
+                            // Windows (glass strip)
+                            const winStrip = [[-v.l * 0.12, -v.w * 0.44], [v.l * 0.3, -v.w * 0.44], [v.l * 0.3, v.w * 0.44], [-v.l * 0.12, v.w * 0.44], [-v.l * 0.12, -v.w * 0.44]];
+                            features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [rotPoly(lng, lat, heading, winStrip)] },
+                                properties: { pt: 'w', cl: v.winColor, ht: v.cabinH + 0.1, bs: v.bodyH + (v.cabinH - v.bodyH) * 0.35 } });
+                        }
                     }
                 });
+
                 try { const src = mapRef.current.getSource('traffic-3d-src') as any; if (src) src.setData({ type: 'FeatureCollection', features }); } catch {}
                 trafficParticleAnimRef.current = requestAnimationFrame(animate);
             };
