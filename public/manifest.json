@@ -1,24 +1,198 @@
 {
-    "name": "ARGUX Tactical Intelligence Platform",
+    "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+    "name": "ARGUX — Tactical Intelligence & Surveillance Platform",
     "short_name": "ARGUX",
-    "description": "Tactical intelligence and geospatial surveillance platform",
-    "start_url": "/map",
+    "description": "On-premise tactical intelligence and geospatial surveillance platform for government agencies, law enforcement, critical infrastructure operators, and corporate security teams. Real-time tracking, AI-powered analysis, and multi-source intelligence fusion.",
+    "version": "0.25.84",
+    "start_url": "/",
+    "scope": "/",
+    "id": "/",
+    "lang": "en-US",
+    "dir": "ltr",
     "display": "standalone",
+    "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
     "orientation": "any",
     "background_color": "#080a0f",
     "theme_color": "#1d6fef",
-    "categories": ["security", "productivity", "utilities"],
+    "categories": ["security", "productivity", "government", "utilities", "business"],
+    "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
+
     "icons": [
-        { "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },
-        { "src": "/icons/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+        { "src": "/icons/icon-48.png", "sizes": "48x48", "type": "image/png" },
+        { "src": "/icons/icon-72.png", "sizes": "72x72", "type": "image/png" },
+        { "src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png" },
+        { "src": "/icons/icon-128.png", "sizes": "128x128", "type": "image/png" },
+        { "src": "/icons/icon-144.png", "sizes": "144x144", "type": "image/png" },
+        { "src": "/icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
+        { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "/icons/icon-256.png", "sizes": "256x256", "type": "image/png" },
+        { "src": "/icons/icon-384.png", "sizes": "384x384", "type": "image/png" },
+        { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+        { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+        { "src": "/icons/icon-monochrome-192.png", "sizes": "192x192", "type": "image/png", "purpose": "monochrome" },
+        { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
     ],
-    "screenshots": [],
+
+    "screenshots": [
+        {
+            "src": "/screenshots/01-tactical-map.png",
+            "sizes": "1920x1080",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Tactical Map — Real-time geospatial surveillance with multi-layer intelligence overlays"
+        },
+        {
+            "src": "/screenshots/02-tactical-map-3d.png",
+            "sizes": "1920x1080",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "3D Globe View — Photorealistic terrain with satellite tracking and flight radar"
+        },
+        {
+            "src": "/screenshots/03-persons.png",
+            "sizes": "1920x1080",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Person Intelligence — Subject profiles with risk assessment and connection analysis"
+        },
+        {
+            "src": "/screenshots/04-connections.png",
+            "sizes": "1920x1080",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Connection Graph — Force-directed entity relationship network visualization"
+        },
+        {
+            "src": "/screenshots/05-operations.png",
+            "sizes": "1920x1080",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Operations Center — Surveillance operation planning with team management"
+        },
+        {
+            "src": "/screenshots/06-dashboard-mobile.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Mobile Command — Full tactical interface on mobile devices"
+        },
+        {
+            "src": "/screenshots/07-map-mobile.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Mobile Map — Real-time tracking with touch-optimized controls"
+        }
+    ],
+
     "shortcuts": [
-        { "name": "Tactical Map", "short_name": "Map", "url": "/map", "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }] },
-        { "name": "Persons", "short_name": "Persons", "url": "/persons" },
-        { "name": "Notifications", "short_name": "Alerts", "url": "/notifications" },
-        { "name": "AI Assistant", "short_name": "AI", "url": "/chat" }
+        {
+            "name": "Tactical Map",
+            "short_name": "Map",
+            "description": "Open the main tactical map with all intelligence layers",
+            "url": "/map",
+            "icons": [{ "src": "/icons/shortcut-map.png", "sizes": "96x96", "type": "image/png" }]
+        },
+        {
+            "name": "Persons Database",
+            "short_name": "Persons",
+            "description": "Browse and search subject profiles",
+            "url": "/persons",
+            "icons": [{ "src": "/icons/shortcut-persons.png", "sizes": "96x96", "type": "image/png" }]
+        },
+        {
+            "name": "Alert Rules",
+            "short_name": "Alerts",
+            "description": "Configure geofence, co-location, and signal alerts",
+            "url": "/alerts",
+            "icons": [{ "src": "/icons/shortcut-alerts.png", "sizes": "96x96", "type": "image/png" }]
+        },
+        {
+            "name": "AI Assistant",
+            "short_name": "AI",
+            "description": "Intelligence analysis powered by on-premise LLM",
+            "url": "/chat",
+            "icons": [{ "src": "/icons/shortcut-ai.png", "sizes": "96x96", "type": "image/png" }]
+        },
+        {
+            "name": "Notifications",
+            "short_name": "Notify",
+            "description": "Real-time alert notifications and event stream",
+            "url": "/notifications",
+            "icons": [{ "src": "/icons/shortcut-notifications.png", "sizes": "96x96", "type": "image/png" }]
+        },
+        {
+            "name": "Operations",
+            "short_name": "Ops",
+            "description": "Active surveillance operations and team deployment",
+            "url": "/operations",
+            "icons": [{ "src": "/icons/shortcut-operations.png", "sizes": "96x96", "type": "image/png" }]
+        }
     ],
+
+    "file_handlers": [
+        {
+            "action": "/import/geojson",
+            "accept": {
+                "application/geo+json": [".geojson"],
+                "application/json": [".json"]
+            },
+            "icons": [{ "src": "/icons/filetype-geo.png", "sizes": "96x96" }],
+            "launch_type": "single-client"
+        },
+        {
+            "action": "/import/kml",
+            "accept": {
+                "application/vnd.google-earth.kml+xml": [".kml"],
+                "application/vnd.google-earth.kmz": [".kmz"]
+            },
+            "icons": [{ "src": "/icons/filetype-kml.png", "sizes": "96x96" }],
+            "launch_type": "single-client"
+        },
+        {
+            "action": "/import/gpx",
+            "accept": {
+                "application/gpx+xml": [".gpx"]
+            },
+            "icons": [{ "src": "/icons/filetype-gpx.png", "sizes": "96x96" }],
+            "launch_type": "single-client"
+        },
+        {
+            "action": "/import/csv",
+            "accept": {
+                "text/csv": [".csv"],
+                "text/tab-separated-values": [".tsv"]
+            },
+            "icons": [{ "src": "/icons/filetype-csv.png", "sizes": "96x96" }],
+            "launch_type": "single-client"
+        },
+        {
+            "action": "/import/media",
+            "accept": {
+                "image/*": [".jpg", ".jpeg", ".png", ".webp", ".tiff", ".bmp"],
+                "video/*": [".mp4", ".webm", ".mov", ".avi"],
+                "audio/*": [".mp3", ".wav", ".ogg", ".m4a", ".flac"]
+            },
+            "icons": [{ "src": "/icons/filetype-media.png", "sizes": "96x96" }],
+            "launch_type": "single-client"
+        },
+        {
+            "action": "/import/document",
+            "accept": {
+                "application/pdf": [".pdf"],
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"]
+            },
+            "icons": [{ "src": "/icons/filetype-doc.png", "sizes": "96x96" }],
+            "launch_type": "single-client"
+        }
+    ],
+
+    "launch_handler": {
+        "client_mode": ["navigate-existing", "auto"]
+    },
+
     "share_target": {
         "action": "/share-target",
         "method": "POST",
@@ -27,12 +201,116 @@
             "title": "title",
             "text": "text",
             "url": "url",
-            "files": [{ "name": "media", "accept": ["image/*", "video/*", "application/pdf"] }]
+            "files": [
+                { "name": "media", "accept": ["image/*", "video/*", "audio/*"] },
+                { "name": "documents", "accept": ["application/pdf", "application/json", "application/geo+json", "text/csv"] }
+            ]
         }
     },
+
     "protocol_handlers": [
-        { "protocol": "web+argux", "url": "/protocol?q=%s" }
+        { "protocol": "web+argux", "url": "/protocol?action=%s" },
+        { "protocol": "web+intel", "url": "/protocol?intel=%s" },
+        { "protocol": "geo", "url": "/map?coords=%s" }
     ],
-    "related_applications": [],
-    "prefer_related_applications": false
+
+    "related_applications": [
+        {
+            "platform": "windows",
+            "url": "https://github.com/argux-platform/argux-desktop/releases",
+            "id": "com.argux.desktop"
+        },
+        {
+            "platform": "webapp",
+            "url": "https://www.palantir.com/platforms/gotham/",
+            "id": "com.palantir.gotham"
+        },
+        {
+            "platform": "webapp",
+            "url": "https://www.palantir.com/platforms/foundry/",
+            "id": "com.palantir.foundry"
+        },
+        {
+            "platform": "play",
+            "url": "https://play.google.com/store/apps/details?id=com.argux.mobile",
+            "id": "com.argux.mobile"
+        },
+        {
+            "platform": "itunes",
+            "url": "https://apps.apple.com/app/argux-tactical/id000000000",
+            "id": "com.argux.ios"
+        }
+    ],
+    "prefer_related_applications": false,
+
+    "scope_extensions": [
+        { "origin": "*.argux.cloud" },
+        { "origin": "*.argux.local" },
+        { "origin": "*.argux.mil" },
+        { "origin": "*.argux.gov" }
+    ],
+
+    "widgets": [
+        {
+            "name": "Active Alerts",
+            "description": "Live feed of triggered surveillance alerts",
+            "tag": "argux-alerts",
+            "ms_ac_template": "widgets/alerts.json",
+            "data": "/mock-api/widgets/alerts",
+            "type": "application/json",
+            "screenshots": [
+                { "src": "/screenshots/widget-alerts.png", "sizes": "600x400", "label": "Active Alerts Widget" }
+            ],
+            "icons": [{ "src": "/icons/widget-alerts.png", "sizes": "96x96" }],
+            "backgrounds": [{ "src": "/icons/widget-bg-dark.png", "sizes": "600x400" }],
+            "short_name": "Alerts",
+            "update_interval": 30
+        },
+        {
+            "name": "Tracked Subjects",
+            "description": "Real-time positions of actively tracked subjects",
+            "tag": "argux-tracking",
+            "ms_ac_template": "widgets/tracking.json",
+            "data": "/mock-api/widgets/tracking",
+            "type": "application/json",
+            "screenshots": [
+                { "src": "/screenshots/widget-tracking.png", "sizes": "600x400", "label": "Tracked Subjects Widget" }
+            ],
+            "icons": [{ "src": "/icons/widget-tracking.png", "sizes": "96x96" }],
+            "short_name": "Tracking",
+            "update_interval": 15
+        },
+        {
+            "name": "System Status",
+            "description": "Platform health, active users, and data source status",
+            "tag": "argux-status",
+            "ms_ac_template": "widgets/status.json",
+            "data": "/mock-api/widgets/status",
+            "type": "application/json",
+            "screenshots": [
+                { "src": "/screenshots/widget-status.png", "sizes": "600x400", "label": "System Status Widget" }
+            ],
+            "icons": [{ "src": "/icons/widget-status.png", "sizes": "96x96" }],
+            "short_name": "Status",
+            "update_interval": 60
+        }
+    ],
+
+    "edge_side_panel": {
+        "preferred_width": 480
+    },
+
+    "note_taking": {
+        "new_note_url": "/records?action=new"
+    },
+
+    "handle_links": "preferred",
+
+    "permissions_policy": {
+        "geolocation": ["self"],
+        "camera": ["self"],
+        "microphone": ["self"],
+        "fullscreen": ["self"],
+        "web-share": ["self"]
+    }
 }
