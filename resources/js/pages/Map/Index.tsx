@@ -197,6 +197,7 @@ export default function MapIndex() {
         }, 150);
     }, []);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [mapSidebarHidden, setMapSidebarHidden] = useState(false);
     const [coords, setCoords] = useState({ lat: 45.8150, lng: 15.9819 });
     const [zoom, setZoom] = useState(13);
     const [bearing, setBearing] = useState(0);
@@ -6195,12 +6196,23 @@ export default function MapIndex() {
             {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 99 }} />}
 
             {/* Sidebar */}
-            <div className={`tmap-sidebar ${sidebarOpen ? 'open' : ''}`}>
-                <div className="tmap-sidebar-header">
+            {mapSidebarHidden && <button onClick={() => setMapSidebarHidden(false)} className="tmap-sidebar-show-btn" style={{
+                position: 'absolute' as const, left: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 11,
+                width: 20, height: 56, padding: 0,
+                background: theme.bgAlt || theme.bg, border: `1px solid ${theme.border}`, borderLeft: 'none',
+                borderRadius: '0 6px 6px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: theme.textDim, transition: 'all 0.15s',
+                boxShadow: '2px 0 8px rgba(0,0,0,0.2)',
+            }} title="Show sidebar" onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.width = '24px'; e.currentTarget.style.background = theme.bgCard || theme.bg; }} onMouseLeave={e => { e.currentTarget.style.color = theme.textDim; e.currentTarget.style.width = '20px'; e.currentTarget.style.background = theme.bgAlt || theme.bg; }}><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6,2 12,8 6,14"/></svg></button>}
+            <div className={`tmap-sidebar ${sidebarOpen ? 'open' : ''}`} style={mapSidebarHidden ? { width: 0, minWidth: 0, overflow: 'hidden', borderRight: 'none', padding: 0, transition: 'width 0.2s ease' } : { transition: 'width 0.2s ease' }}>
+                <div className="tmap-sidebar-header" style={mapSidebarHidden ? { display: 'none' } : undefined}>
                     <div className="tmap-sidebar-brand"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 2v12M2 8h12"/><circle cx="8" cy="8" r="2"/></svg>Tactical Map</div>
-                    <button onClick={handleRecenter} style={{ width: 26, height: 26, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Recenter" onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/></svg></button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <button onClick={handleRecenter} style={{ width: 26, height: 26, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Recenter" onMouseEnter={e => (e.currentTarget.style.color = theme.accent)} onMouseLeave={e => (e.currentTarget.style.color = theme.textDim)}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/></svg></button>
+                        <button onClick={() => setMapSidebarHidden(true)} style={{ width: 26, height: 26, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }} title="Hide sidebar" onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.borderColor = theme.accent + '40'; }} onMouseLeave={e => { e.currentTarget.style.color = theme.textDim; e.currentTarget.style.borderColor = theme.border; }}><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="10,2 4,8 10,14"/></svg></button>
+                    </div>
                 </div>
-                <div className="tmap-sidebar-body">
+                <div className="tmap-sidebar-body" style={mapSidebarHidden ? { display: 'none' } : undefined}>
                     {/* Section reorder control */}
                     <div style={{ padding: '4px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${theme.border}30`, flexShrink: 0 }}>
                         <button onClick={() => setSectionReorderMode(!sectionReorderMode)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 4, border: `1px solid ${sectionReorderMode ? theme.accent + '40' : 'transparent'}`, background: sectionReorderMode ? `${theme.accent}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 600, color: sectionReorderMode ? theme.accent : theme.textDim }}>

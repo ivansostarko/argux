@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.25.81 - 2026-03-30
+- Added hide/show toggle for the map sidebar (`tmap-sidebar`). A chevron-left button in the sidebar header collapses the sidebar to zero width. A slim tab button on the left edge of the map appears to re-open it.
+
 ## 0.25.80 - 2026-03-30
 - Added styled right tooltips to sidebar menu items when sidebar is collapsed. Tooltips appear on hover to the right of each icon with a left-pointing arrow, themed background/border, and drop shadow. Replaces the native browser `title` attribute tooltip.
 
