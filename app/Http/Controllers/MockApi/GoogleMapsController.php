@@ -133,4 +133,80 @@ class GoogleMapsController extends Controller
 
         return '';
     }
+
+    /**
+     * Lookup Aerial View video for an address.
+     * GET /mock-api/google-maps/aerial?address=...
+     */
+    public function aerialView(Request $request): JsonResponse
+    {
+        $address = $request->string('address', '');
+        if (empty($address)) {
+            return response()->json(['error' => 'Address required', 'state' => 'ADDRESS_REQUIRED'], 400);
+        }
+
+        $apiKey = $this->getApiKey();
+        if (!$apiKey) {
+            return response()->json(['error' => 'No API key', 'state' => 'NO_API_KEY', 'setup' => 'Add GOOGLE_MAPS_API_KEY to .env'], 200);
+        }
+
+        $cacheKey = 'aerial_' . md5($address);
+        $data = Cache::remember($cacheKey, 3600, function () use ($apiKey, $address) {
+            try {
+                // Step 1: Lookup existing video
+                $lookupRes = Http::timeout(10)->get(
+                    "https://aerialview.googleapis.com/v1/videos:lookupVideo",
+                    ['key' => $apiKey, 'address' => $address]
+                );
+
+                if ($lookupRes->successful()) {
+                    $body = $lookupRes->json();
+                    $state = $body['state'] ?? 'UNKNOWN';
+
+                    if ($state === 'ACTIVE') {
+                        // Video exists — extract video URIs
+                        $uris = $body['uris'] ?? [];
+                        $metadata = $body['metadata'] ?? [];
+                        return [
+                            'state' => 'ACTIVE',
+                            'videoId' => $body['videoId'] ?? '',
+                            'uris' => $uris,
+                            'metadata' => $metadata,
+                            'landscapeUrl' => $uris['MP4_MEDIUM']['landscapeUri'] ?? $uris['MP4_LOW']['landscapeUri'] ?? '',
+                            'portraitUrl' => $uris['MP4_MEDIUM']['portraitUri'] ?? $uris['MP4_LOW']['portraitUri'] ?? '',
+                            'duration' => $metadata['duration'] ?? '',
+                            'address' => $address,
+                        ];
+                    }
+
+                    return ['state' => $state, 'address' => $address, 'message' => 'Video not yet available'];
+                }
+
+                // Step 2: If 404, try requesting render
+                if ($lookupRes->status() === 404) {
+                    $renderRes = Http::timeout(10)->post(
+                        "https://aerialview.googleapis.com/v1/videos:renderVideo?key={$apiKey}",
+                        ['address' => $address]
+                    );
+
+                    if ($renderRes->successful()) {
+                        $renderBody = $renderRes->json();
+                        return [
+                            'state' => $renderBody['state'] ?? 'PROCESSING',
+                            'videoId' => $renderBody['videoId'] ?? '',
+                            'address' => $address,
+                            'message' => 'Video render requested — check back in a few minutes',
+                        ];
+                    }
+                }
+
+                return ['state' => 'NOT_AVAILABLE', 'address' => $address, 'message' => 'Aerial View not available for this address'];
+            } catch (\Exception $e) {
+                Log::error('Aerial View failed', ['error' => $e->getMessage(), 'address' => $address]);
+                return ['state' => 'ERROR', 'error' => $e->getMessage(), 'address' => $address];
+            }
+        });
+
+        return response()->json($data);
+    }
 }

@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.25.74 - 2026-03-30
+
+### Implemented — Google 3D Maps & Aerial View Panel (/map → Tools)
+Two-tab panel combining Google Photorealistic 3D Tiles controls and Google Aerial View cinematic flyover video — both powered by Google Maps Platform APIs.
+
+#### How to Use
+- Tools section → click **Google 3D & Aerial** button
+- Panel opens with 2 tabs: **3D Maps** and **Aerial View**
+
+#### Tab 1 — 3D Maps
+- **Activate toggle**: One-click to enable/disable Photorealistic 3D Tiles (Google Maps JS API overlay)
+- **Camera controls**:
+  - Tilt/Pitch slider (0°–90°) — controls 3D viewing angle in real-time
+  - Heading/Bearing slider (0°–360°) — rotates camera around the scene
+  - Auto-Rotate button — continuous 360° rotation at 0.3°/50ms
+  - Reset Camera — back to 67° pitch, 0° heading
+- **Quick fly-to**: 6 city buttons (Zagreb, Split, Dubrovnik, Venice, Vienna, Budapest) — activates 3D Realistic and flies to location
+- **Status dashboard**: API connection state, active mode, current pitch/heading
+- **Setup warning**: shows when no API key is configured
+
+#### Tab 2 — Aerial View
+- **Address search**: Type any US address → click "🎬 Fly" or press Enter
+- **Video player**: Plays Google Aerial View cinematic flyover (simulated drone circling footage) with:
+  - Autoplay, loop, muted
+  - "● AERIAL VIEW" HUD badge
+  - Duration indicator
+- **States**: Idle (with 4 quick-try landmark buttons), Loading spinner, Active (video playing), Processing (Google rendering), Not Available, Error
+- **Quick-try landmarks**: Google HQ, Times Square, Golden Gate Bridge, White House — one-click to fetch
+- **History**: Last 10 lookups with status indicators (green=active, amber=processing, grey=unavailable). Click to replay.
+
+#### Backend — Aerial View API Integration
+- `GET /mock-api/google-maps/aerial?address=...`
+- **VesselController** pattern: checks for pre-rendered video via `lookupVideo`, falls back to `renderVideo` request
+- Response states: ACTIVE (video URLs), PROCESSING, NOT_AVAILABLE, NO_API_KEY, ERROR
+- Returns landscape MP4 URL for embedding
+- 1-hour server cache per address
+
+#### Google Maps APIs Used
+| API | Purpose | Free Tier |
+|---|---|---|
+| Maps JavaScript API | 3D Realistic tiles overlay | 10,000/month |
+| Aerial View API | Cinematic flyover videos | 5,000/month |
+| Map Tiles API | Tile session creation | 10,000/month |
+
+#### Setup
+```
+.env: GOOGLE_MAPS_API_KEY=your_key
+```
+Enable in Google Cloud Console: Maps JavaScript API, Aerial View API, Map Tiles API.
+
+#### Sidebar Integration
+- Tools section: "Google 3D & Aerial" button with 3D cube icon
+- Shows "Photorealistic 3D active" when 3D Realistic is on
+- "3D" badge when active
+
 ## 0.25.73 - 2026-03-30
 
 ### Implemented — Vision FX Panel with Post-Processing Sliders

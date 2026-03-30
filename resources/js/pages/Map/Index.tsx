@@ -1029,6 +1029,60 @@ export default function MapIndex() {
         if (!svActive && svMarkerRef.current) { svMarkerRef.current.remove(); svMarkerRef.current = null; }
     }, [svActive]);
 
+    // ═══ GOOGLE 3D MAPS + AERIAL VIEW ═══
+    const [showGoogle3DPanel, setShowGoogle3DPanel] = useState(false);
+    const [g3dTab, setG3dTab] = useState<'3dmap' | 'aerial'>('3dmap');
+    const [aerialAddress, setAerialAddress] = useState('');
+    const [aerialState, setAerialState] = useState<'idle' | 'loading' | 'active' | 'processing' | 'error' | 'not_available'>('idle');
+    const [aerialVideoUrl, setAerialVideoUrl] = useState('');
+    const [aerialMeta, setAerialMeta] = useState<any>(null);
+    const [aerialHistory, setAerialHistory] = useState<{ address: string; state: string; url?: string }[]>([]);
+    const [g3dPitch, setG3dPitch] = useState(67);
+    const [g3dHeading, setG3dHeading] = useState(0);
+    const [g3dAutoRotate, setG3dAutoRotate] = useState(false);
+    const g3dRotateRef = useRef<any>(null);
+
+    const fetchAerialView = useCallback(async (addr: string) => {
+        if (!addr.trim()) return;
+        setAerialState('loading');
+        try {
+            const res = await fetch(`/mock-api/google-maps/aerial?address=${encodeURIComponent(addr)}`);
+            const data = await res.json();
+            if (data.state === 'ACTIVE' && data.landscapeUrl) {
+                setAerialVideoUrl(data.landscapeUrl);
+                setAerialMeta(data);
+                setAerialState('active');
+                setAerialHistory(prev => [{ address: addr, state: 'active', url: data.landscapeUrl }, ...prev.slice(0, 9)]);
+            } else if (data.state === 'PROCESSING') {
+                setAerialState('processing');
+                setAerialHistory(prev => [{ address: addr, state: 'processing' }, ...prev.slice(0, 9)]);
+            } else if (data.state === 'NO_API_KEY') {
+                setAerialState('error');
+                setAerialMeta({ message: 'Google Maps API key required. Add GOOGLE_MAPS_API_KEY to .env' });
+            } else {
+                setAerialState('not_available');
+                setAerialMeta(data);
+                setAerialHistory(prev => [{ address: addr, state: 'not_available' }, ...prev.slice(0, 9)]);
+            }
+        } catch (e) {
+            setAerialState('error');
+            setAerialMeta({ message: String(e) });
+        }
+    }, []);
+
+    // Auto-rotate Google 3D Map
+    useEffect(() => {
+        if (!g3dAutoRotate || !googleMapRef.current) { if (g3dRotateRef.current) { clearInterval(g3dRotateRef.current); g3dRotateRef.current = null; } return; }
+        g3dRotateRef.current = setInterval(() => {
+            const gMap = googleMapRef.current;
+            if (!gMap) return;
+            const h = (gMap.getHeading() || 0) + 0.3;
+            gMap.moveCamera({ heading: h % 360 });
+            setG3dHeading(Math.round(h % 360));
+        }, 50);
+        return () => { if (g3dRotateRef.current) { clearInterval(g3dRotateRef.current); g3dRotateRef.current = null; } };
+    }, [g3dAutoRotate]);
+
     const [faceSearch, setFaceSearch] = useState('');
     const [faceSelected, setFaceSelected] = useState<Set<string>>(new Set()); // selected face IDs to show (empty = all)
     const [faceHidden, setFaceHidden] = useState<Set<string>>(new Set()); // hidden face IDs
@@ -1462,7 +1516,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic' | 'streetview' | 'vessels' | 'nfz' | 'vision';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic' | 'streetview' | 'vessels' | 'nfz' | 'vision' | 'google3d';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -4685,6 +4739,7 @@ export default function MapIndex() {
                 if (showVesselPanel) { setShowVesselPanel(false); return; }
                 if (showNFZPanel) { setShowNFZPanel(false); return; }
                 if (showVisionPanel) { setShowVisionPanel(false); return; }
+                if (showGoogle3DPanel) { setShowGoogle3DPanel(false); return; }
                 if (routePlacing) { setRoutePlacing(false); return; }
                 if (showRoutePanel2) { setShowRoutePanel2(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
@@ -5979,6 +6034,16 @@ export default function MapIndex() {
                                     {svActive && <span style={{ fontSize: 7, fontWeight: 800, padding: '2px 5px', borderRadius: 3, background: '#fbbf2412', color: '#fbbf24', border: '1px solid #fbbf2420' }}>LIVE</span>}
                                 </button>
                             </div>
+                            {/* Google 3D & Aerial View button */}
+                            <button onClick={() => { setShowGoogle3DPanel(true); triggerTopLoader(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, border: `1px solid ${showGoogle3DPanel ? '#22c55e40' : active3D === '3d-realistic' ? '#22c55e20' : theme.border}`, background: showGoogle3DPanel ? 'rgba(34,197,94,0.06)' : active3D === '3d-realistic' ? 'rgba(34,197,94,0.03)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.12s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = showGoogle3DPanel ? 'rgba(34,197,94,0.06)' : active3D === '3d-realistic' ? 'rgba(34,197,94,0.03)' : 'transparent'; }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={showGoogle3DPanel || active3D === '3d-realistic' ? '#22c55e' : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5L12 3Z"/><path d="M12 12L20 7.5"/><path d="M12 12V21"/><path d="M12 12L4 7.5"/></svg>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: showGoogle3DPanel || active3D === '3d-realistic' ? '#22c55e' : theme.text }}>Google 3D & Aerial</div>
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{active3D === '3d-realistic' ? 'Photorealistic 3D active' : 'Immersive 3D Maps & flyover video'}</div>
+                                </div>
+                                {active3D === '3d-realistic' && <span style={{ fontSize: 7, fontWeight: 800, padding: '2px 5px', borderRadius: 3, background: '#22c55e12', color: '#22c55e', border: '1px solid #22c55e20' }}>3D</span>}
+                                <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showGoogle3DPanel ? '#22c55e' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                            </button>
                         </div>
                     </Section>
                     </div>
@@ -8057,6 +8122,133 @@ export default function MapIndex() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: flightSource === 'live' ? '#22c55e' : flightSource === 'mock' ? '#f59e0b' : '#6b7280', boxShadow: flightSource === 'live' ? '0 0 6px #22c55e60' : 'none', animation: layerFlights ? 'tmap-tl-ring 2s infinite' : 'none' }} />
                             <span style={{ fontSize: 9, color: flightSource === 'live' ? '#06b6d4' : '#f59e0b', fontWeight: 600 }}>{flightSource === 'live' ? 'OpenSky LIVE' : flightSource === 'mock' ? 'Mock Data' : 'Connecting...'}</span>
+                        </div>
+                    </div>
+                    </>}
+                </div>}
+
+                {/* ═══ GOOGLE 3D & AERIAL VIEW PANEL ═══ */}
+                {showGoogle3DPanel && loaded && <div data-panel="google3d" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, video')) bringToFront('google3d'); }} style={panelStyle('google3d', '420px', '#22c55e')}>
+                    <PanelHeader id="google3d" icon="🌍" title="Google 3D & Aerial" subtitle={g3dTab === '3dmap' ? (active3D === '3d-realistic' ? 'Photorealistic 3D Active' : '3D Maps Controls') : (aerialState === 'active' ? 'Playing Aerial Video' : 'Aerial View Flyover')} color="#22c55e" onClose={() => setShowGoogle3DPanel(false)} />
+                    <PanelResizeGrip id="google3d" />
+                    {!isPanelMin('google3d') && <>
+                    {/* Tab switcher */}
+                    <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}15`, flexShrink: 0 }}>
+                        {([['3dmap', '🏙️', '3D Maps'] as const, ['aerial', '🎬', 'Aerial View'] as const]).map(([id, icon, label]) => <button key={id} onClick={() => setG3dTab(id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '9px 0', border: 'none', borderBottom: `2px solid ${g3dTab === id ? '#22c55e' : 'transparent'}`, background: g3dTab === id ? '#22c55e06' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 10, fontWeight: 700, color: g3dTab === id ? '#22c55e' : theme.textDim, transition: 'all 0.15s' }}>{icon} {label}</button>)}
+                    </div>
+
+                    {/* ── 3D MAPS TAB ── */}
+                    {g3dTab === '3dmap' && <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {/* Activate 3D Realistic */}
+                        <div style={{ padding: '12px 14px', borderBottom: `1px solid ${theme.border}10` }}>
+                            <button onClick={() => { if (active3D === '3d-realistic') setActive3D(null); else setActive3D('3d-realistic' as any); triggerTopLoader(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${active3D === '3d-realistic' ? '#22c55e40' : theme.border}`, background: active3D === '3d-realistic' ? '#22c55e08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 8, background: active3D === '3d-realistic' ? '#22c55e15' : `${theme.border}40`, border: `1.5px solid ${active3D === '3d-realistic' ? '#22c55e30' : theme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🌏</div>
+                                <div style={{ flex: 1, textAlign: 'left' as const }}>
+                                    <div style={{ fontSize: 12, fontWeight: 800, color: active3D === '3d-realistic' ? '#22c55e' : theme.text }}>Photorealistic 3D Tiles</div>
+                                    <div style={{ fontSize: 9, color: theme.textDim }}>{active3D === '3d-realistic' ? (googleMapRef.current ? 'Google 3D active — real buildings & terrain' : 'ESRI Satellite + 3D Buildings fallback') : 'Activate immersive 3D world view'}</div>
+                                </div>
+                                <div style={{ width: 32, height: 18, borderRadius: 9, background: active3D === '3d-realistic' ? '#22c55e' : theme.border, position: 'relative' as const, flexShrink: 0 }}><div style={{ width: 14, height: 14, borderRadius: 7, background: '#fff', position: 'absolute' as const, top: 2, left: active3D === '3d-realistic' ? 16 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></div>
+                            </button>
+                        </div>
+
+                        {/* Camera controls */}
+                        <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}10` }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 8 }}>CAMERA CONTROLS</div>
+                            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}><span style={{ fontSize: 9, fontWeight: 700, color: theme.text }}>Tilt / Pitch</span><span style={{ fontSize: 9, fontWeight: 800, color: '#22c55e', fontFamily: "'JetBrains Mono',monospace" }}>{g3dPitch}°</span></div>
+                                    <input type="range" min="0" max="90" step="1" value={g3dPitch} onChange={e => { const v = Number(e.target.value); setG3dPitch(v); if (googleMapRef.current) googleMapRef.current.moveCamera({ tilt: v }); }} style={{ width: '100%', height: 4, accentColor: '#22c55e' }} />
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}><span style={{ fontSize: 9, fontWeight: 700, color: theme.text }}>Heading / Bearing</span><span style={{ fontSize: 9, fontWeight: 800, color: '#3b82f6', fontFamily: "'JetBrains Mono',monospace" }}>{g3dHeading}°</span></div>
+                                    <input type="range" min="0" max="360" step="1" value={g3dHeading} onChange={e => { const v = Number(e.target.value); setG3dHeading(v); if (googleMapRef.current) googleMapRef.current.moveCamera({ heading: v }); }} style={{ width: '100%', height: 4, accentColor: '#3b82f6' }} />
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+                                <button onClick={() => { setG3dAutoRotate(!g3dAutoRotate); }} style={{ flex: 1, padding: '6px 0', borderRadius: 5, border: `1px solid ${g3dAutoRotate ? '#22c55e30' : theme.border}`, background: g3dAutoRotate ? '#22c55e08' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 700, color: g3dAutoRotate ? '#22c55e' : theme.textDim }}>🔄 {g3dAutoRotate ? 'Stop Rotation' : 'Auto-Rotate'}</button>
+                                <button onClick={() => { setG3dPitch(67); setG3dHeading(0); if (googleMapRef.current) googleMapRef.current.moveCamera({ tilt: 67, heading: 0 }); }} style={{ flex: 1, padding: '6px 0', borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 700, color: theme.textDim }}>⊝ Reset Camera</button>
+                            </div>
+                        </div>
+
+                        {/* Quick fly-to locations */}
+                        <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}10` }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 6 }}>QUICK FLY-TO</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                                {[{ name: 'Zagreb', lat: 45.813, lng: 15.978, z: 16 }, { name: 'Split', lat: 43.508, lng: 16.440, z: 15 }, { name: 'Dubrovnik', lat: 42.650, lng: 18.094, z: 15 }, { name: 'Venice', lat: 45.440, lng: 12.328, z: 15 }, { name: 'Vienna', lat: 48.208, lng: 16.373, z: 14 }, { name: 'Budapest', lat: 47.497, lng: 19.040, z: 14 }].map(loc => <button key={loc.name} onClick={() => { if (active3D !== '3d-realistic') setActive3D('3d-realistic' as any); const map = mapRef.current; if (map) map.flyTo({ center: [loc.lng, loc.lat], zoom: loc.z, duration: 1500 }); if (googleMapRef.current) googleMapRef.current.moveCamera({ center: { lat: loc.lat, lng: loc.lng }, zoom: loc.z, tilt: g3dPitch, heading: g3dHeading }); triggerTopLoader(); }} style={{ padding: '6px 4px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 700, color: theme.text, transition: 'all 0.1s' }} onMouseEnter={e => { e.currentTarget.style.background = '#22c55e08'; e.currentTarget.style.borderColor = '#22c55e30'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; }}>🏙️ {loc.name}</button>)}
+                            </div>
+                        </div>
+
+                        {/* Info */}
+                        <div style={{ padding: '10px 14px' }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 6 }}>STATUS</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
+                                {[{ l: 'API', v: googleMapRef.current ? 'Connected' : (googleMapsKey ? 'Key Set' : 'No Key'), c: googleMapRef.current ? '#22c55e' : '#f59e0b' },
+                                  { l: 'Mode', v: active3D === '3d-realistic' ? '3D Realistic' : (active3D || 'None'), c: active3D ? '#3b82f6' : '#6b7280' },
+                                  { l: 'Pitch', v: `${g3dPitch}°`, c: '#8b5cf6' },
+                                  { l: 'Heading', v: `${g3dHeading}°`, c: '#f59e0b' }
+                                ].map(s => <div key={s.l} style={{ textAlign: 'center' as const, padding: '5px', borderRadius: 4, border: `1px solid ${theme.border}` }}><div style={{ fontSize: 11, fontWeight: 800, color: s.c, fontFamily: "'JetBrains Mono',monospace" }}>{s.v}</div><div style={{ fontSize: 7, color: theme.textDim }}>{s.l}</div></div>)}
+                            </div>
+                            {!googleMapsKey && <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 5, background: '#f59e0b08', border: '1px solid #f59e0b20', fontSize: 9, color: '#f59e0b', lineHeight: 1.5 }}>⚠️ Add <code style={{ background: '#f59e0b10', padding: '1px 4px', borderRadius: 2, fontFamily: "'JetBrains Mono',monospace", fontSize: 8 }}>GOOGLE_MAPS_API_KEY</code> to .env for Photorealistic 3D Tiles and Aerial View.</div>}
+                        </div>
+                    </div>}
+
+                    {/* ── AERIAL VIEW TAB ── */}
+                    {g3dTab === 'aerial' && <div style={{ flex: 1, overflowY: 'auto' as const }}>
+                        {/* Address search */}
+                        <div style={{ padding: '12px 14px', borderBottom: `1px solid ${theme.border}10` }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 6 }}>AERIAL VIEW FLYOVER</div>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${aerialAddress ? '#22c55e50' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+                                    <span style={{ fontSize: 11 }}>📍</span>
+                                    <input value={aerialAddress} onChange={e => setAerialAddress(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') fetchAerialView(aerialAddress); }} placeholder="Enter US address..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '7px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                                </div>
+                                <button onClick={() => fetchAerialView(aerialAddress)} disabled={!aerialAddress.trim() || aerialState === 'loading'} style={{ padding: '0 14px', borderRadius: 6, border: 'none', background: aerialAddress.trim() ? '#22c55e' : theme.border, cursor: aerialAddress.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', fontSize: 10, fontWeight: 700, color: '#fff', transition: 'all 0.15s' }}>🎬 Fly</button>
+                            </div>
+                            <div style={{ fontSize: 8, color: theme.textDim, marginTop: 4 }}>Google Aerial View — cinematic drone-style 3D flyover videos. Currently available for US addresses.</div>
+                        </div>
+
+                        {/* Video player / States */}
+                        <div style={{ padding: '12px 14px', borderBottom: `1px solid ${theme.border}10`, minHeight: 180 }}>
+                            {aerialState === 'idle' && <div style={{ textAlign: 'center' as const, padding: '20px 0' }}>
+                                <div style={{ fontSize: 40, opacity: 0.15, marginBottom: 8 }}>🎬</div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>Aerial View</div>
+                                <div style={{ fontSize: 9, color: theme.textDim, marginTop: 4, lineHeight: 1.5 }}>Enter a US address above to view a cinematic<br/>3D drone flyover video powered by Google Earth.</div>
+                                <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginTop: 10, flexWrap: 'wrap' as const }}>
+                                    {['1600 Amphitheatre Parkway, Mountain View, CA', 'Times Square, New York, NY', 'Golden Gate Bridge, San Francisco, CA', 'White House, Washington, DC'].map(addr => <button key={addr} onClick={() => { setAerialAddress(addr); fetchAerialView(addr); }} style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 600, color: theme.textDim, transition: 'all 0.1s' }} onMouseEnter={e => { e.currentTarget.style.background = '#22c55e08'; e.currentTarget.style.color = '#22c55e'; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = theme.textDim; }}>{addr.split(',')[0]}</button>)}
+                                </div>
+                            </div>}
+                            {aerialState === 'loading' && <div style={{ textAlign: 'center' as const, padding: '30px 0' }}><div className="tmap-spinner" style={{ width: 24, height: 24, border: '2.5px solid rgba(34,197,94,0.2)', borderTop: '2.5px solid #22c55e', borderRadius: '50%', margin: '0 auto 10px', animation: 'tmap-spin 0.8s linear infinite' }} /><div style={{ fontSize: 10, color: theme.textDim }}>Looking up aerial video...</div></div>}
+                            {aerialState === 'active' && aerialVideoUrl && <div style={{ borderRadius: 8, overflow: 'hidden', background: '#000', position: 'relative' as const }}>
+                                <video src={aerialVideoUrl} controls autoPlay loop muted playsInline style={{ width: '100%', display: 'block', borderRadius: 8, maxHeight: 250 }} />
+                                <div style={{ position: 'absolute' as const, top: 6, left: 6, padding: '2px 8px', borderRadius: 3, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}>
+                                    <span style={{ fontSize: 8, fontWeight: 700, color: '#22c55e', fontFamily: "'JetBrains Mono',monospace" }}>● AERIAL VIEW</span>
+                                </div>
+                                {aerialMeta?.duration && <div style={{ position: 'absolute' as const, bottom: 40, right: 8, padding: '2px 6px', borderRadius: 3, background: 'rgba(0,0,0,0.6)', fontSize: 8, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>{aerialMeta.duration}</div>}
+                            </div>}
+                            {aerialState === 'processing' && <div style={{ textAlign: 'center' as const, padding: '25px 0' }}><div style={{ fontSize: 30, marginBottom: 8 }}>⏳</div><div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>Video Rendering</div><div style={{ fontSize: 9, color: theme.textDim, marginTop: 4 }}>Google is generating this aerial video. Check back in a few minutes.</div><button onClick={() => fetchAerialView(aerialAddress)} style={{ marginTop: 10, padding: '5px 14px', borderRadius: 5, border: `1px solid #f59e0b30`, background: '#f59e0b08', cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 700, color: '#f59e0b' }}>🔄 Check Again</button></div>}
+                            {aerialState === 'not_available' && <div style={{ textAlign: 'center' as const, padding: '25px 0' }}><div style={{ fontSize: 30, marginBottom: 8 }}>🚫</div><div style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>Not Available</div><div style={{ fontSize: 9, color: theme.textDim, marginTop: 4 }}>Aerial View is not available for this address.<br/>Try a well-known US landmark or building.</div></div>}
+                            {aerialState === 'error' && <div style={{ textAlign: 'center' as const, padding: '25px 0' }}><div style={{ fontSize: 30, marginBottom: 8 }}>⚠️</div><div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444' }}>Error</div><div style={{ fontSize: 9, color: theme.textDim, marginTop: 4 }}>{aerialMeta?.message || 'Failed to fetch aerial view'}</div></div>}
+                        </div>
+
+                        {/* History */}
+                        {aerialHistory.length > 0 && <div style={{ padding: '10px 14px' }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 6 }}>RECENT LOOKUPS</div>
+                            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
+                                {aerialHistory.map((h, i) => <button key={i} onClick={() => { setAerialAddress(h.address); if (h.url) { setAerialVideoUrl(h.url); setAerialState('active'); } else { fetchAerialView(h.address); } }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#22c55e06'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: h.state === 'active' ? '#22c55e' : h.state === 'processing' ? '#f59e0b' : '#6b7280', flexShrink: 0 }} />
+                                    <span style={{ fontSize: 9, color: theme.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{h.address}</span>
+                                    <span style={{ fontSize: 7, color: h.state === 'active' ? '#22c55e' : '#6b7280', fontWeight: 700, flexShrink: 0 }}>{h.state === 'active' ? '▶' : h.state === 'processing' ? '⏳' : '✕'}</span>
+                                </button>)}
+                            </div>
+                        </div>}
+                    </div>}
+
+                    {/* Footer */}
+                    <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, color: theme.textDim }}>{g3dTab === '3dmap' ? 'Google Maps Platform' : 'Aerial View API'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: googleMapsKey ? '#22c55e' : '#f59e0b', boxShadow: googleMapsKey ? '0 0 6px #22c55e60' : 'none' }} />
+                            <span style={{ fontSize: 9, color: '#22c55e', fontWeight: 600 }}>{googleMapsKey ? 'Google API Connected' : 'No API Key'}</span>
                         </div>
                     </div>
                     </>}
