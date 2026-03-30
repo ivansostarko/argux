@@ -2882,63 +2882,111 @@ export default function MapIndex() {
         return () => { markersRef.current.forEach(m => m.remove()); markersRef.current = []; };
     }, [selectedPersons, selectedOrgs, loaded]);
 
-    // Source markers on map
-    const sourceMarkersRef = useRef<any[]>([]);
+    // Source markers on map — WebGL layers with clustering (replaces DOM markers)
+    const sourceMarkersRef = useRef<any[]>([]); // kept for compatibility (empty now)
     const sourcePopupsRef = useRef<any[]>([]);
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !loaded) return;
-        sourceMarkersRef.current.forEach(m => m.remove());
-        sourceMarkersRef.current = [];
-        sourcePopupsRef.current.forEach(p => { try { p.remove(); } catch {} });
-        sourcePopupsRef.current = [];
         const ml = (window as any).maplibregl;
         if (!ml) return;
-        const isMobile = (id: SourceId) => id.startsWith('app-');
-        const isCamera = (id: SourceId) => id.startsWith('cam-');
-        const videoUrl = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/rtl_direkt.mp4';
-        const audioUrl = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/audio.mp3';
-        const photoUrl = 'https://picsum.photos/800/600?random=742';
 
-        activeSourceMarkers.forEach(sm => {
+        // Remove old popups
+        sourcePopupsRef.current.forEach(p => { try { p.remove(); } catch {} });
+        sourcePopupsRef.current = [];
+
+        // Build GeoJSON from active markers
+        const features = activeSourceMarkers.map(sm => {
             const st = sourceTypes.find(s => s.id === sm.sourceId);
-            if (!st) return;
-            const statusDot = sm.status === 'online' ? '#22c55e' : sm.status === 'degraded' ? '#f59e0b' : '#6b7280';
-            const riskColor = sm.risk === 'Critical' ? '#ef4444' : sm.risk === 'High' ? '#f97316' : sm.risk === 'Medium' ? '#f59e0b' : '#6b7280';
-            const el = document.createElement('div');
-            el.className = 'tmap-marker-source';
-            const borderRadius = st.shape === 'circle' ? '50%' : st.shape === 'diamond' ? '4px' : '4px';
-            const rotate = st.shape === 'diamond' ? 'transform:rotate(45deg);' : '';
-            const innerRotate = st.shape === 'diamond' ? 'transform:rotate(-45deg);' : '';
-            const hasPerson = !!sm.personId;
-            const hasOrg = !!sm.orgId;
-            const hasOwner = hasPerson || hasOrg;
-            const sigColor = (sm.signal || 0) > 70 ? '#22c55e' : (sm.signal || 0) > 30 ? '#f59e0b' : '#ef4444';
-            const batColor = (sm.battery ?? 100) > 60 ? '#22c55e' : (sm.battery ?? 100) > 20 ? '#f59e0b' : '#ef4444';
+            return {
+                type: 'Feature' as const,
+                geometry: { type: 'Point' as const, coordinates: [sm.lng, sm.lat] },
+                properties: {
+                    id: sm.id,
+                    sourceId: sm.sourceId,
+                    label: sm.label,
+                    status: sm.status,
+                    color: st?.color || '#3b82f6',
+                    icon: st?.icon || '📍',
+                    group: st?.group || '',
+                    hasPerson: sm.personId ? 1 : 0,
+                    hasOrg: sm.orgId ? 1 : 0,
+                    risk: sm.risk || '',
+                    statusColor: sm.status === 'online' ? '#22c55e' : sm.status === 'degraded' ? '#f59e0b' : '#6b7280',
+                },
+            };
+        });
+        const fc: any = { type: 'FeatureCollection', features };
 
-            if (isMobile(sm.sourceId) && sm.personAvatar) {
-                el.innerHTML = `<div class="tmap-marker-inner" style="width:30px;height:30px;border-radius:50%;border:2.5px solid ${riskColor};background:url(${sm.personAvatar}) center/cover;box-shadow:0 0 10px ${riskColor}40,0 2px 8px rgba(0,0,0,0.5);position:relative;overflow:visible;"><div style="position:absolute;bottom:-3px;right:-3px;min-width:14px;height:12px;border-radius:6px;background:${st.color};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;padding:0 2px;pointer-events:none"><span style="font-size:7px;line-height:1">${st.icon}</span></div><div style="position:absolute;top:-2px;left:-2px;width:8px;height:8px;border-radius:50%;background:${statusDot};border:1.5px solid rgba(13,18,32,0.9);pointer-events:none"></div></div>`;
-            } else {
-                el.innerHTML = `<div class="tmap-marker-inner" style="width:26px;height:26px;border-radius:${borderRadius};border:2px solid ${st.color};background:rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.5);${rotate}"><span style="font-size:12px;line-height:1;${innerRotate}">${st.icon}</span></div><div class="tmap-marker-status" style="background:${statusDot}"></div>`;
-            }
-            const lngLat: [number, number] = [sm.lng, sm.lat];
-            const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat).addTo(map);
+        // Source + layers — addSource once, then setData
+        if (map.getSource('src-markers')) {
+            (map.getSource('src-markers') as any).setData(fc);
+        } else {
+            map.addSource('src-markers', {
+                type: 'geojson', data: fc,
+                cluster: true, clusterMaxZoom: 14, clusterRadius: 40,
+                clusterProperties: { 'online': ['+', ['case', ['==', ['get', 'status'], 'online'], 1, 0]] },
+            });
+            // Cluster circles
+            map.addLayer({ id: 'src-clusters', type: 'circle', source: 'src-markers', filter: ['has', 'point_count'], paint: {
+                'circle-color': ['step', ['get', 'point_count'], '#3b82f6', 5, '#8b5cf6', 15, '#f59e0b', 30, '#ef4444'],
+                'circle-radius': ['step', ['get', 'point_count'], 14, 5, 18, 15, 22, 30, 26],
+                'circle-stroke-width': 2, 'circle-stroke-color': 'rgba(255,255,255,0.3)',
+            }});
+            // Cluster count labels
+            map.addLayer({ id: 'src-cluster-count', type: 'symbol', source: 'src-markers', filter: ['has', 'point_count'], layout: {
+                'text-field': '{point_count_abbreviated}', 'text-size': 11, 'text-allow-overlap': true,
+            }, paint: { 'text-color': '#fff' } });
+            // Unclustered point circles
+            map.addLayer({ id: 'src-points', type: 'circle', source: 'src-markers', filter: ['!', ['has', 'point_count']], paint: {
+                'circle-radius': ['case', ['==', ['get', 'hasPerson'], 1], 7, 6],
+                'circle-color': ['get', 'color'],
+                'circle-stroke-width': 2,
+                'circle-stroke-color': ['get', 'statusColor'],
+                'circle-opacity': ['case', ['==', ['get', 'status'], 'offline'], 0.4, 0.85],
+            }});
+            // Status ring for online devices
+            map.addLayer({ id: 'src-status-ring', type: 'circle', source: 'src-markers',
+                filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'status'], 'online']],
+                paint: { 'circle-radius': 10, 'circle-color': 'transparent', 'circle-stroke-width': 1, 'circle-stroke-color': '#22c55e', 'circle-stroke-opacity': 0.3 },
+            });
 
-            el.addEventListener('click', (e: Event) => {
-                e.stopPropagation();
-                let popupHtml = '';
+            // Click cluster → zoom in
+            map.on('click', 'src-clusters', (e: any) => {
+                const cluster = e.features?.[0];
+                if (!cluster) return;
+                const source = map.getSource('src-markers') as any;
+                source.getClusterExpansionZoom(cluster.properties.cluster_id, (err: any, zoom: number) => {
+                    if (err) return;
+                    map.easeTo({ center: cluster.geometry.coordinates, zoom: zoom + 0.5, duration: 500 });
+                });
+            });
+
+            // Click point → popup
+            map.on('click', 'src-points', (e: any) => {
+                const feat = e.features?.[0];
+                if (!feat) return;
+                const smId = feat.properties.id;
+                const sm = mockSourceMarkers.find(m => m.id === smId);
+                if (!sm) return;
+                const st = sourceTypes.find(s => s.id === sm.sourceId);
+                if (!st) return;
+                const coords: [number, number] = [sm.lng, sm.lat];
+                const statusDot = sm.status === 'online' ? '#22c55e' : sm.status === 'degraded' ? '#f59e0b' : '#6b7280';
+                const riskColor = sm.risk === 'Critical' ? '#ef4444' : sm.risk === 'High' ? '#f97316' : sm.risk === 'Medium' ? '#f59e0b' : '#6b7280';
+                const batColor = (sm.battery ?? 100) > 50 ? '#22c55e' : (sm.battery ?? 100) > 20 ? '#f59e0b' : '#ef4444';
+                const sigColor = (sm.signal ?? 100) > 60 ? '#22c55e' : (sm.signal ?? 100) > 30 ? '#f59e0b' : '#ef4444';
+                const hasPerson = !!sm.personId;
+                const hasOrg = !!sm.orgId;
+                const hasOwner = hasPerson || hasOrg;
                 const addr = mockAddress(sm.lat, sm.lng);
-                const batBar = sm.battery !== undefined ? `<div style="width:100%;height:4px;border-radius:2px;background:${theme.border};overflow:hidden"><div style="width:${sm.battery}%;height:100%;background:${batColor};border-radius:2px"></div></div>` : '';
-                const sigBar = sm.signal !== undefined ? `<div style="width:100%;height:4px;border-radius:2px;background:${theme.border};overflow:hidden"><div style="width:${sm.signal}%;height:100%;background:${sigColor};border-radius:2px"></div></div>` : '';
+                const videoUrl = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/rtl_direkt.mp4';
+                const audioUrl = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/audio.mp3';
                 const phoneIcon = sm.phoneType === 'ios' ? '🍎' : sm.phoneType === 'android' ? '🤖' : '';
-
-                // Owner header (person or org)
-                const ownerHeader = hasOwner ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ax-border)"><div class="tmap-src-avatar" style="width:40px;height:40px;border-radius:${hasPerson ? '50%' : '8px'};border:2.5px solid ${riskColor};background:${sm.personAvatar ? `url(${sm.personAvatar}) center/cover` : `rgba(59,130,246,0.15)`};flex-shrink:0;cursor:${sm.personAvatar ? 'zoom-in' : 'default'};display:flex;align-items:center;justify-content:center;font-size:18px" ${sm.personAvatar ? `data-lightbox="${sm.personAvatar}"` : ''}>${!sm.personAvatar ? (hasOrg ? '🏢' : '👤') : ''}</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ax-text)">${hasPerson ? `<a href="/persons/${sm.personId}" style="color:var(--ax-accent);text-decoration:none">${sm.personName} ${sm.personLastName}</a>` : `<a href="/organizations/${sm.orgId}" style="color:var(--ax-accent);text-decoration:none">${sm.orgName}</a>`}</div>${hasPerson && sm.personNickname ? `<div style="font-size:9px;color:var(--ax-text-dim)">aka <span style="font-weight:600;color:var(--ax-text-sec)">${sm.personNickname}</span></div>` : ''}<div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${sm.risk || 'Unknown'}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${statusDot}15;color:${statusDot};border:1px solid ${statusDot}30"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDot};margin-right:2px;vertical-align:middle"></span>${sm.status}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span></div></div></div>` : '';
-
-                // Device header (for public cameras — no owner)
-                const deviceHeader = !hasOwner ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ax-border)"><div style="width:36px;height:36px;border-radius:8px;background:${st.color}12;border:2px solid ${st.color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${st.icon}</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ax-text)">${sm.label}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${statusDot}15;color:${statusDot};border:1px solid ${statusDot}30"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDot};margin-right:2px;vertical-align:middle"></span>${sm.status}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span></div></div></div>` : '';
-
-                // Info grid (shared)
+                const batBar = sm.battery !== undefined ? `<div style="width:100%;height:4px;border-radius:2px;background:var(--ax-border);overflow:hidden"><div style="width:${sm.battery}%;height:100%;background:${batColor};border-radius:2px"></div></div>` : '';
+                const sigBar = sm.signal !== undefined ? `<div style="width:100%;height:4px;border-radius:2px;background:var(--ax-border);overflow:hidden"><div style="width:${sm.signal}%;height:100%;background:${sigColor};border-radius:2px"></div></div>` : '';
+                const ownerHeader = hasOwner ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ax-border)"><div style="width:40px;height:40px;border-radius:${hasPerson ? '50%' : '8px'};border:2.5px solid ${riskColor};background:${sm.personAvatar ? `url(${sm.personAvatar}) center/cover` : 'rgba(59,130,246,0.15)'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">${!sm.personAvatar ? (hasOrg ? '🏢' : '👤') : ''}</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ax-text)">${hasPerson ? `<a href="/persons/${sm.personId}" style="color:var(--ax-accent);text-decoration:none">${sm.personName} ${sm.personLastName}</a>` : `<a href="/organizations/${sm.orgId}" style="color:var(--ax-accent);text-decoration:none">${sm.orgName}</a>`}</div>${hasPerson && sm.personNickname ? `<div style="font-size:9px;color:var(--ax-text-dim)">aka <span style="font-weight:600;color:var(--ax-text-sec)">${sm.personNickname}</span></div>` : ''}<div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${sm.risk || 'Unknown'}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${statusDot}15;color:${statusDot};border:1px solid ${statusDot}30">${sm.status}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span></div></div></div>` : '';
+                const deviceHeader = !hasOwner ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ax-border)"><div style="width:36px;height:36px;border-radius:8px;background:${st.color}12;border:2px solid ${st.color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${st.icon}</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ax-text)">${sm.label}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${statusDot}15;color:${statusDot};border:1px solid ${statusDot}30">${sm.status}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span></div></div></div>` : '';
                 const infoRows = [
                     `<div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div>`,
                     sm.lastUpdated ? `<div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Updated</span><span class="tmap-popup-val">${sm.lastUpdated}</span></div>` : '',
@@ -2948,65 +2996,34 @@ export default function MapIndex() {
                     sm.battery !== undefined ? `<div class="tmap-popup-row"><span class="tmap-popup-label">🔋 Battery</span><span class="tmap-popup-val" style="color:${batColor};font-weight:700">${sm.battery}%</span></div>` : '',
                 ].filter(Boolean).join('');
                 const infoGrid = `<div class="tmap-popup-grid">${infoRows}</div>${sm.battery !== undefined ? `<div style="padding:0 14px 4px">${batBar}</div>` : ''}${sm.signal !== undefined ? `<div style="padding:0 14px 6px">${sigBar}</div>` : ''}`;
-
-                // Video block
                 const videoBlock = `<div style="border-bottom:1px solid var(--ax-border);background:#000"><video style="width:100%;height:140px;object-fit:cover;display:block" src="${videoUrl}" preload="metadata" controls controlsList="nodownload" playsinline></video></div>`;
-                // Audio block
-                const audioBlock = `<div style="padding:8px 14px;border-bottom:1px solid var(--ax-border);background:rgba(245,158,11,0.04)"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:14px">🎙️</span><span style="font-size:10px;font-weight:700;color:var(--ax-text)">Audio Recording</span><span style="font-size:7px;padding:1px 5px;border-radius:3px;background:${sm.status === 'online' ? '#22c55e15' : '#6b728015'};color:${sm.status === 'online' ? '#22c55e' : '#6b7280'};border:1px solid ${sm.status === 'online' ? '#22c55e20' : '#6b728020'};font-weight:700">${sm.status === 'online' ? 'RECORDING' : 'INACTIVE'}</span></div><audio style="width:100%;height:32px" src="${audioUrl}" preload="metadata" controls controlsList="nodownload"></audio></div>`;
+                const audioBlock = `<div style="padding:8px 14px;border-bottom:1px solid var(--ax-border);background:rgba(245,158,11,0.04)"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:14px">🎙️</span><span style="font-size:10px;font-weight:700;color:var(--ax-text)">Audio</span></div><audio style="width:100%;height:32px" src="${audioUrl}" preload="metadata" controls controlsList="nodownload"></audio></div>`;
 
-                if (sm.sourceId === 'cam-public') {
-                    popupHtml = `<div class="tmap-popup-card">${deviceHeader}${videoBlock}${infoGrid}<div style="padding:6px 14px;font-size:9px;color:var(--ax-text-dim);line-height:1.5">${sm.detail}</div><div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
-                } else if (sm.sourceId === 'cam-hidden' || sm.sourceId === 'cam-private') {
-                    popupHtml = `<div class="tmap-popup-card">${ownerHeader}${videoBlock}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
+                let popupHtml = '';
+                if (sm.sourceId.startsWith('cam-')) {
+                    popupHtml = `<div class="tmap-popup-card">${hasOwner ? ownerHeader : deviceHeader}${videoBlock}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
                 } else if (sm.sourceId === 'gps') {
                     popupHtml = `<div class="tmap-popup-card">${ownerHeader}${infoGrid}<div style="padding:4px 14px 6px;font-size:9px;color:var(--ax-text-dim);line-height:1.5">${sm.detail}</div><div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
                 } else if (sm.sourceId === 'audio') {
                     popupHtml = `<div class="tmap-popup-card">${ownerHeader}${audioBlock}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
-                } else if (isMobile(sm.sourceId) && sm.personId) {
-                    const mobileHeader = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ax-border)"><div class="tmap-src-avatar" style="width:40px;height:40px;border-radius:50%;border:2.5px solid ${riskColor};background:url(${sm.personAvatar || ''}) center/cover;flex-shrink:0;cursor:zoom-in" data-lightbox="${sm.personAvatar || ''}"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ax-text)"><a href="/persons/${sm.personId}" style="color:var(--ax-accent);text-decoration:none">${sm.personName} ${sm.personLastName}</a></div><div style="font-size:9px;color:var(--ax-text-dim)">aka <span style="font-weight:600;color:var(--ax-text-sec)">${sm.personNickname}</span></div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${sm.risk}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${statusDot}15;color:${statusDot};border:1px solid ${statusDot}30"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDot};margin-right:2px;vertical-align:middle"></span>${sm.status}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span></div></div></div>`;
-                    if (sm.sourceId === 'app-photo') {
-                        popupHtml = `<div class="tmap-popup-card">${mobileHeader}<div style="border-bottom:1px solid var(--ax-border)"><img src="${photoUrl}" class="tmap-src-media-photo" style="width:100%;height:120px;object-fit:cover;display:block;cursor:zoom-in" /></div>${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
-                    } else if (sm.sourceId === 'app-video' || sm.sourceId === 'app-camera') {
-                        popupHtml = `<div class="tmap-popup-card">${mobileHeader}${videoBlock}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
-                    } else if (sm.sourceId === 'app-audio') {
-                        const mobileAudioBlock = `<div style="padding:8px 14px;border-bottom:1px solid var(--ax-border);background:rgba(168,85,247,0.04)"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:14px">🎵</span><span style="font-size:10px;font-weight:700;color:var(--ax-text)">Audio Recording</span><span style="font-size:7px;padding:1px 5px;border-radius:3px;background:#a855f715;color:#a855f7;border:1px solid #a855f720;font-weight:700">${sm.status === 'online' ? 'RECORDING' : 'PAUSED'}</span></div><audio style="width:100%;height:32px" src="${audioUrl}" preload="metadata" controls controlsList="nodownload"></audio></div>`;
-                        popupHtml = `<div class="tmap-popup-card">${mobileHeader}${mobileAudioBlock}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
-                    } else {
-                        popupHtml = `<div class="tmap-popup-card">${mobileHeader}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
-                    }
+                } else if (sm.sourceId.startsWith('app-')) {
+                    popupHtml = `<div class="tmap-popup-card">${ownerHeader}${sm.sourceId === 'app-video' || sm.sourceId === 'app-camera' ? videoBlock : sm.sourceId === 'app-audio' ? audioBlock : ''}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
                 } else {
-                    popupHtml = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><span style="font-size:20px">${st.icon}</span><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${sm.label}</div><div class="tmap-popup-meta"><span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;background:${st.color}15;color:${st.color};border:1px solid ${st.color}30">${st.label}</span><span class="tmap-popup-status"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusDot};margin-right:3px"></span>${sm.status}</span></div></div></div><div style="padding:8px 14px;font-size:10px;color:var(--ax-text-dim);line-height:1.5">${sm.detail}</div><div class="tmap-popup-coords">${lngLat[1].toFixed(5)}, ${lngLat[0].toFixed(5)}</div></div>`;
+                    popupHtml = `<div class="tmap-popup-card">${deviceHeader || ownerHeader}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
                 }
-                const popup = new ml.Popup({ offset: 18, maxWidth: '300px', className: 'tmap-popup' }).setLngLat(lngLat).setHTML(popupHtml).addTo(map);
+                const popup = new ml.Popup({ maxWidth: '320px', offset: 12 }).setLngLat(coords).setHTML(popupHtml).addTo(map);
                 sourcePopupsRef.current.push(popup);
-                setTimeout(() => {
-                    const pel = popup.getElement();
-                    pel?.querySelectorAll('.tmap-src-avatar[data-lightbox]').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); const url = img.getAttribute('data-lightbox'); if (url) setTlLightbox(url); }); });
-                    pel?.querySelectorAll('.tmap-src-media-photo').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setTlLightbox(photoUrl); }); });
-                }, 50);
             });
+            map.on('mouseenter', 'src-points', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'src-points', () => { map.getCanvas().style.cursor = ''; });
+            map.on('mouseenter', 'src-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'src-clusters', () => { map.getCanvas().style.cursor = ''; });
+        }
 
-            // Right-click → context menu
-            el.addEventListener('contextmenu', (ev: Event) => {
-                ev.preventDefault(); ev.stopPropagation();
-                const me = ev as MouseEvent;
-                const rect = mapContainer.current?.getBoundingClientRect();
-                if (!rect) return;
-                const x = me.clientX - rect.left;
-                const y = me.clientY - rect.top;
-                if (sm.sourceId === 'cam-public') {
-                    setTlMarkerCtx({ x, y, ev: { id: sm.id, type: 'source', icon: st.icon, title: sm.label, sub: st.label, ts: sm.lastUpdated || '', lat: sm.lat, lng: sm.lng, sev: 'info', color: st.color, cameraId: sm.deviceId } });
-                } else if (hasPerson) {
-                    setTlMarkerCtx({ x, y, ev: { id: sm.id, type: 'face', icon: st.icon, title: `${sm.personName} ${sm.personLastName}`, sub: st.label, ts: sm.lastUpdated || '', lat: sm.lat, lng: sm.lng, sev: sm.risk === 'Critical' ? 'critical' : 'high', color: st.color, personId: sm.personId, personName: `${sm.personName} ${sm.personLastName}`, cameraId: sm.deviceId } });
-                } else if (hasOrg) {
-                    setTlMarkerCtx({ x, y, ev: { id: sm.id, type: 'lpr', icon: st.icon, title: sm.orgName || sm.label, sub: st.label, ts: sm.lastUpdated || '', lat: sm.lat, lng: sm.lng, sev: sm.risk === 'Critical' ? 'critical' : 'high', color: st.color, orgId: sm.orgId, orgName: sm.orgName, cameraId: sm.deviceId } });
-                } else {
-                    setTlMarkerCtx({ x, y, ev: { id: sm.id, type: 'source', icon: st.icon, title: sm.label, sub: st.label, ts: '', lat: sm.lat, lng: sm.lng, sev: 'info', color: st.color, cameraId: sm.deviceId } });
-                }
-            });
-            sourceMarkersRef.current.push(marker);
-        });
-        return () => { sourceMarkersRef.current.forEach(m => m.remove()); sourceMarkersRef.current = []; sourcePopupsRef.current.forEach(p => { try { p.remove(); } catch {} }); sourcePopupsRef.current = []; };
+        // When no features, clear source data
+        if (features.length === 0 && map.getSource('src-markers')) {
+            (map.getSource('src-markers') as any).setData({ type: 'FeatureCollection', features: [] });
+        }
     }, [activeSources, hiddenSources, loaded]);
 
     // Heatmap layer

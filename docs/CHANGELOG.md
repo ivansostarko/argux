@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.25.83 - 2026-03-30
+
+### Optimized — Map Source Markers: DOM → WebGL + Clustering
+
+Major performance optimization replacing ~40 individual DOM marker elements with a single GeoJSON source rendered via WebGL circle layers with built-in clustering.
+
+#### What Changed
+**Before**: Each source marker (cameras, GPS trackers, phones, audio, apps) created a separate DOM `<div>` element via `new maplibregl.Marker()`. On each source toggle, ALL markers were destroyed and recreated (expensive DOM churn).
+
+**After**: All source markers are a single GeoJSON source (`src-markers`) with 5 WebGL layers:
+- `src-clusters` — cluster circles (color by count: blue→purple→amber→red)
+- `src-cluster-count` — cluster count text labels
+- `src-points` — unclustered point circles (color by sourceType, stroke by status)
+- `src-status-ring` — outer ring for online devices (green pulse effect)
+- Click cluster → zooms in to expand; Click point → rich popup (same HTML)
+
+#### Performance Impact
+- **40+ DOM elements → 0 DOM elements** (all WebGL-rendered)
+- **Clustering** at zoom < 14 with radius 40px — dozens of markers collapse to a single cluster dot
+- **setData() updates** instead of destroy+recreate — toggling sources just updates the GeoJSON, MapLibre handles the diff
+- **No collision detection overhead** — circles don't need expensive text placement
+- **GPU-accelerated rendering** — circle layers render in WebGL, not the DOM compositor
+
+#### What's Preserved
+- Full rich popup HTML on click (video players for cameras, audio players, battery/signal bars, person profiles, etc.)
+- Color coding by source type (blue=public cam, red=hidden cam, purple=private cam, etc.)
+- Status indicators (green=online, amber=degraded, grey=offline)
+- Person/organization linking in popups
+- Offline markers shown at 40% opacity
+
 ## 0.25.82 - 2026-03-30
 
 ### Implemented — USGS Earthquakes + NASA FIRMS Active Fires (/map → Layers)
