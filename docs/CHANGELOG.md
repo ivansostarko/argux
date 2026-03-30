@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.25.75 - 2026-03-30
+- Removed Aerial View feature (tab, state, backend endpoint, route).
+- Google 3D panel simplified to single-purpose 3D Maps controls (no tabs).
+- Sidebar button renamed "Google 3D Maps".
+
 ## 0.25.74 - 2026-03-30
 
 ### Implemented — Google 3D Maps & Aerial View Panel (/map → Tools)
