@@ -1462,7 +1462,7 @@ export default function MapIndex() {
 
     // ═══ FLOATING PANEL SYSTEM ═══
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic' | 'streetview' | 'vessels' | 'nfz';
+    type PanelId = 'tracker' | 'feed' | 'ruler' | 'zone' | 'objects' | 'places' | 'workspaces' | 'layers' | 'correlation' | 'anomaly' | 'predictive' | 'pattern' | 'incidents' | 'heatcal' | 'compare' | 'routereplay' | 'locanalyzer' | 'flights' | 'satellites' | 'poi' | 'routing' | 'weather' | 'uavops' | 'traffic' | 'streetview' | 'vessels' | 'nfz' | 'vision';
     interface PanelPos { x: number; y: number; }
     interface PanelSize { w: number; h: number; }
     const SNAP_THRESHOLD = 24;
@@ -4328,16 +4328,50 @@ export default function MapIndex() {
     // ═══ 3D VISION MODES ═══
     type VisionMode = 'normal' | 'nvg' | 'flir' | 'anime' | 'noir' | 'snow';
     const [visionMode, setVisionMode] = useState<VisionMode>('normal');
-    const visionModes: { id: VisionMode; name: string; icon: string; desc: string; css: string; overlay?: string }[] = [
-        { id: 'normal', name: 'Normal', icon: '👁', desc: 'Standard view', css: 'none' },
-        { id: 'nvg', name: 'NVG', icon: '🟢', desc: 'Night Vision Goggles', css: 'brightness(0.45) contrast(1.8) saturate(0) sepia(1) hue-rotate(80deg) saturate(4.5) brightness(0.75)' },
-        { id: 'flir', name: 'FLIR', icon: '🔥', desc: 'Forward-Looking IR', css: 'brightness(0.55) contrast(2.8) saturate(0) invert(0.92) hue-rotate(180deg) brightness(1.1)' },
-        { id: 'anime', name: 'Anime', icon: '🌸', desc: 'Cel-Shaded Render', css: 'contrast(1.6) saturate(2.2) brightness(1.08) hue-rotate(-5deg)' },
-        { id: 'noir', name: 'Noir', icon: '🎬', desc: 'Film Noir B&W', css: 'grayscale(1) contrast(1.7) brightness(0.75) sepia(0.08)' },
-        { id: 'snow', name: 'Snow', icon: '❄️', desc: 'Arctic Whiteout', css: 'brightness(1.35) contrast(0.75) saturate(0.3) sepia(0.1) hue-rotate(190deg)' },
+    const [showVisionPanel, setShowVisionPanel] = useState(false);
+    // Per-mode sliders
+    const [vfxBloom, setVfxBloom] = useState(0);
+    const [vfxSharpen, setVfxSharpen] = useState(0);
+    const [vfxPanotopic, setVfxPanotopic] = useState(0);
+    const [vfxPixelation, setVfxPixelation] = useState(0);
+    const [vfxDistortion, setVfxDistortion] = useState(0);
+    const [vfxInstability, setVfxInstability] = useState(0);
+    // Mode presets (auto-applied when switching modes)
+    const visionPresets: Record<VisionMode, { bloom: number; sharpen: number; panotopic: number; pixelation: number; distortion: number; instability: number }> = {
+        normal:  { bloom: 0, sharpen: 0, panotopic: 0, pixelation: 0, distortion: 0, instability: 0 },
+        nvg:     { bloom: 15, sharpen: 25, panotopic: 0, pixelation: 0, distortion: 5, instability: 8 },
+        flir:    { bloom: 8, sharpen: 40, panotopic: 0, pixelation: 2, distortion: 0, instability: 3 },
+        anime:   { bloom: 30, sharpen: 50, panotopic: 5, pixelation: 0, distortion: 0, instability: 0 },
+        noir:    { bloom: 5, sharpen: 15, panotopic: 10, pixelation: 0, distortion: 3, instability: 12 },
+        snow:    { bloom: 20, sharpen: 0, panotopic: 15, pixelation: 0, distortion: 8, instability: 5 },
+    };
+    const visionModes: { id: VisionMode; name: string; icon: string; desc: string; css: string; accent: string }[] = [
+        { id: 'normal', name: 'Normal', icon: '👁', desc: 'Standard view', css: 'none', accent: '#8b5cf6' },
+        { id: 'nvg', name: 'NVG', icon: '🟢', desc: 'Night Vision Goggles', css: 'brightness(0.45) contrast(1.8) saturate(0) sepia(1) hue-rotate(80deg) saturate(4.5) brightness(0.75)', accent: '#00ff00' },
+        { id: 'flir', name: 'FLIR', icon: '🔥', desc: 'Forward-Looking IR', css: 'brightness(0.55) contrast(2.8) saturate(0) invert(0.92) hue-rotate(180deg) brightness(1.1)', accent: '#ff6b35' },
+        { id: 'anime', name: 'Anime', icon: '🌸', desc: 'Cel-Shaded Render', css: 'contrast(1.6) saturate(2.2) brightness(1.08) hue-rotate(-5deg)', accent: '#ec4899' },
+        { id: 'noir', name: 'Noir', icon: '🎬', desc: 'Film Noir B&W', css: 'grayscale(1) contrast(1.7) brightness(0.75) sepia(0.08)', accent: '#9ca3af' },
+        { id: 'snow', name: 'Snow', icon: '❄️', desc: 'Arctic Whiteout', css: 'brightness(1.35) contrast(0.75) saturate(0.3) sepia(0.1) hue-rotate(190deg)', accent: '#93c5fd' },
     ];
+    const switchVisionMode = useCallback((mode: VisionMode) => {
+        setVisionMode(mode);
+        const preset = visionPresets[mode];
+        setVfxBloom(preset.bloom); setVfxSharpen(preset.sharpen); setVfxPanotopic(preset.panotopic);
+        setVfxPixelation(preset.pixelation); setVfxDistortion(preset.distortion); setVfxInstability(preset.instability);
+        triggerTopLoader();
+    }, []);
+    // Build composite CSS filter from mode + sliders
+    const buildVisionFilter = useCallback((): string => {
+        const vm = visionModes.find(v => v.id === visionMode);
+        const parts: string[] = [];
+        if (vm && vm.css !== 'none') parts.push(vm.css);
+        if (vfxBloom > 0) parts.push(`brightness(${1 + vfxBloom * 0.004}) drop-shadow(0 0 ${vfxBloom * 0.3}px rgba(255,255,255,${vfxBloom * 0.004}))`);
+        if (vfxSharpen > 0) parts.push(`contrast(${1 + vfxSharpen * 0.006})`);
+        if (vfxPanotopic > 0) parts.push(`hue-rotate(${vfxPanotopic * 1.8}deg) saturate(${1 + vfxPanotopic * 0.008})`);
+        return parts.length > 0 ? parts.join(' ') : 'none';
+    }, [visionMode, vfxBloom, vfxSharpen, vfxPanotopic]);
     // Reset vision mode when 3D is deactivated
-    useEffect(() => { if (!active3D) setVisionMode('normal'); }, [active3D]);
+    useEffect(() => { if (!active3D) { setVisionMode('normal'); setShowVisionPanel(false); setVfxBloom(0); setVfxSharpen(0); setVfxPanotopic(0); setVfxPixelation(0); setVfxDistortion(0); setVfxInstability(0); } }, [active3D]);
 
     // ═══ CINEMA MODE ═══
     const [cinemaMode, setCinemaMode] = useState(false);
@@ -4650,6 +4684,7 @@ export default function MapIndex() {
                 if (svPicking) { setSvPicking(false); return; }
                 if (showVesselPanel) { setShowVesselPanel(false); return; }
                 if (showNFZPanel) { setShowNFZPanel(false); return; }
+                if (showVisionPanel) { setShowVisionPanel(false); return; }
                 if (routePlacing) { setRoutePlacing(false); return; }
                 if (showRoutePanel2) { setShowRoutePanel2(false); return; }
                 if (showObjectsPanel) { setShowObjectsPanel(false); return; }
@@ -5849,29 +5884,15 @@ export default function MapIndex() {
                             {/* Vision Modes (only when 3D active) */}
                             {active3D && <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
                                 <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Vision Mode</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-                                    {visionModes.map(vm => {
-                                        const isActive = visionMode === vm.id;
-                                        const accentColor = vm.id === 'nvg' ? '#00ff00' : vm.id === 'flir' ? '#ff6b35' : vm.id === 'anime' ? '#ec4899' : vm.id === 'noir' ? '#9ca3af' : vm.id === 'snow' ? '#93c5fd' : '#8b5cf6';
-                                        return <button key={vm.id} onClick={() => { setVisionMode(vm.id); triggerTopLoader(); }} style={{
-                                            display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3,
-                                            padding: '8px 4px', borderRadius: 6,
-                                            border: `1.5px solid ${isActive ? accentColor + '50' : theme.border}`,
-                                            background: isActive ? `${accentColor}10` : 'transparent',
-                                            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                                            position: 'relative' as const, overflow: 'hidden' as const,
-                                        }} onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = `${accentColor}06`; e.currentTarget.style.borderColor = `${accentColor}30`; }} onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = isActive ? `${accentColor}50` : theme.border; }}>
-                                            <span style={{ fontSize: 16, lineHeight: 1 }}>{vm.icon}</span>
-                                            <span style={{ fontSize: 9, fontWeight: 700, color: isActive ? accentColor : theme.text }}>{vm.name}</span>
-                                            <span style={{ fontSize: 7, color: theme.textDim, textAlign: 'center' as const, lineHeight: 1.2 }}>{vm.desc}</span>
-                                            {isActive && vm.id !== 'normal' && <div style={{ position: 'absolute' as const, top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: accentColor, boxShadow: `0 0 6px ${accentColor}` }} />}
-                                        </button>;
-                                    })}
-                                </div>
-                                {visionMode !== 'normal' && <div style={{ marginTop: 6, padding: '5px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', fontSize: 9, color: 'rgba(139,92,246,0.7)', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'space-between' }}>
-                                    <span>{visionModes.find(v => v.id === visionMode)?.icon} {visionModes.find(v => v.id === visionMode)?.name} mode active</span>
-                                    <button onClick={() => setVisionMode('normal')} style={{ padding: '2px 6px', borderRadius: 3, border: '1px solid rgba(139,92,246,0.2)', background: 'rgba(139,92,246,0.08)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: 'rgba(139,92,246,0.7)' }}>Reset</button>
-                                </div>}
+                                <button onClick={() => { setShowVisionPanel(true); triggerTopLoader(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1.5px solid ${visionMode !== 'normal' ? (visionModes.find(v => v.id === visionMode)?.accent || '#8b5cf6') + '40' : theme.border}`, background: visionMode !== 'normal' ? `${visionModes.find(v => v.id === visionMode)?.accent || '#8b5cf6'}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                                    <span style={{ fontSize: 16 }}>{visionModes.find(v => v.id === visionMode)?.icon || '👁'}</span>
+                                    <div style={{ flex: 1, textAlign: 'left' as const }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: visionMode !== 'normal' ? (visionModes.find(v => v.id === visionMode)?.accent || '#8b5cf6') : theme.text }}>Vision FX Panel</div>
+                                        <div style={{ fontSize: 8, color: theme.textDim }}>{visionMode !== 'normal' ? `${visionModes.find(v => v.id === visionMode)?.name} · Bloom ${vfxBloom}% · Sharp ${vfxSharpen}%` : 'Filters, effects & post-processing'}</div>
+                                    </div>
+                                    {visionMode !== 'normal' && <div style={{ width: 6, height: 6, borderRadius: '50%', background: visionModes.find(v => v.id === visionMode)?.accent, boxShadow: `0 0 6px ${visionModes.find(v => v.id === visionMode)?.accent}`, flexShrink: 0 }} />}
+                                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                                </button>
                             </div>}
 
                             {/* Satellite Tracking (Globe only) */}
@@ -6230,7 +6251,16 @@ export default function MapIndex() {
 
             {/* Map */}
             <div className="tmap-container" ref={mapContainerRef}>
-                {!webglFailed && <div ref={mapContainer} style={{ width: '100%', height: '100%', filter: visionMode !== 'normal' ? (visionModes.find(v => v.id === visionMode)?.css || 'none') : 'none', transition: 'filter 0.5s ease' }} />}
+                {!webglFailed && <div ref={mapContainer} style={{ width: '100%', height: '100%', filter: buildVisionFilter(), transition: 'filter 0.5s ease', imageRendering: vfxPixelation > 10 ? 'pixelated' as const : 'auto' as const }} />}
+
+                {/* Pixelation overlay (CSS pixel grid) */}
+                {vfxPixelation > 5 && <div style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 2, backdropFilter: `blur(${vfxPixelation * 0.08}px)`, background: `repeating-conic-gradient(rgba(0,0,0,${vfxPixelation * 0.002}) 0% 25%, transparent 0% 50%) 0 0 / ${Math.max(2, vfxPixelation * 0.6)}px ${Math.max(2, vfxPixelation * 0.6)}px` }} />}
+
+                {/* Distortion overlay (barrel/wave effect) */}
+                {vfxDistortion > 5 && <div className="tmap-vfx-distortion" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 2, background: `radial-gradient(ellipse at 50% 50%, transparent ${60 - vfxDistortion * 0.3}%, rgba(0,0,0,${vfxDistortion * 0.003}) 100%)`, backdropFilter: `blur(${vfxDistortion * 0.04}px)`, animation: vfxDistortion > 20 ? `tmap-vfx-warp ${Math.max(2, 10 - vfxDistortion * 0.08)}s ease-in-out infinite` : 'none' }} />}
+
+                {/* Instability overlay (flicker + jitter) */}
+                {vfxInstability > 3 && <div className="tmap-vfx-instability" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 2, opacity: vfxInstability * 0.006, background: 'rgba(255,255,255,0.03)', animation: `tmap-vfx-flicker ${Math.max(0.05, 0.3 - vfxInstability * 0.003)}s steps(${Math.min(8, 2 + Math.floor(vfxInstability / 10))}) infinite` }} />}
 
                 {/* Vision Mode Overlays */}
 
@@ -8031,6 +8061,95 @@ export default function MapIndex() {
                     </div>
                     </>}
                 </div>}
+
+                {/* ═══ VISION FX PANEL ═══ */}
+                {showVisionPanel && loaded && active3D && (() => {
+                    const curVm = visionModes.find(v => v.id === visionMode) || visionModes[0];
+                    const ac = curVm.accent;
+                    const sliderStyle = (color: string): React.CSSProperties => ({ width: '100%', height: 4, accentColor: color, cursor: 'pointer' });
+                    const SliderRow = ({ label, icon, value, onChange, color, unit }: { label: string; icon: string; value: number; onChange: (v: number) => void; color: string; unit?: string }) => (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
+                            <span style={{ fontSize: 11, width: 18, textAlign: 'center' as const }}>{icon}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                                    <span style={{ fontSize: 9, fontWeight: 700, color: value > 0 ? color : theme.textDim }}>{label}</span>
+                                    <span style={{ fontSize: 9, fontWeight: 800, color: value > 0 ? color : theme.textDim, fontFamily: "'JetBrains Mono',monospace" }}>{value}{unit || '%'}</span>
+                                </div>
+                                <input type="range" min="0" max="100" step="1" value={value} onChange={e => onChange(Number(e.target.value))} style={sliderStyle(color)} />
+                            </div>
+                        </div>
+                    );
+                    return <div data-panel="vision" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select')) bringToFront('vision'); }} style={panelStyle('vision', '380px', ac)}>
+                        <PanelHeader id="vision" icon={curVm.icon} title="Vision FX" subtitle={`${curVm.name}${visionMode !== 'normal' ? ' · Active' : ''}`} color={ac} onClose={() => setShowVisionPanel(false)} />
+                        <PanelResizeGrip id="vision" />
+                        {!isPanelMin('vision') && <>
+                        {/* Mode selector grid */}
+                        <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15` }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 6 }}>RENDER MODE</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 3 }}>
+                                {visionModes.map(vm => { const isSel = visionMode === vm.id; return <button key={vm.id} onClick={() => switchVisionMode(vm.id)} style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, padding: '6px 2px', borderRadius: 5, border: `1.5px solid ${isSel ? vm.accent + '60' : theme.border}`, background: isSel ? `${vm.accent}12` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s', position: 'relative' as const }}>
+                                    <span style={{ fontSize: 14, lineHeight: 1 }}>{vm.icon}</span>
+                                    <span style={{ fontSize: 7, fontWeight: 700, color: isSel ? vm.accent : theme.textDim }}>{vm.name}</span>
+                                    {isSel && vm.id !== 'normal' && <div style={{ position: 'absolute' as const, top: 2, right: 2, width: 4, height: 4, borderRadius: '50%', background: vm.accent, boxShadow: `0 0 4px ${vm.accent}` }} />}
+                                </button>; })}
+                            </div>
+                        </div>
+
+                        {/* Primary Filters */}
+                        <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15` }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 4 }}>PRIMARY FILTERS</div>
+                            <SliderRow label="Bloom" icon="💡" value={vfxBloom} onChange={setVfxBloom} color="#fbbf24" />
+                            <SliderRow label="Sharpen" icon="🔪" value={vfxSharpen} onChange={setVfxSharpen} color="#3b82f6" />
+                            <SliderRow label="Panotopic" icon="🌀" value={vfxPanotopic} onChange={setVfxPanotopic} color="#8b5cf6" />
+                        </div>
+
+                        {/* Advanced Parameters */}
+                        <div style={{ padding: '10px 14px', borderBottom: `1px solid ${theme.border}15` }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 4 }}>ADVANCED FX</div>
+                            <SliderRow label="Pixelation" icon="🔲" value={vfxPixelation} onChange={setVfxPixelation} color="#06b6d4" />
+                            <SliderRow label="Distortion" icon="🌊" value={vfxDistortion} onChange={setVfxDistortion} color="#f97316" />
+                            <SliderRow label="Instability" icon="⚡" value={vfxInstability} onChange={setVfxInstability} color="#ef4444" />
+                        </div>
+
+                        {/* Live preview meters */}
+                        <div style={{ padding: '8px 14px', borderBottom: `1px solid ${theme.border}15` }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 6 }}>SIGNAL ANALYSIS</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                                {[
+                                    { label: 'BLOOM', value: vfxBloom, color: '#fbbf24' },
+                                    { label: 'SHARP', value: vfxSharpen, color: '#3b82f6' },
+                                    { label: 'PANO', value: vfxPanotopic, color: '#8b5cf6' },
+                                    { label: 'PIXEL', value: vfxPixelation, color: '#06b6d4' },
+                                    { label: 'DIST', value: vfxDistortion, color: '#f97316' },
+                                    { label: 'INST', value: vfxInstability, color: '#ef4444' },
+                                ].map(m => <div key={m.label} style={{ textAlign: 'center' as const, padding: '4px 2px', borderRadius: 4, border: `1px solid ${m.value > 0 ? m.color + '30' : theme.border}`, background: m.value > 0 ? `${m.color}06` : 'transparent' }}>
+                                    <div style={{ height: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 1, marginBottom: 2 }}>
+                                        {[...Array(5)].map((_, i) => <div key={i} style={{ width: 3, height: Math.max(2, (m.value / 100) * 18 * (0.3 + (i / 5) * 0.7) + Math.random() * 2), borderRadius: 1, background: m.value > i * 20 ? m.color : `${theme.border}`, transition: 'height 0.2s', opacity: m.value > i * 20 ? 0.8 : 0.2 }} />)}
+                                    </div>
+                                    <div style={{ fontSize: 6, fontWeight: 700, color: m.value > 0 ? m.color : theme.textDim, fontFamily: "'JetBrains Mono',monospace" }}>{m.label}</div>
+                                    <div style={{ fontSize: 8, fontWeight: 800, color: m.value > 0 ? m.color : theme.textDim, fontFamily: "'JetBrains Mono',monospace" }}>{m.value}%</div>
+                                </div>)}
+                            </div>
+                        </div>
+
+                        {/* Quick actions */}
+                        <div style={{ padding: '8px 14px', display: 'flex', gap: 4, flexShrink: 0, borderBottom: `1px solid ${theme.border}15` }}>
+                            <button onClick={() => switchVisionMode('normal')} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: theme.textDim }}>🔄 Reset All</button>
+                            <button onClick={() => { const p = visionPresets[visionMode]; setVfxBloom(p.bloom); setVfxSharpen(p.sharpen); setVfxPanotopic(p.panotopic); setVfxPixelation(p.pixelation); setVfxDistortion(p.distortion); setVfxInstability(p.instability); }} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid ${ac}30`, background: `${ac}08`, cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: ac }}>📋 Preset</button>
+                            <button onClick={() => { setVfxBloom(0); setVfxSharpen(0); setVfxPanotopic(0); setVfxPixelation(0); setVfxDistortion(0); setVfxInstability(0); }} style={{ flex: 1, padding: '5px 0', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: theme.textDim }}>⊘ Zero FX</button>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                            <span style={{ fontSize: 8, color: theme.textDim }}>Post-Processing Pipeline</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <div style={{ width: 5, height: 5, borderRadius: '50%', background: visionMode !== 'normal' ? ac : '#6b7280', boxShadow: visionMode !== 'normal' ? `0 0 6px ${ac}60` : 'none' }} />
+                                <span style={{ fontSize: 9, color: ac, fontWeight: 600 }}>{curVm.name} · {6 - (visionMode === 'normal' ? 6 : 0)} FX layers</span>
+                            </div>
+                        </div>
+                        </>}
+                    </div>;
+                })()}
 
                 {/* ═══ NO FLY ZONES PANEL ═══ */}
                 {showNFZPanel && loaded && <div data-panel="nfz" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select')) bringToFront('nfz'); }} style={panelStyle('nfz', '400px', '#ef4444')}>

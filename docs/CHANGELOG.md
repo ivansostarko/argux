@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.25.73 - 2026-03-30
+
+### Implemented — Vision FX Panel with Post-Processing Sliders
+
+Full floating panel with 6 render modes, 6 real-time parameter sliders, live signal analysis meters, preset system, and layered CSS post-processing pipeline.
+
+#### Panel Layout (7 sections)
+1. **Render Mode** — 6-column grid: Normal, NVG, FLIR, Anime, Noir, Snow. Click to switch with auto-preset.
+2. **Primary Filters** — 3 sliders:
+   - 💡 **Bloom** (0–100%) — Brightness glow + drop-shadow. Makes lights bleed and glow.
+   - 🔪 **Sharpen** (0–100%) — Increased contrast for edge definition.
+   - 🌀 **Panotopic** (0–100%) — Hue rotation + saturation shift for psychedelic/surreal colors.
+3. **Advanced FX** — 3 sliders:
+   - 🔲 **Pixelation** (0–100%) — CSS pixel grid overlay + backdrop blur. At high values, `image-rendering: pixelated`.
+   - 🌊 **Distortion** (0–100%) — Barrel vignette + subtle blur + wave animation (>20%). Simulates lens/heat distortion.
+   - ⚡ **Instability** (0–100%) — Flicker/jitter overlay. Random opacity steps for signal degradation feel.
+4. **Signal Analysis** — 6 animated bar meters showing real-time values for each parameter.
+5. **Quick Actions** — Reset All (back to Normal), Preset (reload mode defaults), Zero FX (keep mode, zero all sliders).
+6. **Footer** — Mode name, active FX layer count, pipeline status indicator.
+
+#### How Sliders Work (CSS Pipeline)
+The map container's `filter` property is built dynamically by compositing:
+```
+filter: [mode base CSS] + [bloom brightness + drop-shadow] + [sharpen contrast] + [panotopic hue-rotate + saturate]
+```
+Plus 3 overlay divs stacked on top for effects that can't be done with CSS filters:
+- **Pixelation**: `repeating-conic-gradient` pixel grid + `backdrop-filter: blur` + `image-rendering: pixelated`
+- **Distortion**: Radial vignette darkening + subtle blur + CSS `scale/rotate` wave animation (>20%)
+- **Instability**: Random opacity flicker at variable speed, step-based animation
+
+#### Mode Presets (auto-applied on mode switch)
+| Mode | Bloom | Sharpen | Panotopic | Pixelation | Distortion | Instability |
+|---|---|---|---|---|---|---|
+| Normal | 0 | 0 | 0 | 0 | 0 | 0 |
+| NVG | 15 | 25 | 0 | 0 | 5 | 8 |
+| FLIR | 8 | 40 | 0 | 2 | 0 | 3 |
+| Anime | 30 | 50 | 5 | 0 | 0 | 0 |
+| Noir | 5 | 15 | 10 | 0 | 3 | 12 |
+| Snow | 20 | 0 | 15 | 0 | 8 | 5 |
+
+All sliders are fully adjustable after preset load — mix and match any combination.
+
+#### Sidebar Integration
+- Tiles section shows compact "Vision FX Panel" button when 3D is active
+- Shows current mode icon, name, and key slider values
+- Click opens the floating panel
+- Panel closes on Escape or ✕ button
+
 ## 0.25.72 - 2026-03-30
 
 ### Upgraded — Vision Modes: Cinematic CRT, NVG, FLIR, Cel-Shaded
