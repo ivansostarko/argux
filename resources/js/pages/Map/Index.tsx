@@ -4441,6 +4441,48 @@ export default function MapIndex() {
     const [activeTile, setActiveTile] = useState<TileId>('dark');
     const [active3D, setActive3D] = useState<TileId | null>(null);
 
+    // ═══ REGION QUICK NAV ═══
+    type RegionId = 'world' | 'europe' | 'americas' | 'middle_east' | 'asia_pacific' | 'africa';
+    const [activeRegion, setActiveRegion] = useState<RegionId>('world');
+    const regions: { id: RegionId; name: string; icon: string; lat: number; lng: number; zoom: number; globeZoom: number; bearing: number; pitch: number; desc: string }[] = [
+        { id: 'world',        name: 'World',        icon: '🌍', lat: 20,    lng: 15,    zoom: 2,   globeZoom: 1.5, bearing: 0,  pitch: 0,  desc: 'Global overview' },
+        { id: 'europe',       name: 'Europe',       icon: '🇪🇺', lat: 50,    lng: 15,    zoom: 4,   globeZoom: 3.5, bearing: 0,  pitch: 30, desc: '44 countries · 750M people' },
+        { id: 'americas',     name: 'Americas',     icon: '🌎', lat: 15,    lng: -80,   zoom: 3,   globeZoom: 2.5, bearing: 0,  pitch: 20, desc: 'North & South America' },
+        { id: 'middle_east',  name: 'Middle East',  icon: '🕌', lat: 29,    lng: 45,    zoom: 4.5, globeZoom: 4,   bearing: 0,  pitch: 35, desc: 'MENA region · 17 countries' },
+        { id: 'asia_pacific', name: 'Asia Pacific', icon: '🌏', lat: 20,    lng: 110,   zoom: 3.5, globeZoom: 3,   bearing: 0,  pitch: 20, desc: 'APAC · 4.3B people' },
+        { id: 'africa',       name: 'Africa',       icon: '🌍', lat: 2,     lng: 22,    zoom: 3.5, globeZoom: 3,   bearing: 0,  pitch: 15, desc: '54 countries · 1.4B people' },
+    ];
+
+    const flyToRegion = useCallback((regionId: RegionId) => {
+        const r = regions.find(rg => rg.id === regionId);
+        if (!r) return;
+        setActiveRegion(regionId);
+        triggerTopLoader();
+
+        const map = mapRef.current;
+        if (!map) return;
+
+        const isGlobe = !!map._isGlobe;
+        const targetZoom = isGlobe ? r.globeZoom : r.zoom;
+
+        // If Google 3D overlay is active, also move it
+        if (googleMapRef.current && active3D === '3d-realistic') {
+            try {
+                googleMapRef.current.moveCamera({ center: { lat: r.lat, lng: r.lng }, zoom: targetZoom });
+            } catch {}
+        }
+
+        // Fly the map
+        map.flyTo({
+            center: [r.lng, r.lat],
+            zoom: targetZoom,
+            bearing: r.bearing,
+            pitch: r.pitch,
+            duration: 2000,
+            essential: true,
+        });
+    }, [active3D, triggerTopLoader]);
+
     // ═══ 3D VISION MODES ═══
     type VisionMode = 'normal' | 'nvg' | 'flir' | 'anime' | 'noir' | 'snow';
     const [visionMode, setVisionMode] = useState<VisionMode>('normal');
@@ -6280,6 +6322,28 @@ export default function MapIndex() {
                     <div className={`tmap-section-wrap${dragSectionId === 'tiles' ? ' dragging' : ''}${dragOverId === 'tiles' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('tiles') }} onDragOver={e => handleSectionDragOver(e, 'tiles')} onDrop={() => handleSectionDrop('tiles')}>
                     <Section title="Tiles" icon={Ico.tiles} badge={active3D ? 1 : 0} dragHandle={dragHandleEl('tiles')}>
                         <div>
+                            {/* Region Quick Nav */}
+                            <div style={{ marginBottom: 12, borderBottom: `1px solid ${theme.border}`, paddingBottom: 10 }}>
+                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Region</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 3 }}>
+                                    {regions.map(r => {
+                                        const isSel = activeRegion === r.id;
+                                        return <button key={r.id} onClick={() => flyToRegion(r.id)} style={{
+                                            display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2,
+                                            padding: '6px 2px', borderRadius: 5,
+                                            border: `1.5px solid ${isSel ? '#f59e0b50' : theme.border}`,
+                                            background: isSel ? '#f59e0b0c' : 'transparent',
+                                            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s',
+                                            position: 'relative' as const,
+                                        }} onMouseEnter={e => { if (!isSel) { e.currentTarget.style.background = '#f59e0b06'; e.currentTarget.style.borderColor = '#f59e0b30'; } }} onMouseLeave={e => { if (!isSel) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; } }}>
+                                            <span style={{ fontSize: 16, lineHeight: 1 }}>{r.icon}</span>
+                                            <span style={{ fontSize: 8, fontWeight: 700, color: isSel ? '#f59e0b' : theme.text, lineHeight: 1 }}>{r.name}</span>
+                                            <span style={{ fontSize: 6, color: theme.textDim, lineHeight: 1.2, textAlign: 'center' as const }}>{r.desc}</span>
+                                            {isSel && r.id !== 'world' && <div style={{ position: 'absolute' as const, top: 2, right: 2, width: 4, height: 4, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 4px #f59e0b' }} />}
+                                        </button>;
+                                    })}
+                                </div>
+                            </div>
                             <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>2D Base Maps</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 12 }}>
                                 {tiles2D.map(t => { const isActive = activeTile === t.id; return (
