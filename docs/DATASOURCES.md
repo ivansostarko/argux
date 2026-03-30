@@ -1,29 +1,45 @@
-# Data Sources
-
+# External Data Sources
+   
 
 ## Global
+
 ### Maps
-- Google Maps API
--- 3D Live Tiles
--- Street View
-- https://ion.cesium.com/
+|  API           |Usage                            |URL                          |
+|----------------|-------------------------------|-----------------------------|
+|Google Maps API| 3D Live Tiles, Street View     |https://mapsplatform.google.com/lp/maps-apis/            |
+|Cesium          |3D terrain            |https://ion.cesium.com/            |
+|OverPass          |Traffic |https://overpass-api.de|
+|OSRM          |Traffic |https://router.project-osrm.org|
+|TOMTOM          |Traffic |https://api.tomtom.com/|
 
-
-### Traffic
-- https://overpass-api.de
-- https://router.project-osrm.org
-- https://api.tomtom.com/
 
 ### Vessel Locations
-- https://meri.digitraffic.fi
 
-### Airplanes
-- https://www.adsbexchange.com/
-- https://opensky-network.org/
+|  API           |Usage                            |URL                        |
+|----------------|-------------------------------|-----------------------------|
+|Finland government| Vessel locations     |https://meri.digitraffic.fi         |
+
+
+
+### Airplanes Tracking
+|  API           |Usage                            |URL                        |
+|----------------|-------------------------------|-----------------------------|
+|ADS BEex Exchange| Show airplanes     | https://www.adsbexchange.com/        |
+|Open Sky Network| Vessel locations     |https://opensky-network.org/         |
 
 
 ### Satellites
-- https://celestrak.org/
 
-### Weather 
-- https://archive-api.open-meteo.com
+|  API           |Usage                            |URL                        |
+|----------------|-------------------------------|-----------------------------|
+|Celestral| Show satelitte     | https://celestrak.org/       |
+
+ 
+
+### Weather
+
+|  API           |Usage                            |URL                        |
+|----------------|-------------------------------|-----------------------------|
+|Open Meteo| Weather Services     | https://archive-api.open-meteo.com         |
+ 
+
