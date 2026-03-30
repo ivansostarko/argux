@@ -241,4 +241,93 @@ class TrafficController extends Controller
 
         return '';
     }
+    /**
+     * Get road network geometry from OpenStreetMap Overpass API.
+     * GET /mock-api/traffic/roads?south=45.79&north=45.84&west=15.94&east=16.02
+     */
+    public function roads(Request $request): JsonResponse
+    {
+        $south = $request->float('south', 45.79);
+        $north = $request->float('north', 45.84);
+        $west = $request->float('west', 15.94);
+        $east = $request->float('east', 16.02);
+
+        // Clamp to max ~0.08° span (~8km) to avoid huge queries
+        $cLat = ($south + $north) / 2;
+        $cLng = ($west + $east) / 2;
+        if (($north - $south) > 0.08 || ($east - $west) > 0.1) {
+            $south = $cLat - 0.04; $north = $cLat + 0.04;
+            $west = $cLng - 0.05; $east = $cLng + 0.05;
+        }
+
+        $cacheKey = 'overpass_roads_' . md5(round($south, 3) . '_' . round($north, 3) . '_' . round($west, 3) . '_' . round($east, 3));
+
+        $data = Cache::remember($cacheKey, 600, function () use ($south, $north, $west, $east) {
+            return $this->fetchRoads($south, $north, $west, $east);
+        });
+
+        return response()->json($data);
+    }
+
+    private function fetchRoads(float $south, float $north, float $west, float $east): array
+    {
+        $bbox = "{$south},{$west},{$north},{$east}";
+
+        // Fetch major roads (motorway, trunk, primary, secondary, tertiary, residential)
+        $query = "[out:json][timeout:12];\n(\n"
+            . "way[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|residential|unclassified)$\"]({$bbox});\n"
+            . ");\nout geom 500;";
+
+        try {
+            $response = Http::timeout(12)
+                ->asForm()
+                ->post('https://overpass-api.de/api/interpreter', ['data' => $query]);
+
+            if (!$response->successful()) {
+                return ['roads' => [], 'source' => 'error'];
+            }
+
+            $body = $response->json();
+            $elements = $body['elements'] ?? [];
+
+            $roads = [];
+            foreach ($elements as $el) {
+                if (($el['type'] ?? '') !== 'way') continue;
+                $geom = $el['geometry'] ?? [];
+                if (count($geom) < 2) continue;
+
+                $tags = $el['tags'] ?? [];
+                $highway = $tags['highway'] ?? 'unclassified';
+                $name = $tags['name'] ?? '';
+                $lanes = (int)($tags['lanes'] ?? ($highway === 'motorway' ? 3 : ($highway === 'primary' ? 2 : 1)));
+                $maxspeed = (int)($tags['maxspeed'] ?? 0);
+                if (!$maxspeed) {
+                    $maxspeed = match($highway) {
+                        'motorway' => 130, 'trunk' => 90, 'primary' => 60,
+                        'secondary' => 50, 'tertiary' => 40, 'residential' => 30,
+                        default => 30,
+                    };
+                }
+                $oneway = in_array($tags['oneway'] ?? 'no', ['yes', '1', 'true']);
+
+                $coords = array_map(fn($pt) => [round($pt['lon'], 6), round($pt['lat'], 6)], $geom);
+
+                $roads[] = [
+                    'id' => $el['id'],
+                    'coords' => $coords,
+                    'highway' => $highway,
+                    'name' => $name,
+                    'lanes' => $lanes,
+                    'maxspeed' => $maxspeed,
+                    'oneway' => $oneway,
+                ];
+            }
+
+            Log::info('Overpass roads fetched', ['count' => count($roads), 'bbox' => $bbox]);
+            return ['roads' => $roads, 'source' => 'osm', 'count' => count($roads)];
+        } catch (\Exception $e) {
+            Log::error('Overpass roads failed', ['error' => $e->getMessage()]);
+            return ['roads' => [], 'source' => 'error', 'error' => $e->getMessage()];
+        }
+    }
 }

@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.25.66 - 2026-03-30
+
+### Upgraded — 3D Traffic Vehicles on Real Streets (OpenStreetMap)
+
+Complete rewrite. Vehicles now drive **only on actual streets** fetched from OpenStreetMap Overpass API. Hundreds of 3D vehicles populate every road in the viewport — motorways, primary roads, residential streets — creating a realistic real-time traffic simulation.
+
+#### Real Road Data from OpenStreetMap
+- `GET /mock-api/traffic/roads?south=&north=&west=&east=` — fetches road geometries from Overpass API
+- Returns road LineStrings with: highway type, name, lanes, maxspeed, oneway flag
+- Queries: motorway, trunk, primary, secondary, tertiary, residential, unclassified
+- Viewport clamped to ~8km to avoid huge queries. 10-minute cache per area.
+- Falls back to 15 mock segments if Overpass is unreachable.
+
+#### Vehicle Density by Road Type
+| Road Type | Vehicles per 100m | Speed | Trucks/Buses |
+|---|---|---|---|
+| Motorway | 8 | 130 km/h | Yes |
+| Trunk | 6 | 90 km/h | Yes |
+| Primary | 5 | 60 km/h | Yes |
+| Secondary | 4 | 50 km/h | Yes |
+| Tertiary | 3 | 40 km/h | Yes |
+| Residential | 1.5 | 30 km/h | No trucks/buses |
+| Unclassified | 1 | 30 km/h | No trucks/buses |
+
+#### 14 Vehicle Types
+Sedans (silver, red, blue, black, white), SUVs (grey, white), Trucks (grey, yellow), Bus (green), Vans (white, blue), Pickup, Motorcycle. Each with correct dimensions and speed modifiers.
+
+#### Live Traffic Speed Integration
+- With TomTom API key: samples 20 road midpoints for real current speed
+- Vehicle animation speed derived from actual km/h
+- Without API key: speeds randomized at 40-90% of road maxspeed (simulates congestion)
+
+#### Auto-Refresh
+- Roads re-fetched when map viewport changes (moveend event)
+- Vehicles re-spawned on new roads automatically
+- TomTom speeds refresh every 2 minutes
+
+#### Network Domain Required
+`overpass-api.de` must be in network allowed domains for real road geometry.
+
 ## 0.25.65 - 2026-03-30
 
 ### Upgraded — True 3D Extruded Traffic Vehicles
