@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.25.84 - 2026-03-30
+
+### Optimized — All Major Marker Systems: DOM → WebGL
+
+Converted all 6 high-volume marker systems from DOM elements to WebGL-rendered circle/symbol layers with rAF-driven `setData()` updates. Total elimination of ~160 DOM marker elements.
+
+#### Converted Systems
+
+| System | DOM Markers (before) | WebGL Layers (after) | Update Method |
+|---|---|---|---|
+| **Source Markers** (cameras, GPS, phones, audio, apps) | ~40 `<div>` + `Marker()` | `src-clusters`, `src-cluster-count`, `src-points`, `src-status-ring` | `setData()` on toggle |
+| **LPR Sightings** | ~10 `<div>` + `Marker()` | `lpr-circles`, `lpr-labels`, `lpr-routes-line` | `setData()` on filter |
+| **Face Matches** | ~10 `<div>` + `Marker()` | `face-circles`, `face-labels` | `setData()` on filter |
+| **Vessels** (Digitraffic AIS) | ~18 SVG + rAF `setLngLat` | `vessel-circles`, `vessel-heading`, `vessel-labels` | rAF → `setData()` |
+| **Flights** (OpenSky) | ~50 SVG + rAF `setLngLat` | `flight-circles`, `flight-labels` | rAF → `setData()` |
+| **Satellites** (CelesTrak) | ~30 SVG + rAF `setLngLat` | `sat-circles`, `sat-labels` | rAF → `setData()` |
+
+**Total: ~160 DOM elements → 0** (all WebGL-rendered)
+
+#### Performance Gains
+- **Zero DOM markers** for the 6 major systems — all rendering is GPU-accelerated via WebGL
+- **Clustering** on source markers (cluster at zoom < 14, radius 40px) — dozens of nearby markers collapse into a single cluster dot
+- **Single `setData()` call** per update cycle instead of individual `marker.setLngLat()` per marker
+- **rAF loops preserved** for flights/satellites/vessels (real-time position updates) but now update a GeoJSON source instead of moving DOM elements
+- **Popup on-demand only** — rich HTML popups created only when a feature is clicked, not pre-rendered for all markers
+- **No collision detection overhead** — circle layers don't need expensive text placement calculations
+
+#### What's Preserved
+- All click popups with full detail (video/audio players, person profiles, risk badges, links)
+- Color coding by type/status/risk
+- Route lines between LPR sightings of same plate
+- Flight category colors (commercial=blue, cargo=amber, military=red, etc.)
+- Vessel type colors (cargo=blue, tanker=orange, passenger=purple, etc.)
+- Satellite category colors with debris at reduced opacity
+- Status indicators (online/degraded/offline)
+
+#### Remaining DOM Markers (14 — low-count, intentional)
+Street View pegman (1), live tracker (1), timeline markers (2), network nodes (1, draggable), POI markers (1), route waypoints (1, draggable), weather marker (1), UAV drones (2), traffic incidents (1), map objects (1, draggable). These are single-instance or require drag interactivity.
+
+#### File Size Reduction
+- Before: 10,749 lines → After: 10,546 lines (−203 lines)
+- Removed: `createFlightMarkerEl`, `createSatMarkerEl` factory functions (complex DOM builders)
+- Removed: All `forEach` DOM marker creation loops for 6 systems
+
 ## 0.25.83 - 2026-03-30
 
 ### Optimized — Map Source Markers: DOM → WebGL + Clustering

@@ -3189,337 +3189,189 @@ export default function MapIndex() {
         return () => { networkMarkersRef.current.forEach(m => m.remove()); networkMarkersRef.current = []; };
     }, [layerNetwork, networkShowPersons, networkShowOrgs, networkShowDevices, netSearch, netEdgeFilters, netStrengthMin, netIsolatedEdge, netFocusNode, netShowLabels, loaded]);
 
-    // LPR markers on map
-    const lprMarkersRef = useRef<any[]>([]);
+    // LPR markers on map — WebGL circle layer (replaces DOM markers)
+    const lprMarkersRef = useRef<any[]>([]); // kept empty for compat
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !loaded) return;
-        lprMarkersRef.current.forEach(m => m.remove());
-        lprMarkersRef.current = [];
         const ml = (window as any).maplibregl;
-        if (!ml || !layerLPR) return;
 
-        let lprFiltered = timelineActive ? mockLPR.filter(l => new Date(l.timestamp.replace(' ', 'T')).getTime() <= tlCursorMs) : mockLPR;
-        if (lprSelected.size > 0) lprFiltered = lprFiltered.filter(l => lprSelected.has(l.id));
-        lprFiltered = lprFiltered.filter(l => !lprHidden.has(l.id));
-        if (lprSearch.trim()) { const q = lprSearch.toLowerCase(); lprFiltered = lprFiltered.filter(l => l.plate.toLowerCase().includes(q) || l.personName.toLowerCase().includes(q) || l.cameraName.toLowerCase().includes(q) || (l.orgName || '').toLowerCase().includes(q)); }
+        // Cleanup layers
+        ['lpr-circles', 'lpr-labels', 'lpr-routes-line'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+        try { if (map.getSource('lpr-src')) map.removeSource('lpr-src'); } catch {}
+        try { if (map.getSource('lpr-routes')) map.removeSource('lpr-routes'); } catch {}
 
-        const platePhoto = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/registration_plate.jpg';
-        const ownerPhoto = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg';
-        const lprLineFeats: any[] = [];
-        lprFiltered.forEach(lpr => {
-            const v = mockVehicles.find(vv => vv.id === lpr.vehicleId);
-            const riskColor = lpr.personId === 0 ? '#6b7280' : (mockPersons.find(p => p.id === lpr.personId)?.risk === 'Critical' ? '#ef4444' : '#f97316');
-            const confColor = lpr.confidence >= 95 ? '#22c55e' : lpr.confidence >= 85 ? '#f59e0b' : '#ef4444';
-            const wrapper = document.createElement('div');
-            wrapper.className = 'tmap-marker-source';
-            wrapper.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:visible;';
-            const inner = document.createElement('div');
-            inner.className = 'tmap-marker-inner tmap-tl-event-dot';
-            inner.style.cssText = `width:30px;height:22px;border-radius:4px;border:2.5px solid #10b981;background:url(${platePhoto}) center/cover;box-shadow:0 0 10px #10b98140,0 2px 8px rgba(0,0,0,0.5);position:relative;overflow:visible;`;
-            const badge = document.createElement('div');
-            badge.style.cssText = `position:absolute;bottom:-4px;right:-4px;min-width:16px;height:12px;border-radius:6px;background:${confColor};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;padding:0 2px;pointer-events:none;`;
-            badge.innerHTML = `<span style="font-size:6px;font-weight:900;color:#fff;line-height:1">${Math.round(lpr.confidence)}%</span>`;
-            inner.appendChild(badge);
-            const sevDot = document.createElement('div');
-            sevDot.style.cssText = `position:absolute;top:-2px;left:-2px;width:8px;height:8px;border-radius:50%;background:${riskColor};border:1.5px solid rgba(13,18,32,0.9);pointer-events:none;`;
-            inner.appendChild(sevDot);
-            wrapper.appendChild(inner);
-            const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([lpr.lng, lpr.lat]).addTo(map);
+        if (!layerLPR) return;
 
-            wrapper.addEventListener('click', (e: Event) => {
-                e.stopPropagation();
-                const addr = mockAddress(lpr.lat, lpr.lng);
-                const ago = timeAgo(lpr.timestamp);
-                const occ = mockLPR.filter(l => l.plate === lpr.plate).length;
-                const popup = new ml.Popup({ offset: 16, maxWidth: '300px', className: 'tmap-popup' }).setLngLat([lpr.lng, lpr.lat]).setHTML(`<div class="tmap-popup-card">
-                    <div style="position:relative;border-bottom:1px solid var(--ax-border)">
-                        <img src="${platePhoto}" class="tmap-lpr-plate-photo" style="width:100%;height:80px;object-fit:cover;display:block;cursor:zoom-in;" />
-                        <div style="position:absolute;bottom:6px;left:8px;font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.8);letter-spacing:0.06em">${lpr.plate}</div>
-                        <div style="position:absolute;top:6px;right:6px;display:flex;gap:3px">
-                            <span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:${confColor};backdrop-filter:blur(4px)">${lpr.confidence}%</span>
-                            <span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:#10b981;backdrop-filter:blur(4px)">LPR</span>
-                        </div>
-                    </div>
-                    <div class="tmap-popup-header" style="gap:8px">
-                        <div class="tmap-lpr-owner-photo" style="width:36px;height:36px;border-radius:50%;border:2.5px solid ${riskColor};background:url(${ownerPhoto}) center/cover;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;cursor:zoom-in" data-lightbox="${ownerPhoto}"></div>
-                        <div class="tmap-popup-hinfo">
-                            <div class="tmap-popup-name" style="font-size:12px;font-family:'JetBrains Mono',monospace;letter-spacing:0.04em">${lpr.plate}</div>
-                            <div style="font-size:10px;color:var(--ax-text-sec);margin-top:1px">${lpr.personId > 0 ? `<a href="/persons/${lpr.personId}" style="color:var(--ax-accent);text-decoration:none">${lpr.personName}</a>` : lpr.personName}${lpr.orgName ? ` · <a href="/organizations/${lpr.orgId}" style="color:var(--ax-accent);text-decoration:none">${lpr.orgName}</a>` : ''}</div>
-                        </div>
-                    </div>
-                    <div class="tmap-popup-grid">
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${lpr.timestamp} <span style="color:var(--ax-text-dim);font-size:9px">(${ago})</span></span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">🎯 Confidence</span><span class="tmap-popup-val" style="color:${confColor};font-weight:700">${lpr.confidence}%</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">⚠️ Risk</span><span class="tmap-popup-val" style="color:${riskColor};font-weight:600">${v?.risk || 'Unknown'}</span></div>
-                        ${occ > 1 ? `<div class="tmap-popup-row"><span class="tmap-popup-label">📊 Occurrences</span><span class="tmap-popup-val">${occ} sightings</span></div>` : ''}
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Speed</span><span class="tmap-popup-val">${lpr.direction} at ${lpr.speed} km/h</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">🚙 Vehicle</span><span class="tmap-popup-val">${v ? `${v.type} · ${v.make} ${v.model} · ${v.color}` : '—'}</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val"><a href="/devices/${lpr.cameraId}" style="color:var(--ax-accent);text-decoration:none">${lpr.cameraName}</a></span></div>
-                    </div>
-                    ${v ? `<div style="padding:4px 14px 8px;display:flex;gap:6px"><a href="/vehicles/${v.id}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:5px;border-radius:5px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);color:#10b981;font-size:9px;font-weight:700;text-decoration:none;font-family:inherit">🚗 Vehicle Details</a>${lpr.personId > 0 ? `<a href="/persons/${lpr.personId}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:5px;border-radius:5px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);color:var(--ax-accent);font-size:9px;font-weight:700;text-decoration:none;font-family:inherit">👤 Person</a>` : ''}</div>` : ''}
-                    <div class="tmap-popup-coords">${lpr.lat.toFixed(5)}, ${lpr.lng.toFixed(5)}</div>
-                </div>`).addTo(map);
-                setTimeout(() => {
-                    const el = popup.getElement();
-                    el?.querySelectorAll('.tmap-lpr-plate-photo').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setTlLightbox(platePhoto); }); });
-                    el?.querySelectorAll('.tmap-lpr-owner-photo').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setTlLightbox(img.getAttribute('data-lightbox')); }); });
-                }, 50);
-            });
-
-            wrapper.addEventListener('contextmenu', (e: Event) => {
-                e.preventDefault(); e.stopPropagation();
-                const me = e as MouseEvent;
-                const rect = mapContainer.current?.getBoundingClientRect();
-                if (rect) setTlMarkerCtx({ x: me.clientX - rect.left, y: me.clientY - rect.top, ev: { id: lpr.id, type: 'lpr', icon: '🚗', title: `LPR: ${lpr.plate}`, sub: lpr.cameraName, ts: lpr.timestamp, lat: lpr.lat, lng: lpr.lng, sev: lpr.confidence >= 95 ? 'high' : 'medium', color: '#10b981', personId: lpr.personId, personName: lpr.personName, orgId: lpr.orgId, orgName: lpr.orgName, photoUrl: platePhoto, cameraId: lpr.cameraId, cameraName: lpr.cameraName, vehicleId: lpr.vehicleId, plate: lpr.plate } });
-            });
-
-            lprMarkersRef.current.push(marker);
-            const samePlate = lprFiltered.filter(l => l.plate === lpr.plate);
-            const idx = samePlate.indexOf(lpr);
-            if (idx < samePlate.length - 1) {
-                const next = samePlate[idx + 1];
-                lprLineFeats.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lpr.lng, lpr.lat], [next.lng, next.lat]] }, properties: { color: '#10b981', width: 2 } });
-            }
+        // Build filtered sightings
+        const visible = mockLPR.filter((ev: LPRSighting) => {
+            if (lprHidden.has(ev.id)) return false;
+            if (lprSelected.size > 0 && !lprSelected.has(ev.id)) return false;
+            if (lprSearch) { const s = lprSearch.toLowerCase(); if (!ev.plate.toLowerCase().includes(s) && !ev.personName.toLowerCase().includes(s) && !ev.cameraName.toLowerCase().includes(s)) return false; }
+            return true;
         });
-        const geojson: any = { type: 'FeatureCollection', features: lprLineFeats };
-        try {
-            if (map.getSource('lpr-routes')) { (map.getSource('lpr-routes') as any).setData(geojson); }
-            else { map.addSource('lpr-routes', { type: 'geojson', data: geojson }); map.addLayer({ id: 'lpr-routes-line', type: 'line', source: 'lpr-routes', paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [4, 3] } }); }
-        } catch {}
-        return () => { lprMarkersRef.current.forEach(m => m.remove()); lprMarkersRef.current = []; try { if (map.getLayer('lpr-routes-line')) map.removeLayer('lpr-routes-line'); if (map.getSource('lpr-routes')) map.removeSource('lpr-routes'); } catch {} };
+
+        const features = visible.map((ev: LPRSighting) => ({
+            type: 'Feature' as const,
+            geometry: { type: 'Point' as const, coordinates: [ev.lng, ev.lat] },
+            properties: { id: ev.id, plate: ev.plate, personName: ev.personName, personId: ev.personId, orgName: ev.orgName || '', cameraName: ev.cameraName, confidence: ev.confidence, speed: ev.speed, direction: ev.direction, timestamp: ev.timestamp, photoUrl: ev.photoUrl, risk: ev.personId > 0 ? (mockPersons.find(p => p.id === ev.personId)?.risk || 'Unknown') : 'Unknown' },
+        }));
+
+        const fc: any = { type: 'FeatureCollection', features };
+        map.addSource('lpr-src', { type: 'geojson', data: fc });
+        map.addLayer({ id: 'lpr-circles', type: 'circle', source: 'lpr-src', paint: {
+            'circle-radius': ['interpolate', ['linear'], ['get', 'confidence'], 85, 5, 95, 8, 100, 10],
+            'circle-color': '#10b981', 'circle-opacity': 0.8,
+            'circle-stroke-width': 2, 'circle-stroke-color': '#fff', 'circle-stroke-opacity': 0.5,
+        }});
+        map.addLayer({ id: 'lpr-labels', type: 'symbol', source: 'lpr-src', layout: {
+            'text-field': ['get', 'plate'], 'text-size': 9, 'text-offset': [0, 1.5], 'text-anchor': 'top',
+            'text-allow-overlap': false, 'text-font': ['Open Sans Bold'],
+        }, paint: { 'text-color': '#10b981', 'text-halo-color': 'rgba(0,0,0,0.8)', 'text-halo-width': 1 } });
+
+        // Route lines between sightings of same plate
+        const plates = new Map<string, typeof visible>();
+        visible.forEach((ev: LPRSighting) => { const arr = plates.get(ev.plate) || []; arr.push(ev); plates.set(ev.plate, arr); });
+        const routeFeatures: any[] = [];
+        plates.forEach((evts, plate) => {
+            if (evts.length < 2) return;
+            const sorted = [...evts].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+            routeFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: sorted.map(e => [e.lng, e.lat]) }, properties: { plate, color: '#10b981' } });
+        });
+        if (routeFeatures.length > 0) {
+            map.addSource('lpr-routes', { type: 'geojson', data: { type: 'FeatureCollection', features: routeFeatures } });
+            map.addLayer({ id: 'lpr-routes-line', type: 'line', source: 'lpr-routes', paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [4, 3] } });
+        }
+
+        // Click popup
+        map.on('click', 'lpr-circles', (e: any) => {
+            const f = e.features?.[0]; if (!f || !ml) return;
+            const p = f.properties; const c = f.geometry.coordinates.slice();
+            const riskColor = p.risk === 'Critical' ? '#ef4444' : p.risk === 'High' ? '#f97316' : p.risk === 'Medium' ? '#f59e0b' : '#6b7280';
+            const addr = mockAddress(c[1], c[0]);
+            const html = `<div class="tmap-popup-card"><div style="position:relative;border-bottom:1px solid var(--ax-border)"><img src="${p.photoUrl}" style="width:100%;height:80px;object-fit:cover;display:block" /><div style="position:absolute;bottom:6px;left:6px;font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.8);letter-spacing:0.06em">${p.plate}</div><div style="position:absolute;top:6px;right:6px"><span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:#10b981;backdrop-filter:blur(4px)">${p.confidence}%</span></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">👤 Owner</span><span class="tmap-popup-val">${p.personId > 0 ? `<a href="/persons/${p.personId}" style="color:var(--ax-accent);text-decoration:none">${p.personName}</a>` : p.personName}${p.orgName ? ` · ${p.orgName}` : ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${p.timestamp}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Speed</span><span class="tmap-popup-val">${p.direction} at ${p.speed} km/h</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val">${p.cameraName}</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(5)}, ${c[0].toFixed(5)}</div></div>`;
+            new ml.Popup({ maxWidth: '300px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+        });
+        map.on('mouseenter', 'lpr-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'lpr-circles', () => { map.getCanvas().style.cursor = ''; });
+        return () => { try { map.off("click", "lpr-circles"); map.off("mouseenter", "lpr-circles"); map.off("mouseleave", "lpr-circles"); } catch {} };
     }, [layerLPR, loaded, timelineActive, tlCursorMs, lprSelected, lprHidden, lprSearch]);
 
-    // Face Recognition markers on map
-    const faceMarkersRef = useRef<any[]>([]);
+    // Face Recognition markers — WebGL circle layer (replaces DOM markers)
+    const faceMarkersRef = useRef<any[]>([]); // kept empty for compat
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !loaded) return;
-        faceMarkersRef.current.forEach(m => m.remove());
-        faceMarkersRef.current = [];
         const ml = (window as any).maplibregl;
-        if (!ml || !layerFace) return;
-        let faceFiltered = timelineActive ? mockFaces.filter(f => new Date(f.timestamp.replace(' ', 'T')).getTime() <= tlCursorMs) : mockFaces;
-        // Apply selection filter (empty = show all)
-        if (faceSelected.size > 0) faceFiltered = faceFiltered.filter(f => faceSelected.has(f.id));
-        // Apply hidden filter
-        faceFiltered = faceFiltered.filter(f => !faceHidden.has(f.id));
-        // Apply search
-        if (faceSearch.trim()) { const q = faceSearch.toLowerCase(); faceFiltered = faceFiltered.filter(f => f.personName.toLowerCase().includes(q) || f.cameraName.toLowerCase().includes(q)); }
 
-        faceFiltered.forEach(fr => {
-            const confColor = fr.confidence >= 90 ? '#22c55e' : fr.confidence >= 75 ? '#f59e0b' : fr.personId === 0 ? '#ef4444' : '#6b7280';
-            const riskColor = fr.risk === 'Critical' ? '#ef4444' : fr.risk === 'High' ? '#f97316' : fr.risk === 'Medium' ? '#f59e0b' : '#6b7280';
-            const capturePhoto = 'https://pub-2e7e3882ee034cce979b62fe0ff27780.r2.dev/photo.jpg';
-            const wrapper = document.createElement('div');
-            wrapper.className = 'tmap-marker-source';
-            wrapper.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:visible;';
-            const inner = document.createElement('div');
-            inner.className = 'tmap-marker-inner tmap-tl-event-dot';
-            inner.style.cssText = `width:30px;height:30px;border-radius:50%;border:2.5px solid ${riskColor};background:url(${capturePhoto}) center/cover;box-shadow:0 0 10px ${riskColor}40,0 2px 8px rgba(0,0,0,0.5);position:relative;overflow:visible;`;
-            // Confidence badge
-            const badge = document.createElement('div');
-            badge.style.cssText = `position:absolute;bottom:-3px;right:-3px;min-width:16px;height:12px;border-radius:6px;background:${confColor};border:1.5px solid rgba(13,18,32,0.9);display:flex;align-items:center;justify-content:center;padding:0 2px;pointer-events:none;`;
-            badge.innerHTML = `<span style="font-size:6px;font-weight:900;color:#fff;line-height:1">${fr.confidence > 0 ? Math.round(fr.confidence) : '?'}%</span>`;
-            inner.appendChild(badge);
-            // Risk dot
-            const sevDot = document.createElement('div');
-            sevDot.style.cssText = `position:absolute;top:-2px;left:-2px;width:8px;height:8px;border-radius:50%;background:${riskColor};border:1.5px solid rgba(13,18,32,0.9);pointer-events:none;`;
-            inner.appendChild(sevDot);
-            wrapper.appendChild(inner);
-            const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([fr.lng, fr.lat]).addTo(map);
+        ['face-circles', 'face-labels'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+        try { if (map.getSource('face-src')) map.removeSource('face-src'); } catch {}
 
-            // Click → rich popup with photo + lightbox
-            wrapper.addEventListener('click', (e: Event) => {
-                e.stopPropagation();
-                const addr = mockAddress(fr.lat, fr.lng);
-                const ago = timeAgo(fr.timestamp);
-                const occ = mockFaces.filter(f => f.personId === fr.personId && fr.personId > 0).length;
-                const popup = new ml.Popup({ offset: 18, maxWidth: '300px', className: 'tmap-popup' }).setLngLat([fr.lng, fr.lat]).setHTML(`<div class="tmap-popup-card">
-                    <div style="position:relative;border-bottom:1px solid var(--ax-border)">
-                        <img src="${capturePhoto}" class="tmap-fr-photo" style="width:100%;height:100px;object-fit:cover;display:block;cursor:zoom-in;" />
-                        <div style="position:absolute;top:6px;right:6px;display:flex;gap:3px">
-                            <span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:${riskColor};backdrop-filter:blur(4px)">${fr.risk}</span>
-                            <span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:${confColor};backdrop-filter:blur(4px)">${fr.confidence}%</span>
-                        </div>
-                    </div>
-                    <div class="tmap-popup-header" style="gap:8px">
-                        <div class="tmap-fr-avatar" style="width:36px;height:36px;border-radius:50%;border:2.5px solid ${riskColor};background:${fr.personAvatar ? `url(${fr.personAvatar}) center/cover` : 'rgba(13,18,32,0.9)'};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;cursor:${fr.personAvatar ? 'zoom-in' : 'default'}" ${fr.personAvatar ? `data-lightbox="${fr.personAvatar}"` : ''}>${fr.personAvatar ? '' : '👤'}</div>
-                        <div class="tmap-popup-hinfo">
-                            <div class="tmap-popup-name" style="font-size:12px">${fr.personId > 0 ? `<a href="/persons/${fr.personId}" style="color:var(--ax-accent);text-decoration:none">${fr.personName}</a>` : fr.personName}</div>
-                            <div class="tmap-popup-meta">
-                                <span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${fr.risk}</span>
-                                <span style="font-size:8px;font-weight:600;padding:1px 5px;border-radius:3px;background:#ec489915;color:#ec4899;border:1px solid #ec489930">FACE</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tmap-popup-grid">
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${fr.timestamp} <span style="color:var(--ax-text-dim);font-size:9px">(${ago})</span></span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">🎯 Confidence</span><span class="tmap-popup-val" style="color:${confColor};font-weight:700">${fr.confidence}%</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">⚠️ Risk</span><span class="tmap-popup-val" style="color:${riskColor};font-weight:600">${fr.risk}</span></div>
-                        ${occ > 1 ? `<div class="tmap-popup-row"><span class="tmap-popup-label">📊 Occurrences</span><span class="tmap-popup-val">${occ} captures in period</span></div>` : ''}
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">😐 Emotion</span><span class="tmap-popup-val">${fr.emotion}</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">👕 Wearing</span><span class="tmap-popup-val">${fr.wearing}</span></div>
-                        <div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val"><a href="/devices/${fr.cameraId}" style="color:var(--ax-accent);text-decoration:none">${fr.cameraName}</a></span></div>
-                    </div>
-                    <div class="tmap-popup-coords">${fr.lat.toFixed(5)}, ${fr.lng.toFixed(5)}</div>
-                </div>`).addTo(map);
-                // Wire lightbox clicks
-                setTimeout(() => {
-                    const el = popup.getElement();
-                    el?.querySelectorAll('.tmap-fr-photo').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setTlLightbox(capturePhoto); }); });
-                    el?.querySelectorAll('.tmap-fr-avatar[data-lightbox]').forEach((img: any) => { img.addEventListener('click', (pe: Event) => { pe.stopPropagation(); setTlLightbox(img.getAttribute('data-lightbox')); }); });
-                }, 50);
-            });
+        if (!layerFace) return;
 
-            // Right-click → context menu
-            wrapper.addEventListener('contextmenu', (e: Event) => {
-                e.preventDefault(); e.stopPropagation();
-                const me = e as MouseEvent;
-                const rect = mapContainer.current?.getBoundingClientRect();
-                if (rect) setTlMarkerCtx({ x: me.clientX - rect.left, y: me.clientY - rect.top, ev: { id: fr.id, type: 'face', icon: '🧑‍🦲', title: `Face: ${fr.personName}`, sub: fr.cameraName, ts: fr.timestamp, lat: fr.lat, lng: fr.lng, sev: fr.risk === 'Critical' ? 'critical' : 'high', color: '#ec4899', personId: fr.personId, personName: fr.personName, photoUrl: capturePhoto, cameraId: fr.cameraId, cameraName: fr.cameraName } });
-            });
-
-            faceMarkersRef.current.push(marker);
+        const visible = mockFaces.filter((fr: FaceMatch) => {
+            if (faceHidden.has(fr.id)) return false;
+            if (faceSelected.size > 0 && !faceSelected.has(fr.id)) return false;
+            if (faceSearch) { const s = faceSearch.toLowerCase(); if (!fr.personName.toLowerCase().includes(s) && !fr.cameraName.toLowerCase().includes(s)) return false; }
+            return true;
         });
-        return () => { faceMarkersRef.current.forEach(m => m.remove()); faceMarkersRef.current = []; };
+
+        const features = visible.map((fr: FaceMatch) => ({
+            type: 'Feature' as const,
+            geometry: { type: 'Point' as const, coordinates: [fr.lng, fr.lat] },
+            properties: { id: fr.id, personId: fr.personId, personName: fr.personName, personAvatar: fr.personAvatar, risk: fr.risk, confidence: fr.confidence, cameraName: fr.cameraName, cameraId: fr.cameraId, timestamp: fr.timestamp, emotion: fr.emotion, wearing: fr.wearing, riskColor: fr.risk === 'Critical' ? '#ef4444' : fr.risk === 'High' ? '#f97316' : fr.risk === 'Medium' ? '#f59e0b' : '#6b7280' },
+        }));
+
+        const fc: any = { type: 'FeatureCollection', features };
+        map.addSource('face-src', { type: 'geojson', data: fc });
+        map.addLayer({ id: 'face-circles', type: 'circle', source: 'face-src', paint: {
+            'circle-radius': ['interpolate', ['linear'], ['get', 'confidence'], 70, 5, 90, 8, 100, 11],
+            'circle-color': '#ec4899', 'circle-opacity': 0.8,
+            'circle-stroke-width': 2, 'circle-stroke-color': ['get', 'riskColor'], 'circle-stroke-opacity': 0.7,
+        }});
+        map.addLayer({ id: 'face-labels', type: 'symbol', source: 'face-src', layout: {
+            'text-field': ['concat', ['get', 'personName'], ' ', ['to-string', ['get', 'confidence']], '%'],
+            'text-size': 9, 'text-offset': [0, 1.5], 'text-anchor': 'top', 'text-allow-overlap': false,
+        }, paint: { 'text-color': '#ec4899', 'text-halo-color': 'rgba(0,0,0,0.8)', 'text-halo-width': 1 } });
+
+        map.on('click', 'face-circles', (e: any) => {
+            const f = e.features?.[0]; if (!f || !ml) return;
+            const p = f.properties; const c = f.geometry.coordinates.slice();
+            const riskColor = p.riskColor || '#6b7280';
+            const confColor = p.confidence >= 90 ? '#22c55e' : p.confidence >= 75 ? '#f59e0b' : '#ef4444';
+            const addr = mockAddress(c[1], c[0]);
+            const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:28px;height:28px;border-radius:50%;background:#ec489915;border:1.5px solid #ec489940;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🧑‍🦲</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${p.personId > 0 ? `<a href="/persons/${p.personId}" style="color:var(--ax-accent);text-decoration:none">${p.personName}</a>` : p.personName}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${p.risk}</span><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${confColor}15;color:${confColor};border:1px solid ${confColor}30">${p.confidence}%</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:#ec489915;color:#ec4899;border:1px solid #ec489930">FACE</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${p.timestamp}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">😐 Emotion</span><span class="tmap-popup-val">${p.emotion}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">👕 Wearing</span><span class="tmap-popup-val">${p.wearing}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val">${p.cameraName}</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(5)}, ${c[0].toFixed(5)}</div></div>`;
+            new ml.Popup({ maxWidth: '300px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+        });
+        map.on('mouseenter', 'face-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'face-circles', () => { map.getCanvas().style.cursor = ''; });
+        return () => { try { map.off('click', 'face-circles'); map.off('mouseenter', 'face-circles'); map.off('mouseleave', 'face-circles'); } catch {} };
     }, [layerFace, loaded, timelineActive, tlCursorMs, faceSelected, faceHidden, faceSearch]);
 
-    // ═══ FLIGHT LAYER RENDERING ═══
-    // Decouple from React re-render cycle: store data in ref, update via rAF loop
+    // ═══ FLIGHT LAYER RENDERING — WebGL layers + rAF setData ═══
     const filteredFlightsRef = useRef(filteredFlights);
     filteredFlightsRef.current = filteredFlights;
     const flightAnimRef = useRef<any>(null);
     const flightSelectedRef = useRef(flightSelected);
     flightSelectedRef.current = flightSelected;
-
-    // Factory: create a single flight marker (called from rAF, not from React)
-    const createFlightMarkerEl = useCallback((f: FlightData, map: any, ml: any) => {
-        const cat = flightCategoryConfig[f.category] || flightCategoryConfig.commercial;
-        const wrapper = document.createElement('div');
-        wrapper.className = 'tmap-flight-marker';
-        wrapper.style.cssText = 'pointer-events:auto !important;';
-        wrapper.innerHTML = `<div class="flight-inner" style="position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.2s ease;">
-            <svg class="flight-svg" width="22" height="22" viewBox="0 0 24 24" fill="${cat.color}" style="transform:rotate(${f.heading - 90}deg);filter:drop-shadow(0 2px 6px rgba(0,0,0,0.7));transition:transform 2.5s linear;pointer-events:none;">
-                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-            </svg>
-            <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none;text-align:center;">
-                <div class="flight-cs" style="font-size:8px;font-weight:800;color:${cat.color};text-shadow:0 1px 4px rgba(0,0,0,0.95),0 0 8px rgba(0,0,0,0.8);font-family:'JetBrains Mono',monospace;letter-spacing:0.06em;padding:1px 4px;border-radius:2px;background:rgba(0,0,0,0.5);">${f.callsign}</div>
-            </div>
-            <div style="position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none;">
-                <div class="flight-fl" style="font-size:7px;font-weight:700;color:rgba(255,255,255,0.65);text-shadow:0 1px 4px rgba(0,0,0,0.95);font-family:'JetBrains Mono',monospace;padding:0 3px;background:rgba(0,0,0,0.4);border-radius:2px;">FL${Math.round(f.baroAlt / 30.48 / 100)}</div>
-            </div>
-        </div>`;
-
-        const inner = wrapper.querySelector('.flight-inner') as HTMLElement;
-        inner.addEventListener('mouseenter', () => { inner.style.transform = 'scale(1.5)'; inner.style.zIndex = '200'; });
-        inner.addEventListener('mouseleave', () => { inner.style.transform = 'scale(1)'; inner.style.zIndex = '1'; });
-
-        const entry = { marker: null as any, el: wrapper, data: f };
-
-        inner.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            ev.preventDefault();
-            const fd = entry.data;
-            const ct = flightCategoryConfig[fd.category] || flightCategoryConfig.commercial;
-            const altKm = (fd.baroAlt / 1000).toFixed(1);
-            const altFt = Math.round(fd.baroAlt * 3.281);
-            const spdKts = Math.round(fd.velocity * 1.944);
-            const spdKmh = Math.round(fd.velocity * 3.6);
-            setFlightSelected(fd.icao24);
-            if (flightPopupRef.current) { flightPopupRef.current.remove(); flightPopupRef.current = null; }
-            const popup = new ml.Popup({ offset: [0, -22], closeButton: true, maxWidth: '340px', className: 'tmap-popup', anchor: 'bottom' })
-                .setLngLat([fd.lng, fd.lat])
-                .setHTML(`<div class="tmap-popup-inner" style="padding:14px 16px;">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-                        <div style="width:36px;height:36px;border-radius:8px;background:${ct.color}18;border:1.5px solid ${ct.color}35;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${fd.category === 'helicopter' ? '🚁' : fd.category === 'military' ? '🎖️' : fd.category === 'cargo' ? '📦' : fd.category === 'private' ? '🛩️' : '✈️'}</div>
-                        <div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:800;color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${fd.callsign}</div><div style="font-size:10px;color:var(--ax-text-dim);">${fd.airline || ct.label} · ${fd.originCountry}</div></div>
-                        <span style="font-size:8px;font-weight:700;padding:2px 7px;border-radius:4px;background:${ct.color}15;color:${ct.color};border:1px solid ${ct.color}30;">${ct.label}</span>
-                    </div>
-                    ${fd.departure || fd.arrival ? `<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;border:1px solid ${ct.color}20;background:${ct.color}06;margin-bottom:10px;">
-                        <div style="text-align:center;flex:1;"><div style="font-size:7px;color:var(--ax-text-dim);font-weight:700;letter-spacing:0.1em;">DEPARTURE</div><div style="font-size:13px;font-weight:800;color:${ct.color};font-family:'JetBrains Mono',monospace;">${fd.departureIcao || '—'}</div><div style="font-size:9px;color:var(--ax-text-sec);">${fd.departure || '—'}</div></div>
-                        <svg width="20" height="12" viewBox="0 0 20 12" fill="none"><line x1="0" y1="6" x2="16" y2="6" stroke="${ct.color}" stroke-width="1.5" stroke-dasharray="3,2"/><polygon points="16,3 20,6 16,9" fill="${ct.color}"/></svg>
-                        <div style="text-align:center;flex:1;"><div style="font-size:7px;color:var(--ax-text-dim);font-weight:700;letter-spacing:0.1em;">ARRIVAL</div><div style="font-size:13px;font-weight:800;color:${ct.color};font-family:'JetBrains Mono',monospace;">${fd.arrivalIcao || '—'}</div><div style="font-size:9px;color:var(--ax-text-sec);">${fd.arrival || '—'}</div></div>
-                    </div>` : ''}
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;">${[['Aircraft',fd.aircraft||'—'],['Registration',fd.registration||'—'],['Altitude',`${altKm} km / ${altFt.toLocaleString()} ft`],['Flight Level',`FL${Math.round(fd.baroAlt/30.48/100)}`],['Ground Speed',`${spdKts} kts / ${spdKmh} km/h`],['Heading',`${Math.round(fd.heading)}°`],['V/Rate',`${fd.verticalRate>0?'↑':fd.verticalRate<0?'↓':'—'} ${Math.abs(fd.verticalRate).toFixed(1)} m/s`],['Squawk',fd.squawk||'—'],['ICAO24',fd.icao24.toUpperCase()],['Position',`${fd.lat.toFixed(4)}, ${fd.lng.toFixed(4)}`]].map(([l,v])=>`<div style="padding:3px 0;"><div style="font-size:8px;color:var(--ax-text-dim);font-weight:700;letter-spacing:0.06em;margin-bottom:1px;">${l}</div><div style="font-size:11px;color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v}</div></div>`).join('')}</div>
-                    <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--ax-border);display:flex;justify-content:space-between;align-items:center;"><span style="font-size:8px;color:var(--ax-text-dim);">Source: OpenSky Network</span><span style="font-size:8px;color:${ct.color};font-weight:600;">ADS-B</span></div>
-                </div>`)
-                .addTo(map);
-            flightPopupRef.current = popup;
-            popup.on('close', () => { setFlightSelected(null); flightPopupRef.current = null; });
-        });
-
-        const marker = new ml.Marker({ element: wrapper, anchor: 'center' }).setLngLat([f.lng, f.lat]).addTo(map);
-        entry.marker = marker;
-        return entry;
-    }, []);
-
-    // Main effect: start/stop the rAF loop when layer toggles
     useEffect(() => {
-        if (!loaded) return;
+        const map = mapRef.current;
         const ml = (window as any).maplibregl;
-        if (!ml) return;
+        if (!map || !loaded) return;
 
         if (!layerFlights) {
-            // Cleanup all markers and stop loop
-            flightMarkerMapRef.current.forEach(e => e.marker.remove());
-            flightMarkerMapRef.current.clear();
-            if (flightPopupRef.current) { flightPopupRef.current.remove(); flightPopupRef.current = null; }
+            ['flight-circles', 'flight-labels', 'flight-trail'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            try { if (map.getSource('flight-src')) map.removeSource('flight-src'); } catch {}
+            flightMarkerMapRef.current.forEach(e => e.marker?.remove?.()); flightMarkerMapRef.current.clear();
             if (flightAnimRef.current) { cancelAnimationFrame(flightAnimRef.current); flightAnimRef.current = null; }
             return;
         }
 
-        // rAF loop: reads from ref, never causes React re-render
+        // Ensure source + layers exist (created once)
+        if (!map.getSource('flight-src')) {
+            map.addSource('flight-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.addLayer({ id: 'flight-circles', type: 'circle', source: 'flight-src', paint: {
+                'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 3, 8, 5, 12, 8],
+                'circle-color': ['get', 'color'],
+                'circle-opacity': 0.85,
+                'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff', 'circle-stroke-opacity': 0.4,
+            }});
+            map.addLayer({ id: 'flight-labels', type: 'symbol', source: 'flight-src', minzoom: 6, layout: {
+                'text-field': ['get', 'callsign'], 'text-size': 8, 'text-offset': [0, 1.5], 'text-anchor': 'top',
+                'text-allow-overlap': false, 'icon-allow-overlap': true,
+            }, paint: { 'text-color': ['get', 'color'], 'text-halo-color': 'rgba(0,0,0,0.9)', 'text-halo-width': 1 } });
+
+            map.on('click', 'flight-circles', (e: any) => {
+                const feat = e.features?.[0]; if (!feat || !ml) return;
+                const p = feat.properties; const c = feat.geometry.coordinates.slice();
+                const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${p.color}15;border:1.5px solid ${p.color}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">✈️</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px;font-family:'JetBrains Mono',monospace">${p.callsign}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${p.color}15;color:${p.color};border:1px solid ${p.color}30">${p.category}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:#3b82f615;color:#3b82f6;border:1px solid #3b82f630">FL${Math.round((p.alt || 0) / 30.48 / 100)}</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">✈️ ICAO24</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.icao24 || ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🏁 Origin</span><span class="tmap-popup-val">${p.origin || '—'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Altitude</span><span class="tmap-popup-val">${((p.alt || 0) / 1000).toFixed(1)} km (${Math.round((p.alt || 0) * 3.281)} ft)</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚡ Speed</span><span class="tmap-popup-val">${((p.velocity || 0) * 3.6).toFixed(0)} km/h</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Heading</span><span class="tmap-popup-val">${(p.heading || 0).toFixed(0)}°</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
+                new ml.Popup({ maxWidth: '300px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+            });
+            map.on('mouseenter', 'flight-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'flight-circles', () => { map.getCanvas().style.cursor = ''; });
+        }
+
+        // rAF loop — updates GeoJSON source
         let lastUpdate = 0;
+        const catColors: Record<string, string> = { commercial: '#3b82f6', cargo: '#f59e0b', private: '#8b5cf6', military: '#ef4444', helicopter: '#22c55e', government: '#dc2626' };
         const updateLoop = (time: number) => {
-            const map = mapRef.current;
-            if (!map) { flightAnimRef.current = requestAnimationFrame(updateLoop); return; }
-            // Throttle to ~800ms
+            if (!mapRef.current) { flightAnimRef.current = requestAnimationFrame(updateLoop); return; }
             if (time - lastUpdate < 800) { flightAnimRef.current = requestAnimationFrame(updateLoop); return; }
             lastUpdate = time;
-
-            const currentFlights = filteredFlightsRef.current;
-            const currentIds = new Set(currentFlights.map((f: FlightData) => f.icao24));
-
-            // Remove markers for flights no longer visible
-            flightMarkerMapRef.current.forEach((entry, id) => {
-                if (!currentIds.has(id)) {
-                    entry.marker.remove();
-                    flightMarkerMapRef.current.delete(id);
-                }
-            });
-
-            // Add new or update existing
-            currentFlights.forEach((f: FlightData) => {
-                const existing = flightMarkerMapRef.current.get(f.icao24);
-                if (existing) {
-                    // Position update only — no DOM destruction
-                    existing.marker.setLngLat([f.lng, f.lat]);
-                    const svg = existing.el.querySelector('.flight-svg') as HTMLElement;
-                    if (svg) svg.style.transform = `rotate(${f.heading - 90}deg)`;
-                    const csLabel = existing.el.querySelector('.flight-cs');
-                    if (csLabel) csLabel.textContent = f.callsign;
-                    const flLabel = existing.el.querySelector('.flight-fl');
-                    if (flLabel) flLabel.textContent = `FL${Math.round(f.baroAlt / 30.48 / 100)}`;
-                    existing.data = f;
-                    // Move popup with marker if open
-                    if (flightPopupRef.current && flightSelectedRef.current === f.icao24) {
-                        flightPopupRef.current.setLngLat([f.lng, f.lat]);
-                    }
-                } else {
-                    const entry = createFlightMarkerEl(f, map, ml);
-                    flightMarkerMapRef.current.set(f.icao24, entry);
-                }
-            });
-
+            const flights = filteredFlightsRef.current;
+            const sel = flightSelectedRef.current;
+            const visible = sel ? flights.filter((f: FlightData) => f.icao24 === sel) : flights;
+            const features = visible.filter(f => f.lat && f.lng).map(f => ({
+                type: 'Feature' as const,
+                geometry: { type: 'Point' as const, coordinates: [f.lng, f.lat] },
+                properties: { icao24: f.icao24, callsign: f.callsign, category: f.category, color: catColors[f.category] || '#6b7280', alt: f.baroAlt || 0, velocity: f.velocity || 0, heading: f.heading || 0, origin: f.originCountry || '' },
+            }));
+            try { const src = mapRef.current.getSource('flight-src') as any; if (src) src.setData({ type: 'FeatureCollection', features }); } catch {}
             flightAnimRef.current = requestAnimationFrame(updateLoop);
         };
-
         flightAnimRef.current = requestAnimationFrame(updateLoop);
         return () => { if (flightAnimRef.current) { cancelAnimationFrame(flightAnimRef.current); flightAnimRef.current = null; } };
-    }, [layerFlights, loaded, createFlightMarkerEl]);
+    }, [layerFlights, loaded]);
 
     // 3D rebuild recovery: clear marker refs so rAF loop recreates on new map instance
     const flightMapVerRef = useRef(0);
@@ -3532,115 +3384,60 @@ export default function MapIndex() {
         if (flightPopupRef.current) { flightPopupRef.current = null; }
     }, [loaded, layerFlights]);
 
-    // ═══ SATELLITE LAYER RENDERING (Globe only) ═══
-    const createSatMarkerEl = useCallback((s: SatelliteData, map: any, ml: any) => {
-        const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
-        const isStation = s.category === 'space-station';
-        const isDebris = s.category === 'debris';
-
-        // Stalk height proportional to altitude (log scale)
-        const stalkH = Math.max(12, Math.min(100, Math.round(Math.log(Math.max(s.alt, 200)) * 10 - 30)));
-        const dotSz = isStation ? 12 : isDebris ? 4 : s.orbitType === 'GEO' ? 9 : 7;
-        const altLabel = s.alt > 9999 ? `${(s.alt / 1000).toFixed(0)}k` : String(s.alt);
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'tmap-sat-marker';
-
-        // Simple vertical flex layout — no absolute positioning
-        wrapper.innerHTML = `
-        <div class="sat-hit" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform 0.15s ease;transform-origin:bottom center;">
-            ${isStation || s.category === 'military' || s.category === 'scientific' ? `<div style="margin-bottom:2px;pointer-events:none;"><span style="font-size:${isStation ? 9 : 7}px;font-weight:800;color:${cat.color};text-shadow:0 0 6px rgba(0,0,0,1),0 0 12px rgba(0,0,0,0.8);font-family:'JetBrains Mono',monospace;padding:1px 5px;background:rgba(0,0,0,0.65);border-radius:3px;border:1px solid ${cat.color}30;white-space:nowrap;">${s.name}</span></div>` : ''}
-            <div style="position:relative;width:${dotSz + 8}px;height:${dotSz + 8}px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <div style="width:${dotSz}px;height:${dotSz}px;border-radius:${isStation ? '3px' : '50%'};background:${isStation ? `linear-gradient(135deg,${cat.color},${cat.color}90)` : `radial-gradient(circle at 35% 35%,#fff,${cat.color})`};box-shadow:0 0 ${dotSz}px ${cat.color},0 0 ${dotSz * 2}px ${cat.color}50;border:1px solid rgba(255,255,255,0.35);"></div>
-                ${isStation ? `<div style="position:absolute;top:50%;left:${-dotSz * 0.5}px;width:${dotSz * 3}px;height:2px;background:linear-gradient(90deg,transparent,${cat.color}70,${cat.color},${cat.color}70,transparent);transform:translateY(-50%);pointer-events:none;"></div>` : ''}
-            </div>
-            ${!isDebris ? `<div style="pointer-events:none;margin-top:1px;"><span style="font-size:6px;font-weight:700;color:${cat.color};opacity:0.7;text-shadow:0 0 4px rgba(0,0,0,1);font-family:'JetBrains Mono',monospace;">${altLabel}km</span></div>` : ''}
-            <div style="width:1px;height:${stalkH}px;background:linear-gradient(to bottom,${cat.color}80,${cat.color}25,transparent);flex-shrink:0;pointer-events:none;"></div>
-            <div style="width:${isStation ? 10 : 6}px;height:${isStation ? 4 : 2}px;border-radius:50%;background:${cat.color}40;pointer-events:none;flex-shrink:0;"></div>
-        </div>`;
-
-        const hitArea = wrapper.querySelector('.sat-hit') as HTMLElement;
-        hitArea.addEventListener('mouseenter', () => { hitArea.style.transform = 'scale(1.5)'; hitArea.style.zIndex = '200'; });
-        hitArea.addEventListener('mouseleave', () => { hitArea.style.transform = 'scale(1)'; hitArea.style.zIndex = '1'; });
-
-        const entry = { marker: null as any, el: wrapper, data: s };
-
-        hitArea.addEventListener('click', (ev) => {
-            ev.stopPropagation(); ev.preventDefault();
-            const sd = entry.data;
-            const ct = satCategoryConfig[sd.category] || satCategoryConfig.communication;
-            setSatSelected(sd.noradId);
-            if (satPopupRef.current) { satPopupRef.current.remove(); satPopupRef.current = null; }
-            const altFt = Math.round(sd.alt * 3281);
-            const spdKmh = Math.round(sd.velocity * 3600);
-            const popup = new ml.Popup({ offset: [0, -8], closeButton: true, maxWidth: '340px', className: 'tmap-popup', anchor: 'bottom' })
-                .setLngLat([sd.lng, sd.lat])
-                .setHTML(`<div class="tmap-popup-inner" style="padding:12px 14px;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                        <div style="width:34px;height:34px;border-radius:8px;background:${ct.color}15;border:1.5px solid ${ct.color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${ct.icon}</div>
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-size:13px;font-weight:800;color:var(--ax-text);">${sd.name}</div>
-                            <div style="font-size:9px;color:var(--ax-text-dim);">NORAD ${sd.noradId} · ${sd.intlDesignator}</div>
-                        </div>
-                        <span style="font-size:7px;font-weight:700;padding:2px 6px;border-radius:3px;background:${ct.color}15;color:${ct.color};border:1px solid ${ct.color}30;">${sd.orbitType}</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:8px;">${[
-                        { l: 'Altitude', v: `${sd.alt.toLocaleString()}km`, c: ct.color },
-                        { l: 'Velocity', v: `${sd.velocity}km/s`, c: '#22c55e' },
-                        { l: 'Period', v: `${sd.period}min`, c: '#f59e0b' },
-                    ].map(k => `<div style="padding:5px 6px;border-radius:5px;border:1px solid var(--ax-border);text-align:center;background:rgba(255,255,255,0.02);"><div style="font-size:13px;font-weight:800;color:${k.c};font-family:'JetBrains Mono',monospace;">${k.v}</div><div style="font-size:7px;color:var(--ax-text-dim);">${k.l}</div></div>`).join('')}</div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;">${[
-                        ['Inclination', `${sd.inclination}°`], ['Country', sd.country || '—'],
-                        ['Launch', sd.launchDate || '—'], ['Status', sd.status],
-                        ['Category', ct.label], ['Orbit', sd.orbitType],
-                        ['Position', `${sd.lat.toFixed(2)}°, ${sd.lng.toFixed(2)}°`], ['Alt (ft)', `${altFt.toLocaleString()}`],
-                    ].map(([l, v]) => `<div style="padding:2px 0;"><div style="font-size:7px;color:var(--ax-text-dim);font-weight:700;letter-spacing:0.06em;">${l}</div><div style="font-size:10px;color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v}</div></div>`).join('')}</div>
-                    <div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--ax-border);display:flex;justify-content:space-between;"><span style="font-size:7px;color:var(--ax-text-dim);">CelesTrak · NORAD</span><span style="font-size:7px;color:${ct.color};font-weight:600;">${sd.orbitType}</span></div>
-                </div>`).addTo(map);
-            satPopupRef.current = popup;
-            popup.on('close', () => { setSatSelected(null); satPopupRef.current = null; });
-        });
-
-        const marker = new ml.Marker({ element: wrapper, anchor: 'bottom' }).setLngLat([s.lng, s.lat]).addTo(map);
-        entry.marker = marker;
-        return entry;
-    }, []);
-
+    // ═══ SATELLITE LAYER RENDERING — WebGL layers + rAF setData ═══
     useEffect(() => {
-        if (!loaded) return;
+        const map = mapRef.current;
         const ml = (window as any).maplibregl;
-        if (!ml) return;
-        const isGlobe = !!mapRef.current?._isGlobe;
+        const isGlobe = !!map?._isGlobe;
+        if (!map || !loaded) return;
+
         if (!showSatellites || !isGlobe) {
-            satMarkerMapRef.current.forEach(e => e.marker.remove()); satMarkerMapRef.current.clear();
-            if (satPopupRef.current) { satPopupRef.current.remove(); satPopupRef.current = null; }
+            ['sat-circles', 'sat-labels'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            try { if (map.getSource('sat-src')) map.removeSource('sat-src'); } catch {}
+            satMarkerMapRef.current.forEach(e => e.marker?.remove?.()); satMarkerMapRef.current.clear();
             if (satAnimRef.current) { cancelAnimationFrame(satAnimRef.current); satAnimRef.current = null; }
             return;
         }
+
+        if (!map.getSource('sat-src')) {
+            map.addSource('sat-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.addLayer({ id: 'sat-circles', type: 'circle', source: 'sat-src', paint: {
+                'circle-radius': ['case', ['==', ['get', 'category'], 'space-station'], 8, ['==', ['get', 'category'], 'debris'], 3, 5],
+                'circle-color': ['get', 'color'],
+                'circle-opacity': ['case', ['==', ['get', 'category'], 'debris'], 0.4, 0.85],
+                'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff', 'circle-stroke-opacity': 0.3,
+            }});
+            map.addLayer({ id: 'sat-labels', type: 'symbol', source: 'sat-src', filter: ['!=', ['get', 'category'], 'debris'], layout: {
+                'text-field': ['get', 'name'], 'text-size': 8, 'text-offset': [0, 1.4], 'text-anchor': 'top',
+                'text-allow-overlap': false, 'icon-allow-overlap': true,
+            }, paint: { 'text-color': ['get', 'color'], 'text-halo-color': 'rgba(0,0,0,0.9)', 'text-halo-width': 1 } });
+
+            map.on('click', 'sat-circles', (e: any) => {
+                const feat = e.features?.[0]; if (!feat || !ml) return;
+                const p = feat.properties; const c = feat.geometry.coordinates.slice();
+                const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${p.color}15;border:1.5px solid ${p.color}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🛰️</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">${p.name}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${p.color}15;color:${p.color};border:1px solid ${p.color}30">${p.category}</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📡 NORAD</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.noradId}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Alt</span><span class="tmap-popup-val">${((p.alt || 0) / 1000).toFixed(0)} km</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚡ Speed</span><span class="tmap-popup-val">${((p.velocity || 0) / 1000).toFixed(1)} km/s</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
+                new ml.Popup({ maxWidth: '280px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+            });
+            map.on('mouseenter', 'sat-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'sat-circles', () => { map.getCanvas().style.cursor = ''; });
+        }
+
         let lastUp = 0;
         const loop = (time: number) => {
-            const map = mapRef.current;
-            if (!map || !map._isGlobe) return;
+            if (!mapRef.current) { satAnimRef.current = requestAnimationFrame(loop); return; }
             if (time - lastUp < 800) { satAnimRef.current = requestAnimationFrame(loop); return; }
             lastUp = time;
-            const cur = filteredSatsRef.current;
-            const ids = new Set(cur.map(s => s.noradId));
-            satMarkerMapRef.current.forEach((e, id) => { if (!ids.has(id)) { e.marker.remove(); satMarkerMapRef.current.delete(id); } });
-            cur.forEach(s => {
-                const ex = satMarkerMapRef.current.get(s.noradId);
-                if (ex) {
-                    ex.marker.setLngLat([s.lng, s.lat]); ex.data = s;
-                    if (satPopupRef.current && satSelectedRef.current === s.noradId) satPopupRef.current.setLngLat([s.lng, s.lat]);
-                } else {
-                    const entry = createSatMarkerEl(s, map, ml);
-                    satMarkerMapRef.current.set(s.noradId, entry);
-                }
+            const sats = satellites;
+            const features = sats.map((s: any) => {
+                const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
+                return { type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [s.lng, s.lat] }, properties: { noradId: s.noradId, name: s.name, category: s.category, color: cat.color, alt: s.altitude || 0, velocity: s.velocity || 0 } };
             });
+            try { const src = mapRef.current.getSource('sat-src') as any; if (src) src.setData({ type: 'FeatureCollection', features }); } catch {}
             satAnimRef.current = requestAnimationFrame(loop);
         };
         satAnimRef.current = requestAnimationFrame(loop);
         return () => { if (satAnimRef.current) { cancelAnimationFrame(satAnimRef.current); satAnimRef.current = null; } };
-    }, [showSatellites, loaded, createSatMarkerEl]);
+    }, [showSatellites, loaded]);
 
     // ═══ POI LAYER RENDERING ═══
     const createPOIMarkerEl = useCallback((poi: POI, map: any, ml: any) => {
@@ -4140,86 +3937,69 @@ export default function MapIndex() {
         }
     }, [layerTraffic, loaded, trafficShowFlow, trafficShowIncidents, trafficSource, trafficTileUrl, trafficIncidentsTileUrl, trafficIncidents]);
 
-    // ═══ VESSEL TRACKER RENDERING ═══
+    // ═══ VESSEL TRACKER RENDERING — WebGL layers + rAF setData ═══
     useEffect(() => {
         if (!loaded) return;
+        const map = mapRef.current;
+        if (!map) return;
         const ml = (window as any).maplibregl;
-        if (!ml) return;
+
         if (!layerVessels) {
-            vesselMarkerMapRef.current.forEach(e => e.marker.remove()); vesselMarkerMapRef.current.clear();
-            if (vesselPopupRef.current) { vesselPopupRef.current.remove(); vesselPopupRef.current = null; }
+            // Cleanup layers
+            ['vessel-circles', 'vessel-heading', 'vessel-labels'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            try { if (map.getSource('vessel-src')) map.removeSource('vessel-src'); } catch {}
+            vesselMarkerMapRef.current.forEach(e => e.marker?.remove?.()); vesselMarkerMapRef.current.clear();
             if (vesselAnimRef.current) { cancelAnimationFrame(vesselAnimRef.current); vesselAnimRef.current = null; }
             return;
         }
+
+        // Ensure source exists
+        if (!map.getSource('vessel-src')) {
+            map.addSource('vessel-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.addLayer({ id: 'vessel-circles', type: 'circle', source: 'vessel-src', paint: {
+                'circle-radius': ['interpolate', ['linear'], ['get', 'speed'], 0, 5, 5, 7, 15, 10],
+                'circle-color': ['get', 'color'],
+                'circle-opacity': 0.85,
+                'circle-stroke-width': 2, 'circle-stroke-color': ['case', ['>', ['get', 'speed'], 0], '#22c55e', '#6b7280'], 'circle-stroke-opacity': 0.6,
+            }});
+            // Heading indicator line
+            map.addLayer({ id: 'vessel-heading', type: 'circle', source: 'vessel-src', filter: ['>', ['get', 'speed'], 0], paint: {
+                'circle-radius': 12, 'circle-color': 'transparent',
+                'circle-stroke-width': 1.5, 'circle-stroke-color': ['get', 'color'], 'circle-stroke-opacity': 0.3,
+            }});
+            map.addLayer({ id: 'vessel-labels', type: 'symbol', source: 'vessel-src', layout: {
+                'text-field': ['get', 'name'], 'text-size': 9, 'text-offset': [0, 1.5], 'text-anchor': 'top',
+                'text-allow-overlap': false, 'icon-allow-overlap': true,
+            }, paint: { 'text-color': '#0891b2', 'text-halo-color': 'rgba(0,0,0,0.8)', 'text-halo-width': 1 } });
+
+            // Click popup
+            map.on('click', 'vessel-circles', (e: any) => {
+                const f = e.features?.[0]; if (!f || !ml) return;
+                const p = f.properties; const c = f.geometry.coordinates.slice();
+                const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${p.color}15;border:1.5px solid ${p.color}40;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🚢</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${p.name}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${p.color}15;color:${p.color};border:1px solid ${p.color}30">${p.vesselType || 'Vessel'}</span>${p.flag ? `<span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#06b6d415;color:#06b6d4;border:1px solid #06b6d430">${p.flag}</span>` : ''}</div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📡 MMSI</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.mmsi || ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Course</span><span class="tmap-popup-val">${p.heading || 0}° · ${(p.speed || 0).toFixed(1)} kn</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Size</span><span class="tmap-popup-val">${p.length || '?'}m × ${p.width || '?'}m</span></div>${p.destination ? `<div class="tmap-popup-row"><span class="tmap-popup-label">🏁 Dest</span><span class="tmap-popup-val">${p.destination}</span></div>` : ''}</div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
+                new ml.Popup({ maxWidth: '300px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+            });
+            map.on('mouseenter', 'vessel-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'vessel-circles', () => { map.getCanvas().style.cursor = ''; });
+        }
+
+        // rAF loop — updates GeoJSON source data instead of DOM markers
         let lastUp = 0;
         const loop = (time: number) => {
-            const map = mapRef.current;
-            if (!map) { vesselAnimRef.current = requestAnimationFrame(loop); return; }
+            if (!mapRef.current) { vesselAnimRef.current = requestAnimationFrame(loop); return; }
             if (time - lastUp < 1000) { vesselAnimRef.current = requestAnimationFrame(loop); return; }
             lastUp = time;
             const cur = filteredVesselsRef.current;
-            const ids = new Set(cur.map(v => v.mmsi));
-            vesselMarkerMapRef.current.forEach((e, id) => { if (!ids.has(id)) { e.marker.remove(); vesselMarkerMapRef.current.delete(id); } });
-            cur.forEach(v => {
-                if (vesselMarkerMapRef.current.has(v.mmsi)) {
-                    vesselMarkerMapRef.current.get(v.mmsi)!.marker.setLngLat([v.lng, v.lat]);
-                    return;
-                }
-                const tc = vesselTypeConfig[v.type] || vesselTypeConfig.other;
-                const isMoving = v.speed > 0.5;
-                const el = document.createElement('div');
-                el.className = 'tmap-vessel-marker';
-                el.innerHTML = `<div class="vessel-hit" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform 0.15s;transform-origin:center center;">
-                    <div style="transform:rotate(${v.heading}deg);display:flex;flex-direction:column;align-items:center;">
-                        <svg width="20" height="28" viewBox="0 0 20 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M10 1 L17 10 L17 24 Q17 27 10 27 Q3 27 3 24 L3 10 Z" fill="${tc.color}" stroke="${tc.color}" stroke-width="0.5" opacity="0.9"/>
-                            <path d="M10 1 L14 7 L6 7 Z" fill="${tc.color}" stroke="rgba(255,255,255,0.3)" stroke-width="0.3"/>
-                            <rect x="5" y="10" width="10" height="5" rx="1" fill="rgba(255,255,255,0.2)"/>
-                            <rect x="6" y="16" width="8" height="3" rx="0.5" fill="rgba(0,0,0,0.15)"/>
-                            ${isMoving ? `<line x1="10" y1="0" x2="10" y2="-3" stroke="${tc.color}" stroke-width="1.5" opacity="0.5"/>` : ''}
-                        </svg>
-                    </div>
-                    <div style="margin-top:1px;padding:1px 5px;border-radius:3px;background:rgba(0,0,0,0.75);border:1px solid ${tc.color}40;font-size:7px;font-weight:700;color:${tc.color};font-family:'JetBrains Mono',monospace;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;">${v.name.length > 12 ? v.name.slice(0, 12) + '…' : v.name}</div>
-                </div>`;
-                const hit = el.querySelector('.vessel-hit') as HTMLElement;
-                hit.addEventListener('mouseenter', () => { hit.style.transform = 'scale(1.25)'; hit.style.zIndex = '150'; });
-                hit.addEventListener('mouseleave', () => { hit.style.transform = 'scale(1)'; hit.style.zIndex = '1'; });
-                hit.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    setVesselSelected(v.mmsi);
-                    if (vesselPopupRef.current) vesselPopupRef.current.remove();
-                    const spdCol = v.speed > 15 ? '#22c55e' : v.speed > 5 ? '#3b82f6' : v.speed > 0.5 ? '#f59e0b' : '#6b7280';
-                    const popup = new ml.Popup({ offset: [0, -32], closeButton: true, maxWidth: '320px', className: 'tmap-popup', anchor: 'bottom' })
-                        .setLngLat([v.lng, v.lat])
-                        .setHTML(`<div class="tmap-popup-inner" style="padding:12px 14px;">
-                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                                <div style="width:36px;height:36px;border-radius:8px;background:${tc.color}15;border:1.5px solid ${tc.color}30;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${tc.icon}</div>
-                                <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:var(--ax-text);">${v.name}</div><div style="font-size:9px;color:var(--ax-text-dim);">${v.flagEmoji} ${v.flag} · ${tc.label} · MMSI ${v.mmsi}</div></div>
-                            </div>
-                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px;">
-                                ${[{l:'SPD',v:`${v.speed}kn`,c:spdCol},{l:'CRS',v:`${v.course}°`,c:'#3b82f6'},{l:'HDG',v:`${v.heading}°`,c:'#f59e0b'},{l:'DRT',v:`${v.draught}m`,c:'#8b5cf6'}].map(k => `<div style="text-align:center;padding:4px 2px;border-radius:4px;border:1px solid var(--ax-border);"><div style="font-size:11px;font-weight:800;color:${k.c};font-family:'JetBrains Mono',monospace;">${k.v}</div><div style="font-size:6px;color:var(--ax-text-dim);">${k.l}</div></div>`).join('')}
-                            </div>
-                            <div style="display:flex;flex-direction:column;gap:3px;font-size:9px;">
-                                ${[
-                                    v.callsign ? `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">Callsign</span><span style="color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v.callsign}</span></div>` : '',
-                                    v.imo ? `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">IMO</span><span style="color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v.imo}</span></div>` : '',
-                                    `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">Size</span><span style="color:var(--ax-text);">${v.length}m × ${v.width}m</span></div>`,
-                                    `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">Status</span><span style="color:${isMoving ? '#22c55e' : '#f59e0b'};">${v.status}</span></div>`,
-                                    v.destination ? `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">Destination</span><span style="color:var(--ax-text);font-weight:700;">${v.destination}</span></div>` : '',
-                                    v.eta ? `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">ETA</span><span style="color:var(--ax-text);">${v.eta}</span></div>` : '',
-                                    `<div style="display:flex;gap:6px;"><span style="color:var(--ax-text-dim);width:65px;">Position</span><span style="color:var(--ax-text);font-family:'JetBrains Mono',monospace;">${v.lat.toFixed(4)}°N ${v.lng.toFixed(4)}°E</span></div>`,
-                                ].filter(Boolean).join('')}
-                            </div>
-                            <div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--ax-border);display:flex;justify-content:space-between;font-size:7px;color:var(--ax-text-dim);">
-                                <span>Updated: ${v.lastUpdate}</span><span style="color:${tc.color};font-weight:700;">AIS ${vesselSource === 'live' ? 'LIVE' : 'Mock'} · Digitraffic</span>
-                            </div>
-                        </div>`).addTo(map);
-                    vesselPopupRef.current = popup;
-                    popup.on('close', () => { setVesselSelected(null); vesselPopupRef.current = null; });
-                });
-                const marker = new ml.Marker({ element: el, anchor: 'center' }).setLngLat([v.lng, v.lat]).addTo(map);
-                vesselMarkerMapRef.current.set(v.mmsi, { marker, el, data: v });
-            });
+            const typeColors: Record<string, string> = { cargo: '#3b82f6', tanker: '#f97316', passenger: '#8b5cf6', fishing: '#22c55e', military: '#ef4444', tug: '#f59e0b', sailing: '#06b6d4', pleasure: '#ec4899', other: '#6b7280' };
+            const features = cur.map((v: any) => ({
+                type: 'Feature' as const,
+                geometry: { type: 'Point' as const, coordinates: [v.lng, v.lat] },
+                properties: { mmsi: v.mmsi, name: v.name, speed: v.speed || 0, heading: v.heading || 0, color: typeColors[v.type] || '#6b7280', vesselType: v.type, flag: v.flag || '', destination: v.destination || '', length: v.length || 0, width: v.width || 0 },
+            }));
+            try {
+                const src = mapRef.current.getSource('vessel-src') as any;
+                if (src) src.setData({ type: 'FeatureCollection', features });
+            } catch {}
             vesselAnimRef.current = requestAnimationFrame(loop);
         };
         vesselAnimRef.current = requestAnimationFrame(loop);
