@@ -4,42 +4,42 @@
 ## Global
 
 ### Maps
-|  API           |Usage                            |URL                          |
-|----------------|-------------------------------|-----------------------------|
-|Google Maps API| 3D Live Tiles, Street View     |https://mapsplatform.google.com/lp/maps-apis/            |
-|Cesium          |3D terrain            |https://ion.cesium.com/            |
-|OverPass          |Traffic |https://overpass-api.de|
-|OSRM          |Traffic |https://router.project-osrm.org|
-|TOMTOM          |Traffic |https://api.tomtom.com/|
+|  API           |Usage                            |URL                          | Licence |
+|----------------|-------------------------------|-----------------------------| -----------------|
+|Google Maps API| 3D Live Tiles, Street View     |https://mapsplatform.google.com/lp/maps-apis/ | Premium |
+|Cesium          |3D terrain            |https://ion.cesium.com/            | Premium |
+|OverPass          |Traffic |https://overpass-api.de | Free |
+|OSRM          |Traffic |https://router.project-osrm.org | Free |
+|TOMTOM          |Traffic |https://api.tomtom.com/| Premium |
 
 
 ### Vessel Locations
 
-|  API           |Usage                            |URL                        |
-|----------------|-------------------------------|-----------------------------|
-|Finland government| Vessel locations     |https://meri.digitraffic.fi         |
+|  API           |Usage                            |URL                        | Licence |
+|----------------|-------------------------------|-----------------------------|----------|
+|Finland government| Vessel locations     |https://meri.digitraffic.fi         | Free |
 
 
 
 ### Airplanes Tracking
-|  API           |Usage                            |URL                        |
-|----------------|-------------------------------|-----------------------------|
-|ADS BEex Exchange| Show airplanes     | https://www.adsbexchange.com/        |
-|Open Sky Network| Vessel locations     |https://opensky-network.org/         |
+|  API           |Usage                            |URL                        | Licence |
+|----------------|-------------------------------|-----------------------------|----------|
+|ADS Bex Exchange| Show airplanes     | https://www.adsbexchange.com/        | Premium |
+|Open Sky Network| Vessel locations     |https://opensky-network.org/         | Free |
 
 
 ### Satellites
 
-|  API           |Usage                            |URL                        |
-|----------------|-------------------------------|-----------------------------|
-|Celestral| Show satelitte     | https://celestrak.org/       |
+|  API           |Usage                            |URL                        | Licence |
+|----------------|-------------------------------|-----------------------------|----------|
+|Celestral| Show satelitte     | https://celestrak.org/       | Free |
 
  
 
 ### Weather
 
-|  API           |Usage                            |URL                        |
-|----------------|-------------------------------|-----------------------------|
-|Open Meteo| Weather Services     | https://archive-api.open-meteo.com         |
+|  API           |Usage                            |URL                        | Licence |
+|----------------|-------------------------------|-----------------------------|----------|
+|Open Meteo| Weather Services     | https://archive-api.open-meteo.com         | Free |
  
 
