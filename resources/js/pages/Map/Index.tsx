@@ -4330,11 +4330,11 @@ export default function MapIndex() {
     const [visionMode, setVisionMode] = useState<VisionMode>('normal');
     const visionModes: { id: VisionMode; name: string; icon: string; desc: string; css: string; overlay?: string }[] = [
         { id: 'normal', name: 'Normal', icon: '👁', desc: 'Standard view', css: 'none' },
-        { id: 'nvg', name: 'NVG', icon: '🟢', desc: 'Night Vision Goggles', css: 'brightness(0.6) contrast(1.6) saturate(0) sepia(1) hue-rotate(70deg) saturate(3) brightness(0.85)' },
-        { id: 'flir', name: 'FLIR', icon: '🔥', desc: 'Thermal Imaging', css: 'brightness(0.7) contrast(2.2) saturate(0) invert(1) hue-rotate(180deg)' },
-        { id: 'anime', name: 'Anime', icon: '🌸', desc: 'Anime / Cel-Shaded', css: 'contrast(1.35) saturate(1.8) brightness(1.05)' },
-        { id: 'noir', name: 'Noir', icon: '🎬', desc: 'Film Noir B&W', css: 'grayscale(1) contrast(1.5) brightness(0.85)' },
-        { id: 'snow', name: 'Snow', icon: '❄️', desc: 'Arctic / Snow Storm', css: 'brightness(1.3) contrast(0.85) saturate(0.4) sepia(0.15) hue-rotate(185deg)' },
+        { id: 'nvg', name: 'NVG', icon: '🟢', desc: 'Night Vision Goggles', css: 'brightness(0.45) contrast(1.8) saturate(0) sepia(1) hue-rotate(80deg) saturate(4.5) brightness(0.75)' },
+        { id: 'flir', name: 'FLIR', icon: '🔥', desc: 'Forward-Looking IR', css: 'brightness(0.55) contrast(2.8) saturate(0) invert(0.92) hue-rotate(180deg) brightness(1.1)' },
+        { id: 'anime', name: 'Anime', icon: '🌸', desc: 'Cel-Shaded Render', css: 'contrast(1.6) saturate(2.2) brightness(1.08) hue-rotate(-5deg)' },
+        { id: 'noir', name: 'Noir', icon: '🎬', desc: 'Film Noir B&W', css: 'grayscale(1) contrast(1.7) brightness(0.75) sepia(0.08)' },
+        { id: 'snow', name: 'Snow', icon: '❄️', desc: 'Arctic Whiteout', css: 'brightness(1.35) contrast(0.75) saturate(0.3) sepia(0.1) hue-rotate(190deg)' },
     ];
     // Reset vision mode when 3D is deactivated
     useEffect(() => { if (!active3D) setVisionMode('normal'); }, [active3D]);
@@ -6233,30 +6233,128 @@ export default function MapIndex() {
                 {!webglFailed && <div ref={mapContainer} style={{ width: '100%', height: '100%', filter: visionMode !== 'normal' ? (visionModes.find(v => v.id === visionMode)?.css || 'none') : 'none', transition: 'filter 0.5s ease' }} />}
 
                 {/* Vision Mode Overlays */}
+
+                {/* ── NVG: Phosphor green glow, CRT scanlines, barrel distortion vignette, noise grain ── */}
                 {visionMode === 'nvg' && <div className="tmap-vision-overlay tmap-nvg-overlay" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 3 }}>
-                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,20,0,0.6) 100%)', mixBlendMode: 'multiply' as const }} />
-                    <div className="tmap-nvg-scanlines" style={{ position: 'absolute' as const, inset: 0, opacity: 0.08, background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,255,0,0.15) 2px, rgba(0,255,0,0.15) 3px)' }} />
-                    <div style={{ position: 'absolute' as const, inset: 0, border: '3px solid rgba(0,255,0,0.15)', borderRadius: '50%', margin: '-10%' }} />
-                    <div style={{ position: 'absolute' as const, top: 8, left: '50%', transform: 'translateX(-50%)', padding: '2px 10px', borderRadius: 3, background: 'rgba(0,40,0,0.7)', border: '1px solid rgba(0,255,0,0.3)', fontSize: 9, fontWeight: 700, color: '#00ff00', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.1em' }}>NVG ACTIVE</div>
+                    {/* Green phosphor glow bloom */}
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(circle at 50% 50%, rgba(0,255,50,0.04) 0%, rgba(0,180,30,0.08) 40%, rgba(0,40,0,0.45) 80%, rgba(0,10,0,0.7) 100%)', mixBlendMode: 'multiply' as const }} />
+                    {/* CRT horizontal scanlines — thin bright bars with dark gaps */}
+                    <div className="tmap-nvg-crt-lines" style={{ position: 'absolute' as const, inset: 0 }} />
+                    {/* Phosphor dot matrix pattern */}
+                    <div className="tmap-nvg-phosphor" style={{ position: 'absolute' as const, inset: 0 }} />
+                    {/* Animated noise/grain */}
+                    <div className="tmap-nvg-noise" style={{ position: 'absolute' as const, inset: 0 }} />
+                    {/* Circular binocular vignette */}
+                    <div style={{ position: 'absolute' as const, inset: '-5%', background: 'radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,15,0,0.3) 55%, rgba(0,8,0,0.75) 70%, rgba(0,2,0,0.95) 85%, #000 100%)' }} />
+                    {/* Center crosshair reticle */}
+                    <div style={{ position: 'absolute' as const, top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 60, height: 60 }}>
+                        <div style={{ position: 'absolute' as const, top: '50%', left: 0, right: 0, height: 1, background: 'rgba(0,255,0,0.2)' }} />
+                        <div style={{ position: 'absolute' as const, left: '50%', top: 0, bottom: 0, width: 1, background: 'rgba(0,255,0,0.2)' }} />
+                        <div style={{ position: 'absolute' as const, top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 8, height: 8, borderRadius: '50%', border: '1px solid rgba(0,255,0,0.25)' }} />
+                    </div>
+                    {/* HUD badge */}
+                    <div style={{ position: 'absolute' as const, top: 10, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 6, padding: '3px 12px', background: 'rgba(0,30,0,0.8)', border: '1px solid rgba(0,255,0,0.25)', borderRadius: 2, boxShadow: '0 0 15px rgba(0,255,0,0.1)' }}>
+                        <div className="tmap-nvg-blink" style={{ width: 5, height: 5, borderRadius: '50%', background: '#00ff00', boxShadow: '0 0 8px #00ff00' }} />
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#00ff00', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.15em', textShadow: '0 0 6px rgba(0,255,0,0.5)' }}>NVG-7D ACTIVE</span>
+                    </div>
+                    {/* Bottom left — gain indicator */}
+                    <div style={{ position: 'absolute' as const, bottom: 12, left: 12, padding: '2px 8px', background: 'rgba(0,30,0,0.7)', border: '1px solid rgba(0,255,0,0.15)', borderRadius: 2 }}>
+                        <div style={{ fontSize: 7, color: 'rgba(0,255,0,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>GAIN AUTO · GEN III+</div>
+                    </div>
                 </div>}
+
+                {/* ── FLIR: Thermal palette, temperature readout, crosshair, color scale ── */}
                 {visionMode === 'flir' && <div className="tmap-vision-overlay tmap-flir-overlay" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 3 }}>
-                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.3) 100%)' }} />
-                    <div style={{ position: 'absolute' as const, top: 8, left: '50%', transform: 'translateX(-50%)', padding: '2px 10px', borderRadius: 3, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)', fontSize: 9, fontWeight: 700, color: '#fff', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.1em' }}>FLIR THERMAL</div>
-                    <div style={{ position: 'absolute' as const, bottom: 10, right: 10, width: 80, height: 10, borderRadius: 2, background: 'linear-gradient(90deg, #000 0%, #00f 20%, #0ff 40%, #0f0 55%, #ff0 70%, #f00 85%, #fff 100%)', border: '1px solid rgba(255,255,255,0.2)' }} />
-                    <div style={{ position: 'absolute' as const, bottom: 22, right: 10, fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.5)', fontFamily: "'JetBrains Mono',monospace" }}>COLD ← → HOT</div>
+                    {/* Subtle vignette */}
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.25) 85%, rgba(0,0,0,0.5) 100%)' }} />
+                    {/* CRT-style horizontal lines for IR sensor feel */}
+                    <div className="tmap-flir-lines" style={{ position: 'absolute' as const, inset: 0 }} />
+                    {/* Center crosshair with temperature readout */}
+                    <div style={{ position: 'absolute' as const, top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }}>
+                        <div style={{ width: 80, height: 80, position: 'relative' as const }}>
+                            <div style={{ position: 'absolute' as const, top: '50%', left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.35)' }} />
+                            <div style={{ position: 'absolute' as const, left: '50%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.35)' }} />
+                            <div style={{ position: 'absolute' as const, top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 12, height: 12, border: '1.5px solid rgba(255,255,255,0.4)', borderRadius: 1 }} />
+                        </div>
+                        <div style={{ textAlign: 'center' as const, marginTop: 4, padding: '2px 8px', background: 'rgba(0,0,0,0.6)', borderRadius: 2 }}>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: '#fff', fontFamily: "'JetBrains Mono',monospace", textShadow: '0 0 4px rgba(255,255,255,0.3)' }}>24.8°C</span>
+                        </div>
+                    </div>
+                    {/* Top HUD */}
+                    <div style={{ position: 'absolute' as const, top: 10, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 8, padding: '3px 12px', background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 2 }}>
+                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#ff4444', boxShadow: '0 0 6px #ff4444' }} />
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '0.12em' }}>FLIR LWIR 8–14μm</span>
+                        <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)' }}>WHITE-HOT</span>
+                    </div>
+                    {/* Thermal color scale — right side vertical */}
+                    <div style={{ position: 'absolute' as const, right: 12, top: '20%', bottom: '20%', width: 14, display: 'flex', flexDirection: 'column' as const }}>
+                        <div style={{ flex: 1, borderRadius: 2, background: 'linear-gradient(180deg, #ffffff 0%, #ffff00 15%, #ff8800 30%, #ff0000 50%, #880088 70%, #000088 85%, #000000 100%)', border: '1px solid rgba(255,255,255,0.15)' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', flexDirection: 'column' as const, height: '100%', position: 'absolute' as const, right: 18, top: 0, bottom: 0 }}>
+                            {['50°', '40°', '30°', '20°', '10°', '0°', '-10°'].map((t, i) => <div key={i} style={{ fontSize: 6, color: 'rgba(255,255,255,0.35)', fontFamily: "'JetBrains Mono',monospace", textAlign: 'right' as const }}>{t}</div>)}
+                        </div>
+                    </div>
+                    {/* Bottom info bar */}
+                    <div style={{ position: 'absolute' as const, bottom: 10, left: 12, display: 'flex', gap: 12, padding: '2px 8px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2 }}>
+                        <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>NFOV 12° · 640×512 · 30Hz</span>
+                    </div>
                 </div>}
+
+                {/* ── Anime: Cel-shading edges, halftone dots, bloom glow, speed lines ── */}
                 {visionMode === 'anime' && <div className="tmap-vision-overlay tmap-anime-overlay" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 3 }}>
-                    <div style={{ position: 'absolute' as const, top: 8, left: '50%', transform: 'translateX(-50%)', padding: '2px 12px', borderRadius: 10, background: 'linear-gradient(135deg, rgba(236,72,153,0.7) 0%, rgba(168,85,247,0.7) 100%)', border: '1px solid rgba(255,255,255,0.3)', fontSize: 9, fontWeight: 800, color: '#fff', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.05em' }}>✨ ANIME MODE ✨</div>
+                    {/* Cel-shading edge detection overlay (SVG filter) */}
+                    <svg style={{ position: 'absolute' as const, width: 0, height: 0 }}>
+                        <defs>
+                            <filter id="tmap-cel-edge"><feConvolveMatrix order="3" kernelMatrix="-1 -1 -1 -1 8 -1 -1 -1 -1" preserveAlpha="true" /></filter>
+                        </defs>
+                    </svg>
+                    {/* Halftone dot pattern for shading */}
+                    <div className="tmap-anime-halftone" style={{ position: 'absolute' as const, inset: 0 }} />
+                    {/* Radial speed lines from corners */}
+                    <div className="tmap-anime-speedlines" style={{ position: 'absolute' as const, inset: 0 }} />
+                    {/* Warm bloom glow */}
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(circle at 30% 25%, rgba(255,200,100,0.06) 0%, transparent 50%)', mixBlendMode: 'screen' as const }} />
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(circle at 70% 80%, rgba(200,100,255,0.04) 0%, transparent 40%)', mixBlendMode: 'screen' as const }} />
+                    {/* Soft vignette */}
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(40,0,60,0.15) 100%)' }} />
+                    {/* Badge */}
+                    <div style={{ position: 'absolute' as const, top: 10, left: '50%', transform: 'translateX(-50%)', padding: '3px 14px', borderRadius: 12, background: 'linear-gradient(135deg, rgba(236,72,153,0.8) 0%, rgba(168,85,247,0.8) 50%, rgba(59,130,246,0.8) 100%)', border: '1.5px solid rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 800, color: '#fff', fontFamily: "'DM Sans',sans-serif", letterSpacing: '0.05em', textShadow: '0 1px 4px rgba(0,0,0,0.3)', boxShadow: '0 0 20px rgba(236,72,153,0.3), 0 0 40px rgba(168,85,247,0.15)' }}>✨ CEL-SHADED ✨</div>
                 </div>}
+
+                {/* ── Noir: Heavy grain, deep vignette, film scratches, CRT roll ── */}
                 {visionMode === 'noir' && <div className="tmap-vision-overlay tmap-noir-overlay" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 3 }}>
-                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.4) 100%)' }} />
-                    <div style={{ position: 'absolute' as const, inset: 0, opacity: 0.04, background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 1px, rgba(255,255,255,0.1) 1px, rgba(255,255,255,0.1) 2px)' }} />
-                    <div style={{ position: 'absolute' as const, top: 8, left: '50%', transform: 'translateX(-50%)', padding: '2px 10px', borderRadius: 3, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.15)', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.6)', fontFamily: "'Source Code Pro',monospace", fontStyle: 'italic' as const }}>FILM NOIR</div>
+                    {/* Deep cinematic vignette */}
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at 50% 50%, transparent 35%, rgba(0,0,0,0.25) 55%, rgba(0,0,0,0.55) 75%, rgba(0,0,0,0.8) 100%)' }} />
+                    {/* Film grain noise */}
+                    <div className="tmap-noir-grain" style={{ position: 'absolute' as const, inset: 0 }} />
+                    {/* Horizontal CRT scanlines */}
+                    <div className="tmap-noir-scanlines" style={{ position: 'absolute' as const, inset: 0 }} />
+                    {/* Vertical film scratches */}
+                    <div className="tmap-noir-scratches" style={{ position: 'absolute' as const, inset: 0 }} />
+                    {/* Top/bottom letterbox bars for cinematic feel */}
+                    <div style={{ position: 'absolute' as const, top: 0, left: 0, right: 0, height: '5%', background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%)' }} />
+                    <div style={{ position: 'absolute' as const, bottom: 0, left: 0, right: 0, height: '5%', background: 'linear-gradient(0deg, rgba(0,0,0,0.6) 0%, transparent 100%)' }} />
+                    {/* Badge */}
+                    <div style={{ position: 'absolute' as const, top: 12, left: '50%', transform: 'translateX(-50%)', padding: '3px 14px', background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2, boxShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', fontFamily: "'Source Code Pro',monospace", fontStyle: 'italic' as const, letterSpacing: '0.2em' }}>FILM NOIR</span>
+                    </div>
                 </div>}
+
+                {/* ── Snow: Blizzard particles, frost edges, ice crystals, whiteout ── */}
                 {visionMode === 'snow' && <div className="tmap-vision-overlay tmap-snow-overlay" style={{ position: 'absolute' as const, inset: 0, pointerEvents: 'none', zIndex: 3, overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, rgba(200,220,255,0.05) 0%, rgba(150,180,220,0.15) 100%)' }} />
-                    <div className="tmap-snow-particles" />
-                    <div style={{ position: 'absolute' as const, top: 8, left: '50%', transform: 'translateX(-50%)', padding: '2px 10px', borderRadius: 3, background: 'rgba(100,130,170,0.5)', border: '1px solid rgba(200,220,255,0.3)', fontSize: 9, fontWeight: 700, color: '#e0eaff', fontFamily: "'JetBrains Mono',monospace" }}>❄️ ARCTIC MODE</div>
+                    {/* Blue-white atmospheric haze */}
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at 50% 40%, rgba(200,220,255,0.06) 0%, rgba(150,180,220,0.12) 60%, rgba(100,140,200,0.2) 100%)' }} />
+                    {/* Multi-layer snow particles at different speeds/sizes */}
+                    <div className="tmap-snow-layer1" style={{ position: 'absolute' as const, inset: 0 }} />
+                    <div className="tmap-snow-layer2" style={{ position: 'absolute' as const, inset: 0 }} />
+                    <div className="tmap-snow-layer3" style={{ position: 'absolute' as const, inset: 0 }} />
+                    {/* Frost/ice around edges */}
+                    <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(200,225,255,0.1) 70%, rgba(180,210,255,0.2) 85%, rgba(160,200,255,0.35) 100%)', mixBlendMode: 'screen' as const }} />
+                    {/* Top frost drip */}
+                    <div style={{ position: 'absolute' as const, top: 0, left: 0, right: 0, height: 30, background: 'linear-gradient(180deg, rgba(200,225,255,0.25) 0%, rgba(200,225,255,0.08) 40%, transparent 100%)' }} />
+                    {/* Badge */}
+                    <div style={{ position: 'absolute' as const, top: 10, left: '50%', transform: 'translateX(-50%)', padding: '3px 12px', borderRadius: 4, background: 'rgba(100,140,190,0.6)', border: '1px solid rgba(200,225,255,0.3)', backdropFilter: 'blur(4px)', boxShadow: '0 0 20px rgba(150,200,255,0.15)' }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#e0eaff', fontFamily: "'JetBrains Mono',monospace", textShadow: '0 0 8px rgba(200,225,255,0.4)' }}>❄️ ARCTIC WHITEOUT · -28°C</span>
+                    </div>
                 </div>}
 
                 {/* WebGL Fallback UI */}

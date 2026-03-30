@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.25.72 - 2026-03-30
+
+### Upgraded — Vision Modes: Cinematic CRT, NVG, FLIR, Cel-Shaded
+
+Complete rewrite of all 6 vision mode overlays with multi-layered effects, animated noise, film grain, CRT scanlines, phosphor grids, and parallax snow.
+
+#### NVG (Night Vision Goggles) — Completely Rebuilt
+- **Green phosphor bloom** — radial gradient from bright center to dark edges, multiply blend
+- **CRT horizontal scanlines** — 1px bright / 2px dark repeating lines, scrolling animation (6s)
+- **Phosphor dot grid** — vertical repeating lines simulating pixel grid
+- **Animated noise grain** — SVG fractalNoise turbulence, repositions every 0.15s (3 steps) for jitter
+- **Binocular vignette** — circular 5-stage gradient, dark at edges, transparent center (40%)
+- **Center crosshair reticle** — cross + circle, green 25% opacity
+- **HUD badge** — "NVG-7D ACTIVE" with blinking green dot, phosphor glow shadow
+- **Gain indicator** — "GAIN AUTO · GEN III+" bottom-left readout
+- CSS filter: stronger desaturation → sepia → hue-rotate(80°) → saturate(4.5x)
+
+#### FLIR (Forward-Looking Infrared) — Completely Rebuilt
+- **Sensor scanlines** — very subtle (1.5% opacity) 4px repeating lines, slow 12s scroll
+- **Center crosshair** — white cross + square reticle + **live temperature readout** (24.8°C)
+- **HUD badge** — "FLIR LWIR 8–14μm" with red dot + "WHITE-HOT" palette indicator
+- **Vertical thermal color scale** — right-side bar: black → blue → purple → red → orange → yellow → white, with °C labels
+- **Sensor info** — "NFOV 12° · 640×512 · 30Hz" bottom readout
+- CSS filter: deeper contrast(2.8), proper invert(0.92) for white-hot palette
+
+#### Anime (Cel-Shaded) — Completely Rebuilt
+- **SVG edge detection filter** — `feConvolveMatrix` with Laplacian kernel for cel-shading outlines
+- **Halftone dot pattern** — 4px grid of tiny dark dots, multiply blend (manga shading)
+- **Radial speed lines** — diagonal white gradients from all 4 corners (action lines)
+- **Warm bloom** — two screen-blend radial glows (gold top-left, purple bottom-right)
+- **Soft purple vignette** — rgba(40,0,60) edge tint
+- **Gradient badge** — pink → purple → blue gradient "✨ CEL-SHADED ✨" with glow shadow
+- CSS filter: contrast(1.6), saturate(2.2x), slight hue shift for vivid colors
+
+#### Noir (Film Noir) — Completely Rebuilt
+- **5-stage deep vignette** — transparent(35%) → 0.25(55%) → 0.55(75%) → 0.8(100%)
+- **Animated film grain** — SVG fractalNoise, repositions every 0.1s (4 steps), overlay blend
+- **CRT scanlines** — 2px dark bars every 4px
+- **Vertical film scratches** — 3 white vertical lines at different positions, scrolling vertically (3s)
+- **Letterbox bars** — 5% top/bottom gradient fade for cinematic framing
+- **Badge** — italic "FILM NOIR" with 0.2em letter spacing, deep shadow
+- CSS filter: full grayscale, contrast(1.7), brightness(0.75), warm sepia(0.08) tint
+
+#### Snow (Arctic Whiteout) — Completely Rebuilt
+- **3-layer parallax snow** — each layer has different:
+  - Particle size (large 2.5-3px → medium 1-1.5px → small 0.8-1px)
+  - Fall speed (6s → 10s → 16s)
+  - Opacity (80% → 60% → 40%)
+  - Drift direction (different lateral offsets)
+- **Blue atmospheric haze** — radial gradient from center to blue-tinted edges
+- **Screen-blend frost ring** — white glow around edges
+- **Top frost drip** — 30px gradient at top simulating ice buildup on lens
+- **Badge** — "❄️ ARCTIC WHITEOUT · -28°C" with blur backdrop + ice glow shadow
+- CSS filter: brightness(1.35), desaturated(0.3), blue hue-rotate(190°)
+
 ## 0.25.71 - 2026-03-30
 
 ### Implemented — 3D Vision Modes (/map → Tiles → Vision Mode)

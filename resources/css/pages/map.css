@@ -292,21 +292,122 @@
 @keyframes tmap-vessel-wake { 0% { opacity: 0.4; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(2.5); } }
 
 /* ═══ VISION MODE OVERLAYS ═══ */
-.tmap-nvg-scanlines {
-    animation: tmap-nvg-scan 4s linear infinite;
+
+/* ── NVG: CRT scanlines + phosphor grid + noise ── */
+.tmap-nvg-crt-lines {
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0,255,0,0.03) 0px,
+        rgba(0,255,0,0.03) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+    animation: tmap-nvg-scroll 6s linear infinite;
 }
-@keyframes tmap-nvg-scan {
-    0% { background-position: 0 0; }
-    100% { background-position: 0 100px; }
+.tmap-nvg-phosphor {
+    background: repeating-linear-gradient(
+        90deg,
+        rgba(0,255,0,0.02) 0px,
+        rgba(0,255,0,0.02) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+    opacity: 0.5;
+}
+.tmap-nvg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+    opacity: 0.4;
+    mix-blend-mode: overlay;
+    animation: tmap-nvg-noise-shift 0.15s steps(3) infinite;
+}
+.tmap-nvg-blink { animation: tmap-nvg-blink-anim 1.5s ease-in-out infinite; }
+@keyframes tmap-nvg-scroll { 0% { background-position: 0 0; } 100% { background-position: 0 300px; } }
+@keyframes tmap-nvg-noise-shift {
+    0% { transform: translate(0,0); }
+    33% { transform: translate(-2px,1px); }
+    66% { transform: translate(1px,-1px); }
+    100% { transform: translate(0,0); }
+}
+@keyframes tmap-nvg-blink-anim { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ── FLIR: Sensor scan lines ── */
+.tmap-flir-lines {
+    background: repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        transparent 3px,
+        rgba(255,255,255,0.015) 3px,
+        rgba(255,255,255,0.015) 4px
+    );
+    animation: tmap-flir-roll 12s linear infinite;
+}
+@keyframes tmap-flir-roll { 0% { background-position: 0 0; } 100% { background-position: 0 600px; } }
+
+/* ── Anime: Halftone dots + speed lines ── */
+.tmap-anime-halftone {
+    background-image: radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px);
+    background-size: 4px 4px;
+    mix-blend-mode: multiply;
+}
+.tmap-anime-speedlines {
+    background:
+        linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 15%),
+        linear-gradient(315deg, rgba(255,255,255,0.05) 0%, transparent 15%),
+        linear-gradient(225deg, rgba(255,255,255,0.03) 0%, transparent 10%),
+        linear-gradient(45deg, rgba(255,255,255,0.03) 0%, transparent 10%);
 }
 
-.tmap-snow-particles {
-    position: absolute; inset: 0;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Ccircle cx='50' cy='80' r='1.5' fill='white' opacity='0.6'/%3E%3Ccircle cx='150' cy='30' r='1' fill='white' opacity='0.4'/%3E%3Ccircle cx='250' cy='120' r='2' fill='white' opacity='0.5'/%3E%3Ccircle cx='350' cy='70' r='1' fill='white' opacity='0.3'/%3E%3Ccircle cx='80' cy='200' r='1.5' fill='white' opacity='0.5'/%3E%3Ccircle cx='180' cy='250' r='1' fill='white' opacity='0.4'/%3E%3Ccircle cx='300' cy='180' r='2' fill='white' opacity='0.6'/%3E%3Ccircle cx='120' cy='320' r='1' fill='white' opacity='0.3'/%3E%3Ccircle cx='220' cy='350' r='1.5' fill='white' opacity='0.5'/%3E%3Ccircle cx='370' cy='300' r='1' fill='white' opacity='0.4'/%3E%3Ccircle cx='30' cy='380' r='2' fill='white' opacity='0.5'/%3E%3Ccircle cx='280' cy='390' r='1' fill='white' opacity='0.3'/%3E%3C/svg%3E");
-    animation: tmap-snow-fall 8s linear infinite;
-    opacity: 0.7;
+/* ── Noir: Film grain + scanlines + scratches ── */
+.tmap-noir-grain {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.12'/%3E%3C/svg%3E");
+    opacity: 0.5;
+    mix-blend-mode: overlay;
+    animation: tmap-noir-grain-shift 0.1s steps(4) infinite;
 }
-@keyframes tmap-snow-fall {
-    0% { background-position: 0 -400px; }
-    100% { background-position: -100px 400px; }
+.tmap-noir-scanlines {
+    background: repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+    );
 }
+.tmap-noir-scratches {
+    background:
+        linear-gradient(90deg, transparent 49.5%, rgba(255,255,255,0.04) 49.5%, rgba(255,255,255,0.04) 49.7%, transparent 49.7%),
+        linear-gradient(90deg, transparent 72%, rgba(255,255,255,0.03) 72%, rgba(255,255,255,0.03) 72.15%, transparent 72.15%),
+        linear-gradient(90deg, transparent 23%, rgba(255,255,255,0.02) 23%, rgba(255,255,255,0.02) 23.1%, transparent 23.1%);
+    animation: tmap-noir-scratch-move 3s linear infinite;
+}
+@keyframes tmap-noir-grain-shift {
+    0% { transform: translate(0,0); }
+    25% { transform: translate(-1px,2px); }
+    50% { transform: translate(2px,-1px); }
+    75% { transform: translate(-2px,-1px); }
+    100% { transform: translate(0,0); }
+}
+@keyframes tmap-noir-scratch-move {
+    0% { background-position: 0 -100%; }
+    100% { background-position: 0 100%; }
+}
+
+/* ── Snow: Three parallax layers of falling snow ── */
+.tmap-snow-layer1 {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Ccircle cx='50' cy='50' r='2.5' fill='white' opacity='0.7'/%3E%3Ccircle cx='150' cy='120' r='2' fill='white' opacity='0.6'/%3E%3Ccircle cx='300' cy='80' r='3' fill='white' opacity='0.5'/%3E%3Ccircle cx='420' cy='200' r='2' fill='white' opacity='0.6'/%3E%3Ccircle cx='80' cy='300' r='2.5' fill='white' opacity='0.7'/%3E%3Ccircle cx='250' cy='350' r='2' fill='white' opacity='0.5'/%3E%3Ccircle cx='370' cy='420' r='3' fill='white' opacity='0.6'/%3E%3Ccircle cx='180' cy='460' r='2' fill='white' opacity='0.7'/%3E%3Ccircle cx='470' cy='100' r='2.5' fill='white' opacity='0.5'/%3E%3Ccircle cx='30' cy='180' r='2' fill='white' opacity='0.6'/%3E%3C/svg%3E");
+    animation: tmap-snow-fall1 6s linear infinite;
+    opacity: 0.8;
+}
+.tmap-snow-layer2 {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Ccircle cx='80' cy='60' r='1.5' fill='white' opacity='0.5'/%3E%3Ccircle cx='200' cy='150' r='1' fill='white' opacity='0.4'/%3E%3Ccircle cx='320' cy='90' r='1.5' fill='white' opacity='0.45'/%3E%3Ccircle cx='50' cy='250' r='1' fill='white' opacity='0.4'/%3E%3Ccircle cx='280' cy='320' r='1.5' fill='white' opacity='0.5'/%3E%3Ccircle cx='160' cy='370' r='1' fill='white' opacity='0.35'/%3E%3Ccircle cx='380' cy='200' r='1.5' fill='white' opacity='0.45'/%3E%3C/svg%3E");
+    animation: tmap-snow-fall2 10s linear infinite;
+    opacity: 0.6;
+}
+.tmap-snow-layer3 {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Ccircle cx='100' cy='100' r='1' fill='white' opacity='0.3'/%3E%3Ccircle cx='300' cy='200' r='0.8' fill='white' opacity='0.25'/%3E%3Ccircle cx='500' cy='150' r='1' fill='white' opacity='0.3'/%3E%3Ccircle cx='200' cy='400' r='0.8' fill='white' opacity='0.2'/%3E%3Ccircle cx='450' cy='350' r='1' fill='white' opacity='0.3'/%3E%3Ccircle cx='50' cy='500' r='0.8' fill='white' opacity='0.25'/%3E%3C/svg%3E");
+    animation: tmap-snow-fall3 16s linear infinite;
+    opacity: 0.4;
+}
+@keyframes tmap-snow-fall1 { 0% { background-position: 0 -500px; } 100% { background-position: -120px 500px; } }
+@keyframes tmap-snow-fall2 { 0% { background-position: 0 -400px; } 100% { background-position: 80px 400px; } }
+@keyframes tmap-snow-fall3 { 0% { background-position: 0 -600px; } 100% { background-position: -50px 600px; } }
