@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.25.64 - 2026-03-30
+
+### Upgraded — 3D Traffic Particle System with Real Vehicles & Live API Data
+
+Replaced abstract circle dots with **8 canvas-rendered vehicle types** and **live TomTom speed data** driving particle velocities.
+
+#### 8 Vehicle Types (canvas-rendered top-down icons)
+| Vehicle | Visual | Weight | Speed Modifier |
+|---|---|---|---|
+| Car (white) | Sedan with windows, headlights, taillights | 30% | 1.0x |
+| Car (red) | Red sedan | 12% | 1.0x |
+| Car (blue) | Blue sedan | 10% | 1.0x |
+| Car (black) | Dark sedan | 15% | 1.0x |
+| Truck | Yellow cab + grey cargo container | 8% | 0.75x (slower) |
+| Bus | Green with window row | 4% | 0.75x (slower) |
+| Van | White delivery van | 10% | 1.0x |
+| Motorcycle | Red with rider dot, bright headlight | 11% | 1.15x (faster) |
+
+Each vehicle is rendered as a high-DPI canvas image registered as a MapLibre icon. Vehicles rotate to match road direction (`icon-rotation-alignment: 'map'`, `icon-pitch-alignment: 'map'`).
+
+#### 3 Render Layers
+- **Shadow**: Dark circle below each vehicle for ground contact depth
+- **Vehicle icon**: Top-down sprite, scales from 0.3x at z12 to 1.8x at z20
+- **Headlight glow**: Warm white circle in front of vehicle (visible z14+)
+
+#### Multi-Lane Simulation
+Each particle has a random perpendicular lane offset, creating the appearance of vehicles in different lanes on the same road. Offset is computed from the road's normal vector.
+
+#### Live TomTom Speed Data
+When TomTom API key is configured:
+1. On activation, queries `GET /mock-api/traffic/flow?lat=&lng=` for each road segment's midpoint
+2. Returns `currentSpeed` and `freeFlowSpeed` from TomTom Flow Segment API
+3. Particle speed is computed from **actual km/h**: `speed = actualSpeed / 5000` (maps real-world speed to animation progress)
+4. Traffic level is derived from speed ratio: `currentSpeed / freeFlowSpeed`
+5. Refreshes live speeds every 2 minutes
+
+Without API key: falls back to mock speed data from `MOCK_TRAFFIC_SEGMENTS`.
+
+#### Particle Count by Congestion
+| Level | Count/Segment | Visual Effect |
+|---|---|---|
+| Free flow (>80%) | 6 | Sparse, fast-moving |
+| Light (60-80%) | 6 | Normal spacing |
+| Moderate (40-60%) | 8 | Denser, slower |
+| Heavy (20-40%) | 10 | Packed, crawling |
+| Standstill (<20%) | 12 | Maximum density, near-stopped |
+
+#### Technical
+- Vehicles rendered via `ctx.roundRect()` + `ctx.fillRect()` on off-screen canvas at device pixel ratio
+- Registered as MapLibre images (`map.addImage`) — no external SVG/PNG files
+- Symbol layer with `icon-ignore-placement: true` for zero collision detection overhead
+- 30fps animation cap, ~120 particles total
+- Legacy circle layers (`traffic-particles-tail/glow`) cleaned up on activation
+
 ## 0.25.63 - 2026-03-30
 
 ### Implemented — 3D Traffic Particle System (/map → Layers → Live Traffic + 3D)
