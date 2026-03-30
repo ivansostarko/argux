@@ -43,3 +43,10 @@
 |Open Meteo| Weather Services     | https://archive-api.open-meteo.com         | Free |
  
 
+### Natural Hazard
+|  API           |Usage                            |URL                        | Licence |
+|----------------|-------------------------------|-----------------------------|----------|
+|USGS  | Earthquake Hazards Program     | https://earthquake.usgs.gov/         | Free |
+|NASA FIRMS  | Active Fires     | https://earthquake.usgs.gov/         | Free |
+
+

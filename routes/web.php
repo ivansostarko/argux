@@ -181,6 +181,8 @@ Route::get('/mock-api/cesium/config', [\App\Http\Controllers\MockApi\CesiumContr
 Route::get('/mock-api/news/geo', [\App\Http\Controllers\MockApi\GdeltNewsController::class, 'geo'])->name('mock-api.news.geo');
 Route::get('/mock-api/news/articles', [\App\Http\Controllers\MockApi\GdeltNewsController::class, 'articles'])->name('mock-api.news.articles');
 Route::get('/mock-api/news/heatmap', [\App\Http\Controllers\MockApi\GdeltNewsController::class, 'heatmap'])->name('mock-api.news.heatmap');
+Route::get('/mock-api/hazards/earthquakes', [\App\Http\Controllers\MockApi\NaturalHazardsController::class, 'earthquakes'])->name('mock-api.hazards.earthquakes');
+Route::get('/mock-api/hazards/fires', [\App\Http\Controllers\MockApi\NaturalHazardsController::class, 'fires'])->name('mock-api.hazards.fires');
 
 /*
 |--------------------------------------------------------------------------

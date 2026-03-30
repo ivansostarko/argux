@@ -842,6 +842,49 @@ export default function MapIndex() {
 
     // ═══ NO FLY ZONES ═══
     const [layerNFZ, setLayerNFZ] = useState(false);
+
+    // ═══ NATURAL HAZARDS ═══
+    const [layerEarthquakes, setLayerEarthquakes] = useState(false);
+    const [eqFeed, setEqFeed] = useState('2.5_day');
+    const [eqFeatures, setEqFeatures] = useState<any[]>([]);
+    const [eqLoading, setEqLoading] = useState(false);
+    const [eqMeta, setEqMeta] = useState<any>(null);
+
+    const [layerFires, setLayerFires] = useState(false);
+    const [fireFeatures, setFireFeatures] = useState<any[]>([]);
+    const [fireLoading, setFireLoading] = useState(false);
+    const [fireMeta, setFireMeta] = useState<any>(null);
+    const [fireDays, setFireDays] = useState(1);
+
+    const fetchEarthquakes = useCallback(async (feed?: string) => {
+        setEqLoading(true);
+        try {
+            const res = await fetch(`/mock-api/hazards/earthquakes?feed=${feed || eqFeed}`);
+            if (res.ok) {
+                const data = await res.json();
+                setEqFeatures(data.features || []);
+                setEqMeta(data.meta || data.metadata || {});
+            }
+        } catch (e) { console.warn('Earthquake fetch failed:', e); }
+        setEqLoading(false);
+    }, [eqFeed]);
+
+    const fetchFires = useCallback(async (days?: number) => {
+        setFireLoading(true);
+        try {
+            const res = await fetch(`/mock-api/hazards/fires?days=${days || fireDays}&area=world`);
+            if (res.ok) {
+                const data = await res.json();
+                setFireFeatures(data.features || []);
+                setFireMeta(data.meta || {});
+            }
+        } catch (e) { console.warn('Fire fetch failed:', e); }
+        setFireLoading(false);
+    }, [fireDays]);
+
+    // Auto-fetch when layers toggled on
+    useEffect(() => { if (layerEarthquakes && eqFeatures.length === 0 && !eqLoading) fetchEarthquakes(); }, [layerEarthquakes]);
+    useEffect(() => { if (layerFires && fireFeatures.length === 0 && !fireLoading) fetchFires(); }, [layerFires]);
     const [showNFZPanel, setShowNFZPanel] = useState(false);
     const [nfzTypeFilter, setNfzTypeFilter] = useState<Set<string>>(new Set(Object.keys(nfzTypeConfig)));
     const [nfzSearch, setNfzSearch] = useState('');
@@ -5760,6 +5803,95 @@ export default function MapIndex() {
         return () => { cancelled = true; map.off('moveend', onMoveEnd); if (trafficParticleAnimRef.current) { cancelAnimationFrame(trafficParticleAnimRef.current); trafficParticleAnimRef.current = null; } if (speedIv) clearInterval(speedIv); };
     }, [active3D, layerTraffic, trafficShowFlow, loaded, trafficSource, fetchTrafficRoads, fetchLiveTrafficSpeeds]);
 
+    // ═══ USGS EARTHQUAKE RENDERING ═══
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        ['eq-circles', 'eq-labels', 'eq-pulse'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+        try { if (map.getSource('eq-src')) map.removeSource('eq-src'); } catch {}
+        if (!layerEarthquakes || eqFeatures.length === 0) return;
+
+        const fc = { type: 'FeatureCollection' as const, features: eqFeatures.map((f: any) => ({
+            ...f, properties: { ...f.properties, mag: f.properties?.mag || 0, depth: f.geometry?.coordinates?.[2] || 0 }
+        })) };
+
+        try {
+            map.addSource('eq-src', { type: 'geojson', data: fc });
+            // Pulsing outer ring for significant quakes
+            map.addLayer({ id: 'eq-pulse', type: 'circle', source: 'eq-src', filter: ['>=', ['get', 'mag'], 4.5], paint: {
+                'circle-radius': ['interpolate', ['linear'], ['get', 'mag'], 4.5, 20, 6, 35, 8, 50],
+                'circle-color': 'transparent', 'circle-stroke-width': 2, 'circle-stroke-color': '#a855f7', 'circle-stroke-opacity': 0.3,
+            }});
+            // Main circles
+            map.addLayer({ id: 'eq-circles', type: 'circle', source: 'eq-src', paint: {
+                'circle-radius': ['interpolate', ['linear'], ['get', 'mag'], 0, 3, 2.5, 5, 4.5, 10, 6, 16, 8, 24],
+                'circle-color': ['interpolate', ['linear'], ['get', 'mag'], 0, '#93c5fd', 2.5, '#22c55e', 4.5, '#f59e0b', 6, '#ef4444', 8, '#dc2626'],
+                'circle-opacity': 0.75, 'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff', 'circle-stroke-opacity': 0.5,
+            }});
+            // Labels for M4.5+
+            map.addLayer({ id: 'eq-labels', type: 'symbol', source: 'eq-src', filter: ['>=', ['get', 'mag'], 4], layout: {
+                'text-field': ['concat', 'M', ['to-string', ['get', 'mag']]], 'text-size': 10, 'text-offset': [0, 1.6], 'text-anchor': 'top', 'text-allow-overlap': false,
+            }, paint: { 'text-color': '#a855f7', 'text-halo-color': 'rgba(0,0,0,0.8)', 'text-halo-width': 1 } });
+
+            const onClick = (e: any) => {
+                const f = e.features?.[0]; if (!f) return;
+                const p = f.properties; const c = f.geometry.coordinates.slice();
+                const mag = (p.mag || 0).toFixed(1); const depth = (p.depth || c[2] || 0).toFixed(1);
+                const magColor = p.mag >= 6 ? '#dc2626' : p.mag >= 4.5 ? '#ef4444' : p.mag >= 2.5 ? '#f59e0b' : '#22c55e';
+                const time = p.time ? new Date(p.time).toLocaleString() : '';
+                const ago = p.time ? `${Math.round((Date.now() - p.time) / 3600000)}h ago` : '';
+                const html = `<div class="tmap-popup-card" style="min-width:220px"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${magColor}15;border:1.5px solid ${magColor}40;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${magColor};font-family:'JetBrains Mono',monospace">M${mag}</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">${p.place || 'Unknown'}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${magColor}15;color:${magColor};border:1px solid ${magColor}30">M${mag}</span><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#a855f715;color:#a855f7;border:1px solid #a855f730">USGS</span>${p.tsunami ? '<span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#0ea5e915;color:#0ea5e9;border:1px solid #0ea5e930">⚠ TSUNAMI</span>' : ''}</div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${time} <span style="color:var(--ax-text-dim);font-size:9px">(${ago})</span></span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Depth</span><span class="tmap-popup-val">${depth} km</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📊 Sig</span><span class="tmap-popup-val">${p.sig || 0}</span></div>${p.felt ? `<div class="tmap-popup-row"><span class="tmap-popup-label">👥 Felt</span><span class="tmap-popup-val">${p.felt} reports</span></div>` : ''}${p.alert ? `<div class="tmap-popup-row"><span class="tmap-popup-label">⚠️ Alert</span><span class="tmap-popup-val" style="color:${p.alert === 'red' ? '#ef4444' : p.alert === 'orange' ? '#f97316' : p.alert === 'yellow' ? '#f59e0b' : '#22c55e'};font-weight:700;text-transform:uppercase">${p.alert}</span></div>` : ''}</div>${p.url ? `<div style="padding:4px 10px;border-top:1px solid var(--ax-border)"><a href="${p.url}" target="_blank" rel="noopener" style="color:var(--ax-accent);text-decoration:none;font-size:9px">View on USGS ↗</a></div>` : ''}<div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
+                new (window as any).maplibregl.Popup({ maxWidth: '300px', offset: 8 }).setLngLat([c[0], c[1]]).setHTML(html).addTo(map);
+            };
+            map.on('click', 'eq-circles', onClick);
+            map.on('mouseenter', 'eq-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'eq-circles', () => { map.getCanvas().style.cursor = ''; });
+        } catch (e) { console.warn('Earthquake render failed:', e); }
+        return () => { try { map.off('click', 'eq-circles'); map.off('mouseenter', 'eq-circles'); map.off('mouseleave', 'eq-circles'); } catch {} };
+    }, [eqFeatures, layerEarthquakes, loaded]);
+
+    // ═══ NASA FIRMS FIRE RENDERING ═══
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !loaded) return;
+        ['fire-heat', 'fire-circles', 'fire-labels'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+        try { if (map.getSource('fire-src')) map.removeSource('fire-src'); } catch {}
+        if (!layerFires || fireFeatures.length === 0) return;
+
+        const fc = { type: 'FeatureCollection' as const, features: fireFeatures };
+        try {
+            map.addSource('fire-src', { type: 'geojson', data: fc });
+            // Heatmap layer for density
+            map.addLayer({ id: 'fire-heat', type: 'heatmap', source: 'fire-src', maxzoom: 10, paint: {
+                'heatmap-weight': ['interpolate', ['linear'], ['get', 'frp'], 0, 0.1, 50, 0.5, 200, 1],
+                'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 0.5, 10, 2],
+                'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(0,0,0,0)', 0.2, '#fca5a5', 0.4, '#f97316', 0.6, '#ef4444', 0.8, '#dc2626', 1, '#fff'],
+                'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 4, 6, 12, 10, 20],
+                'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.8, 12, 0.3],
+            }});
+            // Point circles at higher zoom
+            map.addLayer({ id: 'fire-circles', type: 'circle', source: 'fire-src', minzoom: 6, paint: {
+                'circle-radius': ['interpolate', ['linear'], ['get', 'frp'], 0, 3, 20, 6, 100, 10, 500, 16],
+                'circle-color': ['interpolate', ['linear'], ['get', 'brightness'], 300, '#f97316', 340, '#ef4444', 380, '#dc2626', 420, '#fff'],
+                'circle-opacity': 0.8, 'circle-stroke-width': 1, 'circle-stroke-color': '#fbbf24', 'circle-stroke-opacity': 0.5,
+            }});
+
+            const onClick = (e: any) => {
+                const f = e.features?.[0]; if (!f) return;
+                const p = f.properties; const c = f.geometry.coordinates.slice();
+                const bright = (p.brightness || 0).toFixed(1); const frp = (p.frp || 0).toFixed(1);
+                const conf = p.confidence || 'N/A'; const confColor = conf === 'high' || conf === 'h' ? '#ef4444' : conf === 'nominal' || conf === 'n' ? '#f59e0b' : '#6b7280';
+                const dn = p.daynight === 'D' ? '☀️ Day' : p.daynight === 'N' ? '🌙 Night' : p.daynight || '';
+                const html = `<div class="tmap-popup-card" style="min-width:220px"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:#f43f5e15;border:1.5px solid #f43f5e40;display:flex;align-items:center;justify-content:center;font-size:16px">🔥</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">Active Fire Detection</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${confColor}15;color:${confColor};border:1px solid ${confColor}30">${conf}</span><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f43f5e15;color:#f43f5e;border:1px solid #f43f5e30">NASA FIRMS</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">🌡️ Brightness</span><span class="tmap-popup-val" style="font-weight:700;color:#ef4444">${bright} K</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚡ FRP</span><span class="tmap-popup-val">${frp} MW</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📡 Satellite</span><span class="tmap-popup-val">${p.satellite || 'VIIRS'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📅 Date</span><span class="tmap-popup-val">${p.acq_date || ''} ${p.acq_time || ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🌅 Day/Night</span><span class="tmap-popup-val">${dn}</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
+                new (window as any).maplibregl.Popup({ maxWidth: '300px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+            };
+            map.on('click', 'fire-circles', onClick);
+            map.on('mouseenter', 'fire-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'fire-circles', () => { map.getCanvas().style.cursor = ''; });
+        } catch (e) { console.warn('Fire render failed:', e); }
+        return () => { try { map.off('click', 'fire-circles'); map.off('mouseenter', 'fire-circles'); map.off('mouseleave', 'fire-circles'); } catch {} };
+    }, [fireFeatures, layerFires, loaded]);
+
     // ═══ CAMERA FOV (Field of View) RENDERING ═══
     useEffect(() => {
         const map = mapRef.current;
@@ -6298,7 +6430,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
-                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0) + (layerUAV ? 1 : 0) + (layerTraffic ? 1 : 0) + (layerVessels ? 1 : 0) + (layerNFZ ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0) + (layerUAV ? 1 : 0) + (layerTraffic ? 1 : 0) + (layerVessels ? 1 : 0) + (layerNFZ ? 1 : 0) + (layerEarthquakes ? 1 : 0) + (layerFires ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Layer buttons */}
                             {[
@@ -6313,6 +6445,8 @@ export default function MapIndex() {
                                 { key: 'traffic', icon: '🚦', label: 'Live Traffic', color: '#f97316', active: layerTraffic, toggle: () => { setLayerTraffic(!layerTraffic); triggerTopLoader(); }, panel: showTrafficPanel, openPanel: () => { setShowTrafficPanel(!showTrafficPanel); triggerTopLoader(); }, desc: layerTraffic ? `${trafficSource === 'tomtom' ? 'LIVE' : 'Mock'} · ${trafficStats.incidents} incidents` : 'TomTom traffic flow + incidents' },
                                 { key: 'vessels', icon: '🚢', label: 'Vessel Tracker', color: '#0891b2', active: layerVessels, toggle: () => { setLayerVessels(!layerVessels); triggerTopLoader(); }, panel: showVesselPanel, openPanel: () => { setShowVesselPanel(!showVesselPanel); triggerTopLoader(); }, desc: layerVessels ? `${vesselStats.visible} vessels · ${vesselStats.moving} moving` : 'AIS ship tracking & maritime data' },
                                 { key: 'nfz', icon: '⛔', label: 'No Fly Zones', color: '#ef4444', active: layerNFZ, toggle: () => { setLayerNFZ(!layerNFZ); triggerTopLoader(); }, panel: showNFZPanel, openPanel: () => { setShowNFZPanel(!showNFZPanel); triggerTopLoader(); }, desc: layerNFZ ? `${nfzStats.visible} zones · ${nfzStats.active} active` : 'Airspace restrictions & prohibited areas' },
+                                { key: 'earthquakes', icon: '🌍', label: 'Earthquakes', color: '#a855f7', active: layerEarthquakes, toggle: () => { setLayerEarthquakes(!layerEarthquakes); triggerTopLoader(); }, desc: layerEarthquakes ? (eqLoading ? 'Loading USGS...' : `${eqFeatures.length} events · USGS`) : 'USGS real-time seismic data' },
+                                { key: 'fires', icon: '🔥', label: 'Active Fires', color: '#f43f5e', active: layerFires, toggle: () => { setLayerFires(!layerFires); triggerTopLoader(); }, desc: layerFires ? (fireLoading ? 'Loading FIRMS...' : `${fireFeatures.length} hotspots · NASA`) : 'NASA FIRMS satellite fire detection' },
                             ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {/* Toggle switch */}
                                 <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>

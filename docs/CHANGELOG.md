@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.25.82 - 2026-03-30
+
+### Implemented — USGS Earthquakes + NASA FIRMS Active Fires (/map → Layers)
+
+Two new real-time data layers in the Layers sidebar section showing live natural hazard events on the map.
+
+#### 🌍 USGS Earthquakes
+- **Source**: USGS Earthquake Hazards Program — 100% free, no API key, native GeoJSON
+- **Feed**: `earthquake.usgs.gov/earthquakes/feed/v1.0/summary/{feed}.geojson`
+- **Default feed**: M2.5+ past day (`2.5_day`), configurable to 20 different feeds
+- **MapLibre layers**:
+  - `eq-pulse` — outer ring for M4.5+ quakes (purple stroke)
+  - `eq-circles` — main dots sized by magnitude (M0=3px → M8=24px), colored: blue(0) → green(2.5) → amber(4.5) → red(6) → dark red(8+)
+  - `eq-labels` — "M5.2" labels for M4+ events
+- **Click popup**: magnitude badge, location, time, depth, significance, felt reports, PAGER alert level, tsunami warning, USGS link
+- **Backend cache**: 2min (hourly feeds), 5min (daily), 10min (weekly/monthly)
+
+#### 🔥 NASA FIRMS Active Fires
+- **Source**: NASA FIRMS (Fire Information for Resource Management System) via LANCE
+- **Satellite**: VIIRS NOAA-20 NRT (also supports NOAA-21, Suomi NPP, MODIS)
+- **Requires**: `NASA_FIRMS_KEY` in .env (free key at https://firms.modaps.eosdis.nasa.gov/api/map_key/)
+- **Backend**: CSV → GeoJSON conversion, capped at 2000 features for performance
+- **MapLibre layers**:
+  - `fire-heat` — heatmap layer at low zoom (red/orange/white density), weighted by FRP (Fire Radiative Power)
+  - `fire-circles` — point circles at zoom 6+ sized by FRP (0→3px, 500→16px), colored by brightness temp (300K orange → 420K white)
+- **Click popup**: brightness temperature (K), FRP (MW), satellite, date/time, day/night indicator, confidence level
+
+#### Backend — `NaturalHazardsController.php`
+- `GET /mock-api/hazards/earthquakes?feed=2.5_day` — proxies USGS GeoJSON feeds
+- `GET /mock-api/hazards/fires?days=1&area=world&source=VIIRS_NOAA20_NRT` — proxies NASA FIRMS CSV, converts to GeoJSON
+
+#### Setup
+```
+# NASA FIRMS (required for fires layer)
+.env: NASA_FIRMS_KEY=your_key
+# Get free key: https://firms.modaps.eosdis.nasa.gov/api/map_key/
+
+# USGS Earthquakes — no key needed
+# Requires earthquake.usgs.gov in allowed outbound domains
+```
+
 ## 0.25.81 - 2026-03-30
 - Added hide/show toggle for the map sidebar (`tmap-sidebar`). A chevron-left button in the sidebar header collapses the sidebar to zero width. A slim tab button on the left edge of the map appears to re-open it.
 
