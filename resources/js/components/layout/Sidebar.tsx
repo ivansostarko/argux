@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import { useAppSettings } from '../../layouts/AppLayout';
 import Logo from '../auth/Logo';
@@ -50,6 +51,14 @@ export default function Sidebar({ collapsed, onToggle, currentPath, mobileOpen, 
     const sidebarWidth = collapsed ? 62 : 240;
     const nav = (route: string) => { router.visit(route); onMobileClose(); };
 
+    // Fixed-position tooltip (escapes overflow:hidden)
+    const [tip, setTip] = useState<{ label: string; top: number; left: number } | null>(null);
+    const showTip = useCallback((e: React.MouseEvent, label: string) => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setTip({ label, top: rect.top + rect.height / 2, left: rect.right + 10 });
+    }, []);
+    const hideTip = useCallback(() => setTip(null), []);
+
     const sidebarContent = (width: number, showLabels: boolean, showClose?: boolean) => (
         <div style={{ width, height: '100vh', background: th.sidebarBg, borderRight: `1px solid ${th.border}`, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0, color: th.text }}>
             <div style={{ padding: showLabels ? '16px 16px' : '16px 8px', display: 'flex', alignItems: 'center', justifyContent: showLabels ? 'space-between' : 'center', borderBottom: `1px solid ${th.border}`, minHeight: 56 }}>
@@ -75,7 +84,7 @@ export default function Sidebar({ collapsed, onToggle, currentPath, mobileOpen, 
                         {section.items.map(item => {
                             const active = currentPath === item.route || currentPath.startsWith(item.route + '/');
                             return (
-                                <button key={item.route} onClick={() => nav(item.route)} title={!showLabels ? item.label : undefined} style={{
+                                <button key={item.route} onClick={() => nav(item.route)} style={{
                                     display: 'flex', alignItems: 'center', gap: 10, width: '100%',
                                     padding: showLabels ? '7px 16px' : '8px 0', justifyContent: showLabels ? 'flex-start' : 'center',
                                     background: active ? th.accentDim : 'transparent', border: 'none', borderRadius: 0, cursor: 'pointer',
@@ -83,8 +92,14 @@ export default function Sidebar({ collapsed, onToggle, currentPath, mobileOpen, 
                                     transition: 'all 0.15s ease', whiteSpace: 'nowrap',
                                     borderLeft: active ? `2px solid ${th.accent}` : '2px solid transparent',
                                 }}
-                                    onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.color = th.text; } }}
-                                    onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = th.textSecondary; } }}
+                                    onMouseEnter={e => {
+                                        if (!showLabels) showTip(e, item.label);
+                                        if (!active) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.color = th.text; }
+                                    }}
+                                    onMouseLeave={e => {
+                                        hideTip();
+                                        if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = th.textSecondary; }
+                                    }}
                                 >
                                     <span style={{ display: 'flex', flexShrink: 0 }}>{item.icon}</span>
                                     {showLabels && <span>{item.label}</span>}
@@ -124,6 +139,20 @@ export default function Sidebar({ collapsed, onToggle, currentPath, mobileOpen, 
             <div className="ax-sidebar-mobile" style={{ position: 'fixed', top: 0, left: 0, width: 260, height: '100vh', zIndex: 50 }}>
                 {sidebarContent(260, true, true)}
             </div>
+
+            {/* Fixed tooltip — rendered at document root level, escapes overflow:hidden */}
+            {tip && <div style={{
+                position: 'fixed', top: tip.top, left: tip.left, transform: 'translateY(-50%)',
+                padding: '5px 10px', borderRadius: 5,
+                background: th.bgCard || '#1a1f2e', border: `1px solid ${th.border}`,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2)',
+                whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 9999,
+                fontSize: 11, fontWeight: 600, color: th.text, fontFamily: 'var(--ax-font, inherit)',
+            }}>
+                <div style={{ position: 'absolute', right: '100%', top: '50%', transform: 'translateY(-50%)', width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderRight: `5px solid ${th.border}` }} />
+                <div style={{ position: 'absolute', right: '100%', top: '50%', transform: 'translateY(-50%)', marginRight: -1, width: 0, height: 0, borderTop: '4px solid transparent', borderBottom: '4px solid transparent', borderRight: `4px solid ${th.bgCard || '#1a1f2e'}` }} />
+                {tip.label}
+            </div>}
         </>
     );
 }

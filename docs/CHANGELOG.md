@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.25.80 - 2026-03-30
+- Added styled right tooltips to sidebar menu items when sidebar is collapsed. Tooltips appear on hover to the right of each icon with a left-pointing arrow, themed background/border, and drop shadow. Replaces the native browser `title` attribute tooltip.
+
 ## 0.25.79 - 2026-03-30
 - Added Region Quick Nav to Tiles section — 6 world regions (World, Europe, Americas, Middle East, Asia Pacific, Africa) as a 3×2 button grid. Click any region to fly the map to that area. Works on flat 2D, 3D Globe, and 3D Realistic (syncs Google Maps camera). Each region has tuned lat/lng, zoom, globe-specific zoom, bearing, and pitch.
 
