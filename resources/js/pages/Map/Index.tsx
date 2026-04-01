@@ -408,6 +408,7 @@ export default function MapIndex() {
 
     // ═══ LIVE FLIGHTS (OpenSky Network) ═══
     const [layerFlights, setLayerFlights] = useState(false);
+    const [active3D, setActive3D] = useState<string | null>(null);
     const [showFlightsPanel, setShowFlightsPanel] = useState(false);
     const [flightSearch, setFlightSearch] = useState('');
     const [flightCategoryFilter, setFlightCategoryFilter] = useState<Set<string>>(new Set());
@@ -2895,73 +2896,185 @@ export default function MapIndex() {
         return () => { markersRef.current.forEach(m => m.remove()); markersRef.current = []; };
     }, [selectedPersons, selectedOrgs, loaded]);
 
-    // Source markers on map — WebGL layers with clustering (replaces DOM markers)
-    const sourceMarkersRef = useRef<any[]>([]); // kept for compatibility (empty now)
+    // Source markers on map — WebGL symbol layers with canvas icons + clustering + 3D
+    const sourceMarkersRef = useRef<any[]>([]); // kept for compatibility
     const sourcePopupsRef = useRef<any[]>([]);
+    const srcLast3D = useRef<string | null>(null);
+
+    // Canvas icon generator for MapLibre addImage
+    const createMarkerIcon = useCallback((size: number, bgColor: string, symbol: string, shape: 'circle' | 'square' | 'diamond', strokeColor?: string) => {
+        const r = 2; // devicePixelRatio fixed
+        const s = size * r;
+        const c = document.createElement('canvas');
+        c.width = s; c.height = s;
+        const ctx = c.getContext('2d')!;
+        ctx.clearRect(0, 0, s, s);
+        const h = s / 2;
+        // Shadow
+        ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4 * r; ctx.shadowOffsetY = 2 * r;
+        ctx.fillStyle = bgColor;
+        if (shape === 'circle') { ctx.beginPath(); ctx.arc(h, h, h - 4 * r, 0, Math.PI * 2); ctx.fill(); }
+        else if (shape === 'diamond') { ctx.save(); ctx.translate(h, h); ctx.rotate(Math.PI / 4); ctx.fillRect(-(h - 5 * r), -(h - 5 * r), (h - 5 * r) * 2, (h - 5 * r) * 2); ctx.restore(); }
+        else { const pad = 3 * r; ctx.fillRect(pad, pad, s - pad * 2, s - pad * 2); }
+        ctx.shadowColor = 'transparent';
+        // Stroke
+        if (strokeColor) { ctx.strokeStyle = strokeColor; ctx.lineWidth = 1.5 * r;
+            if (shape === 'circle') { ctx.beginPath(); ctx.arc(h, h, h - 4 * r, 0, Math.PI * 2); ctx.stroke(); }
+            else if (shape === 'diamond') { ctx.save(); ctx.translate(h, h); ctx.rotate(Math.PI / 4); ctx.strokeRect(-(h - 5 * r), -(h - 5 * r), (h - 5 * r) * 2, (h - 5 * r) * 2); ctx.restore(); }
+            else { const pad = 3 * r; ctx.strokeRect(pad, pad, s - pad * 2, s - pad * 2); }
+        }
+        // Symbol text
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = `${12 * r}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
+        ctx.fillStyle = '#fff'; ctx.fillText(symbol, h, h + 1 * r);
+        return { width: s, height: s, data: new Uint8Array(ctx.getImageData(0, 0, s, s).data.buffer) };
+    }, []);
+
+    const registerSrcIcons = useCallback((map: any) => {
+        const icons: [string, string, string, 'circle' | 'square' | 'diamond', string][] = [
+            ['src-cam-public', '#3b82f6', '📹', 'square', '#60a5fa'],
+            ['src-cam-hidden', '#ef4444', '🔴', 'square', '#f87171'],
+            ['src-cam-private', '#8b5cf6', '📷', 'square', '#a78bfa'],
+            ['src-gps', '#22c55e', '📡', 'circle', '#4ade80'],
+            ['src-audio', '#f59e0b', '🎙️', 'diamond', '#fbbf24'],
+            ['src-app-locator', '#06b6d4', '📍', 'circle', '#22d3ee'],
+            ['src-app-photo', '#ec4899', '🖼️', 'circle', '#f472b6'],
+            ['src-app-video', '#f97316', '🎬', 'circle', '#fb923c'],
+            ['src-app-audio', '#a855f7', '🔊', 'circle', '#c084fc'],
+            ['src-app-camera', '#14b8a6', '📱', 'circle', '#2dd4bf'],
+            ['src-person', '#3b82f6', '👤', 'circle', '#60a5fa'],
+            ['src-org', '#f59e0b', '🏢', 'square', '#fbbf24'],
+            ['src-cluster', '#1e40af', '●', 'circle', '#3b82f6'],
+        ];
+        icons.forEach(([id, bg, sym, shape, stroke]) => {
+            if (!map.hasImage(id)) {
+                try {
+                    const img = createMarkerIcon(28, bg, sym, shape, stroke);
+                    map.addImage(id, img, { pixelRatio: 2 });
+                } catch (e) { console.warn('Failed to register icon', id, e); }
+            }
+        });
+    }, [createMarkerIcon]);
+
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !loaded) return;
         const ml = (window as any).maplibregl;
         if (!ml) return;
 
+        // Register icons
+        registerSrcIcons(map);
+
+        // Fallback: register icons on demand if missing (handles map style rebuilds)
+        if (!(map as any)._srcMissingHandler) {
+            const onMissing = (e: any) => { if (e.id?.startsWith('src-')) registerSrcIcons(map); };
+            map.on('styleimagemissing', onMissing);
+            (map as any)._srcMissingHandler = true;
+        }
+
         // Remove old popups
         sourcePopupsRef.current.forEach(p => { try { p.remove(); } catch {} });
         sourcePopupsRef.current = [];
 
-        // Build GeoJSON from active markers
+        // Detect 3D mode change → force layer rebuild
+        const is3D = !!active3D;
+        const was3D = srcLast3D.current;
+        if (String(is3D) !== String(was3D)) {
+            ['src-icons', 'src-labels', 'src-ground', 'src-clusters', 'src-cluster-count', 'src-cluster-icon', 'src-status-ring'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            try { if (map.getSource('src-markers')) map.removeSource('src-markers'); } catch {}
+            srcLast3D.current = String(is3D);
+        }
+
+        // Build GeoJSON
         const features = activeSourceMarkers.map(sm => {
             const st = sourceTypes.find(s => s.id === sm.sourceId);
+            const hasPerson = !!sm.personId;
+            const hasOrg = !hasPerson && !!sm.orgId;
+            let iconId = `src-${sm.sourceId}`;
+            if (hasPerson && !sm.sourceId.startsWith('cam-')) iconId = 'src-person';
+            if (hasOrg && !sm.sourceId.startsWith('cam-')) iconId = 'src-org';
             return {
                 type: 'Feature' as const,
                 geometry: { type: 'Point' as const, coordinates: [sm.lng, sm.lat] },
                 properties: {
-                    id: sm.id,
-                    sourceId: sm.sourceId,
-                    label: sm.label,
-                    status: sm.status,
-                    color: st?.color || '#3b82f6',
-                    icon: st?.icon || '📍',
-                    group: st?.group || '',
-                    hasPerson: sm.personId ? 1 : 0,
-                    hasOrg: sm.orgId ? 1 : 0,
-                    risk: sm.risk || '',
+                    id: sm.id, sourceId: sm.sourceId, label: sm.label, status: sm.status,
+                    color: st?.color || '#3b82f6', icon: iconId,
+                    hasPerson: hasPerson ? 1 : 0, hasOrg: hasOrg ? 1 : 0,
+                    risk: sm.risk || '', personName: hasPerson ? `${sm.personName || ''} ${sm.personLastName || ''}`.trim() : '',
                     statusColor: sm.status === 'online' ? '#22c55e' : sm.status === 'degraded' ? '#f59e0b' : '#6b7280',
                 },
             };
         });
         const fc: any = { type: 'FeatureCollection', features };
 
-        // Source + layers — addSource once, then setData
         if (map.getSource('src-markers')) {
             (map.getSource('src-markers') as any).setData(fc);
         } else {
             map.addSource('src-markers', {
                 type: 'geojson', data: fc,
-                cluster: true, clusterMaxZoom: 14, clusterRadius: 40,
+                cluster: true, clusterMaxZoom: 14, clusterRadius: 50,
                 clusterProperties: { 'online': ['+', ['case', ['==', ['get', 'status'], 'online'], 1, 0]] },
             });
+
+            const pitchAlign = is3D ? 'map' : 'viewport';
+
             // Cluster circles
             map.addLayer({ id: 'src-clusters', type: 'circle', source: 'src-markers', filter: ['has', 'point_count'], paint: {
-                'circle-color': ['step', ['get', 'point_count'], '#3b82f6', 5, '#8b5cf6', 15, '#f59e0b', 30, '#ef4444'],
-                'circle-radius': ['step', ['get', 'point_count'], 14, 5, 18, 15, 22, 30, 26],
-                'circle-stroke-width': 2, 'circle-stroke-color': 'rgba(255,255,255,0.3)',
+                'circle-color': ['step', ['get', 'point_count'], '#1e40af', 5, '#7c3aed', 15, '#b45309', 30, '#b91c1c'],
+                'circle-radius': ['step', ['get', 'point_count'], 16, 5, 20, 15, 24, 30, 28],
+                'circle-stroke-width': 2, 'circle-stroke-color': 'rgba(255,255,255,0.15)',
+                'circle-pitch-alignment': is3D ? 'map' : 'viewport',
             }});
-            // Cluster count labels
+            // Cluster count
             map.addLayer({ id: 'src-cluster-count', type: 'symbol', source: 'src-markers', filter: ['has', 'point_count'], layout: {
                 'text-field': '{point_count_abbreviated}', 'text-size': 11, 'text-allow-overlap': true,
+                'text-pitch-alignment': pitchAlign,
             }, paint: { 'text-color': '#fff' } });
-            // Unclustered point circles
-            map.addLayer({ id: 'src-points', type: 'circle', source: 'src-markers', filter: ['!', ['has', 'point_count']], paint: {
-                'circle-radius': ['case', ['==', ['get', 'hasPerson'], 1], 7, 6],
-                'circle-color': ['get', 'color'],
-                'circle-stroke-width': 2,
-                'circle-stroke-color': ['get', 'statusColor'],
-                'circle-opacity': ['case', ['==', ['get', 'status'], 'offline'], 0.4, 0.85],
+
+            // 3D ground shadow ring
+            if (is3D) {
+                map.addLayer({ id: 'src-ground', type: 'circle', source: 'src-markers',
+                    filter: ['!', ['has', 'point_count']],
+                    paint: {
+                        'circle-radius': 18, 'circle-color': 'transparent',
+                        'circle-stroke-width': 1, 'circle-stroke-color': ['get', 'color'], 'circle-stroke-opacity': 0.2,
+                        'circle-pitch-alignment': 'map', 'circle-pitch-scale': 'map',
+                    },
+                });
+            }
+
+            // Icon symbol layer — main markers
+            map.addLayer({ id: 'src-icons', type: 'symbol', source: 'src-markers', filter: ['!', ['has', 'point_count']], layout: {
+                'icon-image': ['get', 'icon'],
+                'icon-size': 1,
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true,
+                'icon-pitch-alignment': pitchAlign,
+                'icon-rotation-alignment': 'viewport',
+                'symbol-sort-key': ['case', ['==', ['get', 'status'], 'online'], 1, 2],
+            }, paint: {
+                'icon-opacity': ['case', ['==', ['get', 'status'], 'offline'], 0.4, 1],
             }});
-            // Status ring for online devices
+
+            // Labels (person name or device label)
+            map.addLayer({ id: 'src-labels', type: 'symbol', source: 'src-markers', filter: ['!', ['has', 'point_count']], minzoom: 14, layout: {
+                'text-field': ['case', ['==', ['get', 'hasPerson'], 1], ['get', 'personName'], ['get', 'label']],
+                'text-size': 9, 'text-offset': [0, 2], 'text-anchor': 'top',
+                'text-allow-overlap': false,
+                'text-max-width': 12,
+                'text-pitch-alignment': pitchAlign,
+            }, paint: {
+                'text-color': ['get', 'color'], 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 1,
+            }});
+
+            // Online status ring
             map.addLayer({ id: 'src-status-ring', type: 'circle', source: 'src-markers',
                 filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'status'], 'online']],
-                paint: { 'circle-radius': 10, 'circle-color': 'transparent', 'circle-stroke-width': 1, 'circle-stroke-color': '#22c55e', 'circle-stroke-opacity': 0.3 },
+                paint: {
+                    'circle-radius': 16, 'circle-color': 'transparent',
+                    'circle-stroke-width': 1.5, 'circle-stroke-color': '#22c55e', 'circle-stroke-opacity': 0.35,
+                    'circle-pitch-alignment': is3D ? 'map' : 'viewport',
+                },
             });
 
             // Click cluster → zoom in
@@ -2975,8 +3088,8 @@ export default function MapIndex() {
                 });
             });
 
-            // Click point → popup
-            map.on('click', 'src-points', (e: any) => {
+            // Click point → popup (same popup logic as before)
+            map.on('click', 'src-icons', (e: any) => {
                 const feat = e.features?.[0];
                 if (!feat) return;
                 const smId = feat.properties.id;
@@ -3011,7 +3124,6 @@ export default function MapIndex() {
                 const infoGrid = `<div class="tmap-popup-grid">${infoRows}</div>${sm.battery !== undefined ? `<div style="padding:0 14px 4px">${batBar}</div>` : ''}${sm.signal !== undefined ? `<div style="padding:0 14px 6px">${sigBar}</div>` : ''}`;
                 const videoBlock = `<div style="border-bottom:1px solid var(--ax-border);background:#000"><video style="width:100%;height:140px;object-fit:cover;display:block" src="${videoUrl}" preload="metadata" controls controlsList="nodownload" playsinline></video></div>`;
                 const audioBlock = `<div style="padding:8px 14px;border-bottom:1px solid var(--ax-border);background:rgba(245,158,11,0.04)"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:14px">🎙️</span><span style="font-size:10px;font-weight:700;color:var(--ax-text)">Audio</span></div><audio style="width:100%;height:32px" src="${audioUrl}" preload="metadata" controls controlsList="nodownload"></audio></div>`;
-
                 let popupHtml = '';
                 if (sm.sourceId.startsWith('cam-')) {
                     popupHtml = `<div class="tmap-popup-card">${hasOwner ? ownerHeader : deviceHeader}${videoBlock}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
@@ -3024,20 +3136,19 @@ export default function MapIndex() {
                 } else {
                     popupHtml = `<div class="tmap-popup-card">${deviceHeader || ownerHeader}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
                 }
-                const popup = new ml.Popup({ maxWidth: '320px', offset: 12, className: 'tmap-popup' }).setLngLat(coords).setHTML(popupHtml).addTo(map);
+                const popup = new ml.Popup({ maxWidth: '320px', offset: 16, className: 'tmap-popup' }).setLngLat(coords).setHTML(popupHtml).addTo(map);
                 sourcePopupsRef.current.push(popup);
             });
-            map.on('mouseenter', 'src-points', () => { map.getCanvas().style.cursor = 'pointer'; });
-            map.on('mouseleave', 'src-points', () => { map.getCanvas().style.cursor = ''; });
+            map.on('mouseenter', 'src-icons', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'src-icons', () => { map.getCanvas().style.cursor = ''; });
             map.on('mouseenter', 'src-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', 'src-clusters', () => { map.getCanvas().style.cursor = ''; });
         }
 
-        // When no features, clear source data
         if (features.length === 0 && map.getSource('src-markers')) {
             (map.getSource('src-markers') as any).setData({ type: 'FeatureCollection', features: [] });
         }
-    }, [activeSources, hiddenSources, loaded]);
+    }, [activeSources, hiddenSources, loaded, active3D]);
 
     // Heatmap layer
     useEffect(() => {
@@ -4293,7 +4404,6 @@ export default function MapIndex() {
         { id: '3d-realistic', name: '3D Realistic', category: '3D', preview: '🌏' },
     ];
     const [activeTile, setActiveTile] = useState<TileId>('dark');
-    const [active3D, setActive3D] = useState<TileId | null>(null);
 
     // ═══ REGION QUICK NAV ═══
     type RegionId = 'world' | 'north_america' | 'south_america' | 'eu' | 'africa' | 'middle_east' | 'asia' | 'pacific';

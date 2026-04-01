@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.25.87 - 2026-03-31
+
+### Source Markers — WebGL Symbol Icons with Canvas Rendering + 3D Mode
+
+Complete replacement of source marker circle layers with canvas-rendered icon symbol layers. Each source type now has its own distinctive visual icon with proper shape and color.
+
+#### Canvas Icon System
+- `createMarkerIcon()` — generates 28×28 canvas icons at 2× pixel ratio with:
+  - Shape variants: circle (GPS, mobile apps), square (cameras), diamond (audio)
+  - Background fill with shadow drop
+  - Stroke border in accent color
+  - Emoji symbol centered
+- `registerSrcIcons()` — registers 13 icons with `map.addImage()`:
+  - `src-cam-public` (📹 blue square), `src-cam-hidden` (🔴 red square), `src-cam-private` (📷 purple square)
+  - `src-gps` (📡 green circle), `src-audio` (🎙️ amber diamond)
+  - `src-app-locator` (📍 cyan), `src-app-photo` (🖼️ pink), `src-app-video` (🎬 orange), `src-app-audio` (🔊 purple), `src-app-camera` (📱 teal)
+  - `src-person` (👤 blue circle), `src-org` (🏢 amber square), `src-cluster` (● navy circle)
+
+#### WebGL Symbol Layers (replaces circle layers)
+- `src-icons` — symbol layer with `icon-image` expression matching `sourceId` to registered icon
+- `src-labels` — text labels (person name or device label) at zoom 14+
+- `src-status-ring` — green circle ring for online devices
+- `src-clusters` — cluster circles with count
+- `src-cluster-count` — cluster number labels
+- Performance: `icon-allow-overlap: true`, `icon-ignore-placement: true` (no collision detection)
+
+#### 3D Mode Support
+- `srcLast3D` ref tracks 3D state changes → forces full layer rebuild on toggle
+- When 3D active:
+  - `src-ground` circle layer with `circle-pitch-alignment: 'map'` + `circle-pitch-scale: 'map'` (ground shadow ring)
+  - All symbol layers use `icon-pitch-alignment: 'map'` (icons lie flat on terrain)
+  - All text uses `text-pitch-alignment: 'map'`
+- When 2D:
+  - No ground shadow layer
+  - Icons use `icon-pitch-alignment: 'viewport'` (always face camera)
+
+#### Clustering
+- Built-in GeoJSON clustering at zoom < 14, radius 50px
+- Cluster circles colored by count: navy(1-4) → purple(5-14) → amber(15-29) → red(30+)
+- Click cluster → zoom to expand
+
 ## 0.25.86 - 2026-03-31
 
 ### Map Sidebar — Regions, Time Range, Search & Popup Fixes
