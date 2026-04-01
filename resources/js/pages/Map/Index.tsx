@@ -4548,8 +4548,8 @@ export default function MapIndex() {
         });
         // UAV Drones
         deployedDrones.forEach(d => {
-            if (d.name.toLowerCase().includes(ql) || (d.model || '').toLowerCase().includes(ql) || (d.callsign || '').toLowerCase().includes(ql)) {
-                results.push({ id: `uav-${d.id}`, category: 'uav', name: d.name, sub: `${d.model || d.type} · ${d.status}`, icon: '🛩️', color: '#10b981', lat: d.lat ?? 0, lng: d.lng ?? 0, zoom: 16 });
+            if (d.callsign.toLowerCase().includes(ql) || d.model.toLowerCase().includes(ql) || d.manufacturer.toLowerCase().includes(ql)) {
+                results.push({ id: `uav-${d.id}`, category: 'uav', name: d.callsign, sub: `${d.model || d.type} · ${d.status}`, icon: '🛩️', color: '#10b981', lat: d.lat ?? 0, lng: d.lng ?? 0, zoom: 16 });
             }
         });
         // LPR sightings
