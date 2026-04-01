@@ -50,6 +50,7 @@ const Ico = {
     places: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 6.5l-4 8-4-8a4 4 0 118 0z"/></svg>,
     settings: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>,
     workspaces: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M2 4l2-2h4l2 2"/><line x1="6" y1="8" x2="10" y2="8"/><line x1="6" y1="11" x2="9" y2="11"/></svg>,
+    regions: <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="3" ry="6"/><line x1="2" y1="8" x2="14" y2="8"/></svg>,
 };
 
 const personOpts = mockPersons.map(p => ({ id: p.id.toString(), label: `${p.firstName} ${p.lastName}`, sub: `${p.nationality} · ${p.risk}`, img: p.avatar || undefined }));
@@ -205,8 +206,9 @@ export default function MapIndex() {
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Sidebar
-    const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10); });
+    const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); });
     const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
+    const [activeTimePreset, setActiveTimePreset] = useState<string>('24h');
     const [selectedPersons, setSelectedPersons] = useState<string[]>([]);
     const [selectedOrgs, setSelectedOrgs] = useState<string[]>([]);
 
@@ -2073,12 +2075,14 @@ export default function MapIndex() {
 
     // ═══ WORKSPACES ═══
     interface MapWorkspace { id: string; name: string; description: string; createdAt: string; updatedAt: string; thumbnail: string; tags: string[]; isAutoSave: boolean; state: WorkspaceState; }
-    interface WorkspaceState { viewport: { center: [number, number]; zoom: number; pitch: number; bearing: number }; dateFrom: string; dateTo: string; selectedPersons: string[]; selectedOrgs: string[]; activeSources: string[]; layerHeatmap: boolean; layerNetwork: boolean; layerLPR: boolean; layerFace: boolean; activeTile: string; active3D: string | null; showZones: boolean; showObjects: boolean; showMinimap: boolean; showCompass: boolean; showControls: boolean; showLabels: boolean; showCoords: boolean; showFps: boolean; showLiveFeed: boolean; showSearch: boolean; showLocalization: boolean; }
+    interface WorkspaceState { viewport: { center: [number, number]; zoom: number; pitch: number; bearing: number }; dateFrom: string; dateTo: string; selectedPersons: string[]; selectedOrgs: string[]; activeSources: string[]; layerHeatmap: boolean; layerNetwork: boolean; layerLPR: boolean; layerFace: boolean; layerFlights: boolean; layerUAV: boolean; layerTraffic: boolean; layerVessels: boolean; layerNFZ: boolean; layerEarthquakes: boolean; layerFires: boolean; showSatellites: boolean; activeTile: string; active3D: string | null; showZones: boolean; showObjects: boolean; showMinimap: boolean; showCompass: boolean; showControls: boolean; showLabels: boolean; showCoords: boolean; showFps: boolean; showLiveFeed: boolean; showSearch: boolean; showLocalization: boolean; }
     const [workspaces, setWorkspaces] = useState<MapWorkspace[]>([
-        { id: 'ws-1', name: 'Morning Surveillance', description: 'Active monitoring of Horvat and Al-Rashid movements with LPR + Face layers', createdAt: '2026-03-23 06:00', updatedAt: '2026-03-23 08:30', thumbnail: '', tags: ['surveillance', 'active', 'priority'], isAutoSave: false, state: { viewport: { center: [15.9775, 45.8131], zoom: 14, pitch: 0, bearing: 0 }, dateFrom: '2026-03-23', dateTo: '2026-03-23', selectedPersons: ['1', '3'], selectedOrgs: [], activeSources: [], layerHeatmap: false, layerNetwork: false, layerLPR: true, layerFace: true, activeTile: 'dark', active3D: null, showZones: true, showObjects: false, showMinimap: true, showCompass: true, showControls: true, showLabels: true, showCoords: true, showFps: false, showLiveFeed: true, showSearch: true, showLocalization: false } },
-        { id: 'ws-2', name: 'Zone Perimeter Check', description: 'All zones + heatmap overlay for overnight activity analysis', createdAt: '2026-03-22 22:00', updatedAt: '2026-03-22 23:15', thumbnail: '', tags: ['zones', 'heatmap', 'nightly'], isAutoSave: false, state: { viewport: { center: [15.975, 45.812], zoom: 13, pitch: 0, bearing: 0 }, dateFrom: '2026-03-22', dateTo: '2026-03-23', selectedPersons: [], selectedOrgs: [], activeSources: [], layerHeatmap: true, layerNetwork: false, layerLPR: false, layerFace: false, activeTile: 'dark', active3D: null, showZones: true, showObjects: true, showMinimap: true, showCompass: true, showControls: true, showLabels: false, showCoords: false, showFps: false, showLiveFeed: false, showSearch: true, showLocalization: false } },
-        { id: 'ws-3', name: '3D City Overview', description: 'Full 3D buildings mode with network graph for connection analysis', createdAt: '2026-03-21 14:00', updatedAt: '2026-03-21 16:30', thumbnail: '', tags: ['3d', 'network', 'analysis'], isAutoSave: false, state: { viewport: { center: [15.98, 45.813], zoom: 15, pitch: 55, bearing: -20 }, dateFrom: '2026-02-23', dateTo: '2026-03-23', selectedPersons: [], selectedOrgs: [], activeSources: [], layerHeatmap: false, layerNetwork: true, layerLPR: false, layerFace: false, activeTile: 'dark', active3D: '3d-buildings', showZones: false, showObjects: false, showMinimap: true, showCompass: true, showControls: true, showLabels: true, showCoords: true, showFps: true, showLiveFeed: false, showSearch: true, showLocalization: false } },
-        { id: 'ws-4', name: 'Operation HAWK', description: 'Full deployment view — all sources, all persons, all layers active', createdAt: '2026-03-20 08:00', updatedAt: '2026-03-23 07:00', thumbnail: '', tags: ['operation', 'full', 'hawk'], isAutoSave: false, state: { viewport: { center: [15.977, 45.813], zoom: 14, pitch: 0, bearing: 0 }, dateFrom: '2026-03-20', dateTo: '2026-03-23', selectedPersons: ['1', '3', '7', '9', '12'], selectedOrgs: ['1', '2'], activeSources: [], layerHeatmap: true, layerNetwork: true, layerLPR: true, layerFace: true, activeTile: 'dark', active3D: null, showZones: true, showObjects: true, showMinimap: true, showCompass: true, showControls: true, showLabels: true, showCoords: true, showFps: false, showLiveFeed: true, showSearch: true, showLocalization: false } },
+        { id: 'ws-1', name: 'Morning Surveillance', description: 'Active monitoring of Horvat and Al-Rashid movements with LPR + Face + Flight radar', createdAt: '2026-03-23 06:00', updatedAt: '2026-03-23 08:30', thumbnail: '', tags: ['surveillance', 'active', 'priority'], isAutoSave: false, state: { viewport: { center: [15.9775, 45.8131], zoom: 14, pitch: 0, bearing: 0 }, dateFrom: '2026-03-23', dateTo: '2026-03-23', selectedPersons: ['1', '3'], selectedOrgs: [], activeSources: [], layerHeatmap: false, layerNetwork: false, layerLPR: true, layerFace: true, layerFlights: true, layerUAV: false, layerTraffic: false, layerVessels: false, layerNFZ: false, layerEarthquakes: false, layerFires: false, showSatellites: false, activeTile: 'dark', active3D: null, showZones: true, showObjects: false, showMinimap: true, showCompass: true, showControls: true, showLabels: true, showCoords: true, showFps: false, showLiveFeed: true, showSearch: true, showLocalization: false } },
+        { id: 'ws-2', name: 'Zone Perimeter Check', description: 'All zones + heatmap + traffic overlay for overnight activity analysis', createdAt: '2026-03-22 22:00', updatedAt: '2026-03-22 23:15', thumbnail: '', tags: ['zones', 'heatmap', 'nightly'], isAutoSave: false, state: { viewport: { center: [15.975, 45.812], zoom: 13, pitch: 0, bearing: 0 }, dateFrom: '2026-03-22', dateTo: '2026-03-23', selectedPersons: [], selectedOrgs: [], activeSources: [], layerHeatmap: true, layerNetwork: false, layerLPR: false, layerFace: false, layerFlights: false, layerUAV: false, layerTraffic: true, layerVessels: false, layerNFZ: false, layerEarthquakes: false, layerFires: false, showSatellites: false, activeTile: 'dark', active3D: null, showZones: true, showObjects: true, showMinimap: true, showCompass: true, showControls: true, showLabels: false, showCoords: false, showFps: false, showLiveFeed: false, showSearch: true, showLocalization: false } },
+        { id: 'ws-3', name: '3D City Overview', description: '3D buildings + network graph + UAV drones for aerial connection analysis', createdAt: '2026-03-21 14:00', updatedAt: '2026-03-21 16:30', thumbnail: '', tags: ['3d', 'network', 'analysis', 'uav'], isAutoSave: false, state: { viewport: { center: [15.98, 45.813], zoom: 15, pitch: 55, bearing: -20 }, dateFrom: '2026-02-23', dateTo: '2026-03-23', selectedPersons: [], selectedOrgs: [], activeSources: [], layerHeatmap: false, layerNetwork: true, layerLPR: false, layerFace: false, layerFlights: false, layerUAV: true, layerTraffic: false, layerVessels: false, layerNFZ: true, layerEarthquakes: false, layerFires: false, showSatellites: false, activeTile: 'dark', active3D: '3d-buildings', showZones: false, showObjects: false, showMinimap: true, showCompass: true, showControls: true, showLabels: true, showCoords: true, showFps: true, showLiveFeed: false, showSearch: true, showLocalization: false } },
+        { id: 'ws-4', name: 'Operation HAWK', description: 'Full deployment — all sources, all persons, all layers active including traffic + vessels + flights', createdAt: '2026-03-20 08:00', updatedAt: '2026-03-23 07:00', thumbnail: '', tags: ['operation', 'full', 'hawk'], isAutoSave: false, state: { viewport: { center: [15.977, 45.813], zoom: 14, pitch: 0, bearing: 0 }, dateFrom: '2026-03-20', dateTo: '2026-03-23', selectedPersons: ['1', '3', '7', '9', '12'], selectedOrgs: ['1', '2'], activeSources: [], layerHeatmap: true, layerNetwork: true, layerLPR: true, layerFace: true, layerFlights: true, layerUAV: true, layerTraffic: true, layerVessels: true, layerNFZ: true, layerEarthquakes: false, layerFires: false, showSatellites: false, activeTile: 'dark', active3D: null, showZones: true, showObjects: true, showMinimap: true, showCompass: true, showControls: true, showLabels: true, showCoords: true, showFps: false, showLiveFeed: true, showSearch: true, showLocalization: false } },
+        { id: 'ws-5', name: 'Globe Recon', description: 'Satellite tracking + flights + vessels on 3D globe — global situational awareness', createdAt: '2026-03-19 10:00', updatedAt: '2026-03-22 18:00', thumbnail: '', tags: ['globe', 'satellites', 'global', 'recon'], isAutoSave: false, state: { viewport: { center: [20, 35], zoom: 2, pitch: 0, bearing: 0 }, dateFrom: '2026-03-19', dateTo: '2026-03-23', selectedPersons: [], selectedOrgs: [], activeSources: [], layerHeatmap: false, layerNetwork: false, layerLPR: false, layerFace: false, layerFlights: true, layerUAV: false, layerTraffic: false, layerVessels: true, layerNFZ: false, layerEarthquakes: true, layerFires: false, showSatellites: true, activeTile: 'dark', active3D: '3d-globe', showZones: false, showObjects: false, showMinimap: false, showCompass: true, showControls: true, showLabels: true, showCoords: true, showFps: false, showLiveFeed: false, showSearch: true, showLocalization: false } },
+        { id: 'ws-6', name: 'Natural Hazards Watch', description: 'USGS earthquakes + NASA FIRMS fires overlay on satellite imagery', createdAt: '2026-03-18 09:00', updatedAt: '2026-03-22 12:00', thumbnail: '', tags: ['hazards', 'earthquakes', 'fires', 'monitoring'], isAutoSave: false, state: { viewport: { center: [30, 20], zoom: 3, pitch: 0, bearing: 0 }, dateFrom: '2026-03-18', dateTo: '2026-03-23', selectedPersons: [], selectedOrgs: [], activeSources: [], layerHeatmap: false, layerNetwork: false, layerLPR: false, layerFace: false, layerFlights: false, layerUAV: false, layerTraffic: false, layerVessels: false, layerNFZ: false, layerEarthquakes: true, layerFires: true, showSatellites: false, activeTile: 'satellite', active3D: null, showZones: false, showObjects: false, showMinimap: true, showCompass: true, showControls: true, showLabels: true, showCoords: true, showFps: false, showLiveFeed: false, showSearch: true, showLocalization: false } },
     ]);
     const [wsSearch, setWsSearch] = useState('');
     const [wsModal, setWsModal] = useState<{ mode: 'save' | 'edit'; ws?: MapWorkspace } | null>(null);
@@ -2087,10 +2091,10 @@ export default function MapIndex() {
     const [wsActiveId, setWsActiveId] = useState<string | null>(null);
 
     // ═══ SECTION ORDER (drag & drop) ═══
-    const defaultSectionOrder = ['period', 'subjects', 'sources', 'layers', 'tiles', 'tools', 'intelligence', 'objects', 'places', 'workspaces', 'settings'] as const;
+    const defaultSectionOrder = ['period', 'subjects', 'sources', 'layers', 'tiles', 'regions', 'tools', 'intelligence', 'objects', 'places', 'workspaces', 'settings'] as const;
     type SectionId = typeof defaultSectionOrder[number];
     const [sectionOrder, setSectionOrder] = useState<SectionId[]>(() => {
-        try { const saved = localStorage.getItem('argux_section_order'); if (saved) { const parsed = JSON.parse(saved); if (Array.isArray(parsed) && parsed.length === defaultSectionOrder.length) return parsed; } } catch {} return [...defaultSectionOrder];
+        try { const saved = localStorage.getItem('argux_section_order'); if (saved) { const parsed = JSON.parse(saved); if (Array.isArray(parsed)) { const full = [...defaultSectionOrder]; const missing = full.filter(s => !parsed.includes(s)); return [...parsed.filter((s: string) => full.includes(s as any)), ...missing] as SectionId[]; } } } catch {} return [...defaultSectionOrder];
     });
     const [dragSectionId, setDragSectionId] = useState<SectionId | null>(null);
     const [dragOverId, setDragOverId] = useState<SectionId | null>(null);
@@ -2124,6 +2128,7 @@ export default function MapIndex() {
             dateFrom, dateTo, selectedPersons, selectedOrgs,
             activeSources: Array.from(activeSources),
             layerHeatmap, layerNetwork, layerLPR, layerFace,
+            layerFlights, layerUAV, layerTraffic, layerVessels, layerNFZ, layerEarthquakes, layerFires, showSatellites,
             activeTile, active3D: active3D || null,
             showZones, showObjects, showMinimap, showCompass, showControls, showLabels, showCoords, showFps, showLiveFeed, showSearch, showLocalization,
         };
@@ -2152,6 +2157,14 @@ export default function MapIndex() {
         setSelectedPersons(s.selectedPersons); setSelectedOrgs(s.selectedOrgs);
         setActiveSources(new Set(s.activeSources as any));
         setLayerHeatmap(s.layerHeatmap); setLayerNetwork(s.layerNetwork); setLayerLPR(s.layerLPR); setLayerFace(s.layerFace);
+        if (s.layerFlights !== undefined) setLayerFlights(s.layerFlights);
+        if (s.layerUAV !== undefined) setLayerUAV(s.layerUAV);
+        if (s.layerTraffic !== undefined) setLayerTraffic(s.layerTraffic);
+        if (s.layerVessels !== undefined) setLayerVessels(s.layerVessels);
+        if (s.layerNFZ !== undefined) setLayerNFZ(s.layerNFZ);
+        if (s.layerEarthquakes !== undefined) setLayerEarthquakes(s.layerEarthquakes);
+        if (s.layerFires !== undefined) setLayerFires(s.layerFires);
+        if (s.showSatellites !== undefined) setShowSatellites(s.showSatellites);
         setActiveTile(s.activeTile as any); setActive3D(s.active3D as any);
         setShowZones(s.showZones); setShowObjects(s.showObjects); setShowMinimap(s.showMinimap); setShowCompass(s.showCompass); setShowControls(s.showControls); setShowLabels(s.showLabels); setShowCoords(s.showCoords); setShowFps(s.showFps); setShowLiveFeed(s.showLiveFeed); setShowSearch(s.showSearch); setShowLocalization(s.showLocalization);
         setWsActiveId(ws.id);
@@ -3011,7 +3024,7 @@ export default function MapIndex() {
                 } else {
                     popupHtml = `<div class="tmap-popup-card">${deviceHeader || ownerHeader}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
                 }
-                const popup = new ml.Popup({ maxWidth: '320px', offset: 12 }).setLngLat(coords).setHTML(popupHtml).addTo(map);
+                const popup = new ml.Popup({ maxWidth: '320px', offset: 12, className: 'tmap-popup' }).setLngLat(coords).setHTML(popupHtml).addTo(map);
                 sourcePopupsRef.current.push(popup);
             });
             map.on('mouseenter', 'src-points', () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -3250,7 +3263,7 @@ export default function MapIndex() {
             const riskColor = p.risk === 'Critical' ? '#ef4444' : p.risk === 'High' ? '#f97316' : p.risk === 'Medium' ? '#f59e0b' : '#6b7280';
             const addr = mockAddress(c[1], c[0]);
             const html = `<div class="tmap-popup-card"><div style="position:relative;border-bottom:1px solid var(--ax-border)"><img src="${p.photoUrl}" style="width:100%;height:80px;object-fit:cover;display:block" /><div style="position:absolute;bottom:6px;left:6px;font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.8);letter-spacing:0.06em">${p.plate}</div><div style="position:absolute;top:6px;right:6px"><span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:#10b981;backdrop-filter:blur(4px)">${p.confidence}%</span></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">👤 Owner</span><span class="tmap-popup-val">${p.personId > 0 ? `<a href="/persons/${p.personId}" style="color:var(--ax-accent);text-decoration:none">${p.personName}</a>` : p.personName}${p.orgName ? ` · ${p.orgName}` : ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${p.timestamp}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Speed</span><span class="tmap-popup-val">${p.direction} at ${p.speed} km/h</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val">${p.cameraName}</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(5)}, ${c[0].toFixed(5)}</div></div>`;
-            new ml.Popup({ maxWidth: '300px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+            new ml.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
         });
         map.on('mouseenter', 'lpr-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', 'lpr-circles', () => { map.getCanvas().style.cursor = ''; });
@@ -3301,7 +3314,7 @@ export default function MapIndex() {
             const confColor = p.confidence >= 90 ? '#22c55e' : p.confidence >= 75 ? '#f59e0b' : '#ef4444';
             const addr = mockAddress(c[1], c[0]);
             const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:28px;height:28px;border-radius:50%;background:#ec489915;border:1.5px solid #ec489940;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🧑‍🦲</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${p.personId > 0 ? `<a href="/persons/${p.personId}" style="color:var(--ax-accent);text-decoration:none">${p.personName}</a>` : p.personName}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${p.risk}</span><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${confColor}15;color:${confColor};border:1px solid ${confColor}30">${p.confidence}%</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:#ec489915;color:#ec4899;border:1px solid #ec489930">FACE</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${p.timestamp}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">😐 Emotion</span><span class="tmap-popup-val">${p.emotion}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">👕 Wearing</span><span class="tmap-popup-val">${p.wearing}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val">${p.cameraName}</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(5)}, ${c[0].toFixed(5)}</div></div>`;
-            new ml.Popup({ maxWidth: '300px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+            new ml.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
         });
         map.on('mouseenter', 'face-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', 'face-circles', () => { map.getCanvas().style.cursor = ''; });
@@ -3345,7 +3358,7 @@ export default function MapIndex() {
                 const feat = e.features?.[0]; if (!feat || !ml) return;
                 const p = feat.properties; const c = feat.geometry.coordinates.slice();
                 const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${p.color}15;border:1.5px solid ${p.color}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">✈️</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px;font-family:'JetBrains Mono',monospace">${p.callsign}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${p.color}15;color:${p.color};border:1px solid ${p.color}30">${p.category}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:#3b82f615;color:#3b82f6;border:1px solid #3b82f630">FL${Math.round((p.alt || 0) / 30.48 / 100)}</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">✈️ ICAO24</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.icao24 || ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🏁 Origin</span><span class="tmap-popup-val">${p.origin || '—'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Altitude</span><span class="tmap-popup-val">${((p.alt || 0) / 1000).toFixed(1)} km (${Math.round((p.alt || 0) * 3.281)} ft)</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚡ Speed</span><span class="tmap-popup-val">${((p.velocity || 0) * 3.6).toFixed(0)} km/h</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Heading</span><span class="tmap-popup-val">${(p.heading || 0).toFixed(0)}°</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
-                new ml.Popup({ maxWidth: '300px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+                new ml.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
             });
             map.on('mouseenter', 'flight-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', 'flight-circles', () => { map.getCanvas().style.cursor = ''; });
@@ -3416,7 +3429,7 @@ export default function MapIndex() {
                 const feat = e.features?.[0]; if (!feat || !ml) return;
                 const p = feat.properties; const c = feat.geometry.coordinates.slice();
                 const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${p.color}15;border:1.5px solid ${p.color}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🛰️</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">${p.name}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${p.color}15;color:${p.color};border:1px solid ${p.color}30">${p.category}</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📡 NORAD</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.noradId}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Alt</span><span class="tmap-popup-val">${((p.alt || 0) / 1000).toFixed(0)} km</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚡ Speed</span><span class="tmap-popup-val">${((p.velocity || 0) / 1000).toFixed(1)} km/s</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
-                new ml.Popup({ maxWidth: '280px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+                new ml.Popup({ maxWidth: '280px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
             });
             map.on('mouseenter', 'sat-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', 'sat-circles', () => { map.getCanvas().style.cursor = ''; });
@@ -3977,7 +3990,7 @@ export default function MapIndex() {
                 const f = e.features?.[0]; if (!f || !ml) return;
                 const p = f.properties; const c = f.geometry.coordinates.slice();
                 const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${p.color}15;border:1.5px solid ${p.color}40;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🚢</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${p.name}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${p.color}15;color:${p.color};border:1px solid ${p.color}30">${p.vesselType || 'Vessel'}</span>${p.flag ? `<span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#06b6d415;color:#06b6d4;border:1px solid #06b6d430">${p.flag}</span>` : ''}</div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📡 MMSI</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.mmsi || ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Course</span><span class="tmap-popup-val">${p.heading || 0}° · ${(p.speed || 0).toFixed(1)} kn</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Size</span><span class="tmap-popup-val">${p.length || '?'}m × ${p.width || '?'}m</span></div>${p.destination ? `<div class="tmap-popup-row"><span class="tmap-popup-label">🏁 Dest</span><span class="tmap-popup-val">${p.destination}</span></div>` : ''}</div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
-                new ml.Popup({ maxWidth: '300px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+                new ml.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
             });
             map.on('mouseenter', 'vessel-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', 'vessel-circles', () => { map.getCanvas().style.cursor = ''; });
@@ -4283,15 +4296,17 @@ export default function MapIndex() {
     const [active3D, setActive3D] = useState<TileId | null>(null);
 
     // ═══ REGION QUICK NAV ═══
-    type RegionId = 'world' | 'europe' | 'americas' | 'middle_east' | 'asia_pacific' | 'africa';
+    type RegionId = 'world' | 'north_america' | 'south_america' | 'eu' | 'africa' | 'middle_east' | 'asia' | 'pacific';
     const [activeRegion, setActiveRegion] = useState<RegionId>('world');
     const regions: { id: RegionId; name: string; icon: string; lat: number; lng: number; zoom: number; globeZoom: number; bearing: number; pitch: number; desc: string }[] = [
-        { id: 'world',        name: 'World',        icon: '🌍', lat: 20,    lng: 15,    zoom: 2,   globeZoom: 1.5, bearing: 0,  pitch: 0,  desc: 'Global overview' },
-        { id: 'europe',       name: 'Europe',       icon: '🇪🇺', lat: 50,    lng: 15,    zoom: 4,   globeZoom: 3.5, bearing: 0,  pitch: 30, desc: '44 countries · 750M people' },
-        { id: 'americas',     name: 'Americas',     icon: '🌎', lat: 15,    lng: -80,   zoom: 3,   globeZoom: 2.5, bearing: 0,  pitch: 20, desc: 'North & South America' },
-        { id: 'middle_east',  name: 'Middle East',  icon: '🕌', lat: 29,    lng: 45,    zoom: 4.5, globeZoom: 4,   bearing: 0,  pitch: 35, desc: 'MENA region · 17 countries' },
-        { id: 'asia_pacific', name: 'Asia Pacific', icon: '🌏', lat: 20,    lng: 110,   zoom: 3.5, globeZoom: 3,   bearing: 0,  pitch: 20, desc: 'APAC · 4.3B people' },
-        { id: 'africa',       name: 'Africa',       icon: '🌍', lat: 2,     lng: 22,    zoom: 3.5, globeZoom: 3,   bearing: 0,  pitch: 15, desc: '54 countries · 1.4B people' },
+        { id: 'world',          name: 'World',          icon: '🌍', lat: 20,     lng: 15,    zoom: 2,   globeZoom: 1.5, bearing: 0,  pitch: 0,  desc: 'Global overview' },
+        { id: 'north_america',  name: 'N. America',     icon: '🇺🇸', lat: 42,     lng: -100,  zoom: 3.5, globeZoom: 3,   bearing: 0,  pitch: 20, desc: 'USA · Canada · Mexico' },
+        { id: 'south_america',  name: 'S. America',     icon: '🇧🇷', lat: -15,    lng: -58,   zoom: 3.5, globeZoom: 3,   bearing: 0,  pitch: 15, desc: 'Brazil · Argentina · 12 countries' },
+        { id: 'eu',             name: 'Europe',         icon: '🇪🇺', lat: 50,     lng: 15,    zoom: 4,   globeZoom: 3.5, bearing: 0,  pitch: 30, desc: '44 countries · 750M people' },
+        { id: 'africa',         name: 'Africa',         icon: '🌍', lat: 2,      lng: 22,    zoom: 3.5, globeZoom: 3,   bearing: 0,  pitch: 15, desc: '54 countries · 1.4B people' },
+        { id: 'middle_east',    name: 'Middle East',    icon: '🕌', lat: 29,     lng: 45,    zoom: 4.5, globeZoom: 4,   bearing: 0,  pitch: 35, desc: 'MENA region · 17 countries' },
+        { id: 'asia',           name: 'Asia',           icon: '🌏', lat: 35,     lng: 100,   zoom: 3.5, globeZoom: 3,   bearing: 0,  pitch: 20, desc: 'China · India · SE Asia · 4.5B' },
+        { id: 'pacific',        name: 'Pacific',        icon: '🏝️', lat: -10,    lng: 160,   zoom: 3,   globeZoom: 2.5, bearing: 0,  pitch: 10, desc: 'Australia · NZ · Oceania' },
     ];
 
     const flyToRegion = useCallback((regionId: RegionId) => {
@@ -4374,6 +4389,7 @@ export default function MapIndex() {
 
     // ═══ CINEMA MODE ═══
     const [cinemaMode, setCinemaMode] = useState(false);
+    const [showCinemaPanel, setShowCinemaPanel] = useState(false);
     const [cinemaSpeed, setCinemaSpeed] = useState(0.15);
     const [cinemaHud, setCinemaHud] = useState(true);
     const [cinemaAutoFly, setCinemaAutoFly] = useState(false);
@@ -4457,9 +4473,9 @@ export default function MapIndex() {
 
     const searchTimerRef = useRef<any>(null);
     const [searchLoading, setSearchLoading] = useState(false);
-    const [searchCategory, setSearchCategory] = useState<'all' | 'entities' | 'places' | 'coords'>('all');
+    const [searchCategory, setSearchCategory] = useState<'all' | 'entities' | 'layers' | 'places' | 'coords'>('all');
 
-    interface SearchResult { id: string; category: 'person' | 'org' | 'vehicle' | 'device' | 'place' | 'zone' | 'saved' | 'coord' | 'geo'; name: string; sub: string; icon: string; color: string; lat: number; lng: number; zoom: number; risk?: string; avatar?: string; type?: string; }
+    interface SearchResult { id: string; category: 'person' | 'org' | 'vehicle' | 'device' | 'place' | 'zone' | 'saved' | 'coord' | 'geo' | 'flight' | 'vessel' | 'satellite' | 'operation' | 'workspace' | 'lpr' | 'face' | 'uav' | 'hazard'; name: string; sub: string; icon: string; color: string; lat: number; lng: number; zoom: number; risk?: string; avatar?: string; type?: string; action?: () => void; }
 
     // Local entity search (instant, no API call)
     const searchEntities = (q: string): SearchResult[] => {
@@ -4506,7 +4522,66 @@ export default function MapIndex() {
                 results.push({ id: `z-${z.id}`, category: 'zone', name: z.name, sub: `${zoneTypes.find(t => t.id === z.type)?.label || z.type} · ${z.shape}`, icon: '🛡️', color: z.color, lat: z.lat, lng: z.lng, zoom: 15 });
             }
         });
-        return results.slice(0, 8);
+        // Flights (live)
+        filteredFlights.forEach(f => {
+            if (!f.callsign || results.some(r => r.id === `fl-${f.icao24}`)) return;
+            if (f.callsign.toLowerCase().includes(ql) || f.icao24.toLowerCase().includes(ql) || (f.originCountry || '').toLowerCase().includes(ql)) {
+                const cat = flightCategoryConfig[f.category] || flightCategoryConfig.commercial;
+                results.push({ id: `fl-${f.icao24}`, category: 'flight', name: f.callsign, sub: `${f.category} · FL${Math.round(f.baroAlt / 30.48 / 100)} · ${f.originCountry || ''}`, icon: '✈️', color: cat.color, lat: f.lat, lng: f.lng, zoom: 10 });
+            }
+        });
+        // Vessels (live)
+        filteredVessels.forEach(v => {
+            if (results.some(r => r.id === `vs-${v.mmsi}`)) return;
+            if (v.name.toLowerCase().includes(ql) || String(v.mmsi).includes(ql) || (v.destination || '').toLowerCase().includes(ql) || (v.callsign || '').toLowerCase().includes(ql)) {
+                const tc = vesselTypeConfig[v.type] || { color: '#6b7280' };
+                results.push({ id: `vs-${v.mmsi}`, category: 'vessel', name: v.name, sub: `${v.type} · MMSI ${v.mmsi}${v.destination ? ` → ${v.destination}` : ''}`, icon: '🚢', color: tc.color, lat: v.lng !== undefined ? v.lat : 0, lng: v.lng || 0, zoom: 12 });
+            }
+        });
+        // Satellites
+        filteredSatellites.forEach(s => {
+            if (results.some(r => r.id === `sat-${s.noradId}`)) return;
+            if (s.name.toLowerCase().includes(ql) || String(s.noradId).includes(ql)) {
+                const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
+                results.push({ id: `sat-${s.noradId}`, category: 'satellite', name: s.name, sub: `NORAD ${s.noradId} · ${s.category}`, icon: '🛰️', color: cat.color, lat: s.lat, lng: s.lng, zoom: 3 });
+            }
+        });
+        // UAV Drones
+        deployedDrones.forEach(d => {
+            if (d.name.toLowerCase().includes(ql) || (d.model || '').toLowerCase().includes(ql) || (d.callsign || '').toLowerCase().includes(ql)) {
+                results.push({ id: `uav-${d.id}`, category: 'uav', name: d.name, sub: `${d.model || d.type} · ${d.status}`, icon: '🛩️', color: '#10b981', lat: d.lat ?? 0, lng: d.lng ?? 0, zoom: 16 });
+            }
+        });
+        // LPR sightings
+        mockLPR.slice(0, 20).forEach(l => {
+            if (results.some(r => r.id === `lpr-${l.id}`)) return;
+            if (l.plate.toLowerCase().includes(ql) || l.personName.toLowerCase().includes(ql) || l.cameraName.toLowerCase().includes(ql)) {
+                results.push({ id: `lpr-${l.id}`, category: 'lpr', name: l.plate, sub: `${l.personName} · ${l.cameraName} · ${l.confidence}%`, icon: '🚗', color: '#10b981', lat: l.lat, lng: l.lng, zoom: 17 });
+            }
+        });
+        // Face matches
+        mockFaces.slice(0, 20).forEach(f => {
+            if (results.some(r => r.id === `face-${f.id}`)) return;
+            if (f.personName.toLowerCase().includes(ql) || f.cameraName.toLowerCase().includes(ql)) {
+                results.push({ id: `face-${f.id}`, category: 'face', name: f.personName, sub: `${f.confidence}% · ${f.cameraName} · ${f.emotion}`, icon: '🧑‍🦲', color: '#ec4899', lat: f.lat, lng: f.lng, zoom: 17 });
+            }
+        });
+        // Workspaces
+        workspaces.forEach(ws => {
+            if (ws.name.toLowerCase().includes(ql) || (ws.description || '').toLowerCase().includes(ql) || ws.tags.some(t => t.toLowerCase().includes(ql))) {
+                results.push({ id: `ws-${ws.id}`, category: 'workspace', name: ws.name, sub: ws.tags.join(', '), icon: '📂', color: '#8b5cf6', lat: ws.state.viewport.center[1], lng: ws.state.viewport.center[0], zoom: ws.state.viewport.zoom, action: () => loadWorkspace(ws) });
+            }
+        });
+        // Earthquakes (if loaded)
+        eqFeatures.slice(0, 15).forEach((f: any, i: number) => {
+            const p = f.properties;
+            if (!p || !p.place) return;
+            if (p.place.toLowerCase().includes(ql) || ('earthquake'.includes(ql) && ql.length > 2) || ('quake'.includes(ql) && ql.length > 2)) {
+                const c = f.geometry.coordinates;
+                results.push({ id: `eq-${i}`, category: 'hazard', name: `M${(p.mag || 0).toFixed(1)} — ${p.place}`, sub: `USGS · ${p.time ? new Date(p.time).toLocaleString() : ''}`, icon: '🌍', color: '#a855f7', lat: c[1], lng: c[0], zoom: 8 });
+            }
+        });
+        return results.slice(0, 12);
     };
 
     // Coordinate detection: "45.8131, 15.9775" or "45.8131 15.9775"
@@ -4538,7 +4613,7 @@ export default function MapIndex() {
         setSearchResults(instant);
 
         // Debounced: geocoding (only if not pure coordinates and category allows)
-        if (!coordResult && searchCategory !== 'entities' && searchCategory !== 'coords') {
+        if (!coordResult && searchCategory !== 'entities' && searchCategory !== 'coords' && searchCategory !== 'layers') {
             setSearchLoading(true);
             searchTimerRef.current = setTimeout(async () => {
                 try {
@@ -4573,7 +4648,8 @@ export default function MapIndex() {
     }, [searchQuery, searchCategory]);
 
     const handleSearchSelect = (result: SearchResult) => {
-        mapRef.current?.flyTo({ center: [result.lng, result.lat], zoom: result.zoom, duration: 1200 });
+        if (result.action) { result.action(); }
+        if (result.lat && result.lng) { mapRef.current?.flyTo({ center: [result.lng, result.lat], zoom: result.zoom, duration: 1200 }); }
         triggerTopLoader();
         setSearchQuery(''); setSearchResults([]); setSearchFocused(false);
     };
@@ -5638,7 +5714,7 @@ export default function MapIndex() {
                 const time = p.time ? new Date(p.time).toLocaleString() : '';
                 const ago = p.time ? `${Math.round((Date.now() - p.time) / 3600000)}h ago` : '';
                 const html = `<div class="tmap-popup-card" style="min-width:220px"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${magColor}15;border:1.5px solid ${magColor}40;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${magColor};font-family:'JetBrains Mono',monospace">M${mag}</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">${p.place || 'Unknown'}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${magColor}15;color:${magColor};border:1px solid ${magColor}30">M${mag}</span><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#a855f715;color:#a855f7;border:1px solid #a855f730">USGS</span>${p.tsunami ? '<span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#0ea5e915;color:#0ea5e9;border:1px solid #0ea5e930">⚠ TSUNAMI</span>' : ''}</div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${time} <span style="color:var(--ax-text-dim);font-size:9px">(${ago})</span></span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Depth</span><span class="tmap-popup-val">${depth} km</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📊 Sig</span><span class="tmap-popup-val">${p.sig || 0}</span></div>${p.felt ? `<div class="tmap-popup-row"><span class="tmap-popup-label">👥 Felt</span><span class="tmap-popup-val">${p.felt} reports</span></div>` : ''}${p.alert ? `<div class="tmap-popup-row"><span class="tmap-popup-label">⚠️ Alert</span><span class="tmap-popup-val" style="color:${p.alert === 'red' ? '#ef4444' : p.alert === 'orange' ? '#f97316' : p.alert === 'yellow' ? '#f59e0b' : '#22c55e'};font-weight:700;text-transform:uppercase">${p.alert}</span></div>` : ''}</div>${p.url ? `<div style="padding:4px 10px;border-top:1px solid var(--ax-border)"><a href="${p.url}" target="_blank" rel="noopener" style="color:var(--ax-accent);text-decoration:none;font-size:9px">View on USGS ↗</a></div>` : ''}<div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
-                new (window as any).maplibregl.Popup({ maxWidth: '300px', offset: 8 }).setLngLat([c[0], c[1]]).setHTML(html).addTo(map);
+                new (window as any).maplibregl.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat([c[0], c[1]]).setHTML(html).addTo(map);
             };
             map.on('click', 'eq-circles', onClick);
             map.on('mouseenter', 'eq-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -5680,7 +5756,7 @@ export default function MapIndex() {
                 const conf = p.confidence || 'N/A'; const confColor = conf === 'high' || conf === 'h' ? '#ef4444' : conf === 'nominal' || conf === 'n' ? '#f59e0b' : '#6b7280';
                 const dn = p.daynight === 'D' ? '☀️ Day' : p.daynight === 'N' ? '🌙 Night' : p.daynight || '';
                 const html = `<div class="tmap-popup-card" style="min-width:220px"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:#f43f5e15;border:1.5px solid #f43f5e40;display:flex;align-items:center;justify-content:center;font-size:16px">🔥</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">Active Fire Detection</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${confColor}15;color:${confColor};border:1px solid ${confColor}30">${conf}</span><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f43f5e15;color:#f43f5e;border:1px solid #f43f5e30">NASA FIRMS</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">🌡️ Brightness</span><span class="tmap-popup-val" style="font-weight:700;color:#ef4444">${bright} K</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚡ FRP</span><span class="tmap-popup-val">${frp} MW</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📡 Satellite</span><span class="tmap-popup-val">${p.satellite || 'VIIRS'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📅 Date</span><span class="tmap-popup-val">${p.acq_date || ''} ${p.acq_time || ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🌅 Day/Night</span><span class="tmap-popup-val">${dn}</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
-                new (window as any).maplibregl.Popup({ maxWidth: '300px', offset: 8 }).setLngLat(c).setHTML(html).addTo(map);
+                new (window as any).maplibregl.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
             };
             map.on('click', 'fire-circles', onClick);
             map.on('mouseenter', 'fire-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -5880,7 +5956,7 @@ export default function MapIndex() {
                     <div class="tmap-popup-coords">${coords[1].toFixed(4)}, ${coords[0].toFixed(4)}</div>
                 </div>`;
 
-                new (window as any).maplibregl.Popup({ maxWidth: '320px', offset: 8 })
+                new (window as any).maplibregl.Popup({ maxWidth: '320px', offset: 8, className: 'tmap-popup' })
                     .setLngLat(coords)
                     .setHTML(html)
                     .addTo(map);
@@ -6153,13 +6229,13 @@ export default function MapIndex() {
 
                     {/* PERIOD */}
                     <div className={`tmap-section-wrap${dragSectionId === 'period' ? ' dragging' : ''}${dragOverId === 'period' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('period') }} onDragOver={e => handleSectionDragOver(e, 'period')} onDrop={() => handleSectionDrop('period')}>
-                    <Section title="Period" icon={Ico.period} dragHandle={dragHandleEl('period')}>
+                    <Section title="Time Range" icon={Ico.period} dragHandle={dragHandleEl('period')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>From</div><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={dateInputStyle} /></div>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>To</div><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={dateInputStyle} /></div>
                             <div style={{ display: 'flex', gap: 6 }}>
-                                {['24h', '7d', '30d'].map(p => <button key={p} onClick={() => { const d = new Date(); const f = new Date(); if (p === '24h') f.setDate(d.getDate() - 1); if (p === '7d') f.setDate(d.getDate() - 7); if (p === '30d') f.setDate(d.getDate() - 30); setDateFrom(f.toISOString().slice(0, 10)); setDateTo(d.toISOString().slice(0, 10)); triggerTopLoader(); }} style={{ flex: 1, padding: '4px', borderRadius: 4, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }} onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.color = theme.accent; }} onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; }}>{p}</button>)}
-                                {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); triggerTopLoader(); }} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>×</button>}
+                                {['24h', '7d', '30d'].map(p => <button key={p} onClick={() => { const d = new Date(); const f = new Date(); if (p === '24h') f.setDate(d.getDate() - 1); if (p === '7d') f.setDate(d.getDate() - 7); if (p === '30d') f.setDate(d.getDate() - 30); setDateFrom(f.toISOString().slice(0, 10)); setDateTo(d.toISOString().slice(0, 10)); setActiveTimePreset(p); triggerTopLoader(); }} style={{ flex: 1, padding: '4px', borderRadius: 4, border: `1px solid ${activeTimePreset === p ? theme.accent + '40' : theme.border}`, background: activeTimePreset === p ? theme.accentDim : 'transparent', color: activeTimePreset === p ? theme.accent : theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }} onMouseEnter={e => { if (activeTimePreset !== p) { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.color = theme.accent; } }} onMouseLeave={e => { if (activeTimePreset !== p) { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; } }}>{p}</button>)}
+                                {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); setActiveTimePreset(''); triggerTopLoader(); }} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>×</button>}
                             </div>
                             {(dateFrom || dateTo) && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2, padding: '5px 8px', borderRadius: 5, background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.12)' }}>
                                 <span style={{ fontSize: 9, color: theme.textSecondary }}>{periodFilteredEvents.length} events in period</span>
@@ -6171,7 +6247,7 @@ export default function MapIndex() {
 
                     {/* SUBJECTS */}
                     <div className={`tmap-section-wrap${dragSectionId === 'subjects' ? ' dragging' : ''}${dragOverId === 'subjects' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('subjects') }} onDragOver={e => handleSectionDragOver(e, 'subjects')} onDrop={() => handleSectionDrop('subjects')}>
-                    <Section title="Subjects" icon={Ico.subjects} badge={selectedPersons.length + selectedOrgs.length} dragHandle={dragHandleEl('subjects')}>
+                    <Section title="Entities" icon={Ico.subjects} badge={selectedPersons.length + selectedOrgs.length} dragHandle={dragHandleEl('subjects')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Persons ({selectedPersons.length}/{mockPersons.length})</div><SidebarMS selected={selectedPersons} onChange={v => { setSelectedPersons(v); triggerTopLoader(); }} options={personOpts} placeholder="Select persons to track..." showSelectAll /></div>
                             <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Organizations ({selectedOrgs.length}/{mockOrganizations.length})</div><SidebarMS selected={selectedOrgs} onChange={v => { setSelectedOrgs(v); triggerTopLoader(); }} options={orgOpts} placeholder="Select organizations..." showSelectAll /></div>
@@ -6227,7 +6303,7 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'layers' ? ' dragging' : ''}${dragOverId === 'layers' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('layers') }} onDragOver={e => handleSectionDragOver(e, 'layers')} onDrop={() => handleSectionDrop('layers')}>
-                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0) + (layerUAV ? 1 : 0) + (layerTraffic ? 1 : 0) + (layerVessels ? 1 : 0) + (layerNFZ ? 1 : 0) + (layerEarthquakes ? 1 : 0) + (layerFires ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
+                    <Section title="Layers" icon={Ico.layers} badge={(layerHeatmap ? 1 : 0) + (layerNetwork ? 1 : 0) + (layerLPR ? 1 : 0) + (layerFace ? 1 : 0) + (layerFlights ? 1 : 0) + (layerPOI ? 1 : 0) + (layerWeather ? 1 : 0) + (layerUAV ? 1 : 0) + (layerTraffic ? 1 : 0) + (layerVessels ? 1 : 0) + (layerNFZ ? 1 : 0) + (layerEarthquakes ? 1 : 0) + (layerFires ? 1 : 0) + (showSatellites ? 1 : 0)} dragHandle={dragHandleEl('layers')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Layer buttons */}
                             {[
@@ -6244,6 +6320,7 @@ export default function MapIndex() {
                                 { key: 'nfz', icon: '⛔', label: 'No Fly Zones', color: '#ef4444', active: layerNFZ, toggle: () => { setLayerNFZ(!layerNFZ); triggerTopLoader(); }, panel: showNFZPanel, openPanel: () => { setShowNFZPanel(!showNFZPanel); triggerTopLoader(); }, desc: layerNFZ ? `${nfzStats.visible} zones · ${nfzStats.active} active` : 'Airspace restrictions & prohibited areas' },
                                 { key: 'earthquakes', icon: '🌍', label: 'Earthquakes', color: '#a855f7', active: layerEarthquakes, toggle: () => { setLayerEarthquakes(!layerEarthquakes); triggerTopLoader(); }, desc: layerEarthquakes ? (eqLoading ? 'Loading USGS...' : `${eqFeatures.length} events · USGS`) : 'USGS real-time seismic data' },
                                 { key: 'fires', icon: '🔥', label: 'Active Fires', color: '#f43f5e', active: layerFires, toggle: () => { setLayerFires(!layerFires); triggerTopLoader(); }, desc: layerFires ? (fireLoading ? 'Loading FIRMS...' : `${fireFeatures.length} hotspots · NASA`) : 'NASA FIRMS satellite fire detection' },
+                                { key: 'satellites', icon: '🛰️', label: 'Satellite Tracking', color: '#06b6d4', active: showSatellites, toggle: () => { if (!showSatellites) { if (active3D !== '3d-globe') setActive3D('3d-globe'); setShowSatellites(true); } else setShowSatellites(false); triggerTopLoader(); }, desc: showSatellites ? `${filteredSatellites.length} tracked · CelesTrak` : 'Globe mode — live orbital tracking' },
                             ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {/* Toggle switch */}
                                 <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
@@ -6263,30 +6340,8 @@ export default function MapIndex() {
                     </Section>
                     </div>
                     <div className={`tmap-section-wrap${dragSectionId === 'tiles' ? ' dragging' : ''}${dragOverId === 'tiles' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('tiles') }} onDragOver={e => handleSectionDragOver(e, 'tiles')} onDrop={() => handleSectionDrop('tiles')}>
-                    <Section title="Tiles" icon={Ico.tiles} badge={active3D ? 1 : 0} dragHandle={dragHandleEl('tiles')}>
+                    <Section title="Base Map" icon={Ico.tiles} badge={active3D ? 1 : 0} dragHandle={dragHandleEl('tiles')}>
                         <div>
-                            {/* Region Quick Nav */}
-                            <div style={{ marginBottom: 12, borderBottom: `1px solid ${theme.border}`, paddingBottom: 10 }}>
-                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Region</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 3 }}>
-                                    {regions.map(r => {
-                                        const isSel = activeRegion === r.id;
-                                        return <button key={r.id} onClick={() => flyToRegion(r.id)} style={{
-                                            display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2,
-                                            padding: '6px 2px', borderRadius: 5,
-                                            border: `1.5px solid ${isSel ? '#f59e0b50' : theme.border}`,
-                                            background: isSel ? '#f59e0b0c' : 'transparent',
-                                            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s',
-                                            position: 'relative' as const,
-                                        }} onMouseEnter={e => { if (!isSel) { e.currentTarget.style.background = '#f59e0b06'; e.currentTarget.style.borderColor = '#f59e0b30'; } }} onMouseLeave={e => { if (!isSel) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = theme.border; } }}>
-                                            <span style={{ fontSize: 16, lineHeight: 1 }}>{r.icon}</span>
-                                            <span style={{ fontSize: 8, fontWeight: 700, color: isSel ? '#f59e0b' : theme.text, lineHeight: 1 }}>{r.name}</span>
-                                            <span style={{ fontSize: 6, color: theme.textDim, lineHeight: 1.2, textAlign: 'center' as const }}>{r.desc}</span>
-                                            {isSel && r.id !== 'world' && <div style={{ position: 'absolute' as const, top: 2, right: 2, width: 4, height: 4, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 4px #f59e0b' }} />}
-                                        </button>;
-                                    })}
-                                </div>
-                            </div>
                             <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>2D Base Maps</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 12 }}>
                                 {tiles2D.map(t => { const isActive = activeTile === t.id; return (
@@ -6309,18 +6364,35 @@ export default function MapIndex() {
                                 {active3D === '3d-realistic' ? <>🌏 {googleMapRef.current ? 'Google Photorealistic 3D Tiles' : 'Satellite + 3D Buildings'}</> : active3D === '3d-terrain' ? <>🗻 {cesiumViewerRef.current ? 'Cesium World Terrain + OSM Buildings' : 'ESRI Topo + 3D Buildings'}</> : <>3D mode: {tiles3D.find(t => t.id === active3D)?.name}</>}. Click again to disable.
                             </div>}
 
-                            {/* Cinema Mode */}
-                            <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
-                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Cinema Mode</div>
-                                <button onClick={toggleCinema} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1.5px solid ${cinemaMode ? '#f59e0b' : theme.border}`, background: cinemaMode ? 'rgba(245,158,11,0.08)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
-                                    <span style={{ fontSize: 16 }}>🎬</span>
+                            {/* Vision Modes (only when 3D active) */}
+                            {active3D && <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
+                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Vision Mode</div>
+                                <button onClick={() => { setShowVisionPanel(true); triggerTopLoader(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1.5px solid ${visionMode !== 'normal' ? (visionModes.find(v => v.id === visionMode)?.accent || '#8b5cf6') + '40' : theme.border}`, background: visionMode !== 'normal' ? `${visionModes.find(v => v.id === visionMode)?.accent || '#8b5cf6'}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                                    <span style={{ fontSize: 16 }}>{visionModes.find(v => v.id === visionMode)?.icon || '👁'}</span>
                                     <div style={{ flex: 1, textAlign: 'left' as const }}>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: cinemaMode ? '#f59e0b' : theme.text }}>Cinema Mode</div>
-                                        <div style={{ fontSize: 8, color: theme.textDim }}>{cinemaMode ? 'Active — Cinematic globe experience' : 'Auto-rotate globe with HUD overlay'}</div>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: visionMode !== 'normal' ? (visionModes.find(v => v.id === visionMode)?.accent || '#8b5cf6') : theme.text }}>Vision FX Panel</div>
+                                        <div style={{ fontSize: 8, color: theme.textDim }}>{visionMode !== 'normal' ? `${visionModes.find(v => v.id === visionMode)?.name} · Bloom ${vfxBloom}% · Sharp ${vfxSharpen}%` : 'Filters, effects & post-processing'}</div>
                                     </div>
-                                    <div style={{ width: 28, height: 16, borderRadius: 8, background: cinemaMode ? '#f59e0b' : theme.border, position: 'relative' as const, flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute' as const, top: 2, left: cinemaMode ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></div>
+                                    {visionMode !== 'normal' && <div style={{ width: 6, height: 6, borderRadius: '50%', background: visionModes.find(v => v.id === visionMode)?.accent, boxShadow: `0 0 6px ${visionModes.find(v => v.id === visionMode)?.accent}`, flexShrink: 0 }} />}
+                                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
                                 </button>
-                                {cinemaMode && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                            </div>}
+
+                            {/* Cinema Mode — toggle + panel */}
+                            <div style={{ marginTop: 10, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <button onClick={toggleCinema} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: cinemaMode ? '#f59e0b' : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute' as const, top: 2, left: cinemaMode ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></button>
+                                    <button onClick={() => { setShowCinemaPanel(!showCinemaPanel); triggerTopLoader(); }} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 5, border: `1px solid ${cinemaMode ? '#f59e0b25' : showCinemaPanel ? '#f59e0b40' : theme.border}`, background: cinemaMode ? 'rgba(245,158,11,0.06)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const, transition: 'all 0.12s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.background = cinemaMode ? 'rgba(245,158,11,0.06)' : 'transparent'; }}>
+                                        <span style={{ fontSize: 13 }}>🎬</span>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: cinemaMode ? '#f59e0b' : theme.text }}>Cinema Mode</div>
+                                            <div style={{ fontSize: 9, color: theme.textDim }}>{cinemaMode ? 'Active — Cinematic globe' : 'Auto-rotate globe with HUD'}</div>
+                                        </div>
+                                        {cinemaMode && <span style={{ fontSize: 7, fontWeight: 800, padding: '2px 5px', borderRadius: 3, background: '#f59e0b12', color: '#f59e0b', border: '1px solid #f59e0b20' }}>LIVE</span>}
+                                        <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke={showCinemaPanel ? '#f59e0b' : theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
+                                    </button>
+                                </div>
+                                {showCinemaPanel && cinemaMode && <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <button onClick={() => setCinemaPaused(!cinemaPaused)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${cinemaPaused ? '#22c55e30' : '#f59e0b30'}`, background: cinemaPaused ? '#22c55e08' : '#f59e0b08', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12 }}>{cinemaPaused ? '▶' : '⏸'}</button>
                                         <div style={{ flex: 1 }}>
@@ -6343,40 +6415,24 @@ export default function MapIndex() {
                                     </div>
                                 </div>}
                             </div>
-
-                            {/* Vision Modes (only when 3D active) */}
-                            {active3D && <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
-                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Vision Mode</div>
-                                <button onClick={() => { setShowVisionPanel(true); triggerTopLoader(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1.5px solid ${visionMode !== 'normal' ? (visionModes.find(v => v.id === visionMode)?.accent || '#8b5cf6') + '40' : theme.border}`, background: visionMode !== 'normal' ? `${visionModes.find(v => v.id === visionMode)?.accent || '#8b5cf6'}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
-                                    <span style={{ fontSize: 16 }}>{visionModes.find(v => v.id === visionMode)?.icon || '👁'}</span>
-                                    <div style={{ flex: 1, textAlign: 'left' as const }}>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: visionMode !== 'normal' ? (visionModes.find(v => v.id === visionMode)?.accent || '#8b5cf6') : theme.text }}>Vision FX Panel</div>
-                                        <div style={{ fontSize: 8, color: theme.textDim }}>{visionMode !== 'normal' ? `${visionModes.find(v => v.id === visionMode)?.name} · Bloom ${vfxBloom}% · Sharp ${vfxSharpen}%` : 'Filters, effects & post-processing'}</div>
-                                    </div>
-                                    {visionMode !== 'normal' && <div style={{ width: 6, height: 6, borderRadius: '50%', background: visionModes.find(v => v.id === visionMode)?.accent, boxShadow: `0 0 6px ${visionModes.find(v => v.id === visionMode)?.accent}`, flexShrink: 0 }} />}
-                                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="2" strokeLinecap="round"><polyline points="6,4 10,8 6,12"/></svg>
-                                </button>
-                            </div>}
-
-                            {/* Satellite Tracking (Globe only) */}
-                            <div style={{ marginTop: 10, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
-                                <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Satellite Tracking</div>
-                                <button onClick={() => { if (!showSatellites) { if (active3D !== '3d-globe') setActive3D('3d-globe'); setShowSatellites(true); } else setShowSatellites(false); triggerTopLoader(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, border: `1.5px solid ${showSatellites ? '#06b6d440' : theme.border}`, background: showSatellites ? 'rgba(6,182,212,0.08)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
-                                    <span style={{ fontSize: 16 }}>🛰️</span>
-                                    <div style={{ flex: 1, textAlign: 'left' as const }}>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: showSatellites ? '#06b6d4' : theme.text }}>Satellite Tracker</div>
-                                        <div style={{ fontSize: 8, color: theme.textDim }}>{showSatellites ? `${filteredSatellites.length} objects · ${satSource === 'live' ? 'CelesTrak LIVE' : 'Mock data'}` : 'Track orbital objects on 3D globe'}</div>
-                                    </div>
-                                    <div style={{ width: 28, height: 16, borderRadius: 8, background: showSatellites ? '#06b6d4' : theme.border, position: 'relative' as const, flexShrink: 0 }}><div style={{ width: 12, height: 12, borderRadius: 6, background: '#fff', position: 'absolute' as const, top: 2, left: showSatellites ? 14 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} /></div>
-                                </button>
-                                {showSatellites && <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
-                                    {Object.entries(satCategoryConfig).map(([k, v]) => { const c = filteredSatellites.filter(s => s.category === k).length; const on = satCategoryFilter.has(k); return c > 0 || on ? <button key={k} onClick={() => setSatCategoryFilter(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '2px 5px', borderRadius: 3, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: on ? v.color : theme.textDim }}>{v.icon}<span>{c}</span></button> : null; })}
-                                    <button onClick={() => { setShowSatPanel(true); triggerTopLoader(); }} style={{ padding: '2px 6px', borderRadius: 3, border: `1px solid ${showSatPanel ? '#06b6d440' : theme.border}`, background: showSatPanel ? '#06b6d408' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 7, fontWeight: 700, color: showSatPanel ? '#06b6d4' : theme.textDim }}>📋 Panel</button>
-                                </div>}
-                            </div>
                         </div>
                     </Section>
                     </div>
+                    {/* REGIONS */}
+                    <div className={`tmap-section-wrap${dragSectionId === 'regions' ? ' dragging' : ''}${dragOverId === 'regions' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('regions') }} onDragOver={e => handleSectionDragOver(e, 'regions')} onDrop={() => handleSectionDrop('regions')}>
+                    <Section title="Regions" icon={Ico.regions} dragHandle={dragHandleEl('regions')}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                            {regions.map(r => { const isActive = activeRegion === r.id; return (
+                                <button key={r.id} onClick={() => flyToRegion(r.id)} style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 3, padding: '8px 4px', borderRadius: 6, border: `1.5px solid ${isActive ? theme.accent : theme.border}`, background: isActive ? theme.accentDim : 'transparent', cursor: 'pointer', transition: 'all 0.12s', fontFamily: 'inherit' }} onMouseEnter={e => !isActive && (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')} onMouseLeave={e => !isActive && (e.currentTarget.style.background = isActive ? theme.accentDim : 'transparent')}>
+                                    <span style={{ fontSize: 18 }}>{r.icon}</span>
+                                    <span style={{ fontSize: 8, fontWeight: 600, color: isActive ? theme.accent : theme.textDim, lineHeight: 1.1, textAlign: 'center' as const }}>{r.name}</span>
+                                </button>
+                            ); })}
+                        </div>
+                    </Section>
+                    </div>
+
+                    {/* TOOLS */}
                     <div className={`tmap-section-wrap${dragSectionId === 'tools' ? ' dragging' : ''}${dragOverId === 'tools' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('tools') }} onDragOver={e => handleSectionDragOver(e, 'tools')} onDrop={() => handleSectionDrop('tools')}>
                     <Section title="Tools" icon={Ico.tools} badge={(rulerActive ? 1 : 0) + (zoneDrawing ? 1 : 0) + (routePlacing || routeWaypoints.length > 0 ? 1 : 0) + (svActive ? 1 : 0)} dragHandle={dragHandleEl('tools')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
@@ -6941,14 +6997,14 @@ export default function MapIndex() {
                 {showSearch && loaded && <div ref={searchRef} style={{ position: 'absolute' as const, top: 10, left: 10, zIndex: 15, width: 'min(380px, calc(100vw - 20px))' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(13,18,32,0.94)', border: `1px solid ${searchFocused ? theme.accent + '60' : theme.border}`, borderRadius: searchFocused && searchResults.length > 0 ? '8px 8px 0 0' : '8px', padding: '0 10px', backdropFilter: 'blur(10px)', transition: 'border-color 0.15s, border-radius 0.15s', boxShadow: searchFocused ? '0 4px 20px rgba(0,0,0,0.4)' : 'none' }}>
                         {searchLoading ? <div style={{ width: 13, height: 13, border: `2px solid ${theme.border}`, borderTop: `2px solid ${theme.accent}`, borderRadius: '50%', animation: 'argux-spin 0.6s linear infinite', flexShrink: 0 }} /> : <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={searchFocused ? theme.accent : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="14" y2="14"/></svg>}
-                        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} placeholder="Search entities, places, coordinates..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '9px 0', color: theme.text, fontSize: 12, fontFamily: 'inherit', flex: 1, minWidth: 0 }} onKeyDown={e => { if (e.key === 'Escape') { setSearchQuery(''); setSearchFocused(false); } if (e.key === 'Enter' && searchResults.length > 0) handleSearchSelect(searchResults[0]); }} />
+                        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} placeholder="Search entities, flights, vessels, places, coordinates..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '9px 0', color: theme.text, fontSize: 12, fontFamily: 'inherit', flex: 1, minWidth: 0 }} onKeyDown={e => { if (e.key === 'Escape') { setSearchQuery(''); setSearchFocused(false); } if (e.key === 'Enter' && searchResults.length > 0) handleSearchSelect(searchResults[0]); }} />
                         {searchQuery && <button onClick={() => { setSearchQuery(''); setSearchResults([]); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', display: 'flex', padding: 2 }}><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
                         {/* Keyboard shortcut hint */}
                         {!searchFocused && !searchQuery && <span style={{ fontSize: 8, color: theme.textDim, padding: '1px 5px', borderRadius: 3, background: `${theme.border}40`, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>/</span>}
                     </div>
                     {/* Category filter chips */}
                     {searchFocused && searchQuery.length >= 2 && <div style={{ display: 'flex', gap: 3, padding: '6px 10px', background: 'rgba(13,18,32,0.94)', borderLeft: `1px solid ${theme.accent}60`, borderRight: `1px solid ${theme.accent}60`, backdropFilter: 'blur(10px)' }}>
-                        {[{ id: 'all' as const, label: 'All', icon: '🔍' }, { id: 'entities' as const, label: 'Entities', icon: '👤' }, { id: 'places' as const, label: 'Places', icon: '📍' }, { id: 'coords' as const, label: 'Coords', icon: '🎯' }].map(c => <button key={c.id} onClick={() => setSearchCategory(c.id)} style={{ padding: '2px 7px', borderRadius: 4, border: `1px solid ${searchCategory === c.id ? theme.accent + '40' : 'transparent'}`, background: searchCategory === c.id ? `${theme.accent}08` : 'transparent', color: searchCategory === c.id ? theme.accent : theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>{c.icon} {c.label}</button>)}
+                        {[{ id: 'all' as const, label: 'All', icon: '🔍' }, { id: 'entities' as const, label: 'Entities', icon: '👤' }, { id: 'layers' as const, label: 'Layers', icon: '📡' }, { id: 'places' as const, label: 'Places', icon: '📍' }, { id: 'coords' as const, label: 'Coords', icon: '🎯' }].map(c => <button key={c.id} onClick={() => setSearchCategory(c.id)} style={{ padding: '2px 7px', borderRadius: 4, border: `1px solid ${searchCategory === c.id ? theme.accent + '40' : 'transparent'}`, background: searchCategory === c.id ? `${theme.accent}08` : 'transparent', color: searchCategory === c.id ? theme.accent : theme.textDim, fontSize: 8, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>{c.icon} {c.label}</button>)}
                     </div>}
                     {/* Results dropdown */}
                     {searchFocused && searchResults.length > 0 && <div style={{ background: 'rgba(13,18,32,0.95)', border: `1px solid ${theme.accent}60`, borderTop: `1px solid ${theme.border}30`, borderRadius: '0 0 8px 8px', overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', maxHeight: 400, overflowY: 'auto', scrollbarWidth: 'thin' }}>
@@ -6960,7 +7016,7 @@ export default function MapIndex() {
                                 if (catFilter === 'entities' && !['person', 'org', 'vehicle', 'device'].includes(r.category)) return;
                                 if (catFilter === 'places' && !['saved', 'zone', 'geo'].includes(r.category)) return;
                                 if (catFilter === 'coords' && r.category !== 'coord') return;
-                                const key = r.category === 'person' ? 'Persons' : r.category === 'org' ? 'Organizations' : r.category === 'vehicle' ? 'Vehicles' : r.category === 'device' ? 'Devices' : r.category === 'saved' ? 'Saved Places' : r.category === 'zone' ? 'Zones' : r.category === 'coord' ? 'Coordinates' : 'Places';
+                                const key = r.category === 'person' ? 'Persons' : r.category === 'org' ? 'Organizations' : r.category === 'vehicle' ? 'Vehicles' : r.category === 'device' ? 'Devices' : r.category === 'saved' ? 'Saved Places' : r.category === 'zone' ? 'Zones' : r.category === 'coord' ? 'Coordinates' : r.category === 'flight' ? 'Flights' : r.category === 'vessel' ? 'Vessels' : r.category === 'satellite' ? 'Satellites' : r.category === 'uav' ? 'UAV Drones' : r.category === 'lpr' ? 'License Plates' : r.category === 'face' ? 'Face Matches' : r.category === 'workspace' ? 'Workspaces' : r.category === 'hazard' ? 'Hazards' : 'Places';
                                 if (!groups[key]) groups[key] = [];
                                 groups[key].push(r);
                             });

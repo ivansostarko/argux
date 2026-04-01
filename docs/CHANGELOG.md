@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.25.86 - 2026-03-31
+
+### Map Sidebar — Regions, Time Range, Search & Popup Fixes
+
+#### Regions Expanded (8 regions, 4×2 grid)
+- World, North America, South America, Europe, Africa, Middle East, Asia, Pacific
+- Each with tuned lat/lng/zoom/pitch per region + globe zoom variant
+- 4-column grid layout (was 3×2, now 4×2)
+
+#### Time Range — Auto-Select 24h
+- `dateFrom` now defaults to yesterday, `dateTo` to today (24h window)
+- Active time preset button highlighted with accent color
+- New `activeTimePreset` state tracking which button is active
+- Clear button resets preset state
+
+#### Popup Background Fix (White → Dark Theme)
+- Added `className: 'tmap-popup'` to ALL 9 popups that were missing it
+- Affected: Source markers, LPR sightings, Face matches, Vessels, Flights, Satellites, Earthquakes, Fires, GDELT News
+- Without this class, MapLibre renders default white popup background
+
+#### Search Box — Full Feature Expansion
+- **New search categories**: All, Entities, Layers, Places, Coords (was missing Layers)
+- **12 new searchable data types** added to `searchEntities()`:
+  - ✈️ Flights — by callsign, ICAO24, origin country
+  - 🚢 Vessels — by name, MMSI, callsign, destination
+  - 🛰️ Satellites — by name, NORAD ID
+  - 🛩️ UAV Drones — by name, model, callsign
+  - 🚗 LPR Sightings — by plate, owner, camera
+  - 🧑‍🦲 Face Matches — by person name, camera
+  - 📂 Workspaces — by name, description, tags (with action callback to load)
+  - 🌍 Earthquakes — by location, "earthquake"/"quake" keywords
+- **Results limit increased** from 8 to 12
+- **Layers category** skips geocoding (instant local search only)
+- **Action callbacks** on search results (workspace click → loads workspace)
+- **Updated placeholder**: "Search entities, flights, vessels, places, coordinates..."
+- **Category labels** updated for all new types in result rendering
+
+## 0.25.85 - 2026-03-31
+
+### Map Sidebar Redesign
+
+#### Sections Renamed & Reorganized
+- **Regions** → extracted from Base Map into its own sidebar section with 3×2 grid of world region quick-nav buttons (World, Europe, Americas, Middle East, Asia Pacific, Africa)
+- Section order now includes `regions` between `tiles` and `tools`
+- Robust localStorage migration for section order — old saved orders auto-fill missing new sections
+
+#### Cinema Mode Cleanup
+- Removed duplicate Cinema Mode block from Base Map section (the old full-width button)
+- Kept only the toggle+panel version with sidebar toggle switch
+
+#### Workspaces Updated
+- `WorkspaceState` interface expanded with 8 new layer flags: `layerFlights`, `layerUAV`, `layerTraffic`, `layerVessels`, `layerNFZ`, `layerEarthquakes`, `layerFires`, `showSatellites`
+- `captureWorkspaceState()` now saves all new layer states
+- `loadWorkspace()` now restores all new layer states (with backwards-compatible `undefined` checks)
+- Updated 4 existing workspaces with new flags + added 2 new workspaces:
+  - **Globe Recon** — satellite tracking + flights + vessels on 3D globe with earthquakes
+  - **Natural Hazards Watch** — USGS earthquakes + NASA FIRMS fires on satellite imagery
+
 ## 0.25.84 - 2026-03-30
 
 ### Optimized — All Major Marker Systems: DOM → WebGL
