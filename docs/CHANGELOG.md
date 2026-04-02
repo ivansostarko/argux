@@ -1,5 +1,91 @@
 # Changelog
 
+## 0.25.89 - 2026-03-31
+
+### Satellite Tracking — Per-Type Icons, Coverage Footprints, Enhanced Panel
+
+Major upgrade to the satellite tracking system with category-specific visual rendering, ground coverage visualization, and a 3-tab analysis panel.
+
+#### Per-Type Canvas Icons (9 categories)
+Each satellite category now renders with its own canvas-generated icon:
+
+| Category | Icon | Shape | Color |
+|---|---|---|---|
+| Space Station | 🛸 | ● circle (large) | Green |
+| Communication | 📡 | ● circle | Blue |
+| Navigation | 🧭 | ● circle | Amber |
+| Weather | 🌤️ | ● circle | Cyan |
+| Earth Observation | 🌍 | ● circle | Purple |
+| Military | 🎖️ | ● circle | Red |
+| Scientific | 🔬 | ● circle | Pink |
+| Starlink | ⭐ | ● circle (small) | Grey |
+| Debris | 🗑️ | ◆ diamond (tiny) | Dark grey |
+
+Icons registered via `registerSatIcons()` with `styleimagemissing` fallback. Space stations render 1.2× size, debris at 0.7× with 35% opacity.
+
+#### Coverage Footprint Visualization
+- Ground coverage circles calculated using `R × arccos(R / (R+h))` where R = 6,371 km
+- `sat-coverage-fill` — semi-transparent fill colored by category (4% opacity)
+- `sat-coverage-stroke` — dashed border (15% opacity)
+- Coverage shown for all satellites when no selection, or focused on selected satellite
+- Toggleable via Coverage tab or `satShowCoverage` state
+- Approximate radii: LEO ~2,400 km, MEO ~5,500 km, GEO ~8,600 km
+
+#### Enhanced Panel — 3 Tabs
+
+**🛰️ Satellites Tab:**
+- Sortable list (Name, Altitude, Speed, Category)
+- Category filter chips with count badges
+- Search by name, NORAD ID, country
+- Per-item: category icon, orbit type, altitude, velocity, coverage radius
+- Status indicator (active/inactive) with country code
+
+**📊 Statistics Tab:**
+- KPI cards: Total, Active, Debris
+- Category bar chart with proportional bars
+- Orbit type grid (LEO/MEO/GEO/SSO/HEO counts)
+- Country distribution chips
+
+**📡 Coverage Tab:**
+- Toggle footprint visibility
+- Orbit type reference cards (altitude range, coverage radius, description)
+
+#### Enhanced Popup (10 fields)
+NORAD ID, International Designator, Altitude, Velocity, Orbital Period, Inclination, Orbit Type (full name), Footprint Radius, Country, Launch Date. Status badge, category badge, orbit badge.
+
+#### Mock Data — 31 Satellites (was 21)
+Added 10 new satellites:
+- **Military (6)**: USA-310 SBIRS GEO-5, USA-264 MUOS-4, COSMOS 2558, YAOGAN 35A, GSAT-7A Rukmini, OFEK 16
+- **Scientific (1)**: James Webb Space Telescope (L2 orbit)
+- **Starlink (3)**: STARLINK-1010/1011/1012
+
+## 0.25.88 - 2026-03-31
+
+### Map — Form IDs, Skeleton Loading, 3D Fixes, Tile Switching
+
+#### 1. Form Element IDs & Names
+Added `id` and `name` attributes to 20+ form inputs across the map page for accessibility, testing, and form association: date pickers, search boxes, workspace form, timeline slider, panel search inputs, range sliders (cinema speed, correlation radius, anomaly sensitivity, 3D pitch/heading, route replay).
+
+#### 2. Skeleton Loading — Popups
+All marker popups (source markers, LPR, face, vessels, flights, satellites, earthquakes, fires) now show a shimmer skeleton animation for 200ms before rendering the real content via `showPopupWithSkeleton()` helper. Skeleton includes mock avatar circle, text lines, and tag placeholders.
+
+#### 3. Skeleton Loading — Panels
+Layer panels (Heatmap, Network, LPR, Face) show a `<PanelSkeleton />` component with animated shimmer bars for 400ms when first opened via `startPanelLoad()` / `panelLoading` state set. Content is hidden until skeleton clears.
+
+#### 4. 3D Zones/Objects Visibility Fix
+When switching to 3D mode, the zone and object fill-extrusion layers now respect `showZones` and `showObjects` settings:
+- `zones-fill-3d`: applies `setLayoutProperty('visibility', showZones ? 'visible' : 'none')` after creation
+- `objects-fill-3d`: applies `setLayoutProperty('visibility', showObjects ? 'visible' : 'none')` after creation
+Previously, newly created 3D layers defaulted to visible regardless of the toggle state.
+
+#### 5. 2D Tile Switching in 3D Mode
+Removed `map._isGlobe` guard from the tile switching effect. Users can now change 2D base map tiles while any 3D mode is active (buildings, globe, terrain, realistic). The underlying raster source updates via `source.setTiles([url])`.
+
+#### CSS Added
+- `.tmap-skeleton` — shimmer animation (gradient slide, 1.2s infinite)
+- `.tmap-popup-skeleton` — popup skeleton structure (avatar, lines, tags)
+- `.tmap-panel-skeleton` — panel skeleton structure (bars, cards)
+
 ## 0.25.87 - 2026-03-31
 
 ### Source Markers — WebGL Symbol Icons with Canvas Rendering + 3D Mode

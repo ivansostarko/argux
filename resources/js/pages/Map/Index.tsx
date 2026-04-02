@@ -20,7 +20,7 @@ function SidebarMS({ selected, onChange, options, placeholder, showSelectAll }: 
     const toggle = (id: string) => onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
     const allSelected = selected.length === options.length;
     const has = selected.length > 0;
-    return (<div ref={ref} style={{ position: 'relative' as const }}><button className="tmap-ms-trigger" onClick={() => { setOpen(!open); setQ(''); }} style={{ color: has ? theme.text : theme.textDim, borderColor: has ? theme.accent + '40' : theme.border }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{has ? `${selected.length} of ${options.length} selected` : placeholder}</span><svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2,4 5,7 8,4" /></svg></button>{open && <div className="tmap-ms-panel"><div className="tmap-ms-search"><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search..." autoFocus />{has && <button onClick={() => onChange([])} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: theme.danger, fontSize: 9, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, padding: '2px 6px', borderRadius: 3, flexShrink: 0 }}>Clear</button>}</div>{showSelectAll && !q && <div className="tmap-ms-item" onClick={() => onChange(allSelected ? [] : options.map(o => o.id))} style={{ color: allSelected ? theme.accent : theme.textSecondary, borderBottom: `1px solid ${theme.border}`, fontWeight: 700, fontSize: 10 }}><div className={`tmap-ms-check ${allSelected ? 'on' : ''}`}>{allSelected && <svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>Select All</div>}<div className="tmap-ms-list">{filtered.map(o => { const c = selected.includes(o.id); return <div key={o.id} className="tmap-ms-item" onClick={() => toggle(o.id)} style={{ color: c ? theme.accent : theme.text }}><div className={`tmap-ms-check ${c ? 'on' : ''}`}>{c && <svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>{o.img && <img src={o.img} style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover', border: `1px solid ${theme.border}`, flexShrink: 0 }} />}<div><div>{o.label}</div>{o.sub && <div style={{ fontSize: 9, color: theme.textDim }}>{o.sub}</div>}</div></div>; })}{filtered.length === 0 && <div style={{ padding: 12, fontSize: 10, color: theme.textDim, textAlign: 'center' as const }}>No results</div>}</div></div>}{has && <div className="tmap-tags">{selected.slice(0, 6).map(id => { const o = options.find(x => x.id === id); return o ? <span key={id} className="tmap-tag">{o.label.split(' ')[0]}<button onClick={e => { e.stopPropagation(); toggle(id); }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button></span> : null; })}{selected.length > 6 && <span className="tmap-tag" style={{ opacity: 0.6 }}>+{selected.length - 6}</span>}</div>}</div>);
+    return (<div ref={ref} style={{ position: 'relative' as const }}><button className="tmap-ms-trigger" onClick={() => { setOpen(!open); setQ(''); }} style={{ color: has ? theme.text : theme.textDim, borderColor: has ? theme.accent + '40' : theme.border }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>{has ? `${selected.length} of ${options.length} selected` : placeholder}</span><svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2,4 5,7 8,4" /></svg></button>{open && <div className="tmap-ms-panel"><div className="tmap-ms-search"><input id="ms-search" name="msSearch" value={q} onChange={e => setQ(e.target.value)} placeholder="Search..." autoFocus />{has && <button onClick={() => onChange([])} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: theme.danger, fontSize: 9, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, padding: '2px 6px', borderRadius: 3, flexShrink: 0 }}>Clear</button>}</div>{showSelectAll && !q && <div className="tmap-ms-item" onClick={() => onChange(allSelected ? [] : options.map(o => o.id))} style={{ color: allSelected ? theme.accent : theme.textSecondary, borderBottom: `1px solid ${theme.border}`, fontWeight: 700, fontSize: 10 }}><div className={`tmap-ms-check ${allSelected ? 'on' : ''}`}>{allSelected && <svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>Select All</div>}<div className="tmap-ms-list">{filtered.map(o => { const c = selected.includes(o.id); return <div key={o.id} className="tmap-ms-item" onClick={() => toggle(o.id)} style={{ color: c ? theme.accent : theme.text }}><div className={`tmap-ms-check ${c ? 'on' : ''}`}>{c && <svg width="6" height="6" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="2,5 4.5,7.5 8,3"/></svg>}</div>{o.img && <img src={o.img} style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover', border: `1px solid ${theme.border}`, flexShrink: 0 }} />}<div><div>{o.label}</div>{o.sub && <div style={{ fontSize: 9, color: theme.textDim }}>{o.sub}</div>}</div></div>; })}{filtered.length === 0 && <div style={{ padding: 12, fontSize: 10, color: theme.textDim, textAlign: 'center' as const }}>No results</div>}</div></div>}{has && <div className="tmap-tags">{selected.slice(0, 6).map(id => { const o = options.find(x => x.id === id); return o ? <span key={id} className="tmap-tag">{o.label.split(' ')[0]}<button onClick={e => { e.stopPropagation(); toggle(id); }}><svg width="7" height="7" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button></span> : null; })}{selected.length > 6 && <span className="tmap-tag" style={{ opacity: 0.6 }}>+{selected.length - 6}</span>}</div>}</div>);
 }
 
 /* ═══ COLLAPSIBLE SECTION ═══ */
@@ -127,6 +127,8 @@ function MapBtn({ onClick, title, children, active }: { onClick: () => void; tit
 }
 
 /* ═══ MAIN ═══ */
+const PanelSkeleton = () => (<div className="tmap-panel-skeleton"><div className="sk-bar tmap-skeleton" style={{ width: '90%' }} /><div className="sk-bar-sm tmap-skeleton" /><div className="sk-card tmap-skeleton" /><div className="sk-bar tmap-skeleton" style={{ width: '75%' }} /><div className="sk-card tmap-skeleton" /><div className="sk-bar-sm tmap-skeleton" /></div>);
+
 export default function MapIndex() {
     const { props } = usePage<any>();
     const googleMapsKey = props?.app?.googleMapsKey || (window as any).GOOGLE_MAPS_API_KEY || '';
@@ -492,6 +494,9 @@ export default function MapIndex() {
     const [satCategoryFilter, setSatCategoryFilter] = useState<Set<string>>(new Set());
     const [satSelected, setSatSelected] = useState<number | null>(null);
     const [satLastUpdate, setSatLastUpdate] = useState('');
+    const [satTab, setSatTab] = useState<'list' | 'stats' | 'coverage'>('list');
+    const [satSort, setSatSort] = useState<'name' | 'alt' | 'speed' | 'category'>('name');
+    const [satShowCoverage, setSatShowCoverage] = useState(true);
     const satMarkerMapRef = useRef<Map<number, any>>(new Map());
     const satPopupRef = useRef<any>(null);
     const satUpdateRef = useRef<any>(null);
@@ -2899,6 +2904,18 @@ export default function MapIndex() {
     // Source markers on map — WebGL symbol layers with canvas icons + clustering + 3D
     const sourceMarkersRef = useRef<any[]>([]); // kept for compatibility
     const sourcePopupsRef = useRef<any[]>([]);
+
+    // Skeleton HTML for popup loading state
+    const popupSkeletonHtml = `<div class="tmap-popup-card"><div class="tmap-popup-skeleton"><div class="sk-header"><div class="sk-avatar tmap-skeleton"></div><div class="sk-lines"><div class="sk-line tmap-skeleton" style="width:80%"></div><div class="sk-row"><div class="sk-tag tmap-skeleton"></div><div class="sk-tag tmap-skeleton"></div><div class="sk-tag tmap-skeleton"></div></div></div></div><div class="sk-line tmap-skeleton" style="width:90%"></div><div class="sk-line tmap-skeleton" style="width:70%"></div><div class="sk-line tmap-skeleton" style="width:85%"></div><div class="sk-line-sm tmap-skeleton"></div></div></div>`;
+    const showPopupWithSkeleton = useCallback((map: any, ml: any, coords: [number, number], buildHtml: () => string, opts?: any) => {
+        const popup = new ml.Popup({ maxWidth: '320px', offset: 16, className: 'tmap-popup', ...opts }).setLngLat(coords).setHTML(popupSkeletonHtml).addTo(map);
+        setTimeout(() => { try { popup.setHTML(buildHtml()); } catch {} }, 200);
+        return popup;
+    }, []);
+
+    // Panel loading skeleton state
+    const [panelLoading, setPanelLoading] = useState<Set<string>>(new Set());
+    const startPanelLoad = useCallback((id: string) => { setPanelLoading(prev => new Set(prev).add(id)); setTimeout(() => setPanelLoading(prev => { const n = new Set(prev); n.delete(id); return n; }), 400); }, []);
     const srcLast3D = useRef<string | null>(null);
 
     // Canvas icon generator for MapLibre addImage
@@ -3136,7 +3153,7 @@ export default function MapIndex() {
                 } else {
                     popupHtml = `<div class="tmap-popup-card">${deviceHeader || ownerHeader}${infoGrid}<div class="tmap-popup-coords">${sm.lat.toFixed(5)}, ${sm.lng.toFixed(5)}</div></div>`;
                 }
-                const popup = new ml.Popup({ maxWidth: '320px', offset: 16, className: 'tmap-popup' }).setLngLat(coords).setHTML(popupHtml).addTo(map);
+                const popup = showPopupWithSkeleton(map, ml, coords, () => popupHtml);
                 sourcePopupsRef.current.push(popup);
             });
             map.on('mouseenter', 'src-icons', () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -3374,7 +3391,7 @@ export default function MapIndex() {
             const riskColor = p.risk === 'Critical' ? '#ef4444' : p.risk === 'High' ? '#f97316' : p.risk === 'Medium' ? '#f59e0b' : '#6b7280';
             const addr = mockAddress(c[1], c[0]);
             const html = `<div class="tmap-popup-card"><div style="position:relative;border-bottom:1px solid var(--ax-border)"><img src="${p.photoUrl}" style="width:100%;height:80px;object-fit:cover;display:block" /><div style="position:absolute;bottom:6px;left:6px;font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.8);letter-spacing:0.06em">${p.plate}</div><div style="position:absolute;top:6px;right:6px"><span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.6);color:#10b981;backdrop-filter:blur(4px)">${p.confidence}%</span></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">👤 Owner</span><span class="tmap-popup-val">${p.personId > 0 ? `<a href="/persons/${p.personId}" style="color:var(--ax-accent);text-decoration:none">${p.personName}</a>` : p.personName}${p.orgName ? ` · ${p.orgName}` : ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${p.timestamp}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Speed</span><span class="tmap-popup-val">${p.direction} at ${p.speed} km/h</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val">${p.cameraName}</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(5)}, ${c[0].toFixed(5)}</div></div>`;
-            new ml.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
+            showPopupWithSkeleton(map, ml, c, () => html, { maxWidth: '300px', offset: 8 });
         });
         map.on('mouseenter', 'lpr-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', 'lpr-circles', () => { map.getCanvas().style.cursor = ''; });
@@ -3425,7 +3442,7 @@ export default function MapIndex() {
             const confColor = p.confidence >= 90 ? '#22c55e' : p.confidence >= 75 ? '#f59e0b' : '#ef4444';
             const addr = mockAddress(c[1], c[0]);
             const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:28px;height:28px;border-radius:50%;background:#ec489915;border:1.5px solid #ec489940;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🧑‍🦲</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${p.personId > 0 ? `<a href="/persons/${p.personId}" style="color:var(--ax-accent);text-decoration:none">${p.personName}</a>` : p.personName}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${riskColor}15;color:${riskColor};border:1px solid ${riskColor}30">${p.risk}</span><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${confColor}15;color:${confColor};border:1px solid ${confColor}30">${p.confidence}%</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:#ec489915;color:#ec4899;border:1px solid #ec489930">FACE</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📍 Address</span><span class="tmap-popup-val">${addr}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${p.timestamp}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">😐 Emotion</span><span class="tmap-popup-val">${p.emotion}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">👕 Wearing</span><span class="tmap-popup-val">${p.wearing}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📹 Camera</span><span class="tmap-popup-val">${p.cameraName}</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(5)}, ${c[0].toFixed(5)}</div></div>`;
-            new ml.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
+            showPopupWithSkeleton(map, ml, c, () => html, { maxWidth: '300px', offset: 8 });
         });
         map.on('mouseenter', 'face-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', 'face-circles', () => { map.getCanvas().style.cursor = ''; });
@@ -3469,7 +3486,7 @@ export default function MapIndex() {
                 const feat = e.features?.[0]; if (!feat || !ml) return;
                 const p = feat.properties; const c = feat.geometry.coordinates.slice();
                 const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${p.color}15;border:1.5px solid ${p.color}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">✈️</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px;font-family:'JetBrains Mono',monospace">${p.callsign}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${p.color}15;color:${p.color};border:1px solid ${p.color}30">${p.category}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:#3b82f615;color:#3b82f6;border:1px solid #3b82f630">FL${Math.round((p.alt || 0) / 30.48 / 100)}</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">✈️ ICAO24</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.icao24 || ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🏁 Origin</span><span class="tmap-popup-val">${p.origin || '—'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Altitude</span><span class="tmap-popup-val">${((p.alt || 0) / 1000).toFixed(1)} km (${Math.round((p.alt || 0) * 3.281)} ft)</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚡ Speed</span><span class="tmap-popup-val">${((p.velocity || 0) * 3.6).toFixed(0)} km/h</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Heading</span><span class="tmap-popup-val">${(p.heading || 0).toFixed(0)}°</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
-                new ml.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
+                showPopupWithSkeleton(map, ml, c, () => html, { maxWidth: '300px', offset: 8 });
             });
             map.on('mouseenter', 'flight-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', 'flight-circles', () => { map.getCanvas().style.cursor = ''; });
@@ -3508,7 +3525,37 @@ export default function MapIndex() {
         if (flightPopupRef.current) { flightPopupRef.current = null; }
     }, [loaded, layerFlights]);
 
-    // ═══ SATELLITE LAYER RENDERING — WebGL layers + rAF setData ═══
+    // ═══ SATELLITE LAYER RENDERING — Per-type icons, coverage footprints, enhanced popups ═══
+    const satIconsLoaded = useRef(false);
+    const registerSatIcons = useCallback((map: any) => {
+        if (satIconsLoaded.current && map.hasImage('sat-space-station')) return;
+        const types: [string, string, string][] = [
+            ['sat-space-station', '#22c55e', '🛸'], ['sat-communication', '#3b82f6', '📡'],
+            ['sat-navigation', '#f59e0b', '🧭'], ['sat-weather', '#06b6d4', '🌤️'],
+            ['sat-earth-observation', '#8b5cf6', '🌍'], ['sat-military', '#ef4444', '🎖️'],
+            ['sat-scientific', '#ec4899', '🔬'], ['sat-starlink', '#94a3b8', '⭐'],
+            ['sat-debris', '#6b7280', '🗑️'],
+        ];
+        types.forEach(([id, bg, sym]) => {
+            if (!map.hasImage(id)) {
+                try {
+                    const size = id === 'sat-space-station' ? 32 : id === 'sat-debris' ? 18 : 24;
+                    const img = createMarkerIcon(size, bg, sym, id === 'sat-debris' ? 'diamond' : 'circle', bg);
+                    map.addImage(id, img, { pixelRatio: 2 });
+                } catch {}
+            }
+        });
+        satIconsLoaded.current = true;
+    }, [createMarkerIcon]);
+
+    // Coverage footprint: approximate ground footprint circle
+    const satFootprintRadius = useCallback((altKm: number): number => {
+        if (altKm > 100000) return 0; // L2 etc — too far
+        const R = 6371; // Earth radius km
+        const rho = Math.acos(R / (R + altKm)); // angular radius in radians
+        return rho * (180 / Math.PI); // convert to degrees
+    }, []);
+
     useEffect(() => {
         const map = mapRef.current;
         const ml = (window as any).maplibregl;
@@ -3516,52 +3563,123 @@ export default function MapIndex() {
         if (!map || !loaded) return;
 
         if (!showSatellites || !isGlobe) {
-            ['sat-circles', 'sat-labels'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            ['sat-icons', 'sat-labels', 'sat-coverage-fill', 'sat-coverage-stroke', 'sat-orbit-ring'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
             try { if (map.getSource('sat-src')) map.removeSource('sat-src'); } catch {}
+            try { if (map.getSource('sat-coverage-src')) map.removeSource('sat-coverage-src'); } catch {}
             satMarkerMapRef.current.forEach(e => e.marker?.remove?.()); satMarkerMapRef.current.clear();
             if (satAnimRef.current) { cancelAnimationFrame(satAnimRef.current); satAnimRef.current = null; }
             return;
         }
 
-        if (!map.getSource('sat-src')) {
-            map.addSource('sat-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-            map.addLayer({ id: 'sat-circles', type: 'circle', source: 'sat-src', paint: {
-                'circle-radius': ['case', ['==', ['get', 'category'], 'space-station'], 8, ['==', ['get', 'category'], 'debris'], 3, 5],
-                'circle-color': ['get', 'color'],
-                'circle-opacity': ['case', ['==', ['get', 'category'], 'debris'], 0.4, 0.85],
-                'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff', 'circle-stroke-opacity': 0.3,
-            }});
-            map.addLayer({ id: 'sat-labels', type: 'symbol', source: 'sat-src', filter: ['!=', ['get', 'category'], 'debris'], layout: {
-                'text-field': ['get', 'name'], 'text-size': 8, 'text-offset': [0, 1.4], 'text-anchor': 'top',
-                'text-allow-overlap': false, 'icon-allow-overlap': true,
-            }, paint: { 'text-color': ['get', 'color'], 'text-halo-color': 'rgba(0,0,0,0.9)', 'text-halo-width': 1 } });
-
-            map.on('click', 'sat-circles', (e: any) => {
-                const feat = e.features?.[0]; if (!feat || !ml) return;
-                const p = feat.properties; const c = feat.geometry.coordinates.slice();
-                const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${p.color}15;border:1.5px solid ${p.color}40;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🛰️</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">${p.name}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${p.color}15;color:${p.color};border:1px solid ${p.color}30">${p.category}</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📡 NORAD</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.noradId}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Alt</span><span class="tmap-popup-val">${((p.alt || 0) / 1000).toFixed(0)} km</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚡ Speed</span><span class="tmap-popup-val">${((p.velocity || 0) / 1000).toFixed(1)} km/s</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
-                new ml.Popup({ maxWidth: '280px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
-            });
-            map.on('mouseenter', 'sat-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
-            map.on('mouseleave', 'sat-circles', () => { map.getCanvas().style.cursor = ''; });
+        registerSatIcons(map);
+        if (!(map as any)._satMissingHandler) {
+            map.on('styleimagemissing', (e: any) => { if (e.id?.startsWith('sat-')) registerSatIcons(map); });
+            (map as any)._satMissingHandler = true;
         }
 
+        if (!map.getSource('sat-src')) {
+            map.addSource('sat-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.addSource('sat-coverage-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+
+            // Coverage footprint fill
+            map.addLayer({ id: 'sat-coverage-fill', type: 'fill', source: 'sat-coverage-src', paint: {
+                'fill-color': ['get', 'color'], 'fill-opacity': 0.04,
+            }});
+            map.addLayer({ id: 'sat-coverage-stroke', type: 'line', source: 'sat-coverage-src', paint: {
+                'line-color': ['get', 'color'], 'line-width': 1, 'line-opacity': 0.15, 'line-dasharray': [4, 4],
+            }});
+
+            // Satellite icons (per-type)
+            map.addLayer({ id: 'sat-icons', type: 'symbol', source: 'sat-src', layout: {
+                'icon-image': ['get', 'iconId'],
+                'icon-size': ['case', ['==', ['get', 'category'], 'space-station'], 1.2, ['==', ['get', 'category'], 'debris'], 0.7, 0.9],
+                'icon-allow-overlap': true, 'icon-ignore-placement': true,
+                'icon-pitch-alignment': 'viewport', 'icon-rotation-alignment': 'viewport',
+                'symbol-sort-key': ['case', ['==', ['get', 'category'], 'space-station'], 0, ['==', ['get', 'category'], 'debris'], 10, 5],
+            }, paint: {
+                'icon-opacity': ['case', ['==', ['get', 'category'], 'debris'], 0.35, ['==', ['get', 'status'], 'inactive'], 0.5, 1],
+            }});
+
+            // Labels
+            map.addLayer({ id: 'sat-labels', type: 'symbol', source: 'sat-src',
+                filter: ['all', ['!=', ['get', 'category'], 'debris'], ['!=', ['get', 'category'], 'starlink']], layout: {
+                'text-field': ['get', 'name'], 'text-size': 8, 'text-offset': [0, 1.8], 'text-anchor': 'top',
+                'text-allow-overlap': false,
+            }, paint: { 'text-color': ['get', 'color'], 'text-halo-color': 'rgba(0,0,0,0.9)', 'text-halo-width': 1 } });
+
+            // Click popup (enhanced)
+            map.on('click', 'sat-icons', (e: any) => {
+                const feat = e.features?.[0]; if (!feat || !ml) return;
+                const p = feat.properties; const c = feat.geometry.coordinates.slice();
+                const altKm = ((p.alt || 0) / 1).toFixed(0);
+                const velKms = (p.velocity || 0).toFixed(2);
+                const periodH = p.period ? `${Math.floor(p.period / 60)}h ${p.period % 60}m` : '—';
+                const footprint = p.footprintDeg ? `${(p.footprintDeg * 111).toFixed(0)} km radius` : '—';
+                const statusColor = p.status === 'active' ? '#22c55e' : p.status === 'inactive' ? '#f59e0b' : '#6b7280';
+                const orbitDesc = p.orbitType === 'LEO' ? 'Low Earth Orbit' : p.orbitType === 'MEO' ? 'Medium Earth Orbit' : p.orbitType === 'GEO' ? 'Geostationary' : p.orbitType === 'HEO' ? 'Highly Elliptical' : p.orbitType === 'SSO' ? 'Sun-Synchronous' : p.orbitType;
+                const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:36px;height:36px;border-radius:8px;background:${p.color}15;border:1.5px solid ${p.color}40;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${p.catIcon || '🛰️'}</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">${p.name}</div><div style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${p.color}15;color:${p.color};border:1px solid ${p.color}30">${p.catLabel || p.category}</span><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${statusColor}15;color:${statusColor};border:1px solid ${statusColor}30">${p.status}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:#06b6d415;color:#06b6d4;border:1px solid #06b6d430">${p.orbitType}</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📡 NORAD ID</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.noradId}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🌐 Int'l Des</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.intlDesignator || '—'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Altitude</span><span class="tmap-popup-val">${Number(altKm).toLocaleString()} km</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚡ Velocity</span><span class="tmap-popup-val">${velKms} km/s</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🔄 Period</span><span class="tmap-popup-val">${periodH}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📐 Incline</span><span class="tmap-popup-val">${p.inclination || 0}°</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🛤️ Orbit</span><span class="tmap-popup-val">${orbitDesc}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📡 Footprint</span><span class="tmap-popup-val">${footprint}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🏳️ Country</span><span class="tmap-popup-val">${p.country}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🚀 Launched</span><span class="tmap-popup-val">${p.launchDate || '—'}</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
+                showPopupWithSkeleton(map, ml, c, () => html, { maxWidth: '320px', offset: 12 });
+            });
+            map.on('mouseenter', 'sat-icons', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'sat-icons', () => { map.getCanvas().style.cursor = ''; });
+        }
+
+        // rAF loop — updates satellite positions + coverage footprints
         let lastUp = 0;
+        const createCirclePolygon = (lng: number, lat: number, radiusDeg: number, steps: number = 48): number[][] => {
+            const coords: number[][] = [];
+            for (let i = 0; i <= steps; i++) {
+                const angle = (i / steps) * 2 * Math.PI;
+                coords.push([lng + radiusDeg * Math.cos(angle) / Math.cos(lat * Math.PI / 180), lat + radiusDeg * Math.sin(angle)]);
+            }
+            return coords;
+        };
+
         const loop = (time: number) => {
             if (!mapRef.current) { satAnimRef.current = requestAnimationFrame(loop); return; }
             if (time - lastUp < 800) { satAnimRef.current = requestAnimationFrame(loop); return; }
             lastUp = time;
             const sats = satellites;
-            const features = sats.map((s: any) => {
+            const selId = satSelectedRef.current;
+            const filtered = satCategoryFilter.size > 0 ? sats.filter(s => satCategoryFilter.has(s.category)) : sats;
+
+            // Point features for satellite icons
+            const pointFeatures = filtered.map(s => {
                 const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
-                return { type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [s.lng, s.lat] }, properties: { noradId: s.noradId, name: s.name, category: s.category, color: cat.color, alt: s.altitude || 0, velocity: s.velocity || 0 } };
+                const fpDeg = satFootprintRadius(s.alt);
+                return {
+                    type: 'Feature' as const,
+                    geometry: { type: 'Point' as const, coordinates: [s.lng, s.lat] },
+                    properties: { noradId: s.noradId, name: s.name, category: s.category, color: cat.color, catIcon: cat.icon, catLabel: cat.label, iconId: `sat-${s.category}`, alt: s.alt, velocity: s.velocity, inclination: s.inclination, period: s.period, orbitType: s.orbitType, country: s.country, launchDate: s.launchDate, status: s.status, intlDesignator: s.intlDesignator, footprintDeg: fpDeg },
+                };
             });
-            try { const src = mapRef.current.getSource('sat-src') as any; if (src) src.setData({ type: 'FeatureCollection', features }); } catch {}
+
+            // Coverage footprint polygons (only for non-debris, non-starlink)
+            const coverageFeatures = satShowCoverage ? filtered
+                .filter(s => s.category !== 'debris' && s.alt < 100000 && (selId ? s.noradId === selId : true))
+                .map(s => {
+                    const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
+                    const fpDeg = satFootprintRadius(s.alt);
+                    if (fpDeg <= 0) return null;
+                    const coords = createCirclePolygon(s.lng, s.lat, fpDeg);
+                    return {
+                        type: 'Feature' as const,
+                        geometry: { type: 'Polygon' as const, coordinates: [coords] },
+                        properties: { color: cat.color, name: s.name, alt: s.alt },
+                    };
+                }).filter(Boolean) : [];
+
+            try {
+                const src = mapRef.current.getSource('sat-src') as any;
+                if (src) src.setData({ type: 'FeatureCollection', features: pointFeatures });
+                const covSrc = mapRef.current.getSource('sat-coverage-src') as any;
+                if (covSrc) covSrc.setData({ type: 'FeatureCollection', features: coverageFeatures });
+            } catch {}
             satAnimRef.current = requestAnimationFrame(loop);
         };
         satAnimRef.current = requestAnimationFrame(loop);
         return () => { if (satAnimRef.current) { cancelAnimationFrame(satAnimRef.current); satAnimRef.current = null; } };
-    }, [showSatellites, loaded]);
+    }, [showSatellites, loaded, satShowCoverage, satCategoryFilter]);
 
     // ═══ POI LAYER RENDERING ═══
     const createPOIMarkerEl = useCallback((poi: POI, map: any, ml: any) => {
@@ -4101,7 +4219,7 @@ export default function MapIndex() {
                 const f = e.features?.[0]; if (!f || !ml) return;
                 const p = f.properties; const c = f.geometry.coordinates.slice();
                 const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${p.color}15;border:1.5px solid ${p.color}40;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🚢</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:12px">${p.name}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${p.color}15;color:${p.color};border:1px solid ${p.color}30">${p.vesselType || 'Vessel'}</span>${p.flag ? `<span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#06b6d415;color:#06b6d4;border:1px solid #06b6d430">${p.flag}</span>` : ''}</div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📡 MMSI</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.mmsi || ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🧭 Course</span><span class="tmap-popup-val">${p.heading || 0}° · ${(p.speed || 0).toFixed(1)} kn</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Size</span><span class="tmap-popup-val">${p.length || '?'}m × ${p.width || '?'}m</span></div>${p.destination ? `<div class="tmap-popup-row"><span class="tmap-popup-label">🏁 Dest</span><span class="tmap-popup-val">${p.destination}</span></div>` : ''}</div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
-                new ml.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
+                showPopupWithSkeleton(map, ml, c, () => html, { maxWidth: '300px', offset: 8 });
             });
             map.on('mouseenter', 'vessel-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', 'vessel-circles', () => { map.getCanvas().style.cursor = ''; });
@@ -4939,11 +5057,11 @@ export default function MapIndex() {
     useEffect(() => {
         if (tileInitRef.current) return; // skip initial render
         const map = mapRef.current;
-        if (!map || !loaded || map._isGlobe) return;
+        if (!map || !loaded) return;
         const ver = mapVersionRef.current;
         // Wait for map idle to avoid AbortError on in-flight tile requests
         const apply = () => {
-            if (mapVersionRef.current !== ver || !mapRef.current || mapRef.current._isGlobe) return;
+            if (mapVersionRef.current !== ver || !mapRef.current) return;
             const tile = tiles2D.find(t => t.id === activeTile);
             if (!tile?.url) return;
             try { const src = mapRef.current.getSource('base-tiles'); if (src?.setTiles) src.setTiles([tile.url]); } catch {}
@@ -5381,6 +5499,8 @@ export default function MapIndex() {
                             'fill-extrusion-base': 0,
                             'fill-extrusion-opacity': 0.35,
                         }});
+                        // Respect showZones setting
+                        map.setLayoutProperty('zones-fill-3d', 'visibility', showZones ? 'visible' : 'none');
                     }
                     if (map.getLayer('zones-outline')) {
                         map.setPaintProperty('zones-outline', 'line-width', 3);
@@ -5408,6 +5528,8 @@ export default function MapIndex() {
                             'fill-extrusion-base': 0,
                             'fill-extrusion-opacity': 0.4,
                         }});
+                        // Respect showObjects setting
+                        map.setLayoutProperty('objects-fill-3d', 'visibility', showObjects ? 'visible' : 'none');
                     }
                     if (map.getLayer('objects-outline')) {
                         map.setPaintProperty('objects-outline', 'line-width', 3);
@@ -5824,7 +5946,7 @@ export default function MapIndex() {
                 const time = p.time ? new Date(p.time).toLocaleString() : '';
                 const ago = p.time ? `${Math.round((Date.now() - p.time) / 3600000)}h ago` : '';
                 const html = `<div class="tmap-popup-card" style="min-width:220px"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:${magColor}15;border:1.5px solid ${magColor}40;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${magColor};font-family:'JetBrains Mono',monospace">M${mag}</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">${p.place || 'Unknown'}</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${magColor}15;color:${magColor};border:1px solid ${magColor}30">M${mag}</span><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#a855f715;color:#a855f7;border:1px solid #a855f730">USGS</span>${p.tsunami ? '<span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#0ea5e915;color:#0ea5e9;border:1px solid #0ea5e930">⚠ TSUNAMI</span>' : ''}</div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">🕐 Time</span><span class="tmap-popup-val">${time} <span style="color:var(--ax-text-dim);font-size:9px">(${ago})</span></span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Depth</span><span class="tmap-popup-val">${depth} km</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📊 Sig</span><span class="tmap-popup-val">${p.sig || 0}</span></div>${p.felt ? `<div class="tmap-popup-row"><span class="tmap-popup-label">👥 Felt</span><span class="tmap-popup-val">${p.felt} reports</span></div>` : ''}${p.alert ? `<div class="tmap-popup-row"><span class="tmap-popup-label">⚠️ Alert</span><span class="tmap-popup-val" style="color:${p.alert === 'red' ? '#ef4444' : p.alert === 'orange' ? '#f97316' : p.alert === 'yellow' ? '#f59e0b' : '#22c55e'};font-weight:700;text-transform:uppercase">${p.alert}</span></div>` : ''}</div>${p.url ? `<div style="padding:4px 10px;border-top:1px solid var(--ax-border)"><a href="${p.url}" target="_blank" rel="noopener" style="color:var(--ax-accent);text-decoration:none;font-size:9px">View on USGS ↗</a></div>` : ''}<div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
-                new (window as any).maplibregl.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat([c[0], c[1]]).setHTML(html).addTo(map);
+                showPopupWithSkeleton(map, (window as any).maplibregl, [c[0], c[1]], () => html, { maxWidth: '300px', offset: 8 });
             };
             map.on('click', 'eq-circles', onClick);
             map.on('mouseenter', 'eq-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -5866,7 +5988,7 @@ export default function MapIndex() {
                 const conf = p.confidence || 'N/A'; const confColor = conf === 'high' || conf === 'h' ? '#ef4444' : conf === 'nominal' || conf === 'n' ? '#f59e0b' : '#6b7280';
                 const dn = p.daynight === 'D' ? '☀️ Day' : p.daynight === 'N' ? '🌙 Night' : p.daynight || '';
                 const html = `<div class="tmap-popup-card" style="min-width:220px"><div class="tmap-popup-header" style="gap:8px"><div style="width:32px;height:32px;border-radius:8px;background:#f43f5e15;border:1.5px solid #f43f5e40;display:flex;align-items:center;justify-content:center;font-size:16px">🔥</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">Active Fire Detection</div><div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${confColor}15;color:${confColor};border:1px solid ${confColor}30">${conf}</span><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:#f43f5e15;color:#f43f5e;border:1px solid #f43f5e30">NASA FIRMS</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">🌡️ Brightness</span><span class="tmap-popup-val" style="font-weight:700;color:#ef4444">${bright} K</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚡ FRP</span><span class="tmap-popup-val">${frp} MW</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📡 Satellite</span><span class="tmap-popup-val">${p.satellite || 'VIIRS'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📅 Date</span><span class="tmap-popup-val">${p.acq_date || ''} ${p.acq_time || ''}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🌅 Day/Night</span><span class="tmap-popup-val">${dn}</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
-                new (window as any).maplibregl.Popup({ maxWidth: '300px', offset: 8, className: 'tmap-popup' }).setLngLat(c).setHTML(html).addTo(map);
+                showPopupWithSkeleton(map, (window as any).maplibregl, c, () => html, { maxWidth: '300px', offset: 8 });
             };
             map.on('click', 'fire-circles', onClick);
             map.on('mouseenter', 'fire-circles', () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -6341,8 +6463,8 @@ export default function MapIndex() {
                     <div className={`tmap-section-wrap${dragSectionId === 'period' ? ' dragging' : ''}${dragOverId === 'period' ? ' drag-over' : ''}`} style={{ order: sectionOrder.indexOf('period') }} onDragOver={e => handleSectionDragOver(e, 'period')} onDrop={() => handleSectionDrop('period')}>
                     <Section title="Time Range" icon={Ico.period} dragHandle={dragHandleEl('period')}>
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
-                            <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>From</div><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={dateInputStyle} /></div>
-                            <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>To</div><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={dateInputStyle} /></div>
+                            <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>From</div><input type="date" id="map-date-from" name="dateFrom" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={dateInputStyle} /></div>
+                            <div><div style={{ fontSize: 9, fontWeight: 600, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>To</div><input type="date" id="map-date-to" name="dateTo" value={dateTo} onChange={e => setDateTo(e.target.value)} style={dateInputStyle} /></div>
                             <div style={{ display: 'flex', gap: 6 }}>
                                 {['24h', '7d', '30d'].map(p => <button key={p} onClick={() => { const d = new Date(); const f = new Date(); if (p === '24h') f.setDate(d.getDate() - 1); if (p === '7d') f.setDate(d.getDate() - 7); if (p === '30d') f.setDate(d.getDate() - 30); setDateFrom(f.toISOString().slice(0, 10)); setDateTo(d.toISOString().slice(0, 10)); setActiveTimePreset(p); triggerTopLoader(); }} style={{ flex: 1, padding: '4px', borderRadius: 4, border: `1px solid ${activeTimePreset === p ? theme.accent + '40' : theme.border}`, background: activeTimePreset === p ? theme.accentDim : 'transparent', color: activeTimePreset === p ? theme.accent : theme.textDim, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }} onMouseEnter={e => { if (activeTimePreset !== p) { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.color = theme.accent; } }} onMouseLeave={e => { if (activeTimePreset !== p) { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.color = theme.textDim; } }}>{p}</button>)}
                                 {(dateFrom || dateTo) && <button onClick={() => { setDateFrom(''); setDateTo(''); setActiveTimePreset(''); triggerTopLoader(); }} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: theme.danger, fontSize: 9, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>×</button>}
@@ -6417,10 +6539,10 @@ export default function MapIndex() {
                         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                             {/* Layer buttons */}
                             {[
-                                { key: 'heatmap', icon: '🔥', label: 'Activity Heatmap', color: '#f59e0b', active: layerHeatmap, toggle: () => { setLayerHeatmap(!layerHeatmap); triggerTopLoader(); }, panel: showHeatmapPanel, openPanel: () => { setShowHeatmapPanel(true); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); setShowFlightsPanel(false); triggerTopLoader(); }, desc: layerHeatmap ? `${heatmapPoints.length} points · ${(heatmapIntensity * 100).toFixed(0)}% intensity` : 'Surveillance activity density' },
-                                { key: 'network', icon: '🕸️', label: 'Network Graph', color: '#8b5cf6', active: layerNetwork, toggle: () => { setLayerNetwork(!layerNetwork); triggerTopLoader(); }, panel: showNetworkPanel, openPanel: () => { setShowNetworkPanel(true); setShowHeatmapPanel(false); setShowLPRPanel(false); setShowFacePanel(false); setShowFlightsPanel(false); triggerTopLoader(); }, desc: layerNetwork ? `${netNodes.length} nodes · ${netFilteredEdges.length} connections${netIsolatedEdge ? ' · isolated' : ''}` : 'Entity connection analysis' },
-                                { key: 'lpr', icon: '🚗', label: 'Plate Recognition', color: '#10b981', active: layerLPR, toggle: () => { setLayerLPR(!layerLPR); triggerTopLoader(); }, panel: showLPRPanel, openPanel: () => { setShowLPRPanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowFacePanel(false); setShowFlightsPanel(false); triggerTopLoader(); }, desc: layerLPR ? `${mockLPR.filter(l => !lprHidden.has(l.id) && (lprSelected.size === 0 || lprSelected.has(l.id))).length} visible · ${lprHidden.size} hidden` : 'License plate captures' },
-                                { key: 'face', icon: '🧑‍🦲', label: 'Face Recognition', color: '#ec4899', active: layerFace, toggle: () => { setLayerFace(!layerFace); triggerTopLoader(); }, panel: showFacePanel, openPanel: () => { setShowFacePanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFlightsPanel(false); triggerTopLoader(); }, desc: layerFace ? `${mockFaces.filter(f => !faceHidden.has(f.id) && (faceSelected.size === 0 || faceSelected.has(f.id))).length} visible · ${faceHidden.size} hidden` : 'Facial recognition captures' },
+                                { key: 'heatmap', icon: '🔥', label: 'Activity Heatmap', color: '#f59e0b', active: layerHeatmap, toggle: () => { setLayerHeatmap(!layerHeatmap); triggerTopLoader(); }, panel: showHeatmapPanel, openPanel: () => { setShowHeatmapPanel(true); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFacePanel(false); setShowFlightsPanel(false); startPanelLoad('heatmap'); triggerTopLoader(); }, desc: layerHeatmap ? `${heatmapPoints.length} points · ${(heatmapIntensity * 100).toFixed(0)}% intensity` : 'Surveillance activity density' },
+                                { key: 'network', icon: '🕸️', label: 'Network Graph', color: '#8b5cf6', active: layerNetwork, toggle: () => { setLayerNetwork(!layerNetwork); triggerTopLoader(); }, panel: showNetworkPanel, openPanel: () => { setShowNetworkPanel(true); setShowHeatmapPanel(false); setShowLPRPanel(false); setShowFacePanel(false); setShowFlightsPanel(false); startPanelLoad('network'); triggerTopLoader(); }, desc: layerNetwork ? `${netNodes.length} nodes · ${netFilteredEdges.length} connections${netIsolatedEdge ? ' · isolated' : ''}` : 'Entity connection analysis' },
+                                { key: 'lpr', icon: '🚗', label: 'Plate Recognition', color: '#10b981', active: layerLPR, toggle: () => { setLayerLPR(!layerLPR); triggerTopLoader(); }, panel: showLPRPanel, openPanel: () => { setShowLPRPanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowFacePanel(false); setShowFlightsPanel(false); startPanelLoad('lpr'); triggerTopLoader(); }, desc: layerLPR ? `${mockLPR.filter(l => !lprHidden.has(l.id) && (lprSelected.size === 0 || lprSelected.has(l.id))).length} visible · ${lprHidden.size} hidden` : 'License plate captures' },
+                                { key: 'face', icon: '🧑‍🦲', label: 'Face Recognition', color: '#ec4899', active: layerFace, toggle: () => { setLayerFace(!layerFace); triggerTopLoader(); }, panel: showFacePanel, openPanel: () => { setShowFacePanel(true); setShowHeatmapPanel(false); setShowNetworkPanel(false); setShowLPRPanel(false); setShowFlightsPanel(false); startPanelLoad('face'); triggerTopLoader(); }, desc: layerFace ? `${mockFaces.filter(f => !faceHidden.has(f.id) && (faceSelected.size === 0 || faceSelected.has(f.id))).length} visible · ${faceHidden.size} hidden` : 'Facial recognition captures' },
                                 { key: 'flights', icon: '✈️', label: 'Live Flights', color: '#06b6d4', active: layerFlights, toggle: () => { setLayerFlights(!layerFlights); triggerTopLoader(); }, panel: showFlightsPanel, openPanel: () => { setShowFlightsPanel(!showFlightsPanel); triggerTopLoader(); }, desc: layerFlights ? `${filteredFlights.length} aircraft · ${flightSource === 'live' ? 'LIVE' : 'Mock'}` : 'OpenSky Network ADS-B feed' },
                                 { key: 'poi', icon: '📍', label: 'Places of Interest', color: '#14b8a6', active: layerPOI, toggle: () => { setLayerPOI(!layerPOI); triggerTopLoader(); }, panel: showPOIPanel, openPanel: () => { setShowPOIPanel(!showPOIPanel); triggerTopLoader(); }, desc: layerPOI ? `${poiStats.visible} places · ${poiActiveCategories.size} categories` : 'Hospitals, police, banks, ATMs...' },
                                 { key: 'weather', icon: '🌦️', label: 'Weather Radar', color: '#0ea5e9', active: layerWeather, toggle: () => { setLayerWeather(!layerWeather); triggerTopLoader(); }, panel: showWeatherPanel, openPanel: () => { setShowWeatherPanel(!showWeatherPanel); triggerTopLoader(); }, desc: layerWeather ? `${wxData?.current?.temperature_2m ?? '—'}°C · ${getWeatherLabel(wxData?.current?.weather_code ?? 0)}` : 'Rain radar, forecast, history' },
@@ -6430,7 +6552,7 @@ export default function MapIndex() {
                                 { key: 'nfz', icon: '⛔', label: 'No Fly Zones', color: '#ef4444', active: layerNFZ, toggle: () => { setLayerNFZ(!layerNFZ); triggerTopLoader(); }, panel: showNFZPanel, openPanel: () => { setShowNFZPanel(!showNFZPanel); triggerTopLoader(); }, desc: layerNFZ ? `${nfzStats.visible} zones · ${nfzStats.active} active` : 'Airspace restrictions & prohibited areas' },
                                 { key: 'earthquakes', icon: '🌍', label: 'Earthquakes', color: '#a855f7', active: layerEarthquakes, toggle: () => { setLayerEarthquakes(!layerEarthquakes); triggerTopLoader(); }, desc: layerEarthquakes ? (eqLoading ? 'Loading USGS...' : `${eqFeatures.length} events · USGS`) : 'USGS real-time seismic data' },
                                 { key: 'fires', icon: '🔥', label: 'Active Fires', color: '#f43f5e', active: layerFires, toggle: () => { setLayerFires(!layerFires); triggerTopLoader(); }, desc: layerFires ? (fireLoading ? 'Loading FIRMS...' : `${fireFeatures.length} hotspots · NASA`) : 'NASA FIRMS satellite fire detection' },
-                                { key: 'satellites', icon: '🛰️', label: 'Satellite Tracking', color: '#06b6d4', active: showSatellites, toggle: () => { if (!showSatellites) { if (active3D !== '3d-globe') setActive3D('3d-globe'); setShowSatellites(true); } else setShowSatellites(false); triggerTopLoader(); }, desc: showSatellites ? `${filteredSatellites.length} tracked · CelesTrak` : 'Globe mode — live orbital tracking' },
+                                { key: 'satellites', icon: '🛰️', label: 'Satellite Tracking', color: '#06b6d4', active: showSatellites, toggle: () => { if (!showSatellites) { if (active3D !== '3d-globe') setActive3D('3d-globe'); setShowSatellites(true); } else setShowSatellites(false); triggerTopLoader(); }, panel: showSatPanel, openPanel: () => { setShowSatPanel(!showSatPanel); triggerTopLoader(); }, desc: showSatellites ? `${filteredSatellites.length} tracked · ${satShowCoverage ? 'Coverage ON' : 'Positions'}` : 'Globe mode — live orbital tracking' },
                             ].map(l => <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {/* Toggle switch */}
                                 <button onClick={l.toggle} style={{ width: 28, height: 16, borderRadius: 8, border: 'none', background: l.active ? l.color : theme.border, cursor: 'pointer', position: 'relative' as const, transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
@@ -6507,7 +6629,7 @@ export default function MapIndex() {
                                         <button onClick={() => setCinemaPaused(!cinemaPaused)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${cinemaPaused ? '#22c55e30' : '#f59e0b30'}`, background: cinemaPaused ? '#22c55e08' : '#f59e0b08', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12 }}>{cinemaPaused ? '▶' : '⏸'}</button>
                                         <div style={{ flex: 1 }}>
                                             <div style={{ fontSize: 8, color: theme.textDim, marginBottom: 2 }}>Rotation Speed</div>
-                                            <input type="range" min="0.02" max="0.5" step="0.01" value={cinemaSpeed} onChange={e => setCinemaSpeed(Number(e.target.value))} style={{ width: '100%', height: 4, accentColor: '#f59e0b' }} />
+                                            <input type="range" min="0.02" max="0.5" step="0.01" id="cinema-speed" name="cinemaSpeed" value={cinemaSpeed} onChange={e => setCinemaSpeed(Number(e.target.value))} style={{ width: '100%', height: 4, accentColor: '#f59e0b' }} />
                                         </div>
                                         <span style={{ fontSize: 9, fontWeight: 700, color: '#f59e0b', fontFamily: "'JetBrains Mono',monospace", width: 32, textAlign: 'right' as const }}>{cinemaSpeed.toFixed(2)}</span>
                                     </div>
@@ -6845,7 +6967,7 @@ export default function MapIndex() {
                             <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
                                 <div>
                                     <label style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Name *</label>
-                                    <input value={wsForm.name} onChange={e => setWsForm({ ...wsForm, name: e.target.value })} placeholder="e.g. Morning Surveillance" autoFocus style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
+                                    <input value={wsForm.name} onChange={e => setWsForm({ ...wsForm, name: e.target.value })} id="ws-name" name="wsName" placeholder="e.g. Morning Surveillance" autoFocus style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
                                 </div>
                                 <div>
                                     <label style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Description</label>
@@ -6853,7 +6975,7 @@ export default function MapIndex() {
                                 </div>
                                 <div>
                                     <label style={{ fontSize: 10, fontWeight: 600, color: theme.textSecondary, display: 'block', marginBottom: 4 }}>Tags <span style={{ fontWeight: 400, color: theme.textDim }}>(comma separated)</span></label>
-                                    <input value={wsForm.tags} onChange={e => setWsForm({ ...wsForm, tags: e.target.value })} placeholder="surveillance, active, priority" style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
+                                    <input value={wsForm.tags} onChange={e => setWsForm({ ...wsForm, tags: e.target.value })} id="ws-tags" name="wsTags" placeholder="surveillance, active, priority" style={{ width: '100%', padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none' }} />
                                 </div>
                                 {wsModal.mode === 'save' && <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.12)', fontSize: 9, color: theme.textDim }}>
                                     <div style={{ fontWeight: 700, color: theme.accent, marginBottom: 4 }}>State to be saved:</div>
@@ -7107,7 +7229,7 @@ export default function MapIndex() {
                 {showSearch && loaded && <div ref={searchRef} style={{ position: 'absolute' as const, top: 10, left: 10, zIndex: 15, width: 'min(380px, calc(100vw - 20px))' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(13,18,32,0.94)', border: `1px solid ${searchFocused ? theme.accent + '60' : theme.border}`, borderRadius: searchFocused && searchResults.length > 0 ? '8px 8px 0 0' : '8px', padding: '0 10px', backdropFilter: 'blur(10px)', transition: 'border-color 0.15s, border-radius 0.15s', boxShadow: searchFocused ? '0 4px 20px rgba(0,0,0,0.4)' : 'none' }}>
                         {searchLoading ? <div style={{ width: 13, height: 13, border: `2px solid ${theme.border}`, borderTop: `2px solid ${theme.accent}`, borderRadius: '50%', animation: 'argux-spin 0.6s linear infinite', flexShrink: 0 }} /> : <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={searchFocused ? theme.accent : theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="14" y2="14"/></svg>}
-                        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} placeholder="Search entities, flights, vessels, places, coordinates..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '9px 0', color: theme.text, fontSize: 12, fontFamily: 'inherit', flex: 1, minWidth: 0 }} onKeyDown={e => { if (e.key === 'Escape') { setSearchQuery(''); setSearchFocused(false); } if (e.key === 'Enter' && searchResults.length > 0) handleSearchSelect(searchResults[0]); }} />
+                        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} id="map-search" name="search" placeholder="Search entities, flights, vessels, places, coordinates..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '9px 0', color: theme.text, fontSize: 12, fontFamily: 'inherit', flex: 1, minWidth: 0 }} onKeyDown={e => { if (e.key === 'Escape') { setSearchQuery(''); setSearchFocused(false); } if (e.key === 'Enter' && searchResults.length > 0) handleSearchSelect(searchResults[0]); }} />
                         {searchQuery && <button onClick={() => { setSearchQuery(''); setSearchResults([]); }} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', display: 'flex', padding: 2 }}><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
                         {/* Keyboard shortcut hint */}
                         {!searchFocused && !searchQuery && <span style={{ fontSize: 8, color: theme.textDim, padding: '1px 5px', borderRadius: 3, background: `${theme.border}40`, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>/</span>}
@@ -7339,7 +7461,7 @@ export default function MapIndex() {
                         <div style={{ display: 'flex', gap: 1, height: 20, alignItems: 'flex-end', marginBottom: 1 }}>
                             {tlDensity.map((d, i) => { const pct = ((i + 0.5) / 50) * 100; const past = pct <= timelineCursor; return <div key={i} style={{ flex: 1, height: `${Math.max(2, d * 100)}%`, background: past ? '#3b82f6' : `rgba(${d > 0.5 ? '239,68,68' : '107,114,128'},${0.15 + d * 0.3})`, borderRadius: '2px 2px 0 0', transition: 'background 0.1s' }} />; })}
                         </div>
-                        <input type="range" min="0" max="100" step="0.1" value={timelineCursor} onChange={e => { setTimelineCursor(parseFloat(e.target.value)); setTimelinePlaying(false); }} style={{ width: '100%', height: 6, appearance: 'none', WebkitAppearance: 'none', background: `linear-gradient(to right, #3b82f6 ${timelineCursor}%, ${theme.border} ${timelineCursor}%)`, borderRadius: 3, outline: 'none', cursor: 'pointer', margin: '2px 0' }} />
+                        <input type="range" id="timeline-cursor" name="timelineCursor" min="0" max="100" step="0.1" value={timelineCursor} onChange={e => { setTimelineCursor(parseFloat(e.target.value)); setTimelinePlaying(false); }} style={{ width: '100%', height: 6, appearance: 'none', WebkitAppearance: 'none', background: `linear-gradient(to right, #3b82f6 ${timelineCursor}%, ${theme.border} ${timelineCursor}%)`, borderRadius: 3, outline: 'none', cursor: 'pointer', margin: '2px 0' }} />
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: theme.textDim }}><span>{fmtTlTime(tlStart)}</span><span>{fmtTlTime(tlStart + tlRange * 0.25)}</span><span>{fmtTlTime(tlStart + tlRange * 0.5)}</span><span>{fmtTlTime(tlStart + tlRange * 0.75)}</span><span>{fmtTlTime(tlEnd)}</span></div>
                     </div>
 
@@ -7487,7 +7609,7 @@ export default function MapIndex() {
 
                         {/* Targets tab */}
                         {liveTrackTab === 'targets' && <div style={{ padding: '8px 14px' }}>
-                            <input value={liveTrackSearch} onChange={e => setLiveTrackSearch(e.target.value)} placeholder="Search persons..." style={{ padding: '6px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${liveTrackSearch ? '#22c55e50' : theme.border}`, borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: '100%', marginBottom: 8 }} />
+                            <input value={liveTrackSearch} onChange={e => setLiveTrackSearch(e.target.value)} id="track-search" name="trackSearch" placeholder="Search persons..." style={{ padding: '6px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${liveTrackSearch ? '#22c55e50' : theme.border}`, borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: '100%', marginBottom: 8 }} />
                             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                                 {trackablePersons.filter(tp => { if (liveTrackSearch.trim()) { const q = liveTrackSearch.toLowerCase(); return tp.personName.toLowerCase().includes(q) || tp.personLastName.toLowerCase().includes(q) || tp.personNickname.toLowerCase().includes(q); } return true; }).map(tp => {
                                     const isActive = liveTrackSessions.some(s => s.personId === tp.personId && s.sourceType === tp.sourceType);
@@ -7560,7 +7682,7 @@ export default function MapIndex() {
                         <div style={{ display: 'flex', gap: 6 }}>
                             <div style={{ flex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}><span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Radius</span><span style={{ fontSize: 9, fontWeight: 700, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace" }}>{corrRadius}m</span></div>
-                                <input type="range" min={10} max={500} step={10} value={corrRadius} onChange={e => setCorrRadius(parseInt(e.target.value))} style={{ width: '100%', height: 4, accentColor: '#f59e0b' }} />
+                                <input type="range" min={10} max={500} step={10} id="corr-radius" name="corrRadius" value={corrRadius} onChange={e => setCorrRadius(parseInt(e.target.value))} style={{ width: '100%', height: 4, accentColor: '#f59e0b' }} />
                             </div>
                             <div style={{ width: 90 }}>
                                 <div style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, marginBottom: 3, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Window</div>
@@ -7706,7 +7828,7 @@ export default function MapIndex() {
                         {/* Sensitivity slider */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}><span style={{ fontSize: 8, fontWeight: 700, color: theme.textDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Sensitivity</span><span style={{ fontSize: 9, fontWeight: 700, color: '#8b5cf6', fontFamily: "'JetBrains Mono', monospace" }}>{anomalySensitivity}%</span></div>
-                            <input type="range" min={30} max={100} step={5} value={anomalySensitivity} onChange={e => setAnomalySensitivity(parseInt(e.target.value))} style={{ width: '100%', height: 4, accentColor: '#8b5cf6' }} />
+                            <input type="range" min={30} max={100} step={5} id="anomaly-sensitivity" name="anomalySensitivity" value={anomalySensitivity} onChange={e => setAnomalySensitivity(parseInt(e.target.value))} style={{ width: '100%', height: 4, accentColor: '#8b5cf6' }} />
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: theme.textDim, marginTop: 2 }}><span>Fewer, high-confidence</span><span>More, lower threshold</span></div>
                         </div>
                         {/* Run button */}
@@ -8145,7 +8267,7 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${incidentSearch ? '#f9731650' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
                             <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
-                            <input value={incidentSearch} onChange={e => setIncidentSearch(e.target.value)} placeholder="Search events, persons, locations..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 10, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
+                            <input value={incidentSearch} onChange={e => setIncidentSearch(e.target.value)} id="incident-search" name="incidentSearch" placeholder="Search events, persons, locations..." style={{ background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 10, fontFamily: 'inherit', flex: 1, minWidth: 0 }} />
                             {incidentSearch && <button onClick={() => setIncidentSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: 2, display: 'flex' }}><svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>}
                         </div>
                     </div>
@@ -8484,7 +8606,7 @@ export default function MapIndex() {
 
                         {/* Progress bar */}
                         <div style={{ marginTop: 6 }}>
-                            <input type="range" min={0} max={Math.max(0, (mockRoutes[rrPerson] || []).length - 1)} value={rrCursor} onChange={e => { setRrCursor(parseInt(e.target.value)); setRrPlaying(false); }} style={{ width: '100%', height: 4, accentColor: '#ec4899' }} />
+                            <input type="range" min={0} max={Math.max(0, (mockRoutes[rrPerson] || []).length - 1)} id="route-replay-cursor" name="rrCursor" value={rrCursor} onChange={e => { setRrCursor(parseInt(e.target.value)); setRrPlaying(false); }} style={{ width: '100%', height: 4, accentColor: '#ec4899' }} />
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: theme.textDim, marginTop: 2 }}>
                                 <span>{(mockRoutes[rrPerson] || [])[rrCursor]?.ts || '--:--'}</span>
                                 <span>{rrCursor + 1}/{(mockRoutes[rrPerson] || []).length}</span>
@@ -8617,37 +8739,109 @@ export default function MapIndex() {
                     </>}
                 </div>}
 
-                {/* ═══ SATELLITE PANEL ═══ */}
-                {showSatPanel && loaded && <div data-panel="satellites" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('satellites'); }} style={panelStyle('satellites', '380px', '#06b6d4')}>
+                {/* ═══ SATELLITE PANEL (Enhanced) ═══ */}
+                {showSatPanel && loaded && <div data-panel="satellites" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('satellites'); }} style={panelStyle('satellites', '400px', '#06b6d4')}>
                     <PanelHeader id="satellites" icon="🛰️" title="Satellite Tracker" subtitle={`${filteredSatellites.length} objects · ${satSource === 'live' ? 'CelesTrak' : 'Mock'}`} color="#06b6d4" onClose={() => setShowSatPanel(false)} extra={<button onClick={() => { setShowSatellites(!showSatellites); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: showSatellites ? '#06b6d4' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: showSatellites ? 16 : 2, transition: 'left 0.2s' }} /></button>} />
                     <PanelResizeGrip id="satellites" />
                     {!isPanelMin('satellites') && <>
-                    {/* Category stats */}
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}20`, flexShrink: 0 }}>
+                        {[{ id: 'list' as const, label: 'Satellites', icon: '🛰️' }, { id: 'stats' as const, label: 'Statistics', icon: '📊' }, { id: 'coverage' as const, label: 'Coverage', icon: '📡' }].map(t => <button key={t.id} onClick={() => setSatTab(t.id)} style={{ flex: 1, padding: '7px 4px', border: 'none', borderBottom: `2px solid ${satTab === t.id ? '#06b6d4' : 'transparent'}`, background: satTab === t.id ? 'rgba(6,182,212,0.06)' : 'transparent', color: satTab === t.id ? '#06b6d4' : theme.textDim, cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, transition: 'all 0.15s' }}>{t.icon} {t.label}</button>)}
+                    </div>
+                    {/* Category filter chips */}
                     <div style={{ display: 'flex', gap: 3, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexWrap: 'wrap' as const }}>
                         {Object.entries(satCategoryConfig).map(([k, v]) => { const c = satellites.filter(s => s.category === k).length; const on = satCategoryFilter.has(k); return c > 0 ? <button key={k} onClick={() => setSatCategoryFilter(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '3px 6px', borderRadius: 4, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: on ? v.color : theme.textDim }}>{v.icon} {c}</button> : null; })}
                     </div>
-                    {/* Search */}
-                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${satSearch ? '#06b6d450' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
+
+                    {/* ── LIST TAB ── */}
+                    {satTab === 'list' && <>
+                    {/* Search + Sort */}
+                    <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0, display: 'flex', gap: 6 }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${satSearch ? '#06b6d450' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
                             <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
-                            <input value={satSearch} onChange={e => setSatSearch(e.target.value)} placeholder="Search satellite, NORAD ID..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                            <input value={satSearch} onChange={e => setSatSearch(e.target.value)} id="sat-search" name="satSearch" placeholder="Search satellite, NORAD ID..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
                         </div>
+                        <select id="sat-sort" value={satSort} onChange={e => setSatSort(e.target.value as any)} style={{ background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, padding: '0 6px', fontSize: 9, fontFamily: 'inherit', cursor: 'pointer', outline: 'none' }}>
+                            <option value="name">Name</option><option value="alt">Altitude</option><option value="speed">Speed</option><option value="category">Type</option>
+                        </select>
                     </div>
                     {/* Satellite list */}
                     <div style={{ flex: 1, overflowY: 'auto' as const }}>
                         {filteredSatellites.length === 0 ? <div style={{ padding: 30, textAlign: 'center' as const }}><div style={{ fontSize: 28, opacity: 0.15 }}>🛰️</div><div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 6 }}>No satellites match</div></div> :
-                        filteredSatellites.map(s => { const cat = satCategoryConfig[s.category] || satCategoryConfig.communication; const isSel = satSelected === s.noradId; return <div key={s.noradId} onClick={() => { setSatSelected(isSel ? null : s.noradId); const map = mapRef.current; if (map && !isSel) map.flyTo({ center: [s.lng, s.lat], zoom: Math.min(map.getZoom(), 4), duration: 1200 }); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer', background: isSel ? `${cat.color}06` : 'transparent', borderLeft: `3px solid ${isSel ? cat.color : 'transparent'}`, borderBottom: `1px solid ${theme.border}06`, transition: 'background 0.1s' }} onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}>
-                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: cat.color, boxShadow: `0 0 6px ${cat.color}60`, flexShrink: 0 }} />
+                        [...filteredSatellites].sort((a, b) => satSort === 'alt' ? b.alt - a.alt : satSort === 'speed' ? b.velocity - a.velocity : satSort === 'category' ? a.category.localeCompare(b.category) : a.name.localeCompare(b.name)).map(s => { const cat = satCategoryConfig[s.category] || satCategoryConfig.communication; const isSel = satSelected === s.noradId; const fpKm = satFootprintRadius(s.alt) * 111; return <div key={s.noradId} onClick={() => { setSatSelected(isSel ? null : s.noradId); const map = mapRef.current; if (map && !isSel) map.flyTo({ center: [s.lng, s.lat], zoom: Math.min(map.getZoom(), 4), duration: 1200 }); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer', background: isSel ? `${cat.color}06` : 'transparent', borderLeft: `3px solid ${isSel ? cat.color : 'transparent'}`, borderBottom: `1px solid ${theme.border}06`, transition: 'background 0.1s' }} onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }} onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = isSel ? `${cat.color}06` : 'transparent'; }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, background: `${cat.color}12`, border: `1px solid ${cat.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{cat.icon}</div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: 11, fontWeight: 700, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.name}</div>
-                                <div style={{ fontSize: 9, color: theme.textDim }}>{s.orbitType} · {s.alt.toLocaleString()} km · {s.velocity} km/s</div>
+                                <div style={{ fontSize: 9, color: theme.textDim }}>{s.orbitType} · {s.alt.toLocaleString()} km · {s.velocity} km/s{s.alt < 100000 ? ` · ${fpKm.toFixed(0)} km coverage` : ''}</div>
                             </div>
                             <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
                                 <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${cat.color}12`, color: cat.color }}>{cat.label}</span>
-                                <div style={{ fontSize: 8, color: theme.textDim, marginTop: 2, fontFamily: "'JetBrains Mono',monospace" }}>{s.noradId}</div>
+                                <div style={{ fontSize: 8, color: s.status === 'active' ? '#22c55e' : s.status === 'inactive' ? '#f59e0b' : '#6b7280', marginTop: 2, fontWeight: 600 }}>{s.country} · {s.status}</div>
                             </div>
                         </div>; })}
                     </div>
+                    </>}
+
+                    {/* ── STATS TAB ── */}
+                    {satTab === 'stats' && <div style={{ flex: 1, overflowY: 'auto' as const, padding: '12px 14px' }}>
+                        {/* KPI Cards */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
+                            {[
+                                { label: 'Total', value: satellites.length, color: '#06b6d4' },
+                                { label: 'Active', value: satellites.filter(s => s.status === 'active').length, color: '#22c55e' },
+                                { label: 'Debris', value: satellites.filter(s => s.category === 'debris').length, color: '#6b7280' },
+                            ].map(k => <div key={k.label} style={{ textAlign: 'center' as const, padding: '8px 4px', borderRadius: 6, background: `${k.color}06`, border: `1px solid ${k.color}15` }}>
+                                <div style={{ fontSize: 16, fontWeight: 800, color: k.color, fontFamily: "'JetBrains Mono',monospace" }}>{k.value}</div>
+                                <div style={{ fontSize: 8, color: theme.textDim, fontWeight: 600 }}>{k.label}</div>
+                            </div>)}
+                        </div>
+                        {/* By Category */}
+                        <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>By Category</div>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 3, marginBottom: 12 }}>
+                            {Object.entries(satCategoryConfig).map(([k, v]) => { const cnt = satellites.filter(s => s.category === k).length; if (cnt === 0) return null; const pct = (cnt / satellites.length) * 100; return <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                                <span style={{ fontSize: 12, width: 20, textAlign: 'center' as const }}>{v.icon}</span>
+                                <span style={{ fontSize: 10, fontWeight: 600, color: theme.text, width: 100 }}>{v.label}</span>
+                                <div style={{ flex: 1, height: 6, borderRadius: 3, background: theme.border, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', background: v.color, borderRadius: 3, transition: 'width 0.5s' }} /></div>
+                                <span style={{ fontSize: 9, fontWeight: 700, color: v.color, fontFamily: "'JetBrains Mono',monospace", width: 24, textAlign: 'right' as const }}>{cnt}</span>
+                            </div>; })}
+                        </div>
+                        {/* By Orbit */}
+                        <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>By Orbit Type</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                            {(['LEO', 'MEO', 'GEO', 'SSO', 'HEO'] as const).map(o => { const cnt = satellites.filter(s => s.orbitType === o).length; const colors: Record<string, string> = { LEO: '#3b82f6', MEO: '#f59e0b', GEO: '#8b5cf6', SSO: '#06b6d4', HEO: '#ec4899' }; return cnt > 0 ? <div key={o} style={{ textAlign: 'center' as const, padding: '6px 4px', borderRadius: 6, background: `${colors[o]}06`, border: `1px solid ${colors[o]}15` }}>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: colors[o], fontFamily: "'JetBrains Mono',monospace" }}>{cnt}</div>
+                                <div style={{ fontSize: 8, color: theme.textDim, fontWeight: 600 }}>{o}</div>
+                            </div> : null; })}
+                        </div>
+                        {/* By Country */}
+                        <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6, marginTop: 12 }}>By Country</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
+                            {Array.from(new Set(satellites.map(s => s.country))).sort().map(c => { const cnt = satellites.filter(s => s.country === c).length; return <span key={c} style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)', color: '#06b6d4' }}>{c} <span style={{ color: theme.textDim }}>{cnt}</span></span>; })}
+                        </div>
+                    </div>}
+
+                    {/* ── COVERAGE TAB ── */}
+                    {satTab === 'coverage' && <div style={{ flex: 1, overflowY: 'auto' as const, padding: '12px 14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: theme.text }}>Show Coverage Footprints</span>
+                            <button onClick={() => setSatShowCoverage(!satShowCoverage)} style={{ width: 34, height: 18, borderRadius: 9, border: 'none', background: satShowCoverage ? '#06b6d4' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0 }}><div style={{ width: 14, height: 14, borderRadius: 7, background: '#fff', position: 'absolute' as const, top: 2, left: satShowCoverage ? 18 : 2, transition: 'left 0.2s' }} /></button>
+                        </div>
+                        <div style={{ fontSize: 9, color: theme.textDim, marginBottom: 10, lineHeight: 1.5 }}>Coverage footprint shows the ground area each satellite can observe. Radius is calculated from orbital altitude using Earth's geometry. Select a satellite to see its specific footprint.</div>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: theme.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>Coverage by Orbit</div>
+                        {[{ orbit: 'LEO', alt: '200–2,000 km', radius: '~2,400 km', desc: 'Low Earth — high resolution, small coverage, fast pass' },
+                          { orbit: 'MEO', alt: '2,000–35,786 km', radius: '~5,500 km', desc: 'Medium — navigation constellations (GPS, Galileo)' },
+                          { orbit: 'GEO', alt: '35,786 km', radius: '~8,600 km', desc: 'Geostationary — fixed position, hemisphere coverage' },
+                          { orbit: 'SSO', alt: '600–800 km', radius: '~2,800 km', desc: 'Sun-synchronous — consistent lighting for imaging' },
+                        ].map(o => <div key={o.orbit} style={{ padding: '8px 10px', marginBottom: 4, borderRadius: 6, background: 'rgba(6,182,212,0.03)', border: `1px solid ${theme.border}15` }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: '#06b6d4' }}>{o.orbit}</span>
+                                <span style={{ fontSize: 9, color: theme.textDim, fontFamily: "'JetBrains Mono',monospace" }}>{o.radius}</span>
+                            </div>
+                            <div style={{ fontSize: 8, color: theme.textDim }}>{o.alt}</div>
+                            <div style={{ fontSize: 8, color: theme.textSecondary, marginTop: 2 }}>{o.desc}</div>
+                        </div>)}
+                    </div>}
+
                     {/* Footer */}
                     <div style={{ padding: '6px 14px', borderTop: `1px solid ${theme.border}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                         <span style={{ fontSize: 8, color: theme.textDim }}>{filteredSatellites.length} objects · {satLastUpdate ? `${satLastUpdate}` : '...'}</span>
@@ -8674,7 +8868,7 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${flightSearch ? '#06b6d450' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
                             <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
-                            <input value={flightSearch} onChange={e => setFlightSearch(e.target.value)} placeholder="Search callsign, airline, route..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                            <input value={flightSearch} onChange={e => setFlightSearch(e.target.value)} id="flight-search" name="flightSearch" placeholder="Search callsign, airline, route..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
                             {flightSearch && <button onClick={() => setFlightSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', fontSize: 9, padding: 0 }}>✕</button>}
                         </div>
                     </div>
@@ -8735,11 +8929,11 @@ export default function MapIndex() {
                             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}><span style={{ fontSize: 9, fontWeight: 700, color: theme.text }}>Tilt / Pitch</span><span style={{ fontSize: 9, fontWeight: 800, color: '#22c55e', fontFamily: "'JetBrains Mono',monospace" }}>{g3dPitch}°</span></div>
-                                    <input type="range" min="0" max="90" step="1" value={g3dPitch} onChange={e => { const v = Number(e.target.value); setG3dPitch(v); if (googleMapRef.current) googleMapRef.current.moveCamera({ tilt: v }); }} style={{ width: '100%', height: 4, accentColor: '#22c55e' }} />
+                                    <input type="range" min="0" max="90" step="1" id="g3d-pitch" name="g3dPitch" value={g3dPitch} onChange={e => { const v = Number(e.target.value); setG3dPitch(v); if (googleMapRef.current) googleMapRef.current.moveCamera({ tilt: v }); }} style={{ width: '100%', height: 4, accentColor: '#22c55e' }} />
                                 </div>
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}><span style={{ fontSize: 9, fontWeight: 700, color: theme.text }}>Heading / Bearing</span><span style={{ fontSize: 9, fontWeight: 800, color: '#3b82f6', fontFamily: "'JetBrains Mono',monospace" }}>{g3dHeading}°</span></div>
-                                    <input type="range" min="0" max="360" step="1" value={g3dHeading} onChange={e => { const v = Number(e.target.value); setG3dHeading(v); if (googleMapRef.current) googleMapRef.current.moveCamera({ heading: v }); }} style={{ width: '100%', height: 4, accentColor: '#3b82f6' }} />
+                                    <input type="range" min="0" max="360" step="1" id="g3d-heading" name="g3dHeading" value={g3dHeading} onChange={e => { const v = Number(e.target.value); setG3dHeading(v); if (googleMapRef.current) googleMapRef.current.moveCamera({ heading: v }); }} style={{ width: '100%', height: 4, accentColor: '#3b82f6' }} />
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
@@ -8890,7 +9084,7 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${nfzSearch ? '#ef444450' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
                             <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
-                            <input value={nfzSearch} onChange={e => setNfzSearch(e.target.value)} placeholder="Search name, ICAO, authority, reason..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                            <input value={nfzSearch} onChange={e => setNfzSearch(e.target.value)} id="nfz-search" name="nfzSearch" placeholder="Search name, ICAO, authority, reason..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
                             {nfzSearch && <button onClick={() => setNfzSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', fontSize: 9, padding: 0 }}>✕</button>}
                         </div>
                     </div>
@@ -8938,7 +9132,7 @@ export default function MapIndex() {
                         <div style={{ display: 'flex', gap: 4 }}>
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${newsQuery ? '#f59e0b50' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
                                 <span style={{ fontSize: 11 }}>🔍</span>
-                                <input value={newsQuery} onChange={e => setNewsQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') fetchNews(); }} placeholder="Search news... (e.g. war, protest, earthquake)" style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '7px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                                <input value={newsQuery} onChange={e => setNewsQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') fetchNews(); }} id="news-search" name="newsSearch" placeholder="Search news... (e.g. war, protest, earthquake)" style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '7px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
                             </div>
                             <button onClick={() => fetchNews()} disabled={newsLoading} style={{ padding: '0 12px', borderRadius: 6, border: 'none', background: '#f59e0b', cursor: newsLoading ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 10, fontWeight: 700, color: '#000', transition: 'all 0.15s' }}>{newsLoading ? '⏳' : '🔎'}</button>
                         </div>
@@ -9040,7 +9234,7 @@ export default function MapIndex() {
                     <div style={{ padding: '6px 14px', borderBottom: `1px solid ${theme.border}10`, flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: theme.bgInput, border: `1px solid ${vesselSearch ? '#0891b250' : theme.border}`, borderRadius: 6, padding: '0 10px' }}>
                             <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10" y1="10" x2="13" y2="13"/></svg>
-                            <input value={vesselSearch} onChange={e => setVesselSearch(e.target.value)} placeholder="Search name, MMSI, callsign, destination..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
+                            <input value={vesselSearch} onChange={e => setVesselSearch(e.target.value)} id="vessel-search" name="vesselSearch" placeholder="Search name, MMSI, callsign, destination..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '6px 0', color: theme.text, fontSize: 11, fontFamily: 'inherit' }} />
                             {vesselSearch && <button onClick={() => setVesselSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', fontSize: 9, padding: 0 }}>✕</button>}
                         </div>
                     </div>
@@ -9885,8 +10079,10 @@ export default function MapIndex() {
 
                     {!isPanelMin('layers') && <><div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'thin', minHeight: 0 }}>
 
+                        {panelLoading.has(activeLayerPanel || '') && <PanelSkeleton />}
+
                         {/* ── HEATMAP PANEL ── */}
-                        {activeLayerPanel === 'heatmap' && <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                        {activeLayerPanel === 'heatmap' && !panelLoading.has('heatmap') && <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
                             <div style={{ fontSize: 10, color: theme.textDim }}>{heatmapPoints.length} activity points plotted. Density visualization shows areas of high surveillance activity concentration.</div>
                             <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: theme.textDim, marginBottom: 4 }}><span>Intensity</span><span style={{ color: '#f59e0b', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{(heatmapIntensity * 100).toFixed(0)}%</span></div>
@@ -9900,7 +10096,7 @@ export default function MapIndex() {
                         </div>}
 
                         {/* ── NETWORK PANEL ── */}
-                        {activeLayerPanel === 'network' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                        {activeLayerPanel === 'network' && !panelLoading.has('network') && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                             {/* Isolation indicator */}
                             {(netIsolatedEdge || netFocusNode) && <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderRadius: 5, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
                                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', flexShrink: 0 }} />
@@ -9929,7 +10125,7 @@ export default function MapIndex() {
                         </div>}
 
                         {/* ── LPR PANEL ── */}
-                        {activeLayerPanel === 'lpr' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                        {activeLayerPanel === 'lpr' && !panelLoading.has('lpr') && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                             <div style={{ fontSize: 9, color: theme.textDim }}>{mockLPR.length} sightings · {new Set(mockLPR.map(l => l.plate)).size} plates{lprHidden.size > 0 ? ` · ${lprHidden.size} hidden` : ''}</div>
                             <input value={lprSearch} onChange={e => setLprSearch(e.target.value)} placeholder="Search plates, persons..." style={{ padding: '6px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${lprSearch ? '#10b98150' : theme.border}`, borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
                             <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column' as const, gap: 3, scrollbarWidth: 'thin' }}>
@@ -9948,7 +10144,7 @@ export default function MapIndex() {
                         </div>}
 
                         {/* ── FACE PANEL ── */}
-                        {activeLayerPanel === 'face' && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                        {activeLayerPanel === 'face' && !panelLoading.has('face') && <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                             <div style={{ fontSize: 9, color: theme.textDim }}>{mockFaces.length} captures · {mockFaces.filter(f => f.personId > 0).length} matched · {mockFaces.filter(f => f.personId === 0).length} unidentified{faceHidden.size > 0 ? ` · ${faceHidden.size} hidden` : ''}</div>
                             <input value={faceSearch} onChange={e => setFaceSearch(e.target.value)} placeholder="Search captures..." style={{ padding: '6px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${faceSearch ? '#ec489950' : theme.border}`, borderRadius: 6, fontSize: 11, fontFamily: 'inherit', outline: 'none', width: '100%' }} />
                             <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column' as const, gap: 3, scrollbarWidth: 'thin' }}>
