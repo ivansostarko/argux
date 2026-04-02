@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.25.91 - 2026-03-31
+
+### Satellite Tracking — Real CelesTrak Data + Tooltip Fix
+
+#### Real CelesTrak Data (Multi-Group Fetch)
+Frontend now requests 8 CelesTrak satellite groups in a single API call:
+- `stations` — ISS, CSS, Tiangong
+- `active` — all active payloads
+- `weather` — NOAA, GOES, MeteoSat, Himawari
+- `resource` — Earth observation satellites
+- `science` — Hubble, TESS, scientific missions
+- `military` — classified/military payloads
+- `navigation-gps-ops` — GPS, Galileo, GLONASS, BeiDou
+- `last-30-days` — recently launched satellites
+
+Backend `CelesTrakController` rewritten:
+- `fetchMultipleGroups()` — iterates groups, deduplicates by NORAD ID, limits to 80 per group
+- Up to 200 satellites total (configurable via `?limit=`)
+- 3-minute cache per group combination
+- Expanded categorization: 30+ name patterns for military (SBIRS, MUOS, WGS, AEHF, GSSAP, YAOGAN, OFEK, etc.), weather (FENGYUN), navigation (IRNSS, QZSS), earth-obs (WORLDVIEW, PLEIADES, SPOT)
+- Returns `objectType` and `rcsSize` from CelesTrak data
+- Falls back to mock data if CelesTrak unreachable
+
+#### Custom Tooltips (Instant, Not Native)
+Replaced native `title` attribute (which has 500ms+ delay) with instant custom tooltips:
+- Positioned below button with `position: absolute; top: 100%`
+- Dark background with category-colored text and border
+- Shows on `mouseenter`, hides on `mouseleave` — zero delay
+- Format: "Communication — 12" with category label and count
+
+#### Setup
+```
+# CelesTrak requires outbound access to:
+celestrak.org
+```
+
 ## 0.25.90 - 2026-03-31
 
 ### Satellite Tracking — 3D Models, Coverage Projection, Orbital Paths

@@ -504,7 +504,7 @@ export default function MapIndex() {
 
     const fetchSatellites = useCallback(async () => {
         try {
-            const res = await fetch('/mock-api/satellites?group=stations&limit=60');
+            const res = await fetch('/mock-api/satellites?groups=stations,active,weather,resource,science,military,navigation-gps-ops,last-30-days&limit=200');
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             if (data.source === 'error' || !data.satellites?.length) throw new Error(data.error || 'No data');
@@ -8876,7 +8876,7 @@ export default function MapIndex() {
                     </div>
                     {/* Category filter chips */}
                     <div style={{ display: 'flex', gap: 3, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexWrap: 'wrap' as const }}>
-                        {Object.entries(satCategoryConfig).map(([k, v]) => { const c = satellites.filter(s => s.category === k).length; const on = satCategoryFilter.has(k); return c > 0 ? <button key={k} title={`${v.label} — ${c} satellite${c > 1 ? 's' : ''}`} onClick={() => setSatCategoryFilter(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '3px 6px', borderRadius: 4, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: on ? v.color : theme.textDim }}>{v.icon} {c}</button> : null; })}
+                        {Object.entries(satCategoryConfig).map(([k, v]) => { const c = satellites.filter(s => s.category === k).length; const on = satCategoryFilter.has(k); return c > 0 ? <button key={k} onClick={() => setSatCategoryFilter(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '3px 6px', borderRadius: 4, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: on ? v.color : theme.textDim, position: 'relative' as const }} onMouseEnter={e => { const tip = e.currentTarget.querySelector('.sat-tip') as HTMLElement; if (tip) tip.style.display = 'block'; }} onMouseLeave={e => { const tip = e.currentTarget.querySelector('.sat-tip') as HTMLElement; if (tip) tip.style.display = 'none'; }}>{v.icon} {c}<span className="sat-tip" style={{ display: 'none', position: 'absolute' as const, top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 4, padding: '3px 8px', borderRadius: 4, background: 'rgba(0,0,0,0.9)', border: `1px solid ${v.color}30`, color: v.color, fontSize: 8, fontWeight: 700, whiteSpace: 'nowrap' as const, zIndex: 100, pointerEvents: 'none' as const, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>{v.label} — {c}</span></button> : null; })}
                     </div>
 
                     {/* ── LIST TAB ── */}
