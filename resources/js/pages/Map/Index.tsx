@@ -502,42 +502,215 @@ export default function MapIndex() {
     const satUpdateRef = useRef<any>(null);
     const satAnimRef = useRef<any>(null);
 
+    // ═══ DIRECT CELESTRAK FETCH (browser → celestrak.org, no server proxy needed) ═══
+    const celestrakGroupsRef = useRef(['stations', 'active', 'weather', 'resource', 'science', 'military', 'geo', 'gpz', 'gpz-plus']);
+    const parseSatCategory = useCallback((name: string, type: string, alt: number): string => {
+        if (/ISS|ZARYA|TIANHE|CSS|TIANGONG/i.test(name)) return 'space-station';
+        if (/DEBRIS|DEB|R\/B/i.test(name) || type === 'DEBRIS' || type === 'ROCKET BODY') return 'debris';
+        if (/STARLINK|ONEWEB/i.test(name)) return 'starlink';
+        if (/GPS|NAVSTAR|GLONASS|GALILEO|BEIDOU|IRNSS|QZSS/i.test(name)) return 'navigation';
+        if (/METEOSAT|NOAA|GOES|HIMAWARI|METOP|FENGYUN|DMSP|WEATHER/i.test(name)) return 'weather';
+        if (/LANDSAT|SENTINEL|CRYOSAT|TERRA|AQUA|WORLDVIEW|PLEIADES|SPOT|JASON|RADARSAT/i.test(name)) return 'earth-observation';
+        if (/USA-|NROL|COSMOS 2|YAOGAN|SBIRS|MUOS|WGS|AEHF|GSSAP|OFEK|SAR-|GSAT-7|LACROSSE|MENTOR|ORION/i.test(name)) return 'military';
+        if (/HUBBLE|CHANDRA|JWST|FERMI|SWIFT|TESS|KEPLER|SPITZER|XMM/i.test(name)) return 'scientific';
+        if (alt > 30000) return 'communication';
+        return 'communication';
+    }, []);
+    const parseOrbitType = useCallback((alt: number, inc: number, period: number): 'LEO' | 'MEO' | 'GEO' | 'HEO' | 'SSO' => {
+        if (period > 1400 && period < 1500 && alt > 34000) return 'GEO';
+        if (alt > 1500 && alt < 26000) return 'MEO';
+        if (inc > 96 && inc < 100 && alt < 1000) return 'SSO';
+        if (period > 700 && alt > 30000) return 'HEO';
+        return 'LEO';
+    }, []);
+
+    // Propagate GP orbital elements to lat/lng at a given time
+    const propagateGP = useCallback((gp: any, atTime?: Date): SatelliteData | null => {
+        const name = (gp.OBJECT_NAME || '').trim();
+        const noradId = parseInt(gp.NORAD_CAT_ID) || 0;
+        if (!name || !noradId) return null;
+        const inc = parseFloat(gp.INCLINATION) || 0;
+        const mm = parseFloat(gp.MEAN_MOTION) || 15;
+        const raan = parseFloat(gp.RA_OF_ASC_NODE) || 0;
+        const argP = parseFloat(gp.ARG_OF_PERICENTER) || 0;
+        const ma = parseFloat(gp.MEAN_ANOMALY) || 0;
+        const epoch = gp.EPOCH || new Date().toISOString();
+        const objType = gp.OBJECT_TYPE || 'PAYLOAD';
+        const country = gp.COUNTRY_CODE || '';
+        const launchDate = gp.LAUNCH_DATE || '';
+
+        const period = 1440.0 / Math.max(mm, 0.01);
+        const sma = Math.pow(398600.4418 * Math.pow(period * 60 / (2 * Math.PI), 2), 1.0 / 3.0);
+        const alt = Math.max(0, sma - 6371);
+        const velocity = 2 * Math.PI * sma / (period * 60);
+
+        const now = atTime || new Date();
+        let epochTime: Date;
+        try { epochTime = new Date(epoch); } catch { epochTime = new Date(); }
+        const elapsedMin = (now.getTime() - epochTime.getTime()) / 60000;
+        const curAnomaly = ((ma + (mm * 360 / 1440) * elapsedMin) % 360 + 360) % 360;
+        const curRaan = ((raan - 0.0042 * elapsedMin) % 360 + 360) % 360;
+
+        const argLat = (curAnomaly + argP) * Math.PI / 180;
+        const raanRad = curRaan * Math.PI / 180;
+        const incRad = inc * Math.PI / 180;
+
+        const lat = Math.asin(Math.sin(incRad) * Math.sin(argLat)) * 180 / Math.PI;
+        let lng = (raanRad + Math.atan2(Math.cos(incRad) * Math.sin(argLat), Math.cos(argLat))) * 180 / Math.PI;
+        // GMST correction
+        const jd = now.getTime() / 86400000 + 2440587.5;
+        const gmst = (280.46061837 + 360.98564736629 * (jd - 2451545.0)) % 360;
+        lng = ((lng - gmst + 540) % 360) - 180;
+
+        return {
+            noradId, name, intlDesignator: gp.OBJECT_ID || '',
+            lat: Math.round(lat * 10000) / 10000,
+            lng: Math.round(lng * 10000) / 10000,
+            alt: Math.round(alt), velocity: Math.round(velocity * 100) / 100,
+            inclination: Math.round(inc * 10) / 10, period: Math.round(period * 10) / 10,
+            category: parseSatCategory(name, objType, alt) as any,
+            country, launchDate,
+            status: objType === 'DEBRIS' ? 'decayed' as const : objType === 'ROCKET BODY' ? 'inactive' as const : 'active' as const,
+            orbitType: parseOrbitType(alt, inc, period),
+        };
+    }, [parseSatCategory, parseOrbitType]);
+
+    // Store raw GP data for timeline re-propagation
+    const satGPDataRef = useRef<any[]>([]);
+
     const fetchSatellites = useCallback(async () => {
-        try {
-            const res = await fetch('/mock-api/satellites?groups=stations,active,weather,resource,science,military,navigation-gps-ops,last-30-days&limit=200');
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            if (data.source === 'error' || !data.satellites?.length) throw new Error(data.error || 'No data');
-            setSatellites(data.satellites); setSatSource('live');
-        } catch {
+        const groups = celestrakGroupsRef.current;
+        const seen = new Set<number>();
+        const allGP: any[] = [];
+        let liveSuccess = false;
+
+        // 1. Try direct browser fetch from CelesTrak (bypasses server domain restrictions)
+        for (const group of groups) {
+            try {
+                const res = await fetch(`https://celestrak.org/NORAD/elements/gp.php?GROUP=${group}&FORMAT=json`, { signal: AbortSignal.timeout(8000) });
+                if (!res.ok) continue;
+                const data = await res.json();
+                if (!Array.isArray(data)) continue;
+                for (const gp of data.slice(0, 80)) {
+                    const nid = parseInt(gp.NORAD_CAT_ID);
+                    if (!nid || seen.has(nid)) continue;
+                    seen.add(nid);
+                    allGP.push(gp);
+                }
+                liveSuccess = true;
+            } catch { /* group failed, continue */ }
+        }
+
+        // 2. Try N2YO as supplementary source (additional real-time positions)
+        const n2yoKey = (window as any).__N2YO_KEY || (props?.app?.n2yoKey) || '';
+        const n2yoCategories = [2, 3, 20, 22, 26, 30, 35]; // ISS, Weather, GPS, Galileo, Science, Military, BeiDou
+        let n2yoSats: SatelliteData[] = [];
+        if (n2yoKey) {
+            // Try browser direct N2YO
+            for (const catId of n2yoCategories) {
+                try {
+                    const res = await fetch(`https://api.n2yo.com/rest/v1/satellite/above/45.81/15.98/0/70/${catId}&apiKey=${n2yoKey}`, { signal: AbortSignal.timeout(6000) });
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    if (data?.above) {
+                        for (const s of data.above) {
+                            const nid = parseInt(s.satid);
+                            if (!nid || seen.has(nid)) continue;
+                            seen.add(nid);
+                            n2yoSats.push({
+                                noradId: nid, name: s.satname || '', intlDesignator: s.intDesignator || '',
+                                lat: parseFloat(s.satlat) || 0, lng: parseFloat(s.satlng) || 0, alt: parseFloat(s.satalt) || 0,
+                                velocity: 0, inclination: 0, period: 0,
+                                category: parseSatCategory(s.satname || '', 'PAYLOAD', parseFloat(s.satalt) || 0) as any,
+                                country: '', launchDate: s.launchDate || '', status: 'active',
+                                orbitType: parseOrbitType(parseFloat(s.satalt) || 0, 0, 0),
+                            });
+                        }
+                    }
+                } catch { /* N2YO category failed */ }
+            }
+        }
+        // Also try N2YO via server proxy
+        if (n2yoSats.length === 0) {
+            try {
+                const res = await fetch('/mock-api/n2yo/above?lat=45.81&lng=15.98&radius=70&categories=2,3,20,22,26,30,35');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.source === 'n2yo' && data.satellites?.length) {
+                        for (const s of data.satellites) {
+                            if (seen.has(s.noradId)) continue;
+                            seen.add(s.noradId);
+                            n2yoSats.push(s);
+                        }
+                    }
+                }
+            } catch { /* N2YO proxy failed */ }
+        }
+
+        // 3. If CelesTrak browser fetch failed, try server proxy
+        if (!liveSuccess) {
+            try {
+                const res = await fetch(`/mock-api/satellites?groups=${groups.join(',')}&limit=200`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.source === 'live' && data.satellites?.length) {
+                        // Merge with N2YO
+                        const merged = [...data.satellites];
+                        for (const s of n2yoSats) { if (!merged.find((m: any) => m.noradId === s.noradId)) merged.push(s); }
+                        setSatellites(merged.slice(0, 300)); setSatSource('live');
+                        setSatLastUpdate(new Date().toLocaleTimeString('en-US', { hour12: false }));
+                        return;
+                    }
+                }
+            } catch { /* proxy failed too */ }
+        }
+
+        if (allGP.length > 0) {
+            satGPDataRef.current = allGP;
+            const sats = allGP.map(gp => propagateGP(gp)).filter(Boolean) as SatelliteData[];
+            // Merge N2YO satellites (real-time positions, no GP data)
+            for (const s of n2yoSats) { if (!sats.find(x => x.noradId === s.noradId)) sats.push(s); }
+            sats.sort((a, b) => {
+                if (a.category === 'space-station' && b.category !== 'space-station') return -1;
+                if (b.category === 'space-station' && a.category !== 'space-station') return 1;
+                return a.name.localeCompare(b.name);
+            });
+            setSatellites(sats.slice(0, 300));
+            setSatSource(liveSuccess ? 'live' : (n2yoSats.length > 0 ? 'live' : 'mock'));
+        } else if (n2yoSats.length > 0) {
+            // Only N2YO data available
+            n2yoSats.sort((a, b) => a.name.localeCompare(b.name));
+            setSatellites(n2yoSats.slice(0, 300));
+            setSatSource('live');
+        } else {
+            // 4. Last resort: mock data
             if (satellites.length === 0) { setSatellites(MOCK_SATELLITES); setSatSource('mock'); }
         }
         setSatLastUpdate(new Date().toLocaleTimeString('en-US', { hour12: false }));
-    }, []);
+    }, [propagateGP, parseSatCategory, parseOrbitType]);
 
     useEffect(() => {
         if (!showSatellites) { if (satUpdateRef.current) clearInterval(satUpdateRef.current); return; }
         fetchSatellites();
-        satUpdateRef.current = setInterval(fetchSatellites, 30000);
+        satUpdateRef.current = setInterval(fetchSatellites, 60000); // refresh every 60s
         return () => { if (satUpdateRef.current) clearInterval(satUpdateRef.current); };
     }, [showSatellites, fetchSatellites]);
 
-    // Simulate orbital motion between API polls
+    // Re-propagate positions every 2s using stored GP data (real orbital mechanics, not random drift)
     useEffect(() => {
-        if (!showSatellites || satellites.length === 0) return;
+        if (!showSatellites || satGPDataRef.current.length === 0) return;
         const interval = setInterval(() => {
-            setSatellites(prev => prev.map(s => {
-                const angularV = 360 / (s.period * 60); // deg/sec
-                const rad = s.inclination * Math.PI / 180;
-                const dlng = angularV * 2 * Math.cos(rad) * (0.9 + Math.random() * 0.2);
-                const dlat = angularV * 2 * Math.sin(rad) * Math.cos((s.lng + dlng) * Math.PI / 180) * (0.9 + Math.random() * 0.2);
-                let newLng = s.lng + dlng; if (newLng > 180) newLng -= 360; if (newLng < -180) newLng += 360;
-                let newLat = s.lat + dlat; if (newLat > 85) newLat = 170 - newLat; if (newLat < -85) newLat = -170 - newLat;
-                return { ...s, lat: newLat, lng: newLng };
-            }));
+            const now = new Date();
+            const sats = satGPDataRef.current.map(gp => propagateGP(gp, now)).filter(Boolean) as SatelliteData[];
+            sats.sort((a, b) => {
+                if (a.category === 'space-station' && b.category !== 'space-station') return -1;
+                if (b.category === 'space-station' && a.category !== 'space-station') return 1;
+                return a.name.localeCompare(b.name);
+            });
+            setSatellites(sats.slice(0, 250));
         }, 2000);
         return () => clearInterval(interval);
-    }, [showSatellites, satellites.length > 0]);
+    }, [showSatellites, propagateGP]);
 
     const filteredSatellites = useMemo(() => {
         let s = satellites;
@@ -550,6 +723,8 @@ export default function MapIndex() {
     filteredSatsRef.current = filteredSatellites;
     const satSelectedRef = useRef(satSelected);
     satSelectedRef.current = satSelected;
+    const tlActiveRef = useRef(false);
+    const tlCursorMsRef = useRef(0);
 
     // ═══ PLACES OF INTEREST (OpenStreetMap Overpass) ═══
     const [layerPOI, setLayerPOI] = useState(false);
@@ -1232,6 +1407,7 @@ export default function MapIndex() {
     const tlEventMarkersRef = useRef<any[]>([]);
     const tlTrackLineRef = useRef<boolean>(false);
     const timelineActive = timelineOpen && timelineCursor < 100;
+    tlActiveRef.current = timelineActive;
     const [tlLightbox, setTlLightbox] = useState<string | null>(null);
     const [tlMarkerCtx, setTlMarkerCtx] = useState<{ x: number; y: number; ev: any } | null>(null);
     const [tlHiddenIds, setTlHiddenIds] = useState<Set<string>>(new Set());
@@ -2410,6 +2586,17 @@ export default function MapIndex() {
     const tlEnd = filteredTLEvents.length > 0 ? new Date(filteredTLEvents[filteredTLEvents.length - 1].ts.replace(' ', 'T')).getTime() : Date.now();
     const tlRange = Math.max(tlEnd - tlStart, 1);
     const tlCursorMs = tlStart + (timelineCursor / 100) * tlRange;
+    tlCursorMsRef.current = tlCursorMs;
+
+    // ═══ TIMELINE ↔ SATELLITE INTEGRATION ═══
+    useEffect(() => {
+        if (!showSatellites || !timelineActive || satGPDataRef.current.length === 0) return;
+        const cursorTime = new Date(tlCursorMs);
+        const sats = satGPDataRef.current.map((gp: any) => propagateGP(gp, cursorTime)).filter(Boolean) as SatelliteData[];
+        sats.sort((a, b) => a.name.localeCompare(b.name));
+        setSatellites(sats.slice(0, 250));
+    }, [showSatellites, timelineActive, tlCursorMs, propagateGP]);
+
     const fmtTlTime = (ms: number) => { const d = new Date(ms); return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 
     const visibleTLEvents = filteredTLEvents.filter(e => new Date(e.ts.replace(' ', 'T')).getTime() <= tlCursorMs && !tlHiddenIds.has(e.id));
@@ -3684,12 +3871,10 @@ export default function MapIndex() {
                 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [2, 2],
             }});
 
-            // 3D coverage projection cones (fill-extrusion from ground up)
-            map.addLayer({ id: 'sat-coverage-fill', type: 'fill-extrusion', source: 'sat-coverage-src', paint: {
-                'fill-extrusion-color': ['get', 'color'],
-                'fill-extrusion-height': ['get', 'extHeight'],
-                'fill-extrusion-base': 0,
-                'fill-extrusion-opacity': 0.06,
+            // Coverage footprint — flat fill projected on map surface
+            map.addLayer({ id: 'sat-coverage-fill', type: 'fill', source: 'sat-coverage-src', paint: {
+                'fill-color': ['get', 'color'],
+                'fill-opacity': ['case', ['==', ['get', 'selected'], true], 0.12, 0.05],
             }});
             map.addLayer({ id: 'sat-coverage-stroke', type: 'line', source: 'sat-coverage-src', paint: {
                 'line-color': ['get', 'color'], 'line-width': 1.5, 'line-opacity': 0.2, 'line-dasharray': [4, 4],
@@ -3763,35 +3948,66 @@ export default function MapIndex() {
                 };
             });
 
-            // Coverage footprint polygons (3D extrusion)
+            // Coverage footprint polygons (flat projection on earth surface)
             const coverageFeatures = satShowCoverage ? filtered
-                .filter(s => s.category !== 'debris' && s.alt < 50000 && (selId ? s.noradId === selId : true))
+                .filter(s => s.category !== 'debris' && s.category !== 'starlink' && s.alt < 50000)
                 .map(s => {
                     const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
                     const fpDeg = satFootprintRadius(s.alt);
                     if (fpDeg <= 0) return null;
-                    const coords = createCirclePoly(s.lng, s.lat, fpDeg);
-                    const extH = Math.min(s.alt * 50, 2000000); // scale altitude for visual
+                    const coords = createCirclePoly(s.lng, s.lat, fpDeg, 64);
                     return {
                         type: 'Feature' as const,
                         geometry: { type: 'Polygon' as const, coordinates: [coords] },
-                        properties: { color: cat.color, name: s.name, alt: s.alt, extHeight: extH },
+                        properties: { color: cat.color, name: s.name, alt: s.alt, selected: selId === s.noradId },
                     };
                 }).filter(Boolean) : [];
 
             // Orbital path lines
-            const orbitFeatures = filtered
-                .filter(s => s.category !== 'debris' && s.alt < 40000 && s.period > 0)
-                .map(s => {
-                    const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
+            // Orbital path lines — computed from GP elements for proper ground tracks
+            const gpData = satGPDataRef.current;
+            const orbitFeatures: any[] = [];
+            filtered.filter(s => s.category !== 'debris' && s.alt < 40000 && s.period > 0).forEach(s => {
+                const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
+                const gp = gpData.find((g: any) => parseInt(g.NORAD_CAT_ID) === s.noradId);
+                const isSel = selId === s.noradId;
+
+                if (gp) {
+                    // Propagate GP across one full orbit (future track)
+                    const steps = 80;
+                    const periodMs = s.period * 60000;
+                    const tlActive = tlActiveRef.current;
+                    const tlMs = tlCursorMsRef.current;
+                    const now = tlActive ? new Date(tlMs) : new Date();
+                    const futureCoords: number[][] = [];
+                    for (let i = 0; i <= steps; i++) {
+                        const t = new Date(now.getTime() + (i / steps) * periodMs);
+                        const pos = propagateGP(gp, t);
+                        if (pos) futureCoords.push([pos.lng, pos.lat]);
+                    }
+                    if (futureCoords.length > 1) {
+                        orbitFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: futureCoords }, properties: { color: cat.color, name: s.name, selected: isSel, trail: false } });
+                    }
+                    // If timeline active, show past trail too
+                    if (tlActive) {
+                        const pastCoords: number[][] = [];
+                        for (let i = steps; i >= 0; i--) {
+                            const t = new Date(tlMs - (i / steps) * periodMs * 0.5);
+                            const pos = propagateGP(gp, t);
+                            if (pos) pastCoords.push([pos.lng, pos.lat]);
+                        }
+                        if (pastCoords.length > 1) {
+                            orbitFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: pastCoords }, properties: { color: cat.color, name: s.name, selected: isSel, trail: true } });
+                        }
+                    }
+                } else {
+                    // Fallback: sinusoidal approximation
                     const track = generateOrbitTrack(s.lat, s.lng, s.inclination, s.period, s.alt);
-                    if (track.length < 2) return null;
-                    return {
-                        type: 'Feature' as const,
-                        geometry: { type: 'LineString' as const, coordinates: track },
-                        properties: { color: cat.color, name: s.name, selected: selId === s.noradId },
-                    };
-                }).filter(Boolean);
+                    if (track.length > 1) {
+                        orbitFeatures.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: track }, properties: { color: cat.color, name: s.name, selected: isSel, trail: false } });
+                    }
+                }
+            });
 
             try {
                 const src = mapRef.current.getSource('sat-src') as any;
@@ -8867,7 +9083,7 @@ export default function MapIndex() {
 
                 {/* ═══ SATELLITE PANEL (Enhanced) ═══ */}
                 {showSatPanel && loaded && <div data-panel="satellites" onMouseDown={e => { if (!(e.target as HTMLElement).closest('button, input, select, textarea, a')) bringToFront('satellites'); }} style={panelStyle('satellites', '400px', '#06b6d4')}>
-                    <PanelHeader id="satellites" icon="🛰️" title="Satellite Tracker" subtitle={`${filteredSatellites.length} objects · ${satSource === 'live' ? 'CelesTrak' : 'Mock'}`} color="#06b6d4" onClose={() => setShowSatPanel(false)} extra={<button onClick={() => { setShowSatellites(!showSatellites); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: showSatellites ? '#06b6d4' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: showSatellites ? 16 : 2, transition: 'left 0.2s' }} /></button>} />
+                    <PanelHeader id="satellites" icon="🛰️" title="Satellite Tracker" subtitle={`${filteredSatellites.length} objects · ${satSource === 'live' ? 'CelesTrak + N2YO' : 'Mock'}`} color="#06b6d4" onClose={() => setShowSatPanel(false)} extra={<button onClick={() => { setShowSatellites(!showSatellites); triggerTopLoader(); }} style={{ width: 28, height: 14, borderRadius: 7, border: 'none', background: showSatellites ? '#06b6d4' : theme.border, cursor: 'pointer', position: 'relative' as const, padding: 0, flexShrink: 0 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: '#fff', position: 'absolute' as const, top: 2, left: showSatellites ? 16 : 2, transition: 'left 0.2s' }} /></button>} />
                     <PanelResizeGrip id="satellites" />
                     {!isPanelMin('satellites') && <>
                     {/* Tabs */}
@@ -8973,7 +9189,7 @@ export default function MapIndex() {
                         <span style={{ fontSize: 8, color: theme.textDim }}>{filteredSatellites.length} objects · {satLastUpdate ? `${satLastUpdate}` : '...'}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: satSource === 'live' ? '#22c55e' : '#f59e0b', boxShadow: satSource === 'live' ? '0 0 6px #22c55e60' : 'none' }} />
-                            <span style={{ fontSize: 9, color: '#06b6d4', fontWeight: 600 }}>{satSource === 'live' ? 'CelesTrak LIVE' : 'Mock Data'}</span>
+                            <span style={{ fontSize: 9, color: '#06b6d4', fontWeight: 600 }}>{satSource === 'live' ? 'CelesTrak + N2YO LIVE' : 'Mock Data'}</span>
                         </div>
                     </div>
                     </>}

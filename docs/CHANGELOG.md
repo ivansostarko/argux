@@ -1,5 +1,112 @@
 # Changelog
 
+## 0.25.93 - 2026-04-02
+
+### Satellite Tracking — N2YO Integration + Dual Data Source
+
+#### N2YO.com API Integration
+Added N2YO (n2yo.com) as a supplementary satellite tracking data source alongside CelesTrak:
+
+**API Endpoints Used:**
+- `GET /rest/v1/satellite/above/{lat}/{lng}/{alt}/{radius}/{category}` — Real-time satellites above observer
+- `GET /rest/v1/satellite/positions/{noradId}/{lat}/{lng}/{alt}/{seconds}` — Future position predictions
+
+**N2YO Categories Fetched:**
+| Cat ID | Type | Examples |
+|---|---|---|
+| 2 | ISS | International Space Station |
+| 3 | Weather | NOAA, GOES, MeteoSat |
+| 20 | GPS | GPS Block IIR/IIF/III |
+| 22 | Galileo | Galileo constellation |
+| 26 | Science | Hubble, TESS, JWST |
+| 30 | Military | Classified payloads |
+| 35 | BeiDou | BeiDou-3 constellation |
+
+**Backend Controller:**
+- `N2YOController.php` (150 lines)
+- `above()` — fetches multiple categories, deduplicates, normalizes to shared `SatelliteData` format
+- `positions()` — fetches future position predictions for a specific satellite
+- 60-second cache per category
+- Requires `N2YO_API_KEY` in `.env`
+
+**Routes Added:**
+- `GET /mock-api/n2yo/above`
+- `GET /mock-api/n2yo/positions`
+
+#### 4-Tier Fetch Strategy
+```
+1. Browser → celestrak.org (direct, GP orbital elements)
+   ↓ fails?
+2. Browser → api.n2yo.com  (direct, real-time positions)
+   ↓ fails?
+3. Server → /mock-api/satellites + /mock-api/n2yo/above (proxy)
+   ↓ fails?
+4. MOCK_SATELLITES (last resort)
+```
+
+CelesTrak provides GP elements for orbital propagation (timeline integration). N2YO provides supplementary real-time positions. Data is merged and deduplicated by NORAD ID. Up to 300 satellites tracked.
+
+#### Panel Updates
+- Header subtitle: "CelesTrak + N2YO"
+- Footer source indicator: "CelesTrak + N2YO LIVE"
+
+#### Setup
+```env
+# .env
+N2YO_API_KEY=your-key-here  # Get free key at n2yo.com/api/
+```
+
+```
+# Add to allowed outbound domains (if server proxy needed):
+api.n2yo.com
+celestrak.org
+```
+
+## 0.25.92 - 2026-04-02
+
+### Satellite Tracking — Real CelesTrak Data, Timeline Integration, Flat Coverage
+
+#### Real CelesTrak Data — Direct Browser Fetch
+Completely rewrote the satellite data pipeline to bypass server domain restrictions:
+
+1. **Browser → CelesTrak directly** — Frontend fetches GP (General Perturbations) JSON from `celestrak.org/NORAD/elements/gp.php` for 9 groups: `stations, active, weather, resource, science, military, geo, gpz, gpz-plus`
+2. **Server proxy fallback** — If browser fetch fails (CORS), tries `/mock-api/satellites` server endpoint
+3. **Mock data last resort** — Only uses `MOCK_SATELLITES` if both live sources fail
+
+Raw GP orbital elements stored in `satGPDataRef` for continuous re-propagation. Positions calculated using real Keplerian orbital mechanics:
+- Semi-major axis from mean motion (Kepler's 3rd law)
+- Current anomaly from epoch propagation
+- RAAN precession with Earth rotation
+- GMST correction for geodetic longitude
+- Proper latitude from inclination × sin(argument of latitude)
+
+Up to 250 satellites tracked simultaneously with 60s API refresh + 2s position re-propagation.
+
+#### Timeline ↔ Satellite Integration
+When the timeline is open and cursor is set to a time period:
+- All satellite positions are propagated to the timeline cursor time using stored GP orbital elements
+- Orbital ground tracks show both **future path** (one full orbit ahead) and **past trail** (half orbit behind)
+- Moving the timeline cursor moves all satellites to their calculated positions at that moment in time
+- Dedicated `useEffect` watches `tlCursorMs` changes and re-propagates all satellites
+
+Timeline refs (`tlActiveRef`, `tlCursorMsRef`) keep the rAF rendering loop in sync without dependency array thrashing.
+
+#### Flat Coverage Footprints
+Changed coverage from `fill-extrusion` (3D columns) to flat `fill` layer projected directly on the earth surface:
+- All non-debris, non-Starlink satellites show their coverage area
+- Selected satellite footprint renders at 12% opacity (bright), others at 5% (subtle)
+- Dashed stroke border at 20% opacity
+- 64-point polygon for smooth circles
+- Coverage radius calculated from `R × arccos(R / (R+h))` — LEO ≈ 2,400km, GEO ≈ 8,600km
+
+#### Instant Custom Tooltips
+Category filter chips in satellite panel show instant tooltips (not native `title` with 500ms delay):
+- Positioned below button, dark background with category-colored text
+- Shows immediately on hover via `onMouseEnter`/`onMouseLeave`
+
+#### Categorization — 30+ Patterns
+Expanded satellite name matching: SBIRS, MUOS, WGS, AEHF, GSSAP, OFEK, LACROSSE, MENTOR, ORION (military), FENGYUN, DMSP (weather), WORLDVIEW, PLEIADES, SPOT, JASON, RADARSAT (earth-obs), IRNSS, QZSS (navigation), SPITZER, XMM (scientific).
+
 ## 0.25.91 - 2026-03-31
 
 ### Satellite Tracking — Real CelesTrak Data + Tooltip Fix
