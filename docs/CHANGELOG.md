@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.25.90 - 2026-03-31
+
+### Satellite Tracking — 3D Models, Coverage Projection, Orbital Paths
+
+#### 3D Satellite Canvas Models (9 types)
+Replaced generic emoji icons with detailed canvas-rendered 2D satellite models that look 3D:
+- **Space Station**: Central module (silver) + 2 large solar panels (green) with grid lines + center beacon
+- **Military**: Angular stealth body (dark) + single panel wings + red sensor dot
+- **Communication**: Body + 2 solar wings + antenna dish arc
+- **Navigation**: Octagonal body (gold) + solar wings (GPS/Galileo style)
+- **Weather**: Cylindrical body + scanning arm + sensor sphere
+- **Earth Observation**: Body + large camera lens (purple gradient) + solar panel
+- **Scientific**: Telescope tube (tall) + wings + aperture ring (Hubble/JWST style)
+- **Starlink**: Flat-panel body + compact wings (grey)
+- **Debris**: Small irregular angular fragment (faded)
+Each icon has glow ring, shadow, and proper sizing (space stations 36px, military 30px, debris 16px).
+
+#### 3D Coverage Projection Cones
+Coverage footprints now render as **fill-extrusion** (3D columns rising from earth surface):
+- Height scaled from satellite altitude: `min(alt × 50, 2,000,000)` for visual proportion
+- Semi-transparent colored fill (6% opacity) + dashed border stroke (20% opacity)
+- Shows ground area each satellite can observe from orbit
+- When a satellite is selected, only its footprint is shown; otherwise all active satellites
+
+#### Orbital Ground Track Lines
+Each satellite displays its orbital path as a ground track line:
+- Generated from inclination angle using sinusoidal approximation: `lat = inclination × sin(angle)`
+- 120 points per track, spanning one full orbit
+- **Unselected**: faint dashed line (12% opacity, 0.8px)
+- **Selected satellite**: bright dashed line (50% opacity, 2px)
+- Skipped for GEO (stationary) and debris
+
+#### Filter Button Tooltips
+Category filter chips in the satellite panel now show tooltips on hover: "Communication — 2 satellites", "Military — 7 satellites", etc.
+
+#### Click → Auto-Select
+Clicking a satellite icon on the map now sets `satSelected` to highlight its orbit path and isolate its coverage footprint.
+
 ## 0.25.89 - 2026-03-31
 
 ### Satellite Tracking — Per-Type Icons, Coverage Footprints, Enhanced Panel

@@ -3525,35 +3525,129 @@ export default function MapIndex() {
         if (flightPopupRef.current) { flightPopupRef.current = null; }
     }, [loaded, layerFlights]);
 
-    // ═══ SATELLITE LAYER RENDERING — Per-type icons, coverage footprints, enhanced popups ═══
+    // ═══ SATELLITE LAYER RENDERING — 3D models, coverage projection, orbital paths ═══
     const satIconsLoaded = useRef(false);
+
+    // Create detailed 3D-looking satellite canvas icons per category
+    const createSatIcon = useCallback((category: string, color: string, size: number) => {
+        const r = 2;
+        const s = size * r;
+        const c = document.createElement('canvas');
+        c.width = s; c.height = s;
+        const ctx = c.getContext('2d')!;
+        ctx.clearRect(0, 0, s, s);
+        const cx = s / 2, cy = s / 2;
+
+        // Shadow
+        ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 4 * r; ctx.shadowOffsetY = 2 * r;
+
+        if (category === 'space-station') {
+            // ISS-like: central module + solar panels
+            ctx.fillStyle = '#c0c0c0'; ctx.fillRect(cx - 4*r, cy - 2*r, 8*r, 4*r); // body
+            ctx.fillStyle = color; ctx.globalAlpha = 0.8;
+            ctx.fillRect(cx - 12*r, cy - 6*r, 8*r, 12*r); // left solar
+            ctx.fillRect(cx + 4*r, cy - 6*r, 8*r, 12*r); // right solar
+            ctx.globalAlpha = 1; ctx.shadowColor = 'transparent';
+            // Panel lines
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 0.5 * r;
+            for (let i = -5; i <= 5; i += 2) { ctx.beginPath(); ctx.moveTo(cx - 12*r, cy + i*r); ctx.lineTo(cx - 4*r, cy + i*r); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx + 4*r, cy + i*r); ctx.lineTo(cx + 12*r, cy + i*r); ctx.stroke(); }
+            // Center dot
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, 1.5*r, 0, Math.PI*2); ctx.fill();
+        } else if (category === 'military') {
+            // Stealth/spy sat: angular body + single panel
+            ctx.fillStyle = '#1a1a2e'; ctx.beginPath(); ctx.moveTo(cx, cy - 6*r); ctx.lineTo(cx + 4*r, cy + 4*r); ctx.lineTo(cx - 4*r, cy + 4*r); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = color; ctx.globalAlpha = 0.7; ctx.fillRect(cx - 10*r, cy - 1*r, 7*r, 2*r); ctx.fillRect(cx + 3*r, cy - 1*r, 7*r, 2*r);
+            ctx.globalAlpha = 1; ctx.shadowColor = 'transparent';
+            ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(cx, cy - 2*r, 1*r, 0, Math.PI*2); ctx.fill(); // red sensor
+        } else if (category === 'communication' || category === 'starlink') {
+            // Flat-panel sat: body + 2 wings
+            ctx.fillStyle = category === 'starlink' ? '#667788' : '#2a4a7f'; ctx.fillRect(cx - 3*r, cy - 2*r, 6*r, 4*r);
+            ctx.fillStyle = color; ctx.globalAlpha = 0.7;
+            ctx.fillRect(cx - 11*r, cy - 4*r, 7*r, 8*r); ctx.fillRect(cx + 4*r, cy - 4*r, 7*r, 8*r);
+            ctx.globalAlpha = 1; ctx.shadowColor = 'transparent';
+            // Antenna dish
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 1*r; ctx.beginPath(); ctx.arc(cx, cy - 4*r, 2*r, Math.PI, 2*Math.PI); ctx.stroke();
+        } else if (category === 'navigation') {
+            // GPS-like: octagonal body + solar wings
+            ctx.fillStyle = '#b8860b'; ctx.beginPath();
+            const sides = 8, rad = 4*r;
+            for (let i = 0; i < sides; i++) { const a = (i / sides) * Math.PI * 2 - Math.PI/2; const x = cx + rad * Math.cos(a); const y = cy + rad * Math.sin(a); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = color; ctx.globalAlpha = 0.6; ctx.fillRect(cx - 11*r, cy - 2*r, 6*r, 4*r); ctx.fillRect(cx + 5*r, cy - 2*r, 6*r, 4*r);
+            ctx.globalAlpha = 1; ctx.shadowColor = 'transparent';
+        } else if (category === 'weather') {
+            // Weather sat: cylindrical body + scanning arm
+            ctx.fillStyle = '#1a5276'; ctx.fillRect(cx - 3*r, cy - 5*r, 6*r, 10*r);
+            ctx.fillStyle = color; ctx.globalAlpha = 0.6; ctx.fillRect(cx - 9*r, cy - 3*r, 5*r, 6*r);
+            ctx.globalAlpha = 1; ctx.shadowColor = 'transparent';
+            ctx.fillStyle = '#06b6d4'; ctx.beginPath(); ctx.arc(cx + 5*r, cy, 2*r, 0, Math.PI*2); ctx.fill(); // sensor
+        } else if (category === 'earth-observation') {
+            // EO sat: body + large camera lens + solar panel
+            ctx.fillStyle = '#2d1b69'; ctx.fillRect(cx - 3*r, cy - 4*r, 6*r, 8*r);
+            ctx.fillStyle = color; ctx.globalAlpha = 0.6; ctx.fillRect(cx + 4*r, cy - 5*r, 7*r, 10*r);
+            ctx.globalAlpha = 1; ctx.shadowColor = 'transparent';
+            ctx.fillStyle = '#4a00e0'; ctx.beginPath(); ctx.arc(cx - 1*r, cy + 5*r, 3*r, 0, Math.PI*2); ctx.fill(); // lens
+            ctx.fillStyle = '#8b5cf6'; ctx.beginPath(); ctx.arc(cx - 1*r, cy + 5*r, 1.5*r, 0, Math.PI*2); ctx.fill();
+        } else if (category === 'scientific') {
+            // Science sat: body + telescope tube + solar wings
+            ctx.fillStyle = '#5b2c6f'; ctx.fillRect(cx - 2*r, cy - 7*r, 4*r, 14*r);
+            ctx.fillStyle = color; ctx.globalAlpha = 0.5; ctx.fillRect(cx - 9*r, cy - 2*r, 6*r, 4*r); ctx.fillRect(cx + 3*r, cy - 2*r, 6*r, 4*r);
+            ctx.globalAlpha = 1; ctx.shadowColor = 'transparent';
+            ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 1.5*r; ctx.beginPath(); ctx.arc(cx, cy - 8*r, 2.5*r, 0, Math.PI*2); ctx.stroke(); // aperture
+        } else { // debris
+            ctx.fillStyle = '#555'; ctx.globalAlpha = 0.5;
+            ctx.beginPath(); ctx.moveTo(cx, cy - 3*r); ctx.lineTo(cx + 3*r, cy + 2*r); ctx.lineTo(cx - 2*r, cy + 1*r); ctx.closePath(); ctx.fill();
+            ctx.globalAlpha = 1; ctx.shadowColor = 'transparent';
+        }
+
+        // Glow ring
+        ctx.shadowColor = 'transparent';
+        ctx.strokeStyle = color; ctx.globalAlpha = 0.25; ctx.lineWidth = 1*r;
+        ctx.beginPath(); ctx.arc(cx, cy, (size/2 - 2)*r, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        return { width: s, height: s, data: new Uint8Array(ctx.getImageData(0, 0, s, s).data.buffer) };
+    }, []);
+
+    // Coverage footprint: approximate ground footprint radius in degrees
+    const satFootprintRadius = useCallback((altKm: number): number => {
+        if (altKm > 100000) return 0;
+        const R = 6371;
+        const rho = Math.acos(R / (R + altKm));
+        return rho * (180 / Math.PI);
+    }, []);
+
     const registerSatIcons = useCallback((map: any) => {
         if (satIconsLoaded.current && map.hasImage('sat-space-station')) return;
-        const types: [string, string, string][] = [
-            ['sat-space-station', '#22c55e', '🛸'], ['sat-communication', '#3b82f6', '📡'],
-            ['sat-navigation', '#f59e0b', '🧭'], ['sat-weather', '#06b6d4', '🌤️'],
-            ['sat-earth-observation', '#8b5cf6', '🌍'], ['sat-military', '#ef4444', '🎖️'],
-            ['sat-scientific', '#ec4899', '🔬'], ['sat-starlink', '#94a3b8', '⭐'],
-            ['sat-debris', '#6b7280', '🗑️'],
+        const types: [string, string, number][] = [
+            ['space-station', '#22c55e', 36], ['communication', '#3b82f6', 28], ['navigation', '#f59e0b', 28],
+            ['weather', '#06b6d4', 28], ['earth-observation', '#8b5cf6', 28], ['military', '#ef4444', 30],
+            ['scientific', '#ec4899', 28], ['starlink', '#94a3b8', 22], ['debris', '#6b7280', 16],
         ];
-        types.forEach(([id, bg, sym]) => {
+        types.forEach(([cat, color, size]) => {
+            const id = `sat-${cat}`;
             if (!map.hasImage(id)) {
-                try {
-                    const size = id === 'sat-space-station' ? 32 : id === 'sat-debris' ? 18 : 24;
-                    const img = createMarkerIcon(size, bg, sym, id === 'sat-debris' ? 'diamond' : 'circle', bg);
-                    map.addImage(id, img, { pixelRatio: 2 });
-                } catch {}
+                try { map.addImage(id, createSatIcon(cat, color, size), { pixelRatio: 2 }); } catch {}
             }
         });
         satIconsLoaded.current = true;
-    }, [createMarkerIcon]);
+    }, [createSatIcon]);
 
-    // Coverage footprint: approximate ground footprint circle
-    const satFootprintRadius = useCallback((altKm: number): number => {
-        if (altKm > 100000) return 0; // L2 etc — too far
-        const R = 6371; // Earth radius km
-        const rho = Math.acos(R / (R + altKm)); // angular radius in radians
-        return rho * (180 / Math.PI); // convert to degrees
+    // Generate orbital ground track (sinusoidal approximation)
+    const generateOrbitTrack = useCallback((lat: number, lng: number, inclination: number, period: number, altKm: number): number[][] => {
+        if (altKm > 50000 || period <= 0) return []; // Skip GEO/HEO — no visible track
+        const steps = 120;
+        const earthRotPerOrbit = (period / 1440) * 360; // degrees Earth rotates during one orbit
+        const coords: number[][] = [];
+        for (let i = -steps/2; i <= steps/2; i++) {
+            const frac = i / steps; // -0.5 to 0.5
+            const orbitAngle = frac * 360; // degrees along orbit
+            const trackLat = inclination * Math.sin(orbitAngle * Math.PI / 180);
+            const trackLng = lng + (frac * (-earthRotPerOrbit)) + (orbitAngle / 360) * 0; // simplified ground track
+            const adjustedLng = ((trackLng + 540) % 360) - 180;
+            coords.push([adjustedLng, trackLat]);
+        }
+        return coords;
     }, []);
 
     useEffect(() => {
@@ -3563,9 +3657,8 @@ export default function MapIndex() {
         if (!map || !loaded) return;
 
         if (!showSatellites || !isGlobe) {
-            ['sat-icons', 'sat-labels', 'sat-coverage-fill', 'sat-coverage-stroke', 'sat-orbit-ring'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
-            try { if (map.getSource('sat-src')) map.removeSource('sat-src'); } catch {}
-            try { if (map.getSource('sat-coverage-src')) map.removeSource('sat-coverage-src'); } catch {}
+            ['sat-icons', 'sat-labels', 'sat-coverage-fill', 'sat-coverage-stroke', 'sat-orbit-lines', 'sat-orbit-selected'].forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch {} });
+            ['sat-src', 'sat-coverage-src', 'sat-orbits-src'].forEach(s => { try { if (map.getSource(s)) map.removeSource(s); } catch {} });
             satMarkerMapRef.current.forEach(e => e.marker?.remove?.()); satMarkerMapRef.current.clear();
             if (satAnimRef.current) { cancelAnimationFrame(satAnimRef.current); satAnimRef.current = null; }
             return;
@@ -3580,57 +3673,72 @@ export default function MapIndex() {
         if (!map.getSource('sat-src')) {
             map.addSource('sat-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
             map.addSource('sat-coverage-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.addSource('sat-orbits-src', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
-            // Coverage footprint fill
-            map.addLayer({ id: 'sat-coverage-fill', type: 'fill', source: 'sat-coverage-src', paint: {
-                'fill-color': ['get', 'color'], 'fill-opacity': 0.04,
+            // Orbital path lines (all satellites)
+            map.addLayer({ id: 'sat-orbit-lines', type: 'line', source: 'sat-orbits-src', filter: ['==', ['get', 'selected'], false], paint: {
+                'line-color': ['get', 'color'], 'line-width': 0.8, 'line-opacity': 0.12, 'line-dasharray': [6, 4],
+            }});
+            // Selected satellite orbit (brighter)
+            map.addLayer({ id: 'sat-orbit-selected', type: 'line', source: 'sat-orbits-src', filter: ['==', ['get', 'selected'], true], paint: {
+                'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [2, 2],
+            }});
+
+            // 3D coverage projection cones (fill-extrusion from ground up)
+            map.addLayer({ id: 'sat-coverage-fill', type: 'fill-extrusion', source: 'sat-coverage-src', paint: {
+                'fill-extrusion-color': ['get', 'color'],
+                'fill-extrusion-height': ['get', 'extHeight'],
+                'fill-extrusion-base': 0,
+                'fill-extrusion-opacity': 0.06,
             }});
             map.addLayer({ id: 'sat-coverage-stroke', type: 'line', source: 'sat-coverage-src', paint: {
-                'line-color': ['get', 'color'], 'line-width': 1, 'line-opacity': 0.15, 'line-dasharray': [4, 4],
+                'line-color': ['get', 'color'], 'line-width': 1.5, 'line-opacity': 0.2, 'line-dasharray': [4, 4],
             }});
 
-            // Satellite icons (per-type)
+            // 3D satellite model icons
             map.addLayer({ id: 'sat-icons', type: 'symbol', source: 'sat-src', layout: {
                 'icon-image': ['get', 'iconId'],
-                'icon-size': ['case', ['==', ['get', 'category'], 'space-station'], 1.2, ['==', ['get', 'category'], 'debris'], 0.7, 0.9],
+                'icon-size': ['case', ['==', ['get', 'category'], 'space-station'], 1.3, ['==', ['get', 'category'], 'debris'], 0.6, ['==', ['get', 'category'], 'military'], 1.1, 0.95],
                 'icon-allow-overlap': true, 'icon-ignore-placement': true,
                 'icon-pitch-alignment': 'viewport', 'icon-rotation-alignment': 'viewport',
-                'symbol-sort-key': ['case', ['==', ['get', 'category'], 'space-station'], 0, ['==', ['get', 'category'], 'debris'], 10, 5],
+                'symbol-sort-key': ['case', ['==', ['get', 'category'], 'space-station'], 0, ['==', ['get', 'category'], 'military'], 1, ['==', ['get', 'category'], 'debris'], 10, 5],
             }, paint: {
-                'icon-opacity': ['case', ['==', ['get', 'category'], 'debris'], 0.35, ['==', ['get', 'status'], 'inactive'], 0.5, 1],
+                'icon-opacity': ['case', ['==', ['get', 'category'], 'debris'], 0.3, ['==', ['get', 'status'], 'inactive'], 0.5, 1],
             }});
 
-            // Labels
+            // Labels (hide for debris and starlink)
             map.addLayer({ id: 'sat-labels', type: 'symbol', source: 'sat-src',
                 filter: ['all', ['!=', ['get', 'category'], 'debris'], ['!=', ['get', 'category'], 'starlink']], layout: {
-                'text-field': ['get', 'name'], 'text-size': 8, 'text-offset': [0, 1.8], 'text-anchor': 'top',
+                'text-field': ['get', 'name'], 'text-size': 8, 'text-offset': [0, 2.2], 'text-anchor': 'top',
                 'text-allow-overlap': false,
             }, paint: { 'text-color': ['get', 'color'], 'text-halo-color': 'rgba(0,0,0,0.9)', 'text-halo-width': 1 } });
 
-            // Click popup (enhanced)
+            // Click popup
             map.on('click', 'sat-icons', (e: any) => {
                 const feat = e.features?.[0]; if (!feat || !ml) return;
                 const p = feat.properties; const c = feat.geometry.coordinates.slice();
                 const altKm = ((p.alt || 0) / 1).toFixed(0);
                 const velKms = (p.velocity || 0).toFixed(2);
                 const periodH = p.period ? `${Math.floor(p.period / 60)}h ${p.period % 60}m` : '—';
-                const footprint = p.footprintDeg ? `${(p.footprintDeg * 111).toFixed(0)} km radius` : '—';
+                const footprint = p.footprintKm ? `${p.footprintKm} km radius` : '—';
                 const statusColor = p.status === 'active' ? '#22c55e' : p.status === 'inactive' ? '#f59e0b' : '#6b7280';
                 const orbitDesc = p.orbitType === 'LEO' ? 'Low Earth Orbit' : p.orbitType === 'MEO' ? 'Medium Earth Orbit' : p.orbitType === 'GEO' ? 'Geostationary' : p.orbitType === 'HEO' ? 'Highly Elliptical' : p.orbitType === 'SSO' ? 'Sun-Synchronous' : p.orbitType;
                 const html = `<div class="tmap-popup-card"><div class="tmap-popup-header" style="gap:8px"><div style="width:36px;height:36px;border-radius:8px;background:${p.color}15;border:1.5px solid ${p.color}40;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${p.catIcon || '🛰️'}</div><div class="tmap-popup-hinfo"><div class="tmap-popup-name" style="font-size:11px">${p.name}</div><div style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap"><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${p.color}15;color:${p.color};border:1px solid ${p.color}30">${p.catLabel || p.category}</span><span style="font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;background:${statusColor}15;color:${statusColor};border:1px solid ${statusColor}30">${p.status}</span><span style="font-size:7px;font-weight:600;padding:1px 5px;border-radius:3px;background:#06b6d415;color:#06b6d4;border:1px solid #06b6d430">${p.orbitType}</span></div></div></div><div class="tmap-popup-grid"><div class="tmap-popup-row"><span class="tmap-popup-label">📡 NORAD ID</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.noradId}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🌐 Int'l Des</span><span class="tmap-popup-val" style="font-family:'JetBrains Mono',monospace">${p.intlDesignator || '—'}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📏 Altitude</span><span class="tmap-popup-val">${Number(altKm).toLocaleString()} km</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">⚡ Velocity</span><span class="tmap-popup-val">${velKms} km/s</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🔄 Period</span><span class="tmap-popup-val">${periodH}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📐 Incline</span><span class="tmap-popup-val">${p.inclination || 0}°</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🛤️ Orbit</span><span class="tmap-popup-val">${orbitDesc}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">📡 Footprint</span><span class="tmap-popup-val">${footprint}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🏳️ Country</span><span class="tmap-popup-val">${p.country}</span></div><div class="tmap-popup-row"><span class="tmap-popup-label">🚀 Launched</span><span class="tmap-popup-val">${p.launchDate || '—'}</span></div></div><div class="tmap-popup-coords">${c[1].toFixed(4)}, ${c[0].toFixed(4)}</div></div>`;
-                showPopupWithSkeleton(map, ml, c, () => html, { maxWidth: '320px', offset: 12 });
+                showPopupWithSkeleton(map, ml, c, () => html, { maxWidth: '320px', offset: 14 });
+                // Select this satellite to highlight its orbit + coverage
+                setSatSelected(p.noradId);
             });
             map.on('mouseenter', 'sat-icons', () => { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', 'sat-icons', () => { map.getCanvas().style.cursor = ''; });
         }
 
-        // rAF loop — updates satellite positions + coverage footprints
+        // rAF loop — updates positions, coverage footprints, and orbital paths
         let lastUp = 0;
-        const createCirclePolygon = (lng: number, lat: number, radiusDeg: number, steps: number = 48): number[][] => {
+        const createCirclePoly = (lng: number, lat: number, radiusDeg: number, steps: number = 48): number[][] => {
             const coords: number[][] = [];
             for (let i = 0; i <= steps; i++) {
-                const angle = (i / steps) * 2 * Math.PI;
-                coords.push([lng + radiusDeg * Math.cos(angle) / Math.cos(lat * Math.PI / 180), lat + radiusDeg * Math.sin(angle)]);
+                const a = (i / steps) * 2 * Math.PI;
+                coords.push([lng + radiusDeg * Math.cos(a) / Math.cos(lat * Math.PI / 180), lat + radiusDeg * Math.sin(a)]);
             }
             return coords;
         };
@@ -3643,37 +3751,55 @@ export default function MapIndex() {
             const selId = satSelectedRef.current;
             const filtered = satCategoryFilter.size > 0 ? sats.filter(s => satCategoryFilter.has(s.category)) : sats;
 
-            // Point features for satellite icons
+            // Point features
             const pointFeatures = filtered.map(s => {
                 const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
                 const fpDeg = satFootprintRadius(s.alt);
+                const fpKm = Math.round(fpDeg * 111);
                 return {
                     type: 'Feature' as const,
                     geometry: { type: 'Point' as const, coordinates: [s.lng, s.lat] },
-                    properties: { noradId: s.noradId, name: s.name, category: s.category, color: cat.color, catIcon: cat.icon, catLabel: cat.label, iconId: `sat-${s.category}`, alt: s.alt, velocity: s.velocity, inclination: s.inclination, period: s.period, orbitType: s.orbitType, country: s.country, launchDate: s.launchDate, status: s.status, intlDesignator: s.intlDesignator, footprintDeg: fpDeg },
+                    properties: { noradId: s.noradId, name: s.name, category: s.category, color: cat.color, catIcon: cat.icon, catLabel: cat.label, iconId: `sat-${s.category}`, alt: s.alt, velocity: s.velocity, inclination: s.inclination, period: s.period, orbitType: s.orbitType, country: s.country, launchDate: s.launchDate, status: s.status, intlDesignator: s.intlDesignator, footprintKm: fpKm },
                 };
             });
 
-            // Coverage footprint polygons (only for non-debris, non-starlink)
+            // Coverage footprint polygons (3D extrusion)
             const coverageFeatures = satShowCoverage ? filtered
-                .filter(s => s.category !== 'debris' && s.alt < 100000 && (selId ? s.noradId === selId : true))
+                .filter(s => s.category !== 'debris' && s.alt < 50000 && (selId ? s.noradId === selId : true))
                 .map(s => {
                     const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
                     const fpDeg = satFootprintRadius(s.alt);
                     if (fpDeg <= 0) return null;
-                    const coords = createCirclePolygon(s.lng, s.lat, fpDeg);
+                    const coords = createCirclePoly(s.lng, s.lat, fpDeg);
+                    const extH = Math.min(s.alt * 50, 2000000); // scale altitude for visual
                     return {
                         type: 'Feature' as const,
                         geometry: { type: 'Polygon' as const, coordinates: [coords] },
-                        properties: { color: cat.color, name: s.name, alt: s.alt },
+                        properties: { color: cat.color, name: s.name, alt: s.alt, extHeight: extH },
                     };
                 }).filter(Boolean) : [];
+
+            // Orbital path lines
+            const orbitFeatures = filtered
+                .filter(s => s.category !== 'debris' && s.alt < 40000 && s.period > 0)
+                .map(s => {
+                    const cat = satCategoryConfig[s.category] || satCategoryConfig.communication;
+                    const track = generateOrbitTrack(s.lat, s.lng, s.inclination, s.period, s.alt);
+                    if (track.length < 2) return null;
+                    return {
+                        type: 'Feature' as const,
+                        geometry: { type: 'LineString' as const, coordinates: track },
+                        properties: { color: cat.color, name: s.name, selected: selId === s.noradId },
+                    };
+                }).filter(Boolean);
 
             try {
                 const src = mapRef.current.getSource('sat-src') as any;
                 if (src) src.setData({ type: 'FeatureCollection', features: pointFeatures });
                 const covSrc = mapRef.current.getSource('sat-coverage-src') as any;
                 if (covSrc) covSrc.setData({ type: 'FeatureCollection', features: coverageFeatures });
+                const orbSrc = mapRef.current.getSource('sat-orbits-src') as any;
+                if (orbSrc) orbSrc.setData({ type: 'FeatureCollection', features: orbitFeatures });
             } catch {}
             satAnimRef.current = requestAnimationFrame(loop);
         };
@@ -8750,7 +8876,7 @@ export default function MapIndex() {
                     </div>
                     {/* Category filter chips */}
                     <div style={{ display: 'flex', gap: 3, padding: '8px 14px', borderBottom: `1px solid ${theme.border}10`, flexWrap: 'wrap' as const }}>
-                        {Object.entries(satCategoryConfig).map(([k, v]) => { const c = satellites.filter(s => s.category === k).length; const on = satCategoryFilter.has(k); return c > 0 ? <button key={k} onClick={() => setSatCategoryFilter(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '3px 6px', borderRadius: 4, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: on ? v.color : theme.textDim }}>{v.icon} {c}</button> : null; })}
+                        {Object.entries(satCategoryConfig).map(([k, v]) => { const c = satellites.filter(s => s.category === k).length; const on = satCategoryFilter.has(k); return c > 0 ? <button key={k} title={`${v.label} — ${c} satellite${c > 1 ? 's' : ''}`} onClick={() => setSatCategoryFilter(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; })} style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '3px 6px', borderRadius: 4, border: `1px solid ${on ? v.color + '40' : theme.border}`, background: on ? `${v.color}08` : 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 8, fontWeight: 700, color: on ? v.color : theme.textDim }}>{v.icon} {c}</button> : null; })}
                     </div>
 
                     {/* ── LIST TAB ── */}
