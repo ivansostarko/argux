@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.25.95 - 2026-04-02
+
+### Operations — Delete Confirmations, Events Tab, Search Multi-Select, Briefing Cleanup
+
+#### Universal Delete Confirmation
+Every remove/delete action across all tabs now shows a confirmation modal with the item name before proceeding. 11 delete actions wrapped:
+- Operation delete, checklist item remove, person remove, org remove, device remove, vehicle remove, team remove, team member remove, zone remove, alert remove, briefing clear
+
+#### Events Tab (NEW)
+Added `📊 Events` tab between Alerts and Timeline showing all activities related to the operation:
+- Search bar filtering by title and person name
+- Type filter chips: all, surveillance, alert, intel, comm, movement, system
+- Color-coded event cards with severity badges, timestamps, person name, source
+- 8 mock events for HAWK, 2 for GLACIER, 1 each for PHOENIX and CERBERUS
+
+#### Search + Multi-Select Pickers
+Replaced all single-click add modals with a reusable `SearchPicker` component featuring:
+- Real-time search filtering
+- Checkbox multi-select (select multiple items, then add all at once)
+- Selected count badge
+- Already-assigned items auto-excluded
+- Used for: persons, organizations, devices, vehicles, team members, zones (from global pool), alerts (from global pool)
+
+#### Global Zone & Alert Pools
+Added `globalZonePool` (10 predefined zones) and `globalAlertPool` (10 predefined alert rules) in mock data. Zones and alerts are now picked from these pools instead of created from scratch.
+
+#### Briefing Tab Cleanup
+Removed Comms Channel and Frequency cards from briefing tab. These fields remain editable in the Edit Operation modal.
+
 ## 0.25.94 - 2026-04-02
 
 ### Operations — Full CRUD Across All Tabs + Status Change

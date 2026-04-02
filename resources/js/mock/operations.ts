@@ -4,7 +4,7 @@
  */
 export type Phase = 'Planning' | 'Preparation' | 'Active' | 'Debrief' | 'Closed';
 export type Priority = 'Critical' | 'High' | 'Medium' | 'Low';
-export type DetailTab = 'overview' | 'targets' | 'resources' | 'teams' | 'zones' | 'alerts' | 'timeline' | 'briefing';
+export type DetailTab = 'overview' | 'targets' | 'resources' | 'teams' | 'zones' | 'alerts' | 'events' | 'timeline' | 'briefing';
 
 export interface TeamMember { personId: number; role: string; callsign: string; }
 export interface Team { id: string; name: string; icon: string; color: string; lead: string; members: TeamMember[]; }
@@ -34,8 +34,60 @@ export const tabList: { id: DetailTab; label: string; icon: string }[] = [
     { id: 'overview', label: 'Overview', icon: '📋' }, { id: 'targets', label: 'Targets', icon: '🎯' },
     { id: 'resources', label: 'Resources', icon: '📡' }, { id: 'teams', label: 'Teams', icon: '👥' },
     { id: 'zones', label: 'Zones', icon: '🗺️' }, { id: 'alerts', label: 'Alerts', icon: '🚨' },
+    { id: 'events', label: 'Events', icon: '📊' },
     { id: 'timeline', label: 'Timeline', icon: '📅' }, { id: 'briefing', label: 'Briefing', icon: '📝' },
 ];
+
+export interface OpEvent { id: string; type: 'surveillance' | 'alert' | 'intel' | 'comm' | 'movement' | 'system'; title: string; description: string; personName: string; timestamp: string; severity: 'critical' | 'high' | 'medium' | 'low' | 'info'; source: string; }
+
+export const globalZonePool: OpZone[] = [
+    { id: 'gz1', name: 'Port Terminal Perimeter', type: 'surveillance', lat: 45.818, lng: 15.992, radius: 500 },
+    { id: 'gz2', name: 'Restricted Zone Alpha', type: 'restricted', lat: 45.813, lng: 15.977, radius: 200 },
+    { id: 'gz3', name: 'Staging Area Bravo', type: 'staging', lat: 45.802, lng: 15.995, radius: 150 },
+    { id: 'gz4', name: 'Buffer Zone Charlie', type: 'buffer', lat: 45.808, lng: 15.985, radius: 300 },
+    { id: 'gz5', name: 'Airport Cargo Terminal', type: 'surveillance', lat: 45.742, lng: 16.069, radius: 400 },
+    { id: 'gz6', name: 'Train Station Area', type: 'surveillance', lat: 45.804, lng: 15.979, radius: 250 },
+    { id: 'gz7', name: 'Restricted Zone Bravo', type: 'restricted', lat: 45.830, lng: 16.010, radius: 180 },
+    { id: 'gz8', name: 'Safehouse Perimeter', type: 'buffer', lat: 45.795, lng: 15.960, radius: 100 },
+    { id: 'gz9', name: 'Border Checkpoint Delta', type: 'restricted', lat: 45.850, lng: 16.050, radius: 350 },
+    { id: 'gz10', name: 'Marina Surveillance', type: 'surveillance', lat: 45.810, lng: 15.955, radius: 220 },
+];
+
+export const globalAlertPool: AlertRule[] = [
+    { id: 'ga1', type: 'Zone Entry', description: 'Target enters monitored zone', severity: 'critical', enabled: true },
+    { id: 'ga2', type: 'Zone Exit', description: 'Target exits containment zone', severity: 'high', enabled: true },
+    { id: 'ga3', type: 'Co-location', description: 'Two targets within 50m', severity: 'critical', enabled: true },
+    { id: 'ga4', type: 'Face Match', description: 'Face recognition match at camera', severity: 'high', enabled: true },
+    { id: 'ga5', type: 'LPR Match', description: 'License plate detected at checkpoint', severity: 'high', enabled: true },
+    { id: 'ga6', type: 'Signal Lost', description: 'Device signal lost >30 minutes', severity: 'medium', enabled: true },
+    { id: 'ga7', type: 'Speed Alert', description: 'Vehicle exceeds speed threshold', severity: 'medium', enabled: true },
+    { id: 'ga8', type: 'Co-location', description: 'Multiple targets at same location', severity: 'critical', enabled: true },
+    { id: 'ga9', type: 'Face Match', description: 'Unknown face at restricted area', severity: 'high', enabled: true },
+    { id: 'ga10', type: 'Zone Entry', description: 'Any person enters restricted perimeter', severity: 'critical', enabled: true },
+];
+
+export const mockOpEvents: Record<string, OpEvent[]> = {
+    'op-1': [
+        { id: 'ev1', type: 'surveillance', title: 'Horvat arrived at Port Terminal', description: 'Subject entered surveillance zone via Gate 3. Duration: 47 min.', personName: 'Marko Horvat', timestamp: '2026-03-24 14:32', severity: 'critical', source: 'Camera Network' },
+        { id: 'ev2', type: 'alert', title: 'Co-location: Horvat + Mendoza', description: 'Two subjects within 30m at warehouse B7.', personName: 'Horvat / Mendoza', timestamp: '2026-03-24 14:45', severity: 'critical', source: 'GPS Tracker' },
+        { id: 'ev3', type: 'movement', title: 'Vehicle ZG-1847-AB at port approach', description: 'LPR capture at Checkpoint Alpha. Speed: 42 km/h.', personName: 'Mendoza', timestamp: '2026-03-24 13:55', severity: 'high', source: 'LPR Reader' },
+        { id: 'ev4', type: 'intel', title: 'Intercepted encrypted communication', description: 'New encryption protocol detected on Horvat device.', personName: 'Horvat', timestamp: '2026-03-24 11:20', severity: 'high', source: 'SIGINT' },
+        { id: 'ev5', type: 'system', title: 'Camera #14 offline', description: 'Port Terminal north camera lost connection.', personName: 'System', timestamp: '2026-03-24 10:05', severity: 'medium', source: 'Device Monitor' },
+        { id: 'ev6', type: 'surveillance', title: 'Babić counter-surveillance detected', description: 'Subject performed 3 U-turns in 10 min — SDR pattern.', personName: 'Babić', timestamp: '2026-03-23 22:15', severity: 'high', source: 'Mobile Tracker' },
+        { id: 'ev7', type: 'comm', title: 'Hassan new phone detected', description: 'New IMSI registered on network near staging area.', personName: 'Hassan', timestamp: '2026-03-23 18:30', severity: 'medium', source: 'IMSI Catcher' },
+        { id: 'ev8', type: 'alert', title: 'Zone breach: Restricted Alpha', description: 'Unknown vehicle entered restricted zone at 03:12.', personName: 'Unknown', timestamp: '2026-03-23 03:12', severity: 'critical', source: 'Geofence' },
+    ],
+    'op-2': [
+        { id: 'ev20', type: 'intel', title: 'Suspicious transaction flagged', description: '€87,000 wire from Rashid Holdings to shell company.', personName: 'Al-Rashid', timestamp: '2026-03-22 09:45', severity: 'high', source: 'Bank Monitor' },
+        { id: 'ev21', type: 'system', title: 'EU Sanctions cross-reference complete', description: '3 new matches found against CFSP list.', personName: 'System', timestamp: '2026-03-21 16:30', severity: 'medium', source: 'Sanctions DB' },
+    ],
+    'op-3': [
+        { id: 'ev30', type: 'surveillance', title: 'Li Wei cargo inspection', description: 'Subject inspected container #MSKU-4721 at Shanghai port.', personName: 'Li Wei', timestamp: '2026-03-18 08:20', severity: 'medium', source: 'Camera' },
+    ],
+    'op-4': [
+        { id: 'ev40', type: 'intel', title: 'Route #3 mapped', description: 'Border crossing route through Bapska identified.', personName: 'Babić', timestamp: '2026-01-28 15:40', severity: 'high', source: 'Ground Team' },
+    ],
+};
 
 export const mockOps: Operation[] = [
     { id: 'op-1', codename: 'HAWK', name: 'Operation HAWK — Zagreb Port Network', phase: 'Active', priority: 'Critical', classification: 'TOP SECRET // NOFORN',
