@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.26.5 - 2026-04-04
+
+### Admin Roles — Complete Mock REST API + Unit Tests
+
+#### 6 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/admin/roles` | List with scope filter + search; returns modules + perm_actions |
+| GET | `/mock-api/admin/roles/{id}` | Role detail with full permission matrix |
+| POST | `/mock-api/admin/roles` | Create with name uniqueness check + permission matrix |
+| PUT | `/mock-api/admin/roles/{id}` | Update role fields + permissions |
+| DELETE | `/mock-api/admin/roles/{id}` | Delete (blocks system roles + roles with users) |
+| POST | `/mock-api/admin/roles/{id}/duplicate` | Duplicate with "(Copy)" suffix, isSystem=false |
+
+#### 10 Mock Roles (5 admin + 5 user)
+- Admin: Super Admin (level 10), Admin (8), Security Officer (6), Audit Reader (3), Support Agent (2)
+- User: Senior Operator (7), Intelligence Analyst (5), Operator (4), Viewer (2), Trainee (1)
+
+#### Permission Matrix: 32 modules × 6 actions
+6 actions: view, create, edit, delete, export, manage
+7 sections: Command, Subjects, Intelligence, Analysis, Monitoring, Tools, System, Admin
+
+#### Delete Protections
+- `403 SYSTEM_ROLE` — cannot delete system roles (isSystem=true)
+- `409 HAS_USERS` — cannot delete roles with assigned users (userCount > 0)
+- `422 NAME_TAKEN` — duplicate name on create
+
+#### Unit Tests — 26 Tests
+- List: count, scope filter (admin/user), search, sort by level desc, scope counts, modules list
+- Show: detail + permissions, super admin all perms, 404
+- Create: valid, duplicate name, required fields, color format, scope validation
+- Update: valid, 404
+- Delete: system role blocked (403), has users blocked (409), 404
+- Duplicate: creates copy, preserves permissions, 404
+- Permissions: viewer limited, admin modules present
+
 ## 0.26.4 - 2026-04-04
 
 ### Admin Users — Complete Mock REST API + Unit Tests

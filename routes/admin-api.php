@@ -9,6 +9,8 @@
 use App\Http\Controllers\MockApi\AdminDashboardApiController;
 use App\Http\Controllers\MockApi\AdminAdminsApiController;
 use App\Http\Controllers\MockApi\AdminUsersApiController;
+use App\Http\Controllers\MockApi\AdminRolesApiController;
+
 
 // Admin Dashboard
 Route::get('/mock-api/admin/dashboard/stats', [AdminDashboardApiController::class, 'stats'])->name('mock-api.admin.dashboard.stats');
@@ -40,3 +42,13 @@ Route::patch('/mock-api/admin/users/{id}/status', [AdminUsersApiController::clas
 Route::post('/mock-api/admin/users/{id}/reset-password', [AdminUsersApiController::class, 'resetPassword'])->name('mock-api.admin.users.reset-password');
 Route::post('/mock-api/admin/users/{id}/reset-mfa', [AdminUsersApiController::class, 'resetMfa'])->name('mock-api.admin.users.reset-mfa');
 Route::delete('/mock-api/admin/users/{id}/sessions', [AdminUsersApiController::class, 'killSessions'])->name('mock-api.admin.users.kill-sessions');
+
+// Role Management (CRUD + duplicate)
+Route::get('/mock-api/admin/roles', [AdminRolesApiController::class, 'index'])->name('mock-api.admin.roles.index');
+Route::get('/mock-api/admin/roles/{id}', [AdminRolesApiController::class, 'show'])->name('mock-api.admin.roles.show');
+Route::post('/mock-api/admin/roles', [AdminRolesApiController::class, 'store'])->name('mock-api.admin.roles.store');
+Route::put('/mock-api/admin/roles/{id}', [AdminRolesApiController::class, 'update'])->name('mock-api.admin.roles.update');
+Route::delete('/mock-api/admin/roles/{id}', [AdminRolesApiController::class, 'destroy'])->name('mock-api.admin.roles.destroy');
+Route::post('/mock-api/admin/roles/{id}/duplicate', [AdminRolesApiController::class, 'duplicate'])->name('mock-api.admin.roles.duplicate');
+
+// Role Management (CRUD + duplicate)

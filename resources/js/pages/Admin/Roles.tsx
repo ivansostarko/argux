@@ -1,17 +1,38 @@
 import PageMeta from '../../components/layout/PageMeta';
 import AdminLayout from '../../layouts/AdminLayout';
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import { useToast } from '../../components/ui/Toast';
-import { mockRoles, modules, permActions, keyboardShortcuts } from '../../mock/admin-roles';
+import { mockRoles as FALLBACK_ROLES, modules, permActions, keyboardShortcuts } from '../../mock/admin-roles';
 import type { RoleScope, PermAction, Role, RolePermission } from '../../mock/admin-roles';
+
+/**
+ * ARGUX Role Management — CRUD + duplicate via mock REST API.
+ *
+ * GET    /mock-api/admin/roles              — List (search, scope filter)
+ * GET    /mock-api/admin/roles/{id}         — Detail with permissions
+ * POST   /mock-api/admin/roles              — Create with permission matrix
+ * PUT    /mock-api/admin/roles/{id}         — Update
+ * DELETE /mock-api/admin/roles/{id}         — Delete (blocks system roles + assigned)
+ * POST   /mock-api/admin/roles/{id}/duplicate
+ */
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: { message: 'Network error.' } }; }
+}
 
 function Skel({ w, h }: { w: string | number; h: number }) { return <div className="rolm-skeleton" style={{ width: typeof w === 'number' ? w : w, height: h }} />; }
 
 export default function AdminRoles() {
     const [loading, setLoading] = useState(true);
-    const [roles, setRoles] = useState(mockRoles);
+    const [roles, setRoles] = useState<Role[]>([]);
     const [search, setSearch] = useState('');
     const [scopeF, setScopeF] = useState<RoleScope | ''>('');
     const [selRole, setSelRole] = useState<number | null>(null);
@@ -27,7 +48,18 @@ export default function AdminRoles() {
     const [fmColor, setFmColor] = useState('#3b82f6'); const [fmDesc, setFmDesc] = useState('');
     const [fmLevel, setFmLevel] = useState(3); const [fmPerms, setFmPerms] = useState<RolePermission[]>([]);
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 600); return () => clearTimeout(t); }, []);
+    const fetchRoles = useCallback(async () => {
+        setLoading(true); trigger();
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        if (scopeF) params.set('scope', scopeF);
+        const { ok, data } = await apiCall(`/mock-api/admin/roles?${params}`);
+        if (ok && data.data) setRoles(data.data);
+        else setRoles(FALLBACK_ROLES);
+        setLoading(false);
+    }, [search, scopeF, trigger]);
+
+    useEffect(() => { fetchRoles(); }, [fetchRoles]);
 
     const resetAll = useCallback(() => { setSearch(''); setScopeF(''); trigger(); }, [trigger]);
     const clearForm = () => { setFmName(''); setFmScope('user'); setFmColor('#3b82f6'); setFmDesc(''); setFmLevel(3); setFmPerms(modules.map(m => ({ moduleId: m.id, actions: [] }))); };
@@ -35,13 +67,8 @@ export default function AdminRoles() {
     const openEdit = (r: Role) => { setFmName(r.name); setFmScope(r.scope); setFmColor(r.color); setFmDesc(r.description); setFmLevel(r.level); setFmPerms(modules.map(m => { const rp = r.permissions.find(p => p.moduleId === m.id); return { moduleId: m.id, actions: rp ? [...rp.actions] : [] }; })); setEditId(r.id); setShowNew(false); };
     const openNew = () => { clearForm(); setEditId(null); setShowNew(true); };
 
-    const filtered = useMemo(() => {
-        let r = roles;
-        if (scopeF) r = r.filter(x => x.scope === scopeF);
-        if (search) { const q = search.toLowerCase(); r = r.filter(x => x.name.toLowerCase().includes(q) || x.description.toLowerCase().includes(q)); }
-        return r.sort((a, b) => b.level - a.level);
-    }, [roles, scopeF, search]);
-
+    // Data already filtered by API
+    const filtered = roles;
     const role = selRole ? roles.find(r => r.id === selRole) : null;
     const sections = [...new Set(modules.map(m => m.section))];
 
@@ -57,10 +84,10 @@ export default function AdminRoles() {
         setFmPerms(prev => prev.map(p => mods.includes(p.moduleId) ? { ...p, actions: allFull ? [] : permActions.map(a => a.id) } : p));
     };
 
-    const handleCreate = () => { if (!fmName.trim()) return; const nr: Role = { id: Date.now(), name: fmName.trim(), scope: fmScope, color: fmColor, description: fmDesc, level: fmLevel, isSystem: false, permissions: fmPerms.filter(p => p.actions.length > 0), userCount: 0, createdAt: new Date().toISOString().slice(0, 10), createdBy: 'Col. Tomić' }; setRoles([...roles, nr]); setShowNew(false); clearForm(); trigger(); toast.success('Role created', fmName); };
-    const handleUpdate = () => { if (!editId || !fmName.trim()) return; setRoles(prev => prev.map(r => r.id === editId ? { ...r, name: fmName.trim(), scope: fmScope, color: fmColor, description: fmDesc, level: fmLevel, permissions: fmPerms.filter(p => p.actions.length > 0) } : r)); setEditId(null); clearForm(); trigger(); toast.success('Role updated', fmName); };
-    const handleDelete = () => { if (!deleteId) return; const r = roles.find(x => x.id === deleteId); setRoles(prev => prev.filter(x => x.id !== deleteId)); setDeleteId(null); if (selRole === deleteId) setSelRole(null); toast.success('Role deleted', r?.name || ''); trigger(); };
-    const handleDuplicate = (r: Role) => { const dup: Role = { ...r, id: Date.now(), name: `${r.name} (Copy)`, isSystem: false, userCount: 0, createdAt: new Date().toISOString().slice(0, 10), createdBy: 'Col. Tomić', permissions: r.permissions.map(p => ({ ...p, actions: [...p.actions] })) }; setRoles([...roles, dup]); trigger(); toast.success('Role duplicated', dup.name); };
+    const handleCreate = async () => { if (!fmName.trim()) return; const { ok, data } = await apiCall('/mock-api/admin/roles', 'POST', { name: fmName.trim(), scope: fmScope, color: fmColor, description: fmDesc, level: fmLevel, permissions: fmPerms.filter(p => p.actions.length > 0) }); if (ok && data.data) { setRoles(prev => [...prev, data.data]); setShowNew(false); clearForm(); trigger(); toast.success('Role created', data.message); } else { toast.error('Error', data.errors?.name?.[0] || data.message || 'Failed.'); } };
+    const handleUpdate = async () => { if (!editId || !fmName.trim()) return; const { ok, data } = await apiCall(`/mock-api/admin/roles/${editId}`, 'PUT', { name: fmName.trim(), scope: fmScope, color: fmColor, description: fmDesc, level: fmLevel, permissions: fmPerms.filter(p => p.actions.length > 0) }); if (ok && data.data) { setRoles(prev => prev.map(r => r.id === editId ? { ...r, ...data.data } : r)); setEditId(null); clearForm(); trigger(); toast.success('Role updated', data.message); } else { toast.error('Error', data.message || 'Failed.'); } };
+    const handleDelete = async () => { if (!deleteId) return; const { ok, data } = await apiCall(`/mock-api/admin/roles/${deleteId}`, 'DELETE'); if (ok) { setRoles(prev => prev.filter(x => x.id !== deleteId)); setDeleteId(null); if (selRole === deleteId) setSelRole(null); toast.success('Role deleted', data.message); trigger(); } else { toast.error('Error', data.message || 'Failed.'); setDeleteId(null); } };
+    const handleDuplicate = async (r: Role) => { const { ok, data } = await apiCall(`/mock-api/admin/roles/${r.id}/duplicate`, 'POST'); if (ok && data.data) { setRoles(prev => [...prev, data.data]); trigger(); toast.success('Role duplicated', data.message); } else { toast.error('Error', data.message || 'Failed.'); } };
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
