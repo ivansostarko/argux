@@ -8,6 +8,7 @@
 
 use App\Http\Controllers\MockApi\AdminDashboardApiController;
 use App\Http\Controllers\MockApi\AdminAdminsApiController;
+use App\Http\Controllers\MockApi\AdminUsersApiController;
 
 // Admin Dashboard
 Route::get('/mock-api/admin/dashboard/stats', [AdminDashboardApiController::class, 'stats'])->name('mock-api.admin.dashboard.stats');
@@ -28,3 +29,14 @@ Route::patch('/mock-api/admin/admins/{id}/status', [AdminAdminsApiController::cl
 Route::post('/mock-api/admin/admins/{id}/reset-password', [AdminAdminsApiController::class, 'resetPassword'])->name('mock-api.admin.admins.reset-password');
 Route::post('/mock-api/admin/admins/{id}/reset-mfa', [AdminAdminsApiController::class, 'resetMfa'])->name('mock-api.admin.admins.reset-mfa');
 Route::delete('/mock-api/admin/admins/{id}/sessions', [AdminAdminsApiController::class, 'killSessions'])->name('mock-api.admin.admins.kill-sessions');
+
+// User Management (CRUD + actions)
+Route::get('/mock-api/admin/users', [AdminUsersApiController::class, 'index'])->name('mock-api.admin.users.index');
+Route::get('/mock-api/admin/users/{id}', [AdminUsersApiController::class, 'show'])->name('mock-api.admin.users.show');
+Route::post('/mock-api/admin/users', [AdminUsersApiController::class, 'store'])->name('mock-api.admin.users.store');
+Route::put('/mock-api/admin/users/{id}', [AdminUsersApiController::class, 'update'])->name('mock-api.admin.users.update');
+Route::delete('/mock-api/admin/users/{id}', [AdminUsersApiController::class, 'destroy'])->name('mock-api.admin.users.destroy');
+Route::patch('/mock-api/admin/users/{id}/status', [AdminUsersApiController::class, 'updateStatus'])->name('mock-api.admin.users.status');
+Route::post('/mock-api/admin/users/{id}/reset-password', [AdminUsersApiController::class, 'resetPassword'])->name('mock-api.admin.users.reset-password');
+Route::post('/mock-api/admin/users/{id}/reset-mfa', [AdminUsersApiController::class, 'resetMfa'])->name('mock-api.admin.users.reset-mfa');
+Route::delete('/mock-api/admin/users/{id}/sessions', [AdminUsersApiController::class, 'killSessions'])->name('mock-api.admin.users.kill-sessions');

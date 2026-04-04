@@ -1,12 +1,36 @@
 import PageMeta from '../../components/layout/PageMeta';
 import AdminLayout from '../../layouts/AdminLayout';
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import { useToast } from '../../components/ui/Toast';
-import { mockUsers, statusConfig, departments, units, keyboardShortcuts } from '../../mock/admin-users';
+import { mockUsers as FALLBACK_USERS, statusConfig, departments, units, keyboardShortcuts } from '../../mock/admin-users';
 import { mockRoles } from '../../mock/admin-roles';
 import type { UserStatus, AppUser } from '../../mock/admin-users';
+
+/**
+ * ARGUX User Management — CRUD via mock REST API.
+ *
+ * GET    /mock-api/admin/users              — List (search, filter, sort, paginate)
+ * GET    /mock-api/admin/users/{id}         — Detail
+ * POST   /mock-api/admin/users              — Create
+ * PUT    /mock-api/admin/users/{id}         — Update
+ * DELETE /mock-api/admin/users/{id}         — Delete (blocks if active sessions)
+ * PATCH  /mock-api/admin/users/{id}/status  — Toggle status
+ * POST   /mock-api/admin/users/{id}/reset-password
+ * POST   /mock-api/admin/users/{id}/reset-mfa
+ * DELETE /mock-api/admin/users/{id}/sessions
+ */
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: { message: 'Network error.' } }; }
+}
 
 function Skel({ w, h }: { w: string | number; h: number }) { return <div className="usrm-skeleton" style={{ width: typeof w === 'number' ? w : w, height: h }} />; }
 
@@ -14,7 +38,7 @@ const userRoles = mockRoles.filter(r => r.scope === 'user');
 
 export default function AdminUsers() {
     const [loading, setLoading] = useState(true);
-    const [users, setUsers] = useState(mockUsers);
+    const [users, setUsers] = useState<AppUser[]>([]);
     const [search, setSearch] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [page, setPage] = useState(1);
@@ -25,6 +49,8 @@ export default function AdminUsers() {
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [detailId, setDetailId] = useState<number | null>(null);
     const [showShortcuts, setShowShortcuts] = useState(false);
+    const [totalCount, setTotalCount] = useState(0);
+    const [statusCounts, setStatusCounts] = useState<Record<string,number>>({});
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
     const toast = useToast();
@@ -40,7 +66,24 @@ export default function AdminUsers() {
     const [fmPhone, setFmPhone] = useState(''); const [fmRoleId, setFmRoleId] = useState(12); const [fmDept, setFmDept] = useState('Operations');
     const [fmUnit, setFmUnit] = useState('HQ Staff'); const [fmNotes, setFmNotes] = useState('');
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 600); return () => clearTimeout(t); }, []);
+    const fetchUsers = useCallback(async () => {
+        setLoading(true); trigger();
+        const params = new URLSearchParams({ page: String(page), per_page: String(perPage), sort: sortCol, dir: sortDir });
+        if (search) params.set('search', search);
+        if (fStatus) params.set('status', fStatus);
+        if (fRole) params.set('role', fRole);
+        if (fDept) params.set('department', fDept);
+        if (fUnit) params.set('unit', fUnit);
+        if (fMfa) params.set('mfa', fMfa);
+        const { ok, data } = await apiCall(`/mock-api/admin/users?${params}`);
+        if (ok && data.data) {
+            setUsers(data.data); setTotalCount(data.meta?.total || data.data.length);
+            if (data.counts) setStatusCounts(data.counts);
+        } else { setUsers(FALLBACK_USERS); setTotalCount(FALLBACK_USERS.length); }
+        setLoading(false);
+    }, [page, perPage, sortCol, sortDir, search, fStatus, fRole, fDept, fUnit, fMfa, trigger]);
+
+    useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
     const filterCount = [fStatus, fRole, fDept, fUnit, fMfa].filter(Boolean).length;
     const resetAll = useCallback(() => { setSearch(''); setFStatus(''); setFRole(''); setFDept(''); setFUnit(''); setFMfa(''); setPage(1); trigger(); }, [trigger]);
@@ -49,27 +92,17 @@ export default function AdminUsers() {
     const openEdit = (u: AppUser) => { setFmFirst(u.firstName); setFmLast(u.lastName); setFmEmail(u.email); setFmPhone(u.phone); setFmRoleId(u.roleId); setFmDept(u.department); setFmUnit(u.unit); setFmNotes(u.notes); setEditId(u.id); setShowNew(false); };
     const openNew = () => { clearForm(); setEditId(null); setShowNew(true); };
 
-    const filtered = useMemo(() => {
-        let u = users;
-        if (fStatus) u = u.filter(x => x.status === fStatus);
-        if (fRole) u = u.filter(x => x.roleName === fRole);
-        if (fDept) u = u.filter(x => x.department === fDept);
-        if (fUnit) u = u.filter(x => x.unit === fUnit);
-        if (fMfa) u = u.filter(x => fMfa === 'enrolled' ? x.mfaEnrolled : !x.mfaEnrolled);
-        if (search) { const q = search.toLowerCase(); u = u.filter(x => `${x.firstName} ${x.lastName} ${x.email} ${x.department} ${x.unit}`.toLowerCase().includes(q)); }
-        return [...u].sort((a, b) => { const m = sortDir === 'asc' ? 1 : -1; const av = (a as any)[sortCol] || ''; const bv = (b as any)[sortCol] || ''; return typeof av === 'string' ? av.localeCompare(bv) * m : (av - bv) * m; });
-    }, [users, fStatus, fRole, fDept, fUnit, fMfa, search, sortCol, sortDir]);
-
-    const totalPages = Math.ceil(filtered.length / perPage);
-    const paged = filtered.slice((page - 1) * perPage, page * perPage);
+    // Data already filtered/sorted/paged by API
+    const paged = users;
+    const totalPages = Math.ceil(totalCount / perPage);
     const detail = detailId ? users.find(u => u.id === detailId) : null;
     const toggleSort = (col: typeof sortCol) => { if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortCol(col); setSortDir('asc'); } setPage(1); };
     const SI = ({ col }: { col: typeof sortCol }) => sortCol === col ? <span style={{ fontSize: 9, marginLeft: 2 }}>{sortDir === 'asc' ? '▲' : '▼'}</span> : null;
 
-    const handleCreate = () => { if (!fmFirst.trim() || !fmLast.trim() || !fmEmail.trim()) return; const r = userRoles.find(x => x.id === fmRoleId); const nu: AppUser = { id: Date.now(), firstName: fmFirst.trim(), lastName: fmLast.trim(), email: fmEmail.trim(), phone: fmPhone.trim(), roleId: fmRoleId, roleName: r?.name || 'Operator', status: 'pending', mfa: 'none', mfaEnrolled: false, department: fmDept, unit: fmUnit, lastLogin: 'Never', lastIp: '—', loginCount: 0, createdAt: new Date().toISOString().slice(0, 10), createdBy: 'Col. Tomić', failedAttempts: 0, activeSessions: 0, notes: fmNotes }; setUsers([nu, ...users]); setShowNew(false); clearForm(); trigger(); toast.success('User created', `${fmFirst} ${fmLast} (${r?.name})`); };
-    const handleUpdate = () => { if (!editId || !fmFirst.trim() || !fmLast.trim() || !fmEmail.trim()) return; const r = userRoles.find(x => x.id === fmRoleId); setUsers(prev => prev.map(u => u.id === editId ? { ...u, firstName: fmFirst.trim(), lastName: fmLast.trim(), email: fmEmail.trim(), phone: fmPhone.trim(), roleId: fmRoleId, roleName: r?.name || u.roleName, department: fmDept, unit: fmUnit, notes: fmNotes } : u)); setEditId(null); clearForm(); trigger(); toast.success('User updated', `${fmFirst} ${fmLast}`); };
-    const handleDelete = () => { if (!deleteId) return; const u = users.find(x => x.id === deleteId); setUsers(prev => prev.filter(x => x.id !== deleteId)); setDeleteId(null); if (detailId === deleteId) setDetailId(null); toast.success('User deleted', `${u?.firstName} ${u?.lastName}`); trigger(); };
-    const handleStatusToggle = (id: number, ns: UserStatus) => { setUsers(prev => prev.map(u => u.id === id ? { ...u, status: ns } : u)); toast.info('Status changed', statusConfig[ns].label); trigger(); };
+    const handleCreate = async () => { if (!fmFirst.trim() || !fmLast.trim() || !fmEmail.trim()) return; const { ok, data } = await apiCall('/mock-api/admin/users', 'POST', { first_name: fmFirst.trim(), last_name: fmLast.trim(), email: fmEmail.trim(), phone: fmPhone.trim(), role_id: fmRoleId, department: fmDept, unit: fmUnit, notes: fmNotes }); if (ok && data.data) { setUsers(prev => [data.data, ...prev]); setShowNew(false); clearForm(); trigger(); toast.success('User created', data.message); } else { toast.error('Error', data.errors?.email?.[0] || data.message || 'Failed.'); } };
+    const handleUpdate = async () => { if (!editId || !fmFirst.trim() || !fmLast.trim() || !fmEmail.trim()) return; const { ok, data } = await apiCall(`/mock-api/admin/users/${editId}`, 'PUT', { first_name: fmFirst.trim(), last_name: fmLast.trim(), email: fmEmail.trim(), phone: fmPhone.trim(), role_id: fmRoleId, department: fmDept, unit: fmUnit, notes: fmNotes }); if (ok && data.data) { setUsers(prev => prev.map(u => u.id === editId ? { ...u, ...data.data } : u)); setEditId(null); clearForm(); trigger(); toast.success('User updated', data.message); } else { toast.error('Error', data.message || 'Failed.'); } };
+    const handleDelete = async () => { if (!deleteId) return; const u = users.find(x => x.id === deleteId); const { ok, data } = await apiCall(`/mock-api/admin/users/${deleteId}`, 'DELETE'); if (ok) { setUsers(prev => prev.filter(x => x.id !== deleteId)); setDeleteId(null); if (detailId === deleteId) setDetailId(null); toast.success('User deleted', data.message); trigger(); } else { toast.error('Error', data.message || 'Failed.'); setDeleteId(null); } };
+    const handleStatusToggle = async (id: number, ns: UserStatus) => { const { ok, data } = await apiCall(`/mock-api/admin/users/${id}/status`, 'PATCH', { status: ns }); if (ok) { setUsers(prev => prev.map(u => u.id === id ? { ...u, status: ns } : u)); toast.info('Status changed', data.message || statusConfig[ns].label); trigger(); } else { toast.error('Error', data.message); } };
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
@@ -88,7 +121,6 @@ export default function AdminUsers() {
         return () => window.removeEventListener('keydown', handler, true);
     }, [resetAll, totalPages]);
 
-    const statusCounts = useMemo(() => { const c: Record<string, number> = {}; (Object.keys(statusConfig) as UserStatus[]).forEach(s => { c[s] = users.filter(u => u.status === s).length; }); return c; }, [users]);
     const inp: React.CSSProperties = { width: '100%', padding: '9px 12px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' };
     const gridCols = '44px 1fr 160px 110px 80px 90px 70px 100px';
 
@@ -150,7 +182,7 @@ export default function AdminUsers() {
         </>}
 
         {/* Pagination */}
-        {!loading && totalPages > 1 && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, flexWrap: 'wrap', gap: 8 }}><span style={{ fontSize: 12, color: theme.textSecondary }}>Page {page}/{totalPages} · {filtered.length} users</span><div style={{ display: 'flex', gap: 4 }}><button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'none', color: page === 1 ? theme.textDim : theme.textSecondary, fontSize: 12, cursor: page === 1 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: page === 1 ? 0.4 : 1 }}>Prev</button><button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'none', color: page === totalPages ? theme.textDim : theme.textSecondary, fontSize: 12, cursor: page === totalPages ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: page === totalPages ? 0.4 : 1 }}>Next</button></div></div>}
+        {!loading && totalPages > 1 && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, flexWrap: 'wrap', gap: 8 }}><span style={{ fontSize: 12, color: theme.textSecondary }}>Page {page}/{totalPages} · {totalCount} users</span><div style={{ display: 'flex', gap: 4 }}><button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'none', color: page === 1 ? theme.textDim : theme.textSecondary, fontSize: 12, cursor: page === 1 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: page === 1 ? 0.4 : 1 }}>Prev</button><button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'none', color: page === totalPages ? theme.textDim : theme.textSecondary, fontSize: 12, cursor: page === totalPages ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: page === totalPages ? 0.4 : 1 }}>Next</button></div></div>}
 
         {/* Detail */}
         {detail && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={e => { if (e.target === e.currentTarget) setDetailId(null); }}><div style={{ background: theme.bgAlt, border: `1px solid ${theme.border}`, borderRadius: 14, padding: 24, width: '100%', maxWidth: 560, maxHeight: '85vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>

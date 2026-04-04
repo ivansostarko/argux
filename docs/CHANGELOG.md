@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.26.4 - 2026-04-04
+
+### Admin Users — Complete Mock REST API + Unit Tests
+
+#### 9 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/admin/users` | List with search, filter (status/role/dept/unit/mfa), sort, pagination |
+| GET | `/mock-api/admin/users/{id}` | Single user detail |
+| POST | `/mock-api/admin/users` | Create operator (validates email uniqueness) |
+| PUT | `/mock-api/admin/users/{id}` | Update operator fields |
+| DELETE | `/mock-api/admin/users/{id}` | Delete (blocks if active sessions → 409 HAS_SESSIONS) |
+| PATCH | `/mock-api/admin/users/{id}/status` | Toggle status (5 states: active/suspended/pending/locked/archived) |
+| POST | `/mock-api/admin/users/{id}/reset-password` | Force password reset email |
+| POST | `/mock-api/admin/users/{id}/reset-mfa` | Force MFA re-enrollment |
+| DELETE | `/mock-api/admin/users/{id}/sessions` | Kill all active sessions |
+
+#### 15 Mock Operator Accounts
+6 roles (Senior Operator, Intelligence Analyst, Operator, Viewer, Trainee), 5 statuses, 10 departments, 9 units
+
+#### Delete Protection
+- `409 HAS_SESSIONS` — cannot delete user with activeSessions > 0 (must kill sessions first)
+- Distinct from admin PROTECTED_ROLE logic
+
+#### Unit Tests — 30 Tests
+- List: pagination (page 1+2), filter by status/role/dept/unit/mfa, search, sort, status counts (5), combined filters
+- Show: detail, 404
+- Create: valid, duplicate email, required fields
+- Update: valid, 404
+- Delete: no sessions, has sessions (409), 404
+- Status: active→suspended, archived, invalid
+- Actions: password reset, MFA reset, kill sessions, 404 on all
+- Combined: status + department filter
+
+#### Users.tsx Fixes
+- Removed duplicate `statusCounts` useMemo (now from API `counts`)
+- Removed `useMemo` import
+- Replaced `filtered.length` with `totalCount`
+- All CRUD handlers converted to fetch API calls
+
 ## 0.26.3 - 2026-04-04
 
 ### Admin Admins — Complete Mock REST API + Unit Tests
