@@ -27,6 +27,8 @@ Route::post('/mock-api/auth/2fa/resend', [AuthApiController::class, 'resendTwoFa
 
 // Password Reset
 Route::post('/mock-api/auth/forgot-password', [AuthApiController::class, 'forgotPassword'])->name('mock-api.auth.forgot-password');
+Route::post('/mock-api/auth/verify-reset-code', [AuthApiController::class, 'verifyResetCode'])->name('mock-api.auth.verify-reset-code');
+Route::post('/mock-api/auth/resend-reset-code', [AuthApiController::class, 'resendResetCode'])->name('mock-api.auth.resend-reset-code');
 Route::post('/mock-api/auth/reset-password', [AuthApiController::class, 'resetPassword'])->name('mock-api.auth.reset-password');
 
 // Sessions & Audit

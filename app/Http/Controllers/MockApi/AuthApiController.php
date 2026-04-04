@@ -254,22 +254,106 @@ class AuthApiController extends Controller
     {
         $email = strtolower($request->validated('email'));
 
-        Log::info('Auth API: password reset requested', ['email' => $email]);
+        Log::info('Auth API: password reset requested', ['email' => $email, 'ip' => $request->ip()]);
         usleep(800_000);
 
         $user = AuthMock::findByEmail($email);
 
+        // Store email in session for subsequent steps
+        session(['reset_email' => $email, 'reset_code_sent_at' => now()->toDateTimeString()]);
+
         // Always return success to prevent email enumeration
         return response()->json([
             'message' => 'If an account exists with this email, a reset code has been sent.',
-            'masked_email' => $user ? AuthMock::maskEmail($email) : AuthMock::maskEmail($email),
+            'masked_email' => AuthMock::maskEmail($email),
             'expires_in' => 600,
+            'cooldown' => 60,
+        ]);
+    }
+
+    /**
+     * POST /mock-api/auth/verify-reset-code
+     * Verify the 6-digit reset code (step 2 of 3).
+     */
+    public function verifyResetCode(Request $request): JsonResponse
+    {
+        $request->validate([
+            'code' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+            'email' => ['sometimes', 'email'],
+        ]);
+
+        $code = $request->input('code');
+        $email = $request->input('email', session('reset_email', ''));
+
+        Log::info('Auth API: reset code verification', ['email' => $email, 'ip' => $request->ip()]);
+        usleep(500_000);
+
+        if (!$email) {
+            return response()->json([
+                'message' => 'No reset request found. Please start over.',
+                'code' => 'NO_RESET_SESSION',
+            ], 400);
+        }
+
+        // Mock: "000000" = invalid, "999999" = expired, anything else = valid
+        if ($code === '000000') {
+            return response()->json([
+                'message' => 'Invalid verification code.',
+                'errors' => ['code' => ['The verification code is incorrect.']],
+                'code' => 'INVALID_CODE',
+                'attempts_remaining' => 2,
+            ], 422);
+        }
+
+        if ($code === '999999') {
+            return response()->json([
+                'message' => 'Verification code has expired. Request a new one.',
+                'errors' => ['code' => ['This code has expired. Please request a new code.']],
+                'code' => 'CODE_EXPIRED',
+            ], 410);
+        }
+
+        // Success — mark code as verified
+        session(['reset_code_verified' => true]);
+
+        return response()->json([
+            'message' => 'Code verified successfully. You can now set a new password.',
+            'verified' => true,
+            'email' => AuthMock::maskEmail($email),
+        ]);
+    }
+
+    /**
+     * POST /mock-api/auth/resend-reset-code
+     * Resend the password reset code.
+     */
+    public function resendResetCode(Request $request): JsonResponse
+    {
+        $email = $request->input('email', session('reset_email', ''));
+
+        Log::info('Auth API: reset code resent', ['email' => $email, 'ip' => $request->ip()]);
+        usleep(600_000);
+
+        if (!$email) {
+            return response()->json([
+                'message' => 'No reset request found. Please start over.',
+                'code' => 'NO_RESET_SESSION',
+            ], 400);
+        }
+
+        session(['reset_code_sent_at' => now()->toDateTimeString()]);
+
+        return response()->json([
+            'message' => 'A new verification code has been sent.',
+            'masked_email' => AuthMock::maskEmail($email),
+            'expires_in' => 600,
+            'cooldown' => 60,
         ]);
     }
 
     /**
      * POST /mock-api/auth/reset-password
-     * Reset password with code.
+     * Reset password with code (step 3 of 3).
      */
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
@@ -286,6 +370,9 @@ class AuthApiController extends Controller
                 'code' => 'INVALID_RESET_CODE',
             ], 422);
         }
+
+        // Clear reset session
+        session()->forget(['reset_email', 'reset_code_sent_at', 'reset_code_verified']);
 
         return response()->json([
             'message' => 'Password has been reset successfully. You can now log in.',

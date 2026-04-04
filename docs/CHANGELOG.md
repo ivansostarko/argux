@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.25.97 - 2026-04-04
+
+### Forgot Password — Complete Mock REST API + Unit Tests
+
+#### 4 Endpoints (3-step flow + resend)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/mock-api/auth/forgot-password` | Step 1: Request reset code (anti-enumeration) |
+| POST | `/mock-api/auth/verify-reset-code` | Step 2: Verify 6-digit code |
+| POST | `/mock-api/auth/resend-reset-code` | Resend code with cooldown |
+| POST | `/mock-api/auth/reset-password` | Step 3: Set new password (min 12 chars + confirm) |
+
+#### Mock Behavior
+- Any email accepted (anti-enumeration — always returns 200)
+- Code `000000` → INVALID_CODE (422) with remaining attempts
+- Code `999999` → CODE_EXPIRED (410)
+- Any other 6-digit code → success
+- Password requires 12+ chars + confirmation match
+- Session tracks reset state across steps
+
+#### Error Handling
+- `422` field-level validation (email format, code format, password rules)
+- `410` CODE_EXPIRED for timeout
+- `400` NO_RESET_SESSION when no prior forgot-password request
+- Remaining attempts counter on invalid codes
+
+#### Unit Tests — 22 Tests
+- Step 1: known email, unknown email (anti-enum), email masking, required, invalid format
+- Step 2: valid code, invalid (000000), expired (999999), no session, format validation (2 tests)
+- Resend: with session, without session
+- Step 3: valid reset, invalid code, confirmation mismatch, min length, required fields, invalid email, code length
+- Integration: full 3-step flow, retry with resend flow
+
+#### ForgotPassword.tsx (React)
+- 4-step UI: email → code → password → success (no page reloads)
+- Uses fetch() to mock REST API with CSRF handling
+- OTP 6-digit input with resend button
+- PasswordStrength component integration
+- Back navigation between steps
+- Mock hint panel showing test codes
+- Error states with attempts remaining warning
+
 ## 0.25.96 - 2026-04-04
 
 ### Login — Complete Mock REST API + Unit Tests
