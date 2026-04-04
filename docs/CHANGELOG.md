@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.26.0 - 2026-04-04
+
+### Admin Login — Complete Mock REST API + Unit Tests
+
+#### 5 New Admin Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/mock-api/admin/auth/login` | Admin credentials → 2FA challenge |
+| POST | `/mock-api/admin/auth/2fa/verify` | Verify admin 2FA code → admin token |
+| POST | `/mock-api/admin/auth/2fa/resend` | Resend admin 2FA code |
+| POST | `/mock-api/admin/auth/logout` | Terminate admin session |
+| GET | `/mock-api/admin/auth/me` | Current admin profile |
+
+#### 3 Admin Mock Users
+- `admin@argux.mil` / `AdminArgux2026!` — super_admin, 2FA authenticator
+- `security@argux.mil` / `SecArgux2026!` — admin, 2FA email
+- `suspended-admin@argux.mil` — 403 ADMIN_SUSPENDED
+
+#### Admin-Specific Behavior
+- Separate user pool (AuthMock::adminUsers / findAdminByEmail)
+- Operator emails → 403 NOT_ADMIN (e.g. operator@argux.mil on admin login)
+- Stricter: 3 max attempts (vs 5 for operators), 30min token expiry (vs 60min)
+- Admin tokens prefixed `admin_argux_...`
+- Redirects to `/admin/dashboard` (not `/map`)
+
+#### Error Codes
+- `403 NOT_ADMIN` — operator account trying admin login
+- `403 ADMIN_SUSPENDED` — suspended admin account
+- `429 ADMIN_LOCKED` — too many failed attempts
+- `422 INVALID_CREDENTIALS` — wrong password with remaining attempts
+- `400 NO_CHALLENGE` — 2FA without prior login
+- `410 CODE_EXPIRED` — expired 2FA code
+
+#### Unit Tests — 21 Tests
+- Login: valid (authenticator + email 2FA), wrong password, unknown email, operator→403, analyst→403, suspended→403, validation
+- 2FA: valid code, invalid (000000), expired (999999), no session, resend, resend without session
+- Session: logout, me
+- Integration: full login→2FA→me→logout flow, token prefix check, expiry check
+
+#### Admin/Login.tsx (React)
+- Red-accented admin theme (badges, buttons, checkbox, 2FA border)
+- 2-step inline flow (credentials → 6-digit OTP)
+- Role badge display (SUPER ADMIN)
+- Mock credentials panel with red styling
+- "ADMIN PANEL — RESTRICTED ACCESS" footer
+- Back to operator login link
+
 ## 0.25.99 - 2026-04-04
 
 ### Register — Layout Update + Phone Field + API Update

@@ -159,6 +159,83 @@ class AuthMock
     }
 
     /**
+     * Admin-only accounts for /admin/login.
+     */
+    public static function adminUsers(): array
+    {
+        return [
+            [
+                'id' => 101,
+                'email' => 'admin@argux.mil',
+                'password' => 'AdminArgux2026!',
+                'first_name' => 'System',
+                'last_name' => 'Administrator',
+                'rank' => 'Director',
+                'role' => 'super_admin',
+                'department' => 'System Administration',
+                'clearance' => 'TOP SECRET // EYES ONLY',
+                'avatar' => '/images/avatars/admin.jpg',
+                'phone' => '+385 91 000 0001',
+                'status' => 'active',
+                'mfa_enabled' => true,
+                'mfa_method' => 'authenticator',
+                'last_login' => '2026-03-24 06:00:00',
+                'login_count' => 1204,
+                'failed_attempts' => 0,
+                'locked_until' => null,
+                'created_at' => '2024-01-01 00:00:00',
+            ],
+            [
+                'id' => 102,
+                'email' => 'security@argux.mil',
+                'password' => 'SecArgux2026!',
+                'first_name' => 'Petra',
+                'last_name' => 'Novak',
+                'rank' => 'Major',
+                'role' => 'admin',
+                'department' => 'Information Security',
+                'clearance' => 'TOP SECRET',
+                'avatar' => null,
+                'phone' => '+385 91 000 0002',
+                'status' => 'active',
+                'mfa_enabled' => true,
+                'mfa_method' => 'email',
+                'last_login' => '2026-03-23 14:00:00',
+                'login_count' => 567,
+                'failed_attempts' => 0,
+                'locked_until' => null,
+                'created_at' => '2024-03-15 00:00:00',
+            ],
+            [
+                'id' => 103,
+                'email' => 'suspended-admin@argux.mil',
+                'password' => 'SuspAdmin2026!',
+                'first_name' => 'Branko',
+                'last_name' => 'Vuković',
+                'rank' => 'Captain',
+                'role' => 'admin',
+                'department' => 'Former IT Admin',
+                'clearance' => 'SECRET',
+                'avatar' => null,
+                'phone' => '+385 91 000 0003',
+                'status' => 'suspended',
+                'mfa_enabled' => true,
+                'mfa_method' => 'authenticator',
+                'last_login' => '2026-01-10 09:00:00',
+                'login_count' => 34,
+                'failed_attempts' => 8,
+                'locked_until' => '2027-01-01 00:00:00',
+                'created_at' => '2025-06-01 00:00:00',
+            ],
+        ];
+    }
+
+    public static function findAdminByEmail(string $email): ?array
+    {
+        return collect(self::adminUsers())->firstWhere('email', strtolower($email));
+    }
+
+    /**
      * Mock active sessions for a user.
      */
     public static function sessions(int $userId): array

@@ -421,6 +421,228 @@ class AuthApiController extends Controller
         ]);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // ADMIN AUTHENTICATION
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * POST /mock-api/admin/auth/login
+     * Admin-only login. Validates against admin user pool.
+     */
+    public function adminLogin(LoginRequest $request): JsonResponse
+    {
+        $email = strtolower($request->validated('email'));
+        $password = $request->validated('password');
+
+        Log::info('Admin Auth API: login attempt', ['email' => $email, 'ip' => $request->ip()]);
+
+        usleep(600_000);
+
+        $user = AuthMock::findAdminByEmail($email);
+
+        if (!$user) {
+            // Also check operator pool for non-admin role error
+            $opUser = AuthMock::findByEmail($email);
+            if ($opUser) {
+                Log::warning('Admin Auth API: non-admin tried admin login', ['email' => $email]);
+                return response()->json([
+                    'message' => 'Access denied. This account does not have administrator privileges.',
+                    'errors' => ['email' => ['This account is not authorized for admin access.']],
+                    'code' => 'NOT_ADMIN',
+                ], 403);
+            }
+
+            return response()->json([
+                'message' => 'Invalid credentials.',
+                'errors' => ['email' => ['The provided credentials do not match our records.']],
+            ], 422);
+        }
+
+        if ($user['status'] === 'suspended') {
+            return response()->json([
+                'message' => 'Admin account suspended.',
+                'errors' => ['email' => ['This admin account has been suspended by a super administrator.']],
+                'code' => 'ADMIN_SUSPENDED',
+            ], 403);
+        }
+
+        if ($user['locked_until'] && now()->lt($user['locked_until'])) {
+            $remaining = now()->diffInMinutes($user['locked_until']);
+            return response()->json([
+                'message' => "Admin account locked. Try again in {$remaining} minutes.",
+                'errors' => ['email' => ["Too many failed attempts. Locked for {$remaining} minutes."]],
+                'code' => 'ADMIN_LOCKED',
+                'locked_until' => $user['locked_until'],
+            ], 429);
+        }
+
+        if ($user['password'] !== $password) {
+            return response()->json([
+                'message' => 'Invalid credentials.',
+                'errors' => ['password' => ['The provided credentials do not match our records.']],
+                'code' => 'INVALID_CREDENTIALS',
+                'remaining_attempts' => max(0, 3 - ($user['failed_attempts'] + 1)),
+            ], 422);
+        }
+
+        // Admin always requires 2FA
+        if ($user['mfa_enabled']) {
+            $challengeToken = 'admin_challenge_' . Str::random(32);
+            session([
+                'admin_challenge' => $challengeToken,
+                'admin_user_id' => $user['id'],
+                'admin_2fa_method' => $user['mfa_method'],
+            ]);
+
+            return response()->json([
+                'message' => 'Admin credentials verified. Two-factor authentication required.',
+                'requires_2fa' => true,
+                'challenge_token' => $challengeToken,
+                'mfa_method' => $user['mfa_method'],
+                'masked_email' => AuthMock::maskEmail($user['email']),
+                'masked_phone' => AuthMock::maskPhone($user['phone'] ?? ''),
+                'user' => [
+                    'first_name' => $user['first_name'],
+                    'role' => $user['role'],
+                    'avatar' => $user['avatar'],
+                ],
+            ]);
+        }
+
+        return $this->issueAdminToken($user, $request);
+    }
+
+    /**
+     * POST /mock-api/admin/auth/2fa/verify
+     * Verify admin 2FA code.
+     */
+    public function adminVerifyTwoFactor(TwoFactorRequest $request): JsonResponse
+    {
+        $code = $request->validated('code');
+        $userId = session('admin_user_id');
+
+        Log::info('Admin Auth API: 2FA verification', ['user_id' => $userId]);
+
+        usleep(400_000);
+
+        if (!$userId) {
+            return response()->json([
+                'message' => 'No pending admin 2FA challenge. Please login again.',
+                'code' => 'NO_CHALLENGE',
+            ], 400);
+        }
+
+        if ($code === '000000') {
+            return response()->json([
+                'message' => 'Invalid verification code.',
+                'errors' => ['code' => ['The verification code is incorrect.']],
+                'code' => 'INVALID_CODE',
+                'attempts_remaining' => 1,
+            ], 422);
+        }
+
+        if ($code === '999999') {
+            return response()->json([
+                'message' => 'Verification code expired.',
+                'errors' => ['code' => ['This code has expired. Request a new one.']],
+                'code' => 'CODE_EXPIRED',
+            ], 410);
+        }
+
+        $user = AuthMock::findAdminByEmail(
+            collect(AuthMock::adminUsers())->firstWhere('id', $userId)['email'] ?? ''
+        );
+        if (!$user) {
+            return response()->json(['message' => 'Admin user not found.', 'code' => 'USER_NOT_FOUND'], 404);
+        }
+
+        session()->forget(['admin_challenge', 'admin_user_id', 'admin_2fa_method']);
+
+        return $this->issueAdminToken($user, $request);
+    }
+
+    /**
+     * POST /mock-api/admin/auth/2fa/resend
+     * Resend admin 2FA code.
+     */
+    public function adminResendTwoFactor(Request $request): JsonResponse
+    {
+        $method = $request->input('method', session('admin_2fa_method', 'email'));
+        $userId = session('admin_user_id');
+
+        Log::info('Admin Auth API: 2FA code resent', ['user_id' => $userId, 'method' => $method]);
+        usleep(500_000);
+
+        if (!$userId) {
+            return response()->json(['message' => 'No pending admin 2FA session.', 'code' => 'NO_SESSION'], 400);
+        }
+
+        return response()->json([
+            'message' => "Admin verification code sent via {$method}.",
+            'method' => $method,
+            'expires_in' => 180,
+            'cooldown' => 60,
+        ]);
+    }
+
+    /**
+     * POST /mock-api/admin/auth/logout
+     * Admin logout.
+     */
+    public function adminLogout(Request $request): JsonResponse
+    {
+        Log::info('Admin Auth API: logout', ['user_id' => session('admin_user_id_active')]);
+
+        session()->forget(['admin_token', 'admin_user_id_active', 'admin_challenge', 'admin_user_id', 'admin_2fa_method']);
+
+        return response()->json([
+            'message' => 'Admin session terminated.',
+            'redirect' => '/admin/login',
+        ]);
+    }
+
+    /**
+     * GET /mock-api/admin/auth/me
+     * Get current admin user profile.
+     */
+    public function adminMe(Request $request): JsonResponse
+    {
+        $userId = session('admin_user_id_active', 101);
+        $user = collect(AuthMock::adminUsers())->firstWhere('id', $userId);
+
+        if (!$user) {
+            return response()->json(['message' => 'Not authenticated as admin.', 'code' => 'UNAUTHENTICATED'], 401);
+        }
+
+        return response()->json([
+            'data' => AuthMock::safeUser($user),
+        ]);
+    }
+
+    /**
+     * Issue admin auth token.
+     */
+    private function issueAdminToken(array $user, Request $request): JsonResponse
+    {
+        $token = 'admin_' . AuthMock::generateToken();
+
+        session([
+            'admin_token' => $token,
+            'admin_user_id_active' => $user['id'],
+        ]);
+
+        Log::info('Admin Auth API: token issued', ['user_id' => $user['id'], 'role' => $user['role']]);
+
+        return response()->json([
+            'message' => 'Admin authentication successful.',
+            'token' => $token,
+            'token_type' => 'Bearer',
+            'expires_in' => 1800,
+            'user' => AuthMock::safeUser($user),
+            'redirect' => '/admin/dashboard',
+        ]);
+    }
+
     /**
      * POST /mock-api/auth/register
      * Submit registration request for admin approval.

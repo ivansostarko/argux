@@ -39,3 +39,10 @@ Route::get('/mock-api/auth/audit-log', [AuthApiController::class, 'auditLog'])->
 // Registration
 Route::post('/mock-api/auth/register', [AuthApiController::class, 'register'])->name('mock-api.auth.register');
 Route::post('/mock-api/auth/check-email', [AuthApiController::class, 'checkEmail'])->name('mock-api.auth.check-email');
+
+// Admin Authentication
+Route::post('/mock-api/admin/auth/login', [AuthApiController::class, 'adminLogin'])->name('mock-api.admin.auth.login');
+Route::post('/mock-api/admin/auth/2fa/verify', [AuthApiController::class, 'adminVerifyTwoFactor'])->name('mock-api.admin.auth.2fa.verify');
+Route::post('/mock-api/admin/auth/2fa/resend', [AuthApiController::class, 'adminResendTwoFactor'])->name('mock-api.admin.auth.2fa.resend');
+Route::post('/mock-api/admin/auth/logout', [AuthApiController::class, 'adminLogout'])->name('mock-api.admin.auth.logout');
+Route::get('/mock-api/admin/auth/me', [AuthApiController::class, 'adminMe'])->name('mock-api.admin.auth.me');
