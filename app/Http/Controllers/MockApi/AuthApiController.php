@@ -4,6 +4,7 @@ namespace App\Http\Controllers\MockApi;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\TwoFactorRequest;
@@ -417,6 +418,96 @@ class AuthApiController extends Controller
         return response()->json([
             'data' => AuthMock::auditLog($userId),
             'meta' => ['total' => 5, 'page' => 1, 'per_page' => 25],
+        ]);
+    }
+
+    /**
+     * POST /mock-api/auth/register
+     * Submit registration request for admin approval.
+     */
+    public function register(RegisterRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $email = strtolower($data['email']);
+
+        Log::info('Auth API: registration submitted', [
+            'email' => $email,
+            'name' => $data['first_name'] . ' ' . $data['last_name'],
+            'ip' => $request->ip(),
+        ]);
+
+        usleep(1_200_000);
+
+        // Check for duplicate email in mock users
+        if (AuthMock::findByEmail($email)) {
+            return response()->json([
+                'message' => 'This email is already registered.',
+                'errors' => ['email' => ['An account with this email address already exists.']],
+                'code' => 'EMAIL_TAKEN',
+            ], 422);
+        }
+
+        // Simulate banned domains
+        $domain = substr(strrchr($email, '@'), 1);
+        $banned = ['tempmail.com', 'throwaway.email', 'mailinator.com', 'guerrillamail.com'];
+        if (in_array($domain, $banned)) {
+            return response()->json([
+                'message' => 'Disposable email addresses are not permitted.',
+                'errors' => ['email' => ['Please use your official organizational email address.']],
+                'code' => 'DISPOSABLE_EMAIL',
+            ], 422);
+        }
+
+        // Mock: generate a pending registration
+        $regId = 'reg_' . Str::random(16);
+
+        return response()->json([
+            'message' => 'Registration submitted successfully. Awaiting administrator approval.',
+            'registration_id' => $regId,
+            'status' => 'pending_approval',
+            'estimated_review' => '24-48 hours',
+            'submitted' => [
+                'name' => $data['first_name'] . ' ' . $data['last_name'],
+                'email' => AuthMock::maskEmail($email),
+                'submitted_at' => now()->toDateTimeString(),
+            ],
+            'redirect' => '/login',
+        ]);
+    }
+
+    /**
+     * POST /mock-api/auth/check-email
+     * Check email availability for registration (real-time validation).
+     */
+    public function checkEmail(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+        ]);
+
+        $email = strtolower($request->input('email'));
+
+        usleep(200_000);
+
+        $exists = AuthMock::findByEmail($email) !== null;
+
+        // Check banned domains
+        $domain = substr(strrchr($email, '@'), 1);
+        $banned = ['tempmail.com', 'throwaway.email', 'mailinator.com', 'guerrillamail.com'];
+        $disposable = in_array($domain, $banned);
+
+        // Check approved domains (mock organizational domains)
+        $approved = ['argux.mil', 'agency.gov', 'police.hr', 'soa.hr', 'mup.hr', 'mvep.hr'];
+        $isApproved = in_array($domain, $approved);
+
+        return response()->json([
+            'available' => !$exists && !$disposable,
+            'exists' => $exists,
+            'disposable' => $disposable,
+            'approved_domain' => $isApproved,
+            'message' => $exists
+                ? 'This email is already registered.'
+                : ($disposable ? 'Disposable emails are not allowed.' : ($isApproved ? 'Approved organizational domain.' : 'Email is available.')),
         ]);
     }
 

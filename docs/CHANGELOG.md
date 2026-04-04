@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.25.98 - 2026-04-04
+
+### Register — Complete Mock REST API + Unit Tests
+
+#### 2 New Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/mock-api/auth/register` | Submit registration (validates, checks email, returns reg ID) |
+| POST | `/mock-api/auth/check-email` | Real-time email availability + domain check |
+
+#### Registration Validation
+- `first_name` / `last_name`: required, min 2 chars, max 100
+- `email`: required, valid format, unique against mock users, no disposable domains
+- `password`: min 12 chars + uppercase + lowercase + number + special char + confirmation
+- `agree_terms`: must be accepted
+
+#### Email Check Features
+- Existing mock emails → `EMAIL_TAKEN`
+- Disposable domains (tempmail.com, mailinator.com, etc.) → `DISPOSABLE_EMAIL`
+- Approved organizational domains (argux.mil, agency.gov, police.hr, etc.) → green badge
+- Non-approved domains → available but no badge
+
+#### Error Codes
+- `422 EMAIL_TAKEN` — email already exists in mock users
+- `422 DISPOSABLE_EMAIL` — banned email provider
+- `422` validation errors — field-level messages for all rules
+
+#### Event
+- `RegistrationSubmitted` — email, name, ip, registrationId
+
+#### Unit Tests — 22 Tests
+- Registration: valid data, existing email, disposable email, required fields (5), password rules (4: min length, mixed case, number, special), confirmation mismatch, terms acceptance, email masking
+- Email check: available, existing, disposable, approved domain, non-approved, invalid, required
+- Integration: full flow with email check → register
+
+#### Register.tsx (React)
+- 3-step UI: personal info → security → success (no page reloads)
+- Real-time email availability with 500ms debounce via `/check-email`
+- Domain approval badge (green for approved, red for taken/disposable)
+- Password strength checklist (5 criteria)
+- Terms acknowledgment checkbox
+- Registration ID shown in success step
+- All errors mapped to inline field display
+
 ## 0.25.97 - 2026-04-04
 
 ### Forgot Password — Complete Mock REST API + Unit Tests

@@ -35,3 +35,7 @@ Route::post('/mock-api/auth/reset-password', [AuthApiController::class, 'resetPa
 Route::get('/mock-api/auth/sessions', [AuthApiController::class, 'sessions'])->name('mock-api.auth.sessions');
 Route::delete('/mock-api/auth/sessions/{id}', [AuthApiController::class, 'revokeSession'])->name('mock-api.auth.sessions.revoke');
 Route::get('/mock-api/auth/audit-log', [AuthApiController::class, 'auditLog'])->name('mock-api.auth.audit-log');
+
+// Registration
+Route::post('/mock-api/auth/register', [AuthApiController::class, 'register'])->name('mock-api.auth.register');
+Route::post('/mock-api/auth/check-email', [AuthApiController::class, 'checkEmail'])->name('mock-api.auth.check-email');
