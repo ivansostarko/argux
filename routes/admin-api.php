@@ -10,7 +10,7 @@ use App\Http\Controllers\MockApi\AdminDashboardApiController;
 use App\Http\Controllers\MockApi\AdminAdminsApiController;
 use App\Http\Controllers\MockApi\AdminUsersApiController;
 use App\Http\Controllers\MockApi\AdminRolesApiController;
-
+use App\Http\Controllers\MockApi\AdminStatisticsApiController;
 
 // Admin Dashboard
 Route::get('/mock-api/admin/dashboard/stats', [AdminDashboardApiController::class, 'stats'])->name('mock-api.admin.dashboard.stats');
@@ -52,3 +52,7 @@ Route::delete('/mock-api/admin/roles/{id}', [AdminRolesApiController::class, 'de
 Route::post('/mock-api/admin/roles/{id}/duplicate', [AdminRolesApiController::class, 'duplicate'])->name('mock-api.admin.roles.duplicate');
 
 // Role Management (CRUD + duplicate)
+
+// Statistics
+Route::get('/mock-api/admin/statistics', [AdminStatisticsApiController::class, 'index'])->name('mock-api.admin.statistics.index');
+Route::get('/mock-api/admin/statistics/{tab}', [AdminStatisticsApiController::class, 'tab'])->name('mock-api.admin.statistics.tab');

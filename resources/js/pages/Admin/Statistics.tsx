@@ -1,10 +1,22 @@
 import PageMeta from '../../components/layout/PageMeta';
 import AdminLayout from '../../layouts/AdminLayout';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import * as D from '../../mock/admin-statistics';
 import type { TabId } from '../../mock/admin-statistics';
+
+/**
+ * ARGUX Statistics — 6 chart tabs via mock REST API.
+ *
+ * GET /mock-api/admin/statistics           — Tab metadata
+ * GET /mock-api/admin/statistics/{tab}     — Tab chart data
+ */
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiGet(url: string): Promise<any> {
+    try { const res = await fetch(url, { headers: { Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } }); return await res.json(); } catch { return null; }
+}
 
 /* ═══ SVG Chart Primitives ═══ */
 const W = 420, H = 180, P = { t: 20, r: 16, b: 28, l: 40 };
@@ -90,15 +102,21 @@ function SubjectsTab() { const rc: Record<string, string> = { Critical: '#ef4444
     </div>; }
 
 /* ═══ PAGE ═══ */
-export default function AdminStatistics() {
+function AdminStatistics() {
     const [tab, setTab] = useState<TabId>('overview');
     const [loading, setLoading] = useState(true);
     const [showShortcuts, setShowShortcuts] = useState(false);
     const { trigger } = useTopLoader();
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 600); return () => clearTimeout(t); }, []);
+    const fetchTab = useCallback(async (t: TabId) => {
+        setLoading(true); trigger();
+        await apiGet(`/mock-api/admin/statistics/${t}`);
+        setLoading(false);
+    }, [trigger]);
 
-    const switchTab = (t: TabId) => { setTab(t); setLoading(true); trigger(); setTimeout(() => setLoading(false), 400); };
+    useEffect(() => { fetchTab(tab); }, []);
+
+    const switchTab = (t: TabId) => { setTab(t); fetchTab(t); };
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
@@ -106,13 +124,13 @@ export default function AdminStatistics() {
             if ((e.ctrlKey || e.metaKey) && (e.key === 'q' || e.key === 'Q')) { e.preventDefault(); e.stopPropagation(); setShowShortcuts(prev => !prev); return; }
             const tabKeys: Record<string, TabId> = { '1': 'overview', '2': 'activity', '3': 'devices', '4': 'alerts', '5': 'media', '6': 'subjects' };
             if (tabKeys[e.key]) { switchTab(tabKeys[e.key]); return; }
-            switch (e.key) { case 'r': case 'R': if (!e.ctrlKey && !e.metaKey) { setLoading(true); trigger(); setTimeout(() => setLoading(false), 500); } break; case 'Escape': setShowShortcuts(false); break; }
+            switch (e.key) { case 'r': case 'R': if (!e.ctrlKey && !e.metaKey) fetchTab(tab); break; case 'Escape': setShowShortcuts(false); break; }
         };
         window.addEventListener('keydown', handler, true);
         return () => window.removeEventListener('keydown', handler, true);
-    }, [trigger]);
+    }, [trigger, tab]);
 
-    const tabContent = useMemo(() => {
+    const renderTab = () => {
         if (loading) return <div className="stat-grid">{Array.from({ length: 4 }).map((_, i) => <Skel key={i} w="100%" h={200} />)}</div>;
         switch (tab) {
             case 'overview': return <OverviewTab />;
@@ -122,7 +140,7 @@ export default function AdminStatistics() {
             case 'media': return <MediaTab />;
             case 'subjects': return <SubjectsTab />;
         }
-    }, [tab, loading]);
+    };
 
     return (<><PageMeta title={`Statistics — ${D.tabs.find(t => t.id === tab)?.label}`} /><div data-testid="admin-statistics-page">
         {/* Header */}
@@ -138,10 +156,11 @@ export default function AdminStatistics() {
             </button>)}
         </div>
 
-        {tabContent}
+        {renderTab()}
 
         {/* Ctrl+Q */}
         {showShortcuts && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={e => { if (e.target === e.currentTarget) setShowShortcuts(false); }}><div style={{ background: theme.bgAlt, border: `1px solid ${theme.border}`, borderRadius: 14, padding: 24, width: '100%', maxWidth: 340, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}><div style={{ fontSize: 16, fontWeight: 800, color: theme.text }}>⌨️ Shortcuts</div><button onClick={() => setShowShortcuts(false)} style={{ width: 26, height: 26, borderRadius: 5, border: `1px solid ${theme.border}`, background: 'transparent', cursor: 'pointer', color: theme.textDim, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button></div>{D.keyboardShortcuts.map(s => <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '9px 0', borderBottom: `1px solid ${theme.border}08` }}><span className="stat-kbd" style={{ minWidth: 56, textAlign: 'center' as const, fontSize: 11, height: 22, padding: '0 8px' }}>{s.key}</span><span style={{ fontSize: 13, color: theme.textSecondary }}>{s.description}</span></div>)}<div style={{ marginTop: 16, fontSize: 11, color: theme.textDim, textAlign: 'center' as const }}>Press <strong>Esc</strong> or <strong>Ctrl+Q</strong> to close</div></div></div>}
     </div></>);
 }
 AdminStatistics.layout = (page: React.ReactNode) => <AdminLayout>{page}</AdminLayout>;
+export default AdminStatistics;

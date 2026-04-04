@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.26.6 - 2026-04-04
+
+### Admin Statistics — Complete Mock REST API + Unit Tests
+
+#### 2 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/admin/statistics` | Tab metadata (6 tabs with id/label/icon) |
+| GET | `/mock-api/admin/statistics/{tab}` | Chart data for specific tab |
+
+#### 6 Tabs with Chart Data
+- **overview** — 6 KPIs, event trend (6 months), entity growth (persons/orgs/vehicles), storage donut (7 categories)
+- **activity** — 7×24 heatmap, 8 top subjects, 8 event types breakdown
+- **devices** — 7 device types (online/degraded/offline), 5 battery ranges, sync rate sparklines
+- **alerts** — 7-day frequency, 3 severity levels donut, response time histogram, 6 top triggered rules
+- **media** — Upload volume (6 months stacked), 4 AI models performance, face match rate trend
+- **subjects** — Top 10 persons, top 5 orgs, 4 risk levels, new entities trend
+
+#### Unit Tests — 23 Tests
+- Index: tab definitions, structure
+- Overview: KPIs (6), event trend (6 months), charts
+- Activity: heatmap 7×24, 8 top subjects, charts
+- Devices: 7 types, 5 battery ranges, charts
+- Alerts: 7 days, 3 severity, top rules
+- Media: 4 AI models, face match rate (6 months)
+- Subjects: 10 persons, 4 risk levels
+- Invalid tab → 404, all 6 tabs work
+
+#### Statistics.tsx (React)
+- Fetches from API on mount and tab switch via `apiGet()`
+- Removed `useMemo` (replaced with `renderTab()`)
+- Tab components still use D.* mock data for chart rendering (API validates data availability)
+
 ## 0.26.5 - 2026-04-04
 
 ### Admin Roles — Complete Mock REST API + Unit Tests
