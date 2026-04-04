@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.26.3 - 2026-04-04
+
+### Admin Admins — Complete Mock REST API + Unit Tests
+
+#### 9 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/admin/admins` | List with search, filter (status/role/dept/mfa), sort, pagination |
+| GET | `/mock-api/admin/admins/{id}` | Single admin detail (sessions, permissions) |
+| POST | `/mock-api/admin/admins` | Create admin (validates email uniqueness) |
+| PUT | `/mock-api/admin/admins/{id}` | Update admin fields |
+| DELETE | `/mock-api/admin/admins/{id}` | Delete admin (protects super_admins ≤2) |
+| PATCH | `/mock-api/admin/admins/{id}/status` | Toggle status (active/suspended/pending/locked) |
+| POST | `/mock-api/admin/admins/{id}/reset-password` | Force password reset email |
+| POST | `/mock-api/admin/admins/{id}/reset-mfa` | Force MFA re-enrollment |
+| DELETE | `/mock-api/admin/admins/{id}/sessions` | Kill all active sessions |
+
+#### List Features (Server-Side)
+- Search by name/email/department
+- Filter by status, role, department, MFA enrollment
+- Sort by any column (asc/desc)
+- Pagination with configurable per_page
+- Returns status counts (active/suspended/pending/locked)
+
+#### Protections
+- `403 PROTECTED_ROLE` — cannot delete super_admin when only 2 remain
+- `422 EMAIL_TAKEN` — duplicate email on create
+- `404 NOT_FOUND` — all endpoints validate ID exists
+
+#### 12 Mock Admin Accounts
+5 roles × 4 statuses: 2 super_admin, 3 admin, 2 security_officer, 2 audit_reader, 2 support_agent, 1 pending, 1 suspended, 1 locked
+
+#### Unit Tests — 27 Tests
+- List: pagination, filter by status/role/dept/mfa, search, sort, status counts
+- Show: detail, 404
+- Create: valid, duplicate email, required fields, invalid role
+- Update: valid, 404
+- Delete: valid, protected super_admin, 404
+- Status: toggle, invalid status
+- Actions: reset password, reset MFA, kill sessions, 404 on all actions
+
+#### Admins.tsx (React)
+Rewritten to fetch from `/mock-api/admin/admins` on mount and on filter/sort/page change. All CRUD operations POST/PUT/DELETE to API. Fallback to static data if API unreachable.
+
 ## 0.26.2 - 2026-04-04
 
 ### Admin Dashboard — Complete Mock REST API + Unit Tests

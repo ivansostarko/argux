@@ -1,17 +1,42 @@
 import PageMeta from '../../components/layout/PageMeta';
 import AdminLayout from '../../layouts/AdminLayout';
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import { useToast } from '../../components/ui/Toast';
-import { mockAdmins, statusConfig, roleConfig, departments, keyboardShortcuts } from '../../mock/admin-admins';
+import { mockAdmins as FALLBACK_ADMINS, statusConfig, roleConfig, departments, keyboardShortcuts } from '../../mock/admin-admins';
 import type { AdminStatus, AdminRole, MfaMethod, Admin } from '../../mock/admin-admins';
+
+/**
+ * ARGUX Admin Management — CRUD via mock REST API.
+ *
+ * GET    /mock-api/admin/admins              — List (search, filter, sort, paginate)
+ * GET    /mock-api/admin/admins/{id}         — Detail
+ * POST   /mock-api/admin/admins              — Create
+ * PUT    /mock-api/admin/admins/{id}         — Update
+ * DELETE /mock-api/admin/admins/{id}         — Delete
+ * PATCH  /mock-api/admin/admins/{id}/status  — Toggle status
+ * POST   /mock-api/admin/admins/{id}/reset-password — Force password reset
+ * POST   /mock-api/admin/admins/{id}/reset-mfa      — Force MFA re-enrollment
+ * DELETE /mock-api/admin/admins/{id}/sessions        — Kill all sessions
+ */
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        const data = await res.json();
+        return { ok: res.ok, status: res.status, data };
+    } catch { return { ok: false, status: 0, data: { message: 'Network error.' } }; }
+}
 
 function Skel({ w, h }: { w: string | number; h: number }) { return <div className="adma-skeleton" style={{ width: typeof w === 'number' ? w : w, height: h }} />; }
 
 export default function AdminAdmins() {
     const [loading, setLoading] = useState(true);
-    const [admins, setAdmins] = useState(mockAdmins);
+    const [admins, setAdmins] = useState<Admin[]>([]);
     const [search, setSearch] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [page, setPage] = useState(1);
@@ -22,6 +47,8 @@ export default function AdminAdmins() {
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [detailId, setDetailId] = useState<number | null>(null);
     const [showShortcuts, setShowShortcuts] = useState(false);
+    const [totalCount, setTotalCount] = useState(0);
+    const [statusCounts, setStatusCounts] = useState<Record<string,number>>({});
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
     const toast = useToast();
@@ -42,7 +69,27 @@ export default function AdminAdmins() {
     const [fmDept, setFmDept] = useState('IT Infrastructure');
     const [fmNotes, setFmNotes] = useState('');
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 600); return () => clearTimeout(t); }, []);
+    // Fetch admins from API
+    const fetchAdmins = useCallback(async () => {
+        setLoading(true); trigger();
+        const params = new URLSearchParams({ page: String(page), per_page: String(perPage), sort: sortCol, dir: sortDir });
+        if (search) params.set('search', search);
+        if (fStatus) params.set('status', fStatus);
+        if (fRole) params.set('role', fRole);
+        if (fDept) params.set('department', fDept);
+        if (fMfa) params.set('mfa', fMfa);
+        const { ok, data } = await apiCall(`/mock-api/admin/admins?${params}`);
+        if (ok && data.data) {
+            setAdmins(data.data);
+            setTotalCount(data.meta?.total || data.data.length);
+            if (data.counts) setStatusCounts(data.counts);
+        } else {
+            setAdmins(FALLBACK_ADMINS); setTotalCount(FALLBACK_ADMINS.length);
+        }
+        setLoading(false);
+    }, [page, perPage, sortCol, sortDir, search, fStatus, fRole, fDept, fMfa, trigger]);
+
+    useEffect(() => { fetchAdmins(); }, [fetchAdmins]);
 
     const filterCount = [fStatus, fRole, fDept, fMfa].filter(Boolean).length;
     const resetAll = useCallback(() => { setSearch(''); setFStatus(''); setFRole(''); setFDept(''); setFMfa(''); setPage(1); trigger(); }, [trigger]);
@@ -57,53 +104,59 @@ export default function AdminAdmins() {
 
     const openNew = () => { clearForm(); setEditId(null); setShowNew(true); };
 
-    const filtered = useMemo(() => {
-        let a = admins;
-        if (fStatus) a = a.filter(x => x.status === fStatus);
-        if (fRole) a = a.filter(x => x.role === fRole);
-        if (fDept) a = a.filter(x => x.department === fDept);
-        if (fMfa) a = a.filter(x => fMfa === 'enrolled' ? x.mfaEnrolled : !x.mfaEnrolled);
-        if (search) { const q = search.toLowerCase(); a = a.filter(x => `${x.firstName} ${x.lastName} ${x.email} ${x.department}`.toLowerCase().includes(q)); }
-        return [...a].sort((x, y) => { const m = sortDir === 'asc' ? 1 : -1; const av = (x as any)[sortCol] || ''; const bv = (y as any)[sortCol] || ''; return typeof av === 'string' ? av.localeCompare(bv) * m : (av - bv) * m; });
-    }, [admins, fStatus, fRole, fDept, fMfa, search, sortCol, sortDir]);
-
-    const totalPages = Math.ceil(filtered.length / perPage);
-    const paged = filtered.slice((page - 1) * perPage, page * perPage);
+    // Data is already filtered/sorted/paged by the API
+    const paged = admins;
+    const totalPages = Math.ceil(totalCount / perPage);
     const detail = detailId ? admins.find(a => a.id === detailId) : null;
 
     const toggleSort = (col: typeof sortCol) => { if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortCol(col); setSortDir('asc'); } setPage(1); };
     const SI = ({ col }: { col: typeof sortCol }) => sortCol === col ? <span style={{ fontSize: 9, marginLeft: 2 }}>{sortDir === 'asc' ? '▲' : '▼'}</span> : null;
 
-    const handleCreate = () => {
+    const handleCreate = async () => {
         if (!fmFirst.trim() || !fmLast.trim() || !fmEmail.trim()) return;
-        const newAdmin: Admin = { id: Date.now(), firstName: fmFirst.trim(), lastName: fmLast.trim(), email: fmEmail.trim(), phone: fmPhone.trim(), role: fmRole, status: 'pending', mfa: 'none', mfaEnrolled: false, department: fmDept, lastLogin: 'Never', lastIp: '—', loginCount: 0, createdAt: new Date().toISOString().slice(0, 10), createdBy: 'Col. Tomić', failedAttempts: 0, notes: fmNotes, sessions: [], permissions: [] };
-        setAdmins([newAdmin, ...admins]); setShowNew(false); clearForm(); trigger();
-        toast.success('Admin created', `${fmFirst} ${fmLast} (${roleConfig[fmRole].label})`);
+        const { ok, data } = await apiCall('/mock-api/admin/admins', 'POST', { first_name: fmFirst.trim(), last_name: fmLast.trim(), email: fmEmail.trim(), phone: fmPhone.trim(), role: fmRole, department: fmDept, notes: fmNotes });
+        if (ok && data.data) {
+            setAdmins(prev => [data.data, ...prev]); setShowNew(false); clearForm(); trigger();
+            toast.success('Admin created', data.message || `${fmFirst} ${fmLast}`);
+        } else {
+            toast.error('Error', data.errors?.email?.[0] || data.message || 'Create failed.');
+        }
     };
 
-    const handleUpdate = () => {
+    const handleUpdate = async () => {
         if (!editId || !fmFirst.trim() || !fmLast.trim() || !fmEmail.trim()) return;
-        setAdmins(prev => prev.map(a => a.id === editId ? { ...a, firstName: fmFirst.trim(), lastName: fmLast.trim(), email: fmEmail.trim(), phone: fmPhone.trim(), role: fmRole, department: fmDept, notes: fmNotes } : a));
-        setEditId(null); clearForm(); trigger();
-        toast.success('Admin updated', `${fmFirst} ${fmLast} saved`);
+        const { ok, data } = await apiCall(`/mock-api/admin/admins/${editId}`, 'PUT', { first_name: fmFirst.trim(), last_name: fmLast.trim(), email: fmEmail.trim(), phone: fmPhone.trim(), role: fmRole, department: fmDept, notes: fmNotes });
+        if (ok && data.data) {
+            setAdmins(prev => prev.map(a => a.id === editId ? { ...a, ...data.data } : a));
+            setEditId(null); clearForm(); trigger();
+            toast.success('Admin updated', data.message || `${fmFirst} ${fmLast} saved`);
+        } else { toast.error('Error', data.message || 'Update failed.'); }
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!deleteId) return;
         const a = admins.find(x => x.id === deleteId);
-        setAdmins(prev => prev.filter(x => x.id !== deleteId));
-        setDeleteId(null); if (detailId === deleteId) setDetailId(null);
-        toast.success('Admin deleted', `${a?.firstName} ${a?.lastName} removed`); trigger();
+        const { ok, data } = await apiCall(`/mock-api/admin/admins/${deleteId}`, 'DELETE');
+        if (ok) {
+            setAdmins(prev => prev.filter(x => x.id !== deleteId));
+            setDeleteId(null); if (detailId === deleteId) setDetailId(null);
+            toast.success('Admin deleted', data.message || `${a?.firstName} ${a?.lastName} removed`); trigger();
+        } else { toast.error('Error', data.message || 'Delete failed.'); setDeleteId(null); }
     };
 
-    const handleStatusToggle = (id: number, newStatus: AdminStatus) => {
-        setAdmins(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
-        toast.info('Status changed', `${statusConfig[newStatus].label}`); trigger();
+    const handleStatusToggle = async (id: number, newStatus: AdminStatus) => {
+        const { ok, data } = await apiCall(`/mock-api/admin/admins/${id}/status`, 'PATCH', { status: newStatus });
+        if (ok) {
+            setAdmins(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
+            toast.info('Status changed', data.message || statusConfig[newStatus].label); trigger();
+        } else { toast.error('Error', data.message || 'Status change failed.'); }
     };
 
-    const handleForceReset = (id: number) => {
-        const a = admins.find(x => x.id === id);
-        toast.success('Password reset', `Reset email sent to ${a?.email}`); trigger();
+    const handleForceReset = async (id: number) => {
+        const { ok, data } = await apiCall(`/mock-api/admin/admins/${id}/reset-password`, 'POST');
+        if (ok) toast.success('Password reset', data.message || 'Reset email sent.');
+        else toast.error('Error', data.message || 'Reset failed.');
+        trigger();
     };
 
     useEffect(() => {
@@ -122,12 +175,6 @@ export default function AdminAdmins() {
         window.addEventListener('keydown', handler, true);
         return () => window.removeEventListener('keydown', handler, true);
     }, [resetAll, totalPages]);
-
-    const statusCounts = useMemo(() => {
-        const c: Record<string, number> = {};
-        (Object.keys(statusConfig) as AdminStatus[]).forEach(s => { c[s] = admins.filter(a => a.status === s).length; });
-        return c;
-    }, [admins]);
 
     const inp: React.CSSProperties = { width: '100%', padding: '9px 12px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' };
     const gridCols = '44px 1fr 160px 120px 80px 110px 80px 110px';
@@ -235,7 +282,7 @@ export default function AdminAdmins() {
 
         {/* Pagination */}
         {!loading && totalPages > 1 && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ fontSize: 12, color: theme.textSecondary }}>Page {page}/{totalPages} · {filtered.length} admins</span>
+            <span style={{ fontSize: 12, color: theme.textSecondary }}>Page {page}/{totalPages} · {totalCount} admins</span>
             <div style={{ display: 'flex', gap: 4 }}>
                 <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'none', color: page === 1 ? theme.textDim : theme.textSecondary, fontSize: 12, cursor: page === 1 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: page === 1 ? 0.4 : 1 }}>Prev</button>
                 <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'none', color: page === totalPages ? theme.textDim : theme.textSecondary, fontSize: 12, cursor: page === totalPages ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: page === totalPages ? 0.4 : 1 }}>Next</button>
