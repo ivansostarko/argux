@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.26.7 - 2026-04-04
+
+### Admin Audit — Complete Mock REST API + Unit Tests
+
+#### 4 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/admin/audit` | List with search, 7 filters (action/severity/module/user/IP/date range), sort, pagination |
+| GET | `/mock-api/admin/audit/{id}` | Entry detail with metadata + integrity hashes |
+| POST | `/mock-api/admin/audit/export` | Export to CSV or PDF (mock file generation) |
+| POST | `/mock-api/admin/audit/{id}/verify` | SHA-256 cryptographic integrity verification |
+
+#### 30 Mock Audit Entries
+- 20 action types: login, logout, view, create, update, delete, export, import, config, alert, assign, revoke, search, ai_query, sync, deploy, failed_login, mfa_verify, session_kill, backup
+- 4 severity levels: info, success, warning, critical
+- 20 modules across all platform areas
+- 6 users + System automated entries
+- SHA-256 hash chain with previousHash linking
+
+#### Integrity Verification
+- Each entry has `integrityHash` (SHA-256) and `previousHash` (chain link)
+- POST verify endpoint validates hash chain position
+- Returns: valid boolean, algorithm, chain_position, verified_at
+
+#### Export
+- CSV (2.4 MB) and PDF (8.7 MB) mock exports
+- Returns filename with timestamp, entry count, file size
+
+#### Unit Tests — 23 Tests
+- List: pagination (page 1+2), filter by action/severity/module/user/IP, search, sort timestamp desc, sort user asc, integrity hash structure, combined filters
+- Show: detail, 404
+- Export: CSV, PDF, invalid format (422), required field
+- Verify: valid entry, 404, hash length (64 chars)
+
 ## 0.26.6 - 2026-04-04
 
 ### Admin Statistics — Complete Mock REST API + Unit Tests

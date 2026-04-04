@@ -1,16 +1,37 @@
 import PageMeta from '../../components/layout/PageMeta';
 import AdminLayout from '../../layouts/AdminLayout';
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import { useToast } from '../../components/ui/Toast';
-import { mockAuditEntries, actionConfig, severityConfig, moduleConfig, users, keyboardShortcuts } from '../../mock/admin-audit';
+import { mockAuditEntries as FALLBACK, actionConfig, severityConfig, moduleConfig, users, keyboardShortcuts } from '../../mock/admin-audit';
 import type { ActionType, Severity, Module, AuditEntry } from '../../mock/admin-audit';
+
+/**
+ * ARGUX Audit Log — immutable trail via mock REST API.
+ *
+ * GET  /mock-api/admin/audit              — List (search, 7 filters, sort, pagination)
+ * GET  /mock-api/admin/audit/{id}         — Entry detail
+ * POST /mock-api/admin/audit/export       — Export CSV/PDF
+ * POST /mock-api/admin/audit/{id}/verify  — Cryptographic integrity check
+ */
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: { message: 'Network error.' } }; }
+}
 
 function Skel({ w, h }: { w: string | number; h: number }) { return <div className="aud-skeleton" style={{ width: typeof w === 'number' ? w : w, height: h }} />; }
 
 export default function AdminAudit() {
     const [loading, setLoading] = useState(true);
+    const [entries, setEntries] = useState<AuditEntry[]>([]);
+    const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [selEntry, setSelEntry] = useState<string | null>(null);
@@ -32,32 +53,42 @@ export default function AdminAudit() {
     const [fDateFrom, setFDateFrom] = useState('');
     const [fDateTo, setFDateTo] = useState('');
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 600); return () => clearTimeout(t); }, []);
+    const fetchAudit = useCallback(async () => {
+        setLoading(true); trigger();
+        const params = new URLSearchParams({ page: String(page), per_page: String(perPage), sort: sortCol, dir: sortDir });
+        if (search) params.set('search', search);
+        if (fAction) params.set('action', fAction);
+        if (fSeverity) params.set('severity', fSeverity);
+        if (fModule) params.set('module', fModule);
+        if (fUser) params.set('user', fUser);
+        if (fIp) params.set('ip', fIp);
+        if (fDateFrom) params.set('date_from', fDateFrom);
+        if (fDateTo) params.set('date_to', fDateTo);
+        const { ok, data } = await apiCall(`/mock-api/admin/audit?${params}`);
+        if (ok && data.data) { setEntries(data.data); setTotalCount(data.meta?.total || data.data.length); }
+        else { setEntries(FALLBACK as AuditEntry[]); setTotalCount(FALLBACK.length); }
+        setLoading(false);
+    }, [page, perPage, sortCol, sortDir, search, fAction, fSeverity, fModule, fUser, fIp, fDateFrom, fDateTo, trigger]);
+
+    useEffect(() => { fetchAudit(); }, [fetchAudit]);
 
     const filterCount = [fAction, fSeverity, fModule, fUser, fIp, fDateFrom, fDateTo].filter(Boolean).length;
     const resetAll = useCallback(() => { setSearch(''); setFAction(''); setFSeverity(''); setFModule(''); setFUser(''); setFIp(''); setFDateFrom(''); setFDateTo(''); setPage(1); trigger(); }, [trigger]);
 
-    const filtered = useMemo(() => {
-        let ents = mockAuditEntries as AuditEntry[];
-        if (fAction) ents = ents.filter(e => e.action === fAction);
-        if (fSeverity) ents = ents.filter(e => e.severity === fSeverity);
-        if (fModule) ents = ents.filter(e => e.module === fModule);
-        if (fUser) ents = ents.filter(e => e.user === fUser);
-        if (fIp) ents = ents.filter(e => e.ip.includes(fIp));
-        if (fDateFrom) ents = ents.filter(e => e.timestamp >= fDateFrom);
-        if (fDateTo) ents = ents.filter(e => e.timestamp <= fDateTo + ' 23:59:59');
-        if (search) { const q = search.toLowerCase(); ents = ents.filter(e => e.description.toLowerCase().includes(q) || e.target.toLowerCase().includes(q) || e.user.toLowerCase().includes(q) || e.ip.includes(q) || e.action.toLowerCase().includes(q)); }
-        return [...ents].sort((a, b) => { const m = sortDir === 'asc' ? 1 : -1; const av = (a as any)[sortCol] || ''; const bv = (b as any)[sortCol] || ''; return av.localeCompare(bv) * m; });
-    }, [fAction, fSeverity, fModule, fUser, fIp, fDateFrom, fDateTo, search, sortCol, sortDir]);
-
-    const totalPages = Math.ceil(filtered.length / perPage);
-    const paged = filtered.slice((page - 1) * perPage, page * perPage);
-    const entry = selEntry ? mockAuditEntries.find(e => e.id === selEntry) : null;
+    // Data already filtered/sorted/paged by API
+    const paged = entries;
+    const totalPages = Math.ceil(totalCount / perPage);
+    const entry = selEntry ? entries.find(e => e.id === selEntry) : null;
 
     const toggleSort = (col: typeof sortCol) => { if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortCol(col); setSortDir('desc'); } setPage(1); };
     const SI = ({ col }: { col: typeof sortCol }) => sortCol === col ? <span style={{ fontSize: 9, marginLeft: 2 }}>{sortDir === 'asc' ? '▲' : '▼'}</span> : null;
 
-    const handleExport = (fmt: string) => { toast.success(`Export ${fmt.toUpperCase()}`, `Audit log exported as ${fmt.toUpperCase()} (${filtered.length} entries)`); trigger(); };
+    const handleExport = async (fmt: string) => {
+        const { ok, data } = await apiCall('/mock-api/admin/audit/export', 'POST', { format: fmt });
+        if (ok) toast.success(`Export ${fmt.toUpperCase()}`, data.message);
+        else toast.error('Export failed', data.message || 'Error');
+        trigger();
+    };
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
@@ -76,11 +107,8 @@ export default function AdminAudit() {
     }, [resetAll, totalPages, selEntry]);
 
     // Severity stats
-    const sevStats = useMemo(() => {
-        const s: Record<string, number> = {};
-        (Object.keys(severityConfig) as Severity[]).forEach(sv => { s[sv] = mockAuditEntries.filter(e => e.severity === sv).length; });
-        return s;
-    }, []);
+    const sevStats: Record<string, number> = {};
+    (Object.keys(severityConfig) as Severity[]).forEach(sv => { sevStats[sv] = entries.filter(e => e.severity === sv).length; });
 
     const sel: React.CSSProperties = { padding: '8px 10px', background: theme.bgInput, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none', width: '100%' };
 
@@ -90,7 +118,7 @@ export default function AdminAudit() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>📋</div>
-                <div><h1 style={{ fontSize: 22, fontWeight: 700, color: theme.text, margin: '0 0 4px' }}>Audit Log</h1><p style={{ fontSize: 13, color: theme.textSecondary, margin: 0 }}>Immutable trail · {mockAuditEntries.length} entries · ClickHouse backend · SHA-256 integrity</p></div>
+                <div><h1 style={{ fontSize: 22, fontWeight: 700, color: theme.text, margin: '0 0 4px' }}>Audit Log</h1><p style={{ fontSize: 13, color: theme.textSecondary, margin: 0 }}>Immutable trail · {totalCount} entries · ClickHouse backend · SHA-256 integrity</p></div>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
                 <button onClick={() => handleExport('csv')} style={{ padding: '8px 14px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.textSecondary, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>📤 CSV</button>
@@ -105,7 +133,7 @@ export default function AdminAudit() {
                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: v.color }} />{v.label}<span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 10 }}>{sevStats[k]}</span>
                 </button>
             ))}
-            <span style={{ fontSize: 11, color: theme.textDim, alignSelf: 'center', marginLeft: 4 }}>Total: <strong style={{ color: theme.text }}>{mockAuditEntries.length}</strong></span>
+            <span style={{ fontSize: 11, color: theme.textDim, alignSelf: 'center', marginLeft: 4 }}>Total: <strong style={{ color: theme.text }}>{totalCount}</strong></span>
         </div>
 
         {/* Search + filter toggle */}
@@ -182,7 +210,7 @@ export default function AdminAudit() {
 
         {/* Pagination */}
         {!loading && totalPages > 1 && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ fontSize: 12, color: theme.textSecondary }}>Page {page}/{totalPages} · {filtered.length} entries</span>
+            <span style={{ fontSize: 12, color: theme.textSecondary }}>Page {page}/{totalPages} · {totalCount} entries</span>
             <div style={{ display: 'flex', gap: 4 }}>
                 <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'none', color: page === 1 ? theme.textDim : theme.textSecondary, fontSize: 12, cursor: page === 1 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: page === 1 ? 0.4 : 1 }}>← Prev</button>
                 {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => { const pg = page <= 3 ? i + 1 : Math.min(page - 2 + i, totalPages - 4 + i + 1); if (pg < 1 || pg > totalPages) return null; return <button key={pg} onClick={() => setPage(pg)} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${page === pg ? '#8b5cf6' : theme.border}`, background: page === pg ? '#8b5cf608' : 'none', color: page === pg ? '#8b5cf6' : theme.textSecondary, fontSize: 12, fontWeight: page === pg ? 700 : 400, cursor: 'pointer', fontFamily: 'inherit' }}>{pg}</button>; })}

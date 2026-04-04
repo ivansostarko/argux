@@ -56,3 +56,9 @@ Route::post('/mock-api/admin/roles/{id}/duplicate', [AdminRolesApiController::cl
 // Statistics
 Route::get('/mock-api/admin/statistics', [AdminStatisticsApiController::class, 'index'])->name('mock-api.admin.statistics.index');
 Route::get('/mock-api/admin/statistics/{tab}', [AdminStatisticsApiController::class, 'tab'])->name('mock-api.admin.statistics.tab');
+
+// Audit Log
+Route::get('/mock-api/admin/audit', [AdminAuditApiController::class, 'index'])->name('mock-api.admin.audit.index');
+Route::get('/mock-api/admin/audit/{id}', [AdminAuditApiController::class, 'show'])->name('mock-api.admin.audit.show');
+Route::post('/mock-api/admin/audit/export', [AdminAuditApiController::class, 'export'])->name('mock-api.admin.audit.export');
+Route::post('/mock-api/admin/audit/{id}/verify', [AdminAuditApiController::class, 'verify'])->name('mock-api.admin.audit.verify');
