@@ -1,367 +1,70 @@
 # Changelog
 
-## 0.25.95 - 2026-04-02
+## 0.25.96 - 2026-04-04
 
-### Operations — Delete Confirmations, Events Tab, Search Multi-Select, Briefing Cleanup
+### Login — Complete Mock REST API + Unit Tests
 
-#### Universal Delete Confirmation
-Every remove/delete action across all tabs now shows a confirmation modal with the item name before proceeding. 11 delete actions wrapped:
-- Operation delete, checklist item remove, person remove, org remove, device remove, vehicle remove, team remove, team member remove, zone remove, alert remove, briefing clear
+#### Mock REST API — 12 Endpoints
 
-#### Events Tab (NEW)
-Added `📊 Events` tab between Alerts and Timeline showing all activities related to the operation:
-- Search bar filtering by title and person name
-- Type filter chips: all, surveillance, alert, intel, comm, movement, system
-- Color-coded event cards with severity badges, timestamps, person name, source
-- 8 mock events for HAWK, 2 for GLACIER, 1 each for PHOENIX and CERBERUS
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/mock-api/auth/login` | Authenticate credentials → 2FA challenge or token |
+| POST | `/mock-api/auth/2fa/verify` | Verify 2FA code → issue token |
+| POST | `/mock-api/auth/2fa/resend` | Resend 2FA code (email/SMS/authenticator) |
+| POST | `/mock-api/auth/logout` | Invalidate session |
+| POST | `/mock-api/auth/refresh` | Refresh auth token |
+| GET | `/mock-api/auth/me` | Current user profile |
+| POST | `/mock-api/auth/forgot-password` | Request reset code |
+| POST | `/mock-api/auth/reset-password` | Reset password with code |
+| GET | `/mock-api/auth/sessions` | List active sessions |
+| DELETE | `/mock-api/auth/sessions/{id}` | Revoke session |
+| GET | `/mock-api/auth/audit-log` | Auth audit log |
 
-#### Search + Multi-Select Pickers
-Replaced all single-click add modals with a reusable `SearchPicker` component featuring:
-- Real-time search filtering
-- Checkbox multi-select (select multiple items, then add all at once)
-- Selected count badge
-- Already-assigned items auto-excluded
-- Used for: persons, organizations, devices, vehicles, team members, zones (from global pool), alerts (from global pool)
+#### Mock Users (5 accounts, 5 edge cases)
+- `operator@argux.mil` — admin, 2FA authenticator
+- `analyst@argux.mil` — analyst, 2FA email
+- `viewer@argux.mil` — viewer, no 2FA (direct token)
+- `suspended@argux.mil` — returns 403 ACCOUNT_SUSPENDED
+- `locked@argux.mil` — returns 429 ACCOUNT_LOCKED
 
-#### Global Zone & Alert Pools
-Added `globalZonePool` (10 predefined zones) and `globalAlertPool` (10 predefined alert rules) in mock data. Zones and alerts are now picked from these pools instead of created from scratch.
+#### Error Handling
+- `422` validation errors with field-level messages
+- `403` ACCOUNT_SUSPENDED with descriptive message
+- `429` ACCOUNT_LOCKED with `locked_until` timestamp and remaining minutes
+- `410` CODE_EXPIRED for 2FA timeout
+- `400` NO_CHALLENGE for 2FA without session
+- `401` UNAUTHENTICATED for protected endpoints
+- Remaining attempts counter on failed password
+- Anti-enumeration: forgot-password always returns success
 
-#### Briefing Tab Cleanup
-Removed Comms Channel and Frequency cards from briefing tab. These fields remain editable in the Edit Operation modal.
+#### Auth Events (5 events)
+- `LoginAttempted` — email, ip, success, failure reason
+- `TwoFactorChallenged` — userId, method, ip
+- `UserAuthenticated` — userId, email, ip, token
+- `UserLoggedOut` — userId, ip
+- `PasswordResetRequested` — email, ip
 
-## 0.25.94 - 2026-04-02
+#### Form Requests (4 enhanced)
+- `LoginRequest` — email:rfc,dns + password:min:8,max:128 + JSON error responses
+- `TwoFactorRequest` — code:size:6,regex:digits + challenge_token + method
+- `ForgotPasswordRequest` — email:rfc + JSON errors
+- `ResetPasswordRequest` — code:size:6 + password:min:12,confirmed + JSON errors
 
-### Operations — Full CRUD Across All Tabs + Status Change
+#### Unit Tests — 25 Tests
+- Login: valid credentials (2FA + no-2FA), wrong password, unknown email, suspended, locked, validation
+- 2FA: valid code, invalid code (000000), expired code (999999), no session, resend, code validation
+- Sessions: logout, refresh, me, list sessions, revoke session, audit log
+- Password: forgot (known + unknown email), reset (valid + invalid code), confirmation mismatch
+- Integration: full login→2FA→me→refresh→logout flow
 
-Complete rewrite of /operations with 17 modal dialogs for full create/edit/remove across every tab.
-
-#### Operation Management
-- **Edit Operation** — modal to edit codename, name, priority, classification, commander, comms channel/frequency
-- **Delete Operation** — confirmation dialog, removes from list, auto-selects next
-- **Change Status** — visual phase selector (Planning → Preparation → Active → Debrief → Closed), auto-adds timeline entry, sets end date on Close
-
-#### Overview Tab
-- **Edit Description** — modal with textarea, saves inline
-- **Checklist CRUD** — add new items (task + assignee), edit existing, remove, toggle done/undone with click
-- **Threat Assessment** — edit risk level (0-100) + assessment text in modal
-
-#### Targets Tab
-- **Add Person** — scrollable picker from mockPersons, shows avatar + risk level, deduped
-- **Remove Person** — inline ✕ button per target
-- **Add Organization** — picker from mockOrganizations
-- **Remove Organization** — inline ✕ button
-
-#### Resources Tab
-- **Add Device** — picker from mockDevices, shows type icon + status
-- **Remove Device** — inline ✕ button
-- **Add Vehicle** — picker from mockVehicles, shows plate + make/model
-- **Remove Vehicle** — inline ✕ button
-
-#### Teams Tab
-- **Add Team** — modal with name + lead fields
-- **Edit Team** — modify name/lead
-- **Remove Team** — inline ✕ button
-- **Add Team Member** — person picker filtered to non-members, auto-assigns callsign + "Operative" role
-- **Remove Team Member** — inline ✕ button per member
-
-#### Zones Tab
-- **Add Zone** — modal with name, type (surveillance/restricted/staging/buffer), radius, lat/lng
-- **Edit Zone** — same form pre-filled
-- **Remove Zone** — inline ✕ button
-
-#### Alerts Tab
-- **Add Alert** — modal with type dropdown (7 types), description, severity
-- **Edit Alert** — same form pre-filled
-- **Remove Alert** — inline ✕ button
-- **Toggle Enable** — click status dot to toggle on/off
-
-#### Briefing Tab
-- **Edit Briefing** — large textarea modal for notes
-- **Clear Briefing** — inline ✕ button
-- **Generate AI Briefing** — button triggers 2s mock generation, produces SITREP with targets/devices/teams/zones/alerts/risk summary + ROE
-
-#### Architecture
-- `ops` state as mutable array (`useState<Operation[]>`) instead of static `mockOps`
-- `upOp()` helper for immutable operation updates by selected ID
-- `modal` state with `{type, data}` for dynamic CRUD modals
-- Shared components: `Modal`, `FL` (label), `FI` (input), `FS` (select), `FT` (textarea), `BtnP` (primary), `BtnC` (cancel), `IBtn` (icon), `AddB` (dashed add)
-- Phase change auto-logs to timeline
-
-## 0.25.19 - 2026-03-26
-
-### Updated — Operations (/operations)
-- **Responsive mobile**: Sidebar hidden ≤768px. Mobile bar (operation selector + New). Tab labels hidden (icons only). Risk gauge hidden. Grids single-column. Header extras hidden.
-- **Breadcrumbs fixed**: Added `'operations': 'Operations'`.
-- **Footer removed**.
-- **Larger fonts**: Sidebar 16px title, 13px search/codename, 10px phase/priority/description, 9px stats. Header 17px codename, 12px subtitle, 10px meta. Stats 20px numbers. Tabs 11px+13px icons. Overview 12px description, 12px checklist, 11px threat. Targets 12px names, 10px details. Resources 11px device/vehicle names. Teams 12px names, 10px members. Zones 12px names, 10px details. Alerts 11px type, 10px description. Timeline 12px labels, 10px dates. Briefing 12px notes+comms.
-- **Skeleton loader**: 4 sidebar skeleton items, content area skeleton (4 stat blocks + description + checklist), 700ms.
-- **New Operation modal**: Codename (monospace, uppercase, red, required), name (required), description textarea, phase (5 phases as icon grid), priority (4 levels), classification (5 levels: SECRET through CONFIDENTIAL), commander. Create disabled without codename + name.
-- **Mock data** (`resources/js/mock/operations.ts`, 142 lines): 5 operations (HAWK Active/Critical, GLACIER Planning/High, PHOENIX Preparation/Medium, CERBERUS Debrief/High, SHADOW Closed/Critical). HAWK has 6 teams, 4 zones, 5 alert rules, 6 timeline events, 7 checklist items. phaseColors/Icons, prioColors, allPhases, tabList (8), keyboardShortcuts (5).
-- **CSS** (`resources/css/pages/operations.css`, 23 lines): Skeleton, kbd, 2-panel, grid responsive, mobile bar.
-- **Tests** (`resources/js/tests/Operations.test.ts`): 28 tests across 5 describe blocks — phases, priorities, tabList (8), mockOps (IDs/codenames/fields/phases/active/teams/zones/alerts/timeline/checklists/team structure/zone coords/HAWK complexity), shortcuts.
-- **Keyboard shortcuts**: `N` new, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
-
-## 0.25.18 - 2026-03-26
-
-### Updated — Workflows (/workflows)
-- **Responsive mobile**: Detail panel hidden ≤768px. Mobile bar (search + New). Kanban columns stack vertically. List table head hidden ≤1024px, rows flex-wrap. Template grid single-column. View labels hidden. Header stats hidden.
-- **Breadcrumbs fixed**: Added `'workflows': 'Workflows'`.
-- **Footer removed**.
-- **Larger fonts**: Title 16px, search 12px, status badges 10px. Kanban column headers 12px, card names 12px, triggers/actions 8-9px, stats 9px. List names 12px, meta 9-10px. Template names 13px, descriptions 11px, triggers/actions 9px. Detail panel name 13px, description 10px, stats 15px, triggers 11px, actions 11px, subjects 10px, meta 10px, exec log 10px.
-- **Skeleton loader**: Kanban skeleton (5 columns × 2 cards), List skeleton (6 rows), Templates skeleton (4 cards), all 700ms.
-- **New Workflow modal**: Name (required), description textarea, priority (4 levels), status (5 columns), operation selector, trigger type (10 types as 5×2 icon grid), action type (8 types as 4×2 icon grid). Create disabled without name.
-- **Mock data** (`resources/js/mock/workflows.ts`, 122 lines): 9 workflows (4 Active, 1 Draft, 1 Paused, 1 Completed, 1 Archived) across 3 operations. 6 templates across 5 categories. statusColors/Icons, prioColors, triggerIcons (10), actionIcons (8), kanbanCols (5), allTriggerTypes (10), allActionTypes (8), keyboardShortcuts (8).
-- **CSS** (`resources/css/pages/workflows.css`, 26 lines): Skeleton, kbd, kanban/list/template layouts, responsive breakpoints.
-- **Tests** (`resources/js/tests/Workflows.test.ts`): 32 tests across 9 describe blocks — statuses, priorities, triggerIcons/allTriggerTypes, actionIcons/allActionTypes, kanbanCols, mockWorkflows (IDs/fields/statuses/operations/active/exec logs/trigger types/action types), templates (IDs/fields/categories), shortcuts.
-- **Keyboard shortcuts**: `1` Kanban, `2` List, `3` Templates, `N` new workflow, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
-
-## 0.25.17 - 2026-03-26
-
-### Updated — Surveillance Apps (/surveillance-apps)
-- **Responsive mobile**: Sidebar hidden ≤768px. Mobile bar (search + agent selector dropdown). Header IMEI/phone hidden. Stats bar wraps. Tab labels hidden (icons only). Remote grid single-column. Screenshot grid single-column.
-- **Breadcrumbs fixed**: Added `'surveillance-apps': 'Surveillance Apps'`.
-- **Footer removed**.
-- **Larger fonts**: Sidebar 16px title, 13px search, 12px status/platform filters, 16px stats, 12px app names, 9px device info. Header 15px name, 10px device. Stats 15px numbers. Tabs 11px. SMS 12px body, 11px numbers, 10px flags. Calls 12px name, 10px number, 11px duration. Contacts 12px name, 10px phone. Calendar 13px title, 11px details. Notifications 11px. Network 11px. Location 13px/12px. Remote 14px heading, 12px labels, 10px desc.
-- **Skeleton loader**: 5 sidebar skeleton items (avatar + text). Empty state skeleton (circle + text).
-- **Mock data** (`resources/js/mock/surveillanceApps.ts`, 186 lines): 6 deployed apps (Horvat Full Monitor Active, Mendoza Stealth Suite, Hassan Comms Intercept Active, Babić GPS Tracker Active, Al-Rashid Full Monitor Offline, Petrova Comms Intercept Paused). SMS with CRITICAL flags, calls with recordings, contacts, calendar, notifications, screenshots, photos, network info. 10 remote commands. statusColors/Icons, typeIcons, tabConfig (10 tabs), keyboardShortcuts (10).
-- **CSS** (`resources/css/pages/surveillance-apps.css`, 24 lines): Skeleton, kbd, 2-panel, remote grid, screenshot grid, responsive breakpoints, mobile bar.
-- **Tests** (`resources/js/tests/SurveillanceApps.test.ts`): 30 tests across 7 describe blocks — statuses, typeIcons, tabConfig (10 tabs), remoteCommands (10), mockApps (IDs/fields/status/platforms/SMS data/calls/contacts/flagged SMS/recorded calls/networkInfo/stats/GPS tracker empty comms), shortcuts.
-- **Keyboard shortcuts**: `1` SMS, `2` Calls, `3` Contacts, `4` Calendar, `5` Network, `0` Remote, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
-
-## 0.25.16 - 2026-03-26
-
-### Updated — Plate Recognition (/plate-recognition)
-- **Responsive mobile**: Sidebar + detail hidden ≤768px. Mobile bar (search + status select). Table head hidden ≤1024px, rows flex-wrap. Reader/watchlist grids single-column. Tab labels hidden.
-- **Breadcrumbs fixed**: Added `'plate-recognition': 'Plate Recognition'`.
-- **Footer removed**.
-- **Larger fonts**: Sidebar 16px title, 13px search, 12px status/filters, 16px stats. Tabs 13px. Plate numbers 13px, reader names 11px, vehicle/person 10px, status 10px, confidence 9px, speed 10px. Watchlist plates 17px, details 11px. Reader names 13px, details 10px. Detail panel plate 18px/22px, vehicle/owner 10-12px, capture details 10px.
-- **Skeleton loader**: 10 skeleton rows (plate + reader + vehicle + status) during 700ms.
-- **Mock data** (`resources/js/mock/plateRecognition.ts`, 59 lines): 10 readers, 15 scans (trimmed from 24), statusColors/Icons, allReaders, allPersons, allOrgs, allPlates, keyboardShortcuts (7).
-- **CSS** (`resources/css/pages/plate-recognition.css`, 15 lines): Skeleton, kbd, 3-panel, table grid responsive, reader/watchlist grids, mobile bar.
-- **Tests** (`resources/js/tests/PlateRecognition.test.ts`): 28 tests across 5 describe blocks — statuses, readers (IDs/fields/online/offline), mockScans (IDs/fields/watchlist/unknown/partial/speed/readerIds/plates), derived lists, shortcuts.
-- **Keyboard shortcuts**: `1` Scans, `2` Watchlist, `3` Readers, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
-
-## 0.25.15 - 2026-03-26
-
-### Updated — Data Sources (/data-sources)
-- **Responsive mobile**: Sidebar + detail hidden ≤768px. Mobile bar (search + category select + New).
-- **Breadcrumbs fixed**: Added `'data-sources': 'Data Sources'`.
-- **Footer removed**.
-- **Larger fonts**: Sidebar 16px title, 13px search, 11-12px category/status filters, 16px stats. Source header 13px country, source name 13px, provider 10px, status 10px, protocol 9px, category badge 9px. Detail panel 13px name, 10px provider/tags, 16px health/error/records, 11px connection details/sync log, notes 11px. Modal 18px heading, 12-13px labels/inputs.
-- **Skeleton loader**: 10 skeleton rows (health ring + text + tags + status) during 700ms.
-- **New Data Source modal**: Full form with source name, provider, category (6 types as icon grid), protocol (9 options), schedule (8 intervals), endpoint URL, authentication (10 auth methods), country. Create disabled without name + endpoint.
-- **Mock data** (`resources/js/mock/dataSources.ts`, 60 lines): 19 sources across 6 categories (Government ×5, Law Enforcement ×3, Financial ×2, OSINT ×2, Technical ×3, Commercial ×4), statusColors/Icons, catColors/Icons, allCategories, allProtocols (9), allCountries, keyboardShortcuts (6).
-- **CSS** (`resources/css/pages/data-sources.css`, 20 lines): Skeleton, kbd, 3-panel, responsive.
-- **Tests** (`resources/js/tests/DataSources.test.ts`): 26 tests across 6 describe blocks — statuses, categories, protocols, mockDS (IDs/fields/categories/status/countries/syncLog/tags/protocols), allCountries sorted, shortcuts.
-- **Keyboard shortcuts**: `N` new source, `F` search, `R` reset, `S` sync all, `Esc` close, `Ctrl+Q` modal.
-
-## 0.25.14 - 2026-03-26
-
-### Updated — Social Scraper (/scraper)
-- **Responsive mobile**: Sidebar + detail hidden ≤768px. Mobile bar (search + New). Tab labels hidden. Scraper grid single-column.
-- **Breadcrumbs fixed**: Added `'scraper': 'Social Scraper'`.
-- **Footer removed**.
-- **Larger fonts**: Sidebar 16px title, 13px search, 12px platform list, 16px stats. Tabs 13px. Post names 12px, content 12px, engagement 9px, badges 9px. Scraper cards 13px handle, 11px details, 10px links. Detail panel 12px name/content, 11px AI assessment, 14px engagement, 10px meta. Modal 18px heading, 12-13px labels/inputs.
-- **Skeleton loader**: 8 skeleton post rows (icon + header + content + badges) during 700ms.
-- **New Social Scraper modal**: Platform selector (10 platforms as 5×2 icon grid), profile URL, handle, interval (6 options), keywords. **Target Entity section**: toggle Person/Organization, select from mockPersons/mockOrganizations, auto-tag description. Operation selector. Create disabled without URL.
-- **Mock data** (`resources/js/mock/scraper.ts`, 68 lines): 12 scrapers (trimmed from 18), 12 posts (trimmed from 17), platformConfig (10), statusColors (4), sentimentColors (4), contentIcons (8), allPlatforms, allPersonsInScrapers, allOrgsInScrapers, keyboardShortcuts (8).
-- **CSS** (`resources/css/pages/scraper.css`, 22 lines): Skeleton, kbd, 3-panel, scraper grid responsive, mobile bar.
-- **Tests** (`resources/js/tests/Scraper.test.ts`): 30 tests across 8 describe blocks — platformConfig (10 platforms), statusColors, sentimentColors, contentIcons, mockScrapers (IDs/fields/active/platforms/entity links), mockPosts (IDs/fields/AI-flagged/scraperIds cross-ref/media/platforms), derived lists, shortcuts.
-- **Keyboard shortcuts**: `1` Feed, `2` AI Flagged, `3` Scrapers, `N` new scraper, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
-
-## 0.25.13 - 2026-03-26
-
-### Updated — Web Scraper (/web-scraper)
-- **Responsive mobile**: Sidebar + detail hidden ≤768px. Mobile bar (search + New button). Tab labels hidden. Source grid single-column.
-- **Breadcrumbs fixed**: Added `'web-scraper': 'Web Scraper'`.
-- **Footer removed**.
-- **Larger fonts**: Sidebar 16px title, 13px search, 11-12px filters, 16px stats. Tabs 13px. Article titles 13px, excerpts 11px, badges 9px, entity links 9px. Source cards 13px name, 11px details, 10px URL. Detail panel 13px title, 12px excerpt, 11px AI assessment, 10px metadata.
-- **Skeleton loader**: 8 skeleton article rows (icon + badge + title + excerpt + tags) during 700ms.
-- **New Web Scraper modal**: Full form with source name, URL, category (8 types), schedule (9 intervals), CSS selector, URL pattern, keywords. **Target Entity section**: toggle Person/Organization, select from mockPersons/mockOrganizations, auto-tag description. Create button disabled without name+URL.
-- **Mock data** (`resources/js/mock/webScraper.ts`, 87 lines): 15 sources (trimmed from 16), 12 articles (trimmed from 15/20), catConfig (8), statusCol (4), relColors (4), contentIcons (8), allCategories, allCountries, allOps, keyboardShortcuts (8).
-- **CSS** (`resources/css/pages/web-scraper.css`, 22 lines): Skeleton, kbd, 3-panel, source grid responsive, mobile bar.
-- **Tests** (`resources/js/tests/WebScraper.test.ts`): 32 tests across 8 describe blocks — catConfig, statusCol, relColors, contentIcons, mockSources (IDs/fields/status/categories/countries), mockArticles (IDs/fields/critical/AI-flagged/entities/sourceId cross-ref/content types), derived lists, shortcuts.
-- **Keyboard shortcuts**: `1` Articles, `2` Critical Intel, `3` Sources, `N` new scraper, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
-
-## 0.25.12 - 2026-03-26
-
-### Updated — Face Recognition (/face-recognition)
-- **Responsive mobile**: Sidebar + detail panel hidden ≤768px. Mobile bar (search + status select). Capture grid adapts (minmax 150px). Tab labels hidden (icons + kbd). Stat grid single-column.
-- **Breadcrumbs fixed**: Added `'face-recognition': 'Face Recognition'`.
-- **Footer removed**.
-- **Larger fonts**: Sidebar 16px title, 13px search, 12px status/filters, 16px stats. Tabs 13px. Capture cards: 13px name, 10-11px location/badges/confidence. Face search: 18px heading, 12-14px labels, 13px inputs/buttons. Statistics: 14px headings, 13px person names, 18px camera counts. Detail panel: 13px name, 10px fields, 16px confidence gauge.
-- **Skeleton loader**: 8 skeleton capture cards (image area + text) during 700ms.
-- **Mock data** (`resources/js/mock/faceRecognition.ts`, 67 lines): 15 captures (10 confirmed, 3 possible, 1 no-match, 2 pending), 9 cameras, statusColors/Icons, allCameras, allMatchedPersons, allOps, keyboardShortcuts (7).
-- **CSS** (`resources/css/pages/face-recognition.css`, 22 lines): Skeleton, kbd, 3-panel layout, capture grid responsive, mobile bar, stat grid collapse.
-- **Tests** (`resources/js/tests/FaceRecognition.test.ts`): 28 tests across 7 describe blocks — statusColors/Icons, cameras (IDs/fields), mockCaptures (IDs/fields/confirmed/possible/unmatched/disguises/multi-camera/multi-person), derived lists (sorted cameras, unique persons, allOps), shortcuts, ViewTab.
-- **Keyboard shortcuts**: `1` Captures, `2` Face Search, `3` Statistics, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
-
-## 0.25.11 - 2026-03-26
-
-### Updated — Alert Rules (/alerts)
-- **Responsive mobile**: Sidebar + detail hidden ≤768px. Mobile bar (search + New button). Tab labels hidden (icons + kbd). Stat grid stacks.
-- **Breadcrumbs fixed**: Added `'alerts': 'Alert Rules'`.
-- **Footer removed**.
-- **Larger fonts**: Sidebar 16px title, 13px search, 12px filters, 16px stats. Tabs 13px. Rule names 13px, severity/channel badges 9px, targets 10px, fired count 16px. Feed titles 13px, details 10px. Stats headings 14px, values 18-22px. Detail panel 13px name, 12px description, 18px stats, 11px config/channels/targets, 10px meta.
-- **Skeleton loader**: 8 skeleton rows during 700ms.
-- **New Alert modal**: Full form with rule name, trigger type selector (9 types as grid), severity dropdown, cooldown input, notification channels (toggle buttons), operation select, dynamic config fields per trigger type. Create button disabled without name. Opens via `N` key or `+ New Alert` button.
-- **Mock data** (`resources/js/mock/alerts.ts`, 80 lines): 13 rules (trimmed), 8 events, triggerConfig (9 types), sevColors, allOps, allPersons, keyboardShortcuts (8).
-- **CSS** (`resources/css/pages/alerts.css`, 25 lines): Skeleton, kbd, 3-panel layout, responsive.
-- **Tests** (`resources/js/tests/Alerts.test.ts`): 24 tests: triggerConfig, sevColors, mockRules (IDs/fields/types/channels/enabled), mockAlertEvents (IDs/fields/ruleId cross-ref/unack), helpers, shortcuts.
-- **Keyboard shortcuts**: `1-3` tabs, `N` new alert, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal.
-
-## 0.25.10 - 2026-03-25
-
-### Updated — Background Jobs (/jobs)
-- **Responsive mobile**: Sidebar + detail panel hidden ≤768px. Mobile filter bar (search + priority). Worker grid single-column. Tab labels hidden (icons + kbd only).
-- **Breadcrumbs fixed**: Added `'jobs': 'Background Jobs'`.
-- **Footer removed**.
-- **Larger fonts**: Sidebar 16px title, 13px search, 12px type list/filters, 16px stats. Tabs 13px. Job names 13px, status 11px, details 10px, progress 10px. Workers 14px name, 11-12px details. Detail panel 13px name, 10-11px fields. Shortcuts modal 13px descriptions.
-- **Skeleton loader**: 8 skeleton rows (icon + title + progress bar + meta) during 700ms.
-- **Mock data separated** (`resources/js/mock/jobs.ts`): 20 jobs (trimmed from 30 for clarity), 6 workers, typeConfig (10), statusColors/Icons (6), prioColors (4), allOps, keyboardShortcuts (10).
-- **CSS separated** (`resources/css/pages/jobs.css`): Skeleton, kbd, 3-panel layout, responsive ≤1024px/≤768px.
-- **Tests** (`resources/js/tests/Jobs.test.ts`): 30 tests across 7 describe blocks — typeConfig, statusColors, prioColors, mockJobs (IDs, fields, types, statuses, priorities, progress, output/errors), mockWorkers (IDs, fields, cpu/mem, active→currentJob), allOps, shortcuts.
-- **Keyboard shortcuts**: `1-6` tabs, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal (capture phase).
-
-## 0.25.9 - 2026-03-25
-
-### Updated — Reports Page (/reports)
-- **Responsive mobile**: Sidebar hidden ≤768px with inline mobile filter bar. Right detail panel hidden on mobile. Tables collapse to stacked layout ≤1024px. Preview content padding reduced. Stats flex to column.
-- **Breadcrumbs fixed**: Added `'reports': 'Reports'` to Breadcrumbs.tsx.
-- **Footer removed**: Removed CLASSIFIED // NOFORN status bar.
-- **Larger fonts**: Sidebar title 13→16px, search 10→13px, filters 7-9→10-12px, stats 13→16px. Table titles 10→13px, status 8→11px, pages 9→12px, operation 8→11px. Generate form all bumped: headings 14→18px, labels 9→12px, inputs 10→13px, sections 8→11px, button 11→14px. Preview report title 18→20px, AI summary 9→12px, sections 13→15px, stats 16→18px. Detail panel stats 12→14px, info 7→10px, sections 7→9px.
-- **Skeleton loader**: 8 skeleton rows during 700ms initial load.
-- **Mock data separated** (`resources/js/mock/reports.ts`): 12 reports (10 completed, 1 generating, 1 failed), statusColors/Icons, personSections (18), orgSections (11), allOps, keyboardShortcuts (6). Typed interfaces exported.
-- **CSS separated** (`resources/css/pages/reports.css`): Skeleton, kbd, 3-panel layout, table grid, responsive ≤1024px (tables collapse, panels shrink), ≤768px (sidebar/detail hidden, mobile bar, preview padding).
-- **Tests** (`resources/js/tests/Reports.test.ts`): 24 tests across 7 describe blocks: statusColors/Icons, sections (counts, required), mockReports (IDs unique, fields, stats, statuses, entity types), allOps, shortcuts, ViewMode.
-- **Keyboard shortcuts**: `1` History view, `2` Generate view, `F` search, `R` reset, `Esc` close, `Ctrl+Q` modal (capture phase).
-
-## 0.25.8 - 2026-03-25
-
-### Updated — Risks Dashboard (/risks)
-- **Responsive mobile**: Sidebar hidden ≤768px, replaced by inline mobile filter bar (search + risk select). KPIs stack vertically. Threat/factor grids go single-column. Tables collapse to stacked cards on ≤1024px. Tab labels hidden on mobile (icons + kbd only).
-- **Breadcrumbs fixed**: Added `'risks': 'Risks Dashboard'` to Breadcrumbs.tsx.
-- **Footer removed**: Removed CLASSIFIED // NOFORN status bar.
-- **Larger fonts**: KPI totals 16→20px, labels 11→13px, breakdown 14→16px. Tab buttons 10→13px. Sidebar title 13→16px, search 10→13px, filters 9→12px. Persons table names 10→13px, risk labels 8→11px, scores 8→11px, factors 9→10px. Org cards 11→14px name, 8→11px details. Vehicle plates 10→13px. Matrix factors 10→13px label, 8→11px detail, score 16→18px. Threat cards name 12→14px, nationality 8→11px. Factor distribution label 9→12px, stats 8→11px. Expanded factor labels 9→12px, detail 8→11px.
-- **Skeleton loader**: KPI skeleton (3 cards with breakdown placeholders) + row skeleton (5 rows with avatar + text) during 700ms initial load.
-- **Mock data separated** (`resources/js/mock/risks.ts`): personRiskFactors (21 factors across 5 persons), factorCategories (8), ViewTab type, RiskFactor interface, keyboardShortcuts (9).
-- **CSS separated** (`resources/css/pages/risks.css`, 44 lines): Skeleton, kbd, layout, responsive ≤1024px (tables collapse), ≤768px (sidebar hidden, mobile bar shown, grids single-column).
-- **Tests** (`resources/js/tests/Risks.test.ts`): 28 tests across 6 describe blocks: factorCategories (8 cats, unique IDs, required fields), personRiskFactors (unique IDs, valid categories, person ID cross-ref, score ranges, critical count), cross-entity (persons/orgs/vehicles risk fields, riskColors coverage), keyboard shortcuts (1-5, F, R, Ctrl+Q), ViewTab type.
-- **Keyboard shortcuts**: `1-5` switch tabs, `F` focus search, `R` reset filters, `Esc` close expanded/modal, `Ctrl+Q` shortcuts modal (capture phase).
-
-## 0.25.7 - 2026-03-25
-
-### Updated — Activity Log Page (/activity)
-- **Fixed breadcrumbs**: Removed negative margins (`margin: 0 -24px -80px 0`) from `.act-page` layout. Page now uses `border-radius: 10px` container with `border: 1px solid` instead of bleeding to edges. Breadcrumbs are fully visible above the page content.
-- **Removed footer**: No footer bar in the page.
-- **Larger fonts**: Event title 13→14px, description 11→12px, meta links 10→11px, header count 14→16px, badges 8→10px, sidebar labels 10→12px, search input 12→13px, stat numbers 16→18px, expanded metadata 10→11px, action buttons 10→11px, empty state text 15→16px, load more button 12→13px, icon sizes 16→18px, type icons 14px in sidebar.
-- **Skeleton loader**: Enhanced skeleton with badge placeholders, larger icon (38px), multi-line content blocks with realistic proportions. Shows 8 skeleton rows on initial load.
-- **Responsive mobile**: Left sidebar hidden on ≤768px. Mobile filter bar appears with search input, severity dropdown, and person dropdown for quick filtering. Event meta stacks vertically on mobile. Keyboard badges hidden on ≤1024px.
-- **Mock data already at** `resources/js/mock/activity.ts` — 20 events, 12 types, 5 severities, filter helpers.
-- **CSS already at** `resources/css/pages/activity.css` — Rewritten with fixed layout, mobile filter bar, responsive breakpoints. 49 lines.
-- **Tests already at** `resources/js/tests/Activity.test.ts` — 237 lines covering events, type configs, severity configs, filter helpers, keyboard shortcuts, cross-references.
-- **Keyboard shortcuts**: F (focus search), C (toggle critical), R (reset filters), Esc (close), Ctrl+Q (shortcuts modal). All use capture phase for Ctrl+Q interception.
-
-## 0.25.6 - 2026-03-25
-
-### Updated — Profile Page (/profile)
-- **Responsive mobile**: CSS media queries ≤768px — tab bar shows icons only (labels hidden), audit log table stacks to single column with inline labels, session cards stack vertically, theme grid shrinks to 120px min, font grid to 1 column, filter bar stacks, TOTP QR section centers vertically, backup codes grid to 2 columns. Keyboard shortcut badges hidden on ≤1024px.
-- **Mock data separated** (`resources/js/mock/profile.ts`): Extracted mockUser, mockSessions (4), mockAuditLog (20), mockIpData (5 IPs), backupCodes (8), languages (5 with RTL), dateFormats (10), timezones (23), actionColors (13 action types), keyboardShortcuts (8). All fully typed with exported interfaces.
-- **CSS already at** `resources/css/pages/profile.css` — appended 40 lines of responsive mobile styles and keyboard badge styles. Total 247 lines.
-- **React tests** (`resources/js/tests/Profile.test.ts`): 38 test cases across 9 describe blocks — mockUser fields + initials, sessions (unique IDs, one current, IP cross-ref), audit log (chronological order, action colors, IP cross-ref), IP data (key-value match), backup codes (format, uniqueness), languages (RTL check), settings (date formats, timezones), keyboard shortcuts (1-5 + Ctrl+Q), Tab type.
-- **Keyboard shortcuts**: `1-5` switch tabs (Personal/Password/Security/Settings/Audit), `Esc` close modal, `Ctrl+Q` toggle shortcuts modal. Event listener uses capture phase for Ctrl+Q interception. Tab buttons show keyboard number badges on desktop.
-- **Ctrl+Q modal**: Fixed-position overlay with all 8 shortcuts listed, close ✕ button, backdrop click close, Esc close. Styled consistently with Download page modal.
-- **Top loader integration**: Tab switches trigger global top loader via `useTopLoader().trigger()`.
-
-## 0.25.5 - 2026-03-25
-
-### Changed — Global Top Loader on Every Page Navigation
-- **Automatic Inertia integration**: TopLoaderProvider now hooks into `router.on('start')` and `router.on('finish')` events. Every page navigation (sidebar clicks, `router.visit()`, form submissions, back/forward) automatically shows the top loader bar — no manual code needed per page.
-- **Realistic progress behavior**: On navigation start, bar jumps to 30% then slowly crawls toward 90% (random +2-5% every 300ms). On navigation finish, bar jumps to 100% and fades out. This feels natural regardless of actual load time.
-- **Disabled Inertia built-in progress**: Set `progress: false` in `createInertiaApp()` since our TopLoader replaces it entirely with a better visual (gradient bar with shimmer vs. Inertia's solid line).
-- **Backward compatible**: `useTopLoader().trigger()` still works for in-page actions (tab switches, button clicks). New `start()` and `finish()` methods exposed for advanced control.
-- **Transition tuning**: Initial jump (0→30%) uses fast 0.1s transition. Crawl phase uses slow 0.6s. Completion (→100%) uses 0.2s + 0.4s opacity fade.
-
-### How it works:
-```
-Click sidebar link → router.on('start') fires → bar appears at 30%
-                   → crawls slowly toward 90% while page loads
-                   → router.on('finish') fires → bar hits 100% → fades out
-```
-
-No code changes needed in any page component. All 27+ pages get the loader automatically.
-
-## 0.25.4 - 2026-03-25
-
-### Updated — Download Client Page (/download)
-- **Removed footer bar** (CLASSIFIED // NOFORN status bar at bottom).
-- **Fixed Ctrl+Q keyboard shortcut**: Event listener now uses capture phase (`addEventListener('keydown', handler, true)`) and calls both `preventDefault()` and `stopPropagation()` to intercept Ctrl+Q before the browser can close the tab. Modal toggles correctly on repeat press.
-- **Removed tabs**: Deploy and Release Notes tabs removed. Only Desktop and Mobile tabs remain.
-- **Mobile tab — Android cleaned**: Removed feature labels (Biometric unlock, Push notifications, Offline mode, Background tracking). Removed Google Play, Direct APK buttons. Removed "Also via MDM" text.
-- **Mobile tab — iOS cleaned**: Removed feature labels (Face ID / Touch ID, Push notifications, Offline mode, Background location). Removed App Store, TestFlight buttons. Removed "Enterprise dist." text.
-- **QR Code lightbox**: Clicking any QR code opens a fullscreen lightbox with enlarged 260px QR code, platform label, and close instructions. Closes on Esc, backdrop click.
-- **Removed MDM widget** from mobile tab.
-- **Desktop tab — features removed**: Feature label chips removed from desktop release cards.
-- **Left sidebar cleaned**: Removed Platforms/Packages/Installs stats row. Removed Shortcuts section. Removed Profile, Dashboard, Jobs links.
-- **Tab type updated**: `Tab` type narrowed to `'desktop' | 'mobile'` in mock data.
-
-## 0.25.3 - 2026-03-25
-
-### Changed — Global Top Loader
-- **New `TopLoaderProvider`** (`components/ui/TopLoader.tsx`): Global top loader bar rendered at `position: fixed; top: 0; z-index: 9999`. Any page can trigger it via `useTopLoader()` hook. Animated gradient (accent→purple→pink) with shimmer effect. Theme-aware via `accentColor` prop.
-- **AppLayout integration**: `TopLoaderProvider` wraps all app content inside `ToastProvider`. Passes current theme accent color.
-- **Download page refactored**: Removed per-page `topLoader` state, `topTimer` ref, `triggerLoader` callback, and `dl-loader` JSX. Now uses `const { trigger } = useTopLoader()` — 5 trigger calls converted.
-- **Download CSS cleaned**: Removed `.dl-loader`, `.dl-loader-bar`, `.dl-loader-shimmer`, `@keyframes dl-shimmer` (now handled globally).
-- **Map page unchanged**: Map's in-container top loader (z-index 60 inside `.tmap-container`) is a map-specific UX element for 60+ map operations — intentionally kept separate from the global page loader.
-
-### Usage for any page:
-```tsx
-import { useTopLoader } from '@/components/ui/TopLoader';
-const { trigger } = useTopLoader();
-trigger(); // fires the global loader animation
-```
-
-## 0.25.2 - 2026-03-25
-
-### Updated — Download Client Page (/download)
-- **Responsive mobile design**: 3 breakpoints — desktop (>1024px, 3-panel), tablet (≤1024px, hides left sidebar), mobile (≤768px, stacked single column). Cards, banners, system requirements table, and QR sections all reflow properly.
-- **Larger fonts**: Headings bumped to 14-18px (from 7-13px), body text 10-13px (from 7-10px), sidebar labels 10-11px, tab labels 13px, detail panel 10px. All text now legible on high-DPI and mobile screens.
-- **Top loader bar**: Animated gradient bar (accent→purple) with shimmer effect. Triggers on tab switch, download click, and keyboard shortcut actions. 3-phase animation: 30%→70%→100%→fade.
-- **Skeleton loader**: Pulsing skeleton cards during 800ms initial load. Matches card layout with avatar, title, tags, and button placeholders.
-- **Keyboard shortcuts**: `1`-`4` switch tabs, `D` triggers recommended download, `Esc` closes detail panel, `?` toggles shortcuts overlay dialog. Shortcuts shown in sidebar and as `<kbd>` badges on tab buttons.
-- **Separated CSS** (`download.css`): All custom styles extracted — loader animations, skeleton pulse, keyboard hint badges, responsive breakpoints, card hover effects, download button animations. 65 lines.
-- **Separated mock data** (`mockData.ts`): All constants, types, releases array, release notes, deployment types, system requirements, platform colors, and detectCurrentPlatform() extracted. 80 lines. Fully typed with exported interfaces.
-- **React tests** (`Download.test.ts`): 38 test cases across 9 describe blocks — mock data integrity (constants, releases, release notes, deployment types, system requirements, platform colors), platform detection, data consistency cross-references, keyboard shortcut mapping. Run: `npx vitest run resources/js/pages/Download/Download.test.ts`.
-- **Breadcrumbs fixed**: Added `'download': 'Download Client'` to Breadcrumbs route labels. Removed negative top margin from page layout so breadcrumbs are visible above page content.
-- **Notification dropdown** max-width capped at `calc(100vw - 20px)` to prevent overflow on mobile.
-
-### Files
-- `resources/js/pages/Download/Index.tsx` — refactored page (307 lines, down from 372)
-- `resources/js/pages/Download/mockData.ts` — NEW: extracted mock data + types
-- `resources/js/pages/Download/download.css` — NEW: extracted custom styles
-- `resources/js/pages/Download/Download.test.ts` — NEW: 38 test cases
-- `resources/js/components/layout/Breadcrumbs.tsx` — added download label
-
-## 0.25.1 - 2026-03-25
-
-### Fixed — Responsive App Header & Sidebar
-- **Single hamburger menu**: Removed duplicate hamburger buttons. On mobile (≤768px), only one hamburger icon appears in the app header. On desktop (>768px), the hamburger is hidden and the sidebar has its own collapse toggle.
-- **Profile dropdown responsive**: On desktop shows full button with avatar + "J. Mitchell" + "OPERATOR" text. On mobile shows only the round avatar icon (JM). Click opens the same dropdown menu on both.
-- **Clock dropdown responsive**: On desktop shows full button with city name + time. On mobile shows only the clock icon. Click opens the same timezone dropdown on both.
-- **Sidebar hidden on mobile by default**: The left sidebar is completely hidden on mobile. It only appears when clicking the hamburger icon in the header. Shows as a slide-over panel with backdrop overlay and close (✕) button.
-- **Desktop sidebar unchanged**: Collapse/expand toggle still works as before on desktop. Collapsed mode shows icon-only navigation.
-- **Sidebar rendered once per context**: Desktop sidebar and mobile sidebar are separate DOM elements controlled by CSS media queries. No duplicate rendering. Mobile sidebar always renders expanded (260px) with a close button instead of collapse toggle.
-
-## 0.25.0 - 2026-03-25
-
-### Updated — Download Client Page (/download)
-- **Complete rebuild** of the Download Client page with 4 tabs, deployment modes, MDM support, release notes, and enhanced QR codes.
-- **4 view tabs**: Desktop (7 packages with auto-detect banner), Mobile (2 packages with QR codes + store badges + MDM), Deployment (3 modes + system requirements + integrity verification), Release Notes (version history with timeline).
-- **Deployment tab**: 3 deployment modes — Standalone (single workstation), Managed Server (enterprise multi-operator), Air-Gapped (classified, offline). System requirements matrix for all 5 platforms. SHA-256 verification commands (PowerShell + sha256sum).
-- **Mobile MDM support**: Microsoft Intune, Jamf Pro, VMware Workspace ONE, MobileIron enterprise deployment.
-- **Store badges**: Google Play + Direct APK (Android), App Store + TestFlight (iOS). Enterprise distribution notes.
-- **Release Notes tab**: Version timeline v0.24.2→v0.21.0 with dates and summaries. Latest release highlighted with glow dot + LATEST badge.
-- **Header profile dropdown**: "Download Client" item with download icon between "My Profile" and "Settings".
+#### Login Page (React)
+- Two-step UI: credentials → 2FA (inline, no page reload)
+- 6-digit code input with auto-focus, paste support, backspace navigation
+- Method switching (email/SMS/authenticator)
+- Error states with remaining attempts warning
+- Mock credentials helper panel
+- Resend code with cooldown
+- CSRF token handling via cookie
 
 ## 0.24.2 - 2026-03-25
 

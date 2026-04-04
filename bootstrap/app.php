@@ -7,9 +7,12 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Inertia\Inertia;
 
 return Application::configure(basePath: dirname(__DIR__))
-    ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-    )
+  ->withRouting(
+    web: [
+        __DIR__.'/../routes/web.php',
+        __DIR__.'/../routes/auth-api.php',
+    ],
+)
     
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [
