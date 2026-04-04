@@ -577,12 +577,65 @@ class AuthApiController extends Controller
             return response()->json(['message' => 'No pending admin 2FA session.', 'code' => 'NO_SESSION'], 400);
         }
 
+        // Update method in session
+        session(['admin_2fa_method' => $method]);
+
+        $user = collect(AuthMock::adminUsers())->firstWhere('id', $userId);
+        $target = match ($method) {
+            'email' => AuthMock::maskEmail($user['email'] ?? ''),
+            'sms' => AuthMock::maskPhone($user['phone'] ?? ''),
+            default => 'authenticator app',
+        };
+
         return response()->json([
             'message' => "Admin verification code sent via {$method}.",
             'method' => $method,
+            'sent_to' => $target,
             'expires_in' => 180,
             'cooldown' => 60,
         ]);
+    }
+
+    /**
+     * POST /mock-api/admin/auth/2fa/backup
+     * Verify admin backup recovery code.
+     */
+    public function adminVerifyBackupCode(Request $request): JsonResponse
+    {
+        $request->validate([
+            'code' => ['required', 'string', 'size:8', 'regex:/^[A-Za-z0-9]{8}$/'],
+        ]);
+
+        $code = $request->input('code');
+        $userId = session('admin_user_id');
+
+        Log::info('Admin Auth API: backup code verification', ['user_id' => $userId]);
+        usleep(400_000);
+
+        if (!$userId) {
+            return response()->json([
+                'message' => 'No pending admin 2FA challenge. Please login again.',
+                'code' => 'NO_CHALLENGE',
+            ], 400);
+        }
+
+        // Mock: "XXXXXXXX" always fails, anything else succeeds
+        if (strtoupper($code) === 'XXXXXXXX') {
+            return response()->json([
+                'message' => 'Invalid backup code.',
+                'errors' => ['code' => ['This backup code is invalid or has already been used.']],
+                'code' => 'INVALID_BACKUP_CODE',
+            ], 422);
+        }
+
+        $user = collect(AuthMock::adminUsers())->firstWhere('id', $userId);
+        if (!$user) {
+            return response()->json(['message' => 'Admin user not found.', 'code' => 'USER_NOT_FOUND'], 404);
+        }
+
+        session()->forget(['admin_challenge', 'admin_user_id', 'admin_2fa_method']);
+
+        return $this->issueAdminToken($user, $request);
     }
 
     /**

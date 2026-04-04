@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.26.1 - 2026-04-04
+
+### Admin 2FA — Complete Mock REST API + Backup Codes + Unit Tests
+
+#### 3 Admin 2FA Endpoints (1 new + 2 enhanced)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/mock-api/admin/auth/2fa/verify` | Verify 6-digit OTP (enhanced: masked destination on resend) |
+| POST | `/mock-api/admin/auth/2fa/resend` | Resend code with method switching + masked `sent_to` |
+| POST | `/mock-api/admin/auth/2fa/backup` | **NEW** — Verify 8-char alphanumeric backup recovery code |
+
+#### Backup Code Feature
+- 8-character alphanumeric input (uppercase, monospace, centered)
+- `XXXXXXXX` → INVALID_BACKUP_CODE (422)
+- Any other valid 8-char code → success + admin token
+- Toggle between OTP and backup code modes
+
+#### Enhanced Resend
+- Returns `sent_to` with masked email/phone destination
+- Updates method in session on switch
+- Cooldown timer (60s) + expiry (180s)
+
+#### Unit Tests — 23 Tests
+- OTP: valid code, admin prefix, user profile, invalid (000000), expired (999999), no session, format validation, required
+- Resend: email, SMS, masked destination, no session, cooldown values
+- Backup: valid code, admin prefix, invalid (XXXXXXXX), no session, format validation (short, special chars), required
+- Method switching: switch then verify
+- Integration: full OTP flow (login→invalid→resend→valid), full backup flow (login→invalid→valid)
+
+#### Admin/TwoFactor.tsx (React)
+- Dual mode: OTP (6-digit) ↔ Backup (8-char) with toggle
+- Method selector (App / SMS / Email) with auto-resend on switch
+- Resend with countdown timer
+- Attempts remaining warning
+- Red-accent admin styling throughout
+- Mock hint panel for backup codes
+- "ADMIN PANEL — RESTRICTED ACCESS" footer
+
 ## 0.26.0 - 2026-04-04
 
 ### Admin Login — Complete Mock REST API + Unit Tests
