@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.25.99 - 2026-04-04
+
+### Register — Layout Update + Phone Field + API Update
+
+- Last name moved to its own row (was side-by-side with first name)
+- Added phone number field (type=tel, optional, validated with regex)
+- Phone included in API payload, response (masked), and validation
+- RegisterRequest: added `phone` rule (nullable, min:6, max:20, regex for intl format)
+- AuthApiController: phone logged, masked in response via `AuthMock::maskPhone()`
+- Unit tests: +4 new tests (without phone succeeds, phone masking, invalid format, too short) — 26 total
+
 ## 0.25.98 - 2026-04-04
 
 ### Register — Complete Mock REST API + Unit Tests

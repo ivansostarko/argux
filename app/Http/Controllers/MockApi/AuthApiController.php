@@ -433,6 +433,7 @@ class AuthApiController extends Controller
         Log::info('Auth API: registration submitted', [
             'email' => $email,
             'name' => $data['first_name'] . ' ' . $data['last_name'],
+            'phone' => $data['phone'] ?? null,
             'ip' => $request->ip(),
         ]);
 
@@ -469,6 +470,7 @@ class AuthApiController extends Controller
             'submitted' => [
                 'name' => $data['first_name'] . ' ' . $data['last_name'],
                 'email' => AuthMock::maskEmail($email),
+                'phone' => !empty($data['phone']) ? AuthMock::maskPhone($data['phone']) : null,
                 'submitted_at' => now()->toDateTimeString(),
             ],
             'redirect' => '/login',

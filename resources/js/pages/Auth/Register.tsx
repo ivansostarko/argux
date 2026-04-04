@@ -49,7 +49,7 @@ function Register() {
 
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', confirm: '' });
+    const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', confirm: '' });
     const [agreed, setAgreed] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [message, setMessage] = useState<{ type: 'error' | 'success' | 'warning' | 'info'; text: string } | null>(null);
@@ -111,6 +111,7 @@ function Register() {
             first_name: form.firstName,
             last_name: form.lastName,
             email: form.email,
+            phone: form.phone,
             password: form.password,
             password_confirmation: form.confirm,
             agree_terms: agreed,
@@ -126,8 +127,7 @@ function Register() {
                     first[key] = (v as string[])[0];
                 }
                 setErrors(first);
-                // Go back to step 1 if name/email errors
-                if (first.firstName || first.lastName || first.email) setStep(1);
+                if (first.firstName || first.lastName || first.email || first.phone) setStep(1);
             }
             if (data.code === 'EMAIL_TAKEN' || data.code === 'DISPOSABLE_EMAIL') {
                 setStep(1);
@@ -194,16 +194,11 @@ function Register() {
 
             {/* ═══ Step 1: Personal Info ═══ */}
             {step === 1 && <>
-                <div style={{ display: 'flex', gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                        <Input label={tr('first_name_label')} placeholder={tr('first_name_placeholder')}
-                            value={form.firstName} onChange={set('firstName')} icon={Icons.user()} error={errors.firstName} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                        <Input label={tr('last_name_label')} placeholder={tr('last_name_placeholder')}
-                            value={form.lastName} onChange={set('lastName')} icon={Icons.user()} error={errors.lastName} />
-                    </div>
-                </div>
+                <Input label={tr('first_name_label')} placeholder={tr('first_name_placeholder')}
+                    value={form.firstName} onChange={set('firstName')} icon={Icons.user()} error={errors.firstName} />
+
+                <Input label={tr('last_name_label')} placeholder={tr('last_name_placeholder')}
+                    value={form.lastName} onChange={set('lastName')} icon={Icons.user()} error={errors.lastName} />
 
                 <div style={{ position: 'relative' }}>
                     <Input label={tr('email_label')} type="email" placeholder={tr('email_placeholder')}
@@ -213,6 +208,9 @@ function Register() {
                             : <span style={{ color: '#ef4444' }}>✕ {emailStatus.message}</span>}
                     </div>}
                 </div>
+
+                <Input label={tr('phone_label')} type="tel" placeholder={tr('phone_placeholder')}
+                    value={form.phone} onChange={set('phone')} icon={Icons.phone ? Icons.phone() : <span style={{ fontSize: 13 }}>📱</span>} error={errors.phone} />
 
                 <Button onClick={goStep2} disabled={!form.firstName || !form.lastName || !form.email}>
                     {tr('continue')}

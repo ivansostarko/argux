@@ -22,6 +22,7 @@ class RegisterApiTest extends TestCase
             'first_name' => 'James',
             'last_name' => 'Mitchell',
             'email' => 'j.mitchell@agency.gov',
+            'phone' => '+385 91 555 1234',
             'password' => 'SecurePass2026!@',
             'password_confirmation' => 'SecurePass2026!@',
             'agree_terms' => true,
@@ -30,12 +31,80 @@ class RegisterApiTest extends TestCase
         $response->assertOk()
             ->assertJsonStructure([
                 'message', 'registration_id', 'status', 'estimated_review',
-                'submitted' => ['name', 'email', 'submitted_at'],
+                'submitted' => ['name', 'email', 'phone', 'submitted_at'],
             ])
             ->assertJson([
                 'status' => 'pending_approval',
                 'estimated_review' => '24-48 hours',
             ]);
+    }
+
+    /** @test */
+    public function register_without_phone_succeeds(): void
+    {
+        $response = $this->postJson('/mock-api/auth/register', [
+            'first_name' => 'James',
+            'last_name' => 'Mitchell',
+            'email' => 'j.mitchell@agency.gov',
+            'password' => 'SecurePass2026!@',
+            'password_confirmation' => 'SecurePass2026!@',
+            'agree_terms' => true,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('submitted.phone', null);
+    }
+
+    /** @test */
+    public function register_with_phone_masks_in_response(): void
+    {
+        $response = $this->postJson('/mock-api/auth/register', [
+            'first_name' => 'Test',
+            'last_name' => 'User',
+            'email' => 'test.phone@agency.gov',
+            'phone' => '+385 91 555 9876',
+            'password' => 'SecurePass2026!@',
+            'password_confirmation' => 'SecurePass2026!@',
+            'agree_terms' => true,
+        ]);
+
+        $response->assertOk();
+        $maskedPhone = $response->json('submitted.phone');
+        $this->assertStringContainsString('•', $maskedPhone);
+    }
+
+    /** @test */
+    public function register_rejects_invalid_phone_format(): void
+    {
+        $response = $this->postJson('/mock-api/auth/register', [
+            'first_name' => 'Test',
+            'last_name' => 'User',
+            'email' => 'test@agency.gov',
+            'phone' => 'not-a-phone!!!',
+            'password' => 'SecurePass2026!@',
+            'password_confirmation' => 'SecurePass2026!@',
+            'agree_terms' => true,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['phone']);
+    }
+
+    /** @test */
+    public function register_rejects_phone_too_short(): void
+    {
+        $response = $this->postJson('/mock-api/auth/register', [
+            'first_name' => 'Test',
+            'last_name' => 'User',
+            'email' => 'test@agency.gov',
+            'phone' => '123',
+            'password' => 'SecurePass2026!@',
+            'password_confirmation' => 'SecurePass2026!@',
+            'agree_terms' => true,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['phone']);
     }
 
     /** @test */
@@ -45,6 +114,7 @@ class RegisterApiTest extends TestCase
             'first_name' => 'Test',
             'last_name' => 'User',
             'email' => 'test.user@police.hr',
+            'phone' => '+385 91 123 4567',
             'password' => 'MySecure2026!@',
             'password_confirmation' => 'MySecure2026!@',
             'agree_terms' => true,
@@ -352,6 +422,7 @@ class RegisterApiTest extends TestCase
             'first_name' => 'New',
             'last_name' => 'Operative',
             'email' => 'new.operative@soa.hr',
+            'phone' => '+385 98 765 4321',
             'password' => 'SecureOperative2026!@',
             'password_confirmation' => 'SecureOperative2026!@',
             'agree_terms' => true,
