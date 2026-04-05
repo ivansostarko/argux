@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.27.0 - 2026-04-05
+
+### Admin Knowledge Base — Complete Mock REST API + Unit Tests
+
+#### 7 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/admin/kb/categories` | 7 categories with articleCount + totalViews |
+| GET | `/mock-api/admin/kb/articles` | List (search + category filter, content excluded) |
+| GET | `/mock-api/admin/kb/articles/{id}` | Detail with full content + category + related articles |
+| POST | `/mock-api/admin/kb/articles` | Create article (validates category) |
+| PUT | `/mock-api/admin/kb/articles/{id}` | Update article |
+| DELETE | `/mock-api/admin/kb/articles/{id}` | Delete article |
+| POST | `/mock-api/admin/kb/articles/{id}/helpful` | Rate article helpful (yes/no) |
+
+#### 19 Mock Articles across 7 Categories
+- Getting Started (4), Map & Tracking (4), Intelligence (4), Devices (2), Administration (2), Security (2), Troubleshooting (1)
+- Each with: title, summary, content, author, views, helpful %, read time, tags, related article IDs
+
+#### Key Design Decisions
+- List endpoint excludes `content` field (loaded only on detail view)
+- Categories endpoint enriches with `articleCount` and `totalViews`
+- Detail endpoint returns `category` object + `related` articles array
+- Helpful endpoint: `helpful: true` increments helpful count, `false` increments total only
+
+#### Unit Tests — 25 Tests
+- Categories: count (7), article counts, required fields
+- List: 19 articles, content excluded, filter by category (4 getting-started), search title, search tag, combined filter+search
+- Show: detail with content, category info, related articles, 404
+- Create: valid with tags, required fields, invalid category, title min length
+- Update: valid, 404
+- Delete: valid, 404
+- Helpful: positive increments, negative doesn't increment, required boolean, 404
+
+#### Admin Panel Mock API — Complete (v0.27.0)
+All 12 admin pages now have full mock REST API coverage:
+- `/admin/login` — 5 endpoints
+- `/admin/2fa` — 3 endpoints  
+- `/admin/dashboard` — 7 endpoints
+- `/admin/admins` — 9 endpoints
+- `/admin/users` — 9 endpoints
+- `/admin/roles` — 6 endpoints
+- `/admin/statistics` — 2 endpoints
+- `/admin/audit` — 4 endpoints
+- `/admin/config` — 6 endpoints
+- `/admin/support` — 8 endpoints
+- `/admin/kb` — 7 endpoints
+**Total: 58 admin-api routes + 21 auth-api routes = 79 mock API routes**
+
 ## 0.26.9 - 2026-04-05
 
 ### Admin Support — Complete Mock REST API + Unit Tests

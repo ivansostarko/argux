@@ -1,9 +1,32 @@
 import PageMeta from '../../components/layout/PageMeta';
 import AdminLayout from '../../layouts/AdminLayout';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
-import { categories, articles, keyboardShortcuts } from '../../mock/admin-kb';
+import { categories as FALLBACK_CATS, articles as FALLBACK_ARTS, keyboardShortcuts } from '../../mock/admin-kb';
+import type { KbCategory, KbArticle } from '../../mock/admin-kb';
+
+/**
+ * ARGUX Knowledge Base — categorized articlesData via mock REST API.
+ *
+ * GET  /mock-api/admin/kb/categoriesData            — Categories with article counts
+ * GET  /mock-api/admin/kb/articles               — List (search + category filter)
+ * GET  /mock-api/admin/kb/articles/{id}          — Detail with content + related
+ * POST /mock-api/admin/kb/articles               — Create
+ * PUT  /mock-api/admin/kb/articles/{id}          — Update
+ * DELETE /mock-api/admin/kb/articles/{id}        — Delete
+ * POST /mock-api/admin/kb/articles/{id}/helpful  — Rate helpful
+ */
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: { message: 'Network error.' } }; }
+}
 
 /* ═══ ARGUX — Knowledge Base ═══ */
 
@@ -15,21 +38,34 @@ export default function AdminKnowledgeBase() {
     const [selArticle, setSelArticle] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [showShortcuts, setShowShortcuts] = useState(false);
+    const [articlesData, setArticlesData] = useState<KbArticle[]>([]);
+    const [categoriesData, setCategoriesData] = useState<(KbCategory & { articleCount?: number })[]>([]);
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 600); return () => clearTimeout(t); }, []);
+    const fetchData = useCallback(async () => {
+        setLoading(true); trigger();
+        const params = new URLSearchParams();
+        if (catF) params.set('category', catF);
+        if (search) params.set('search', search);
+        const [catsRes, artsRes] = await Promise.all([
+            apiCall('/mock-api/admin/kb/categoriesData'),
+            apiCall(`/mock-api/admin/kb/articles?${params}`),
+        ]);
+        if (catsRes.ok && catsRes.data.data) setCategoriesData(catsRes.data.data);
+        else setCategoriesData(FALLBACK_CATS as any);
+        if (artsRes.ok && artsRes.data.data) setArticlesData(artsRes.data.data);
+        else setArticlesData(FALLBACK_ARTS);
+        setLoading(false);
+    }, [catF, search, trigger]);
 
-    const filtered = useMemo(() => {
-        let arts = articles;
-        if (catF) arts = arts.filter(a => a.categoryId === catF);
-        if (search) { const q = search.toLowerCase(); arts = arts.filter(a => a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q) || a.tags.some(t => t.toLowerCase().includes(q)) || a.content.toLowerCase().includes(q)); }
-        return arts;
-    }, [catF, search]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
-    const article = selArticle ? articles.find(a => a.id === selArticle) : null;
-    const articleCat = article ? categories.find(c => c.id === article.categoryId) : null;
-    const relatedArticles = article ? article.relatedIds.map(id => articles.find(a => a.id === id)).filter(Boolean) : [];
+    // Data already filtered by API
+    const filtered = articlesData;
+    const article = selArticle ? articlesData.find(a => a.id === selArticle) : null;
+    const articleCat = article ? categoriesData.find(c => c.id === article.categoryId) : null;
+    const relatedArticles = article ? article.relatedIds.map(id => articlesData.find(a => a.id === id)).filter(Boolean) : [];
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
@@ -92,7 +128,7 @@ export default function AdminKnowledgeBase() {
                 {/* Related */}
                 {relatedArticles.length > 0 && <div style={{ borderRadius: 10, border: `1px solid ${theme.border}`, padding: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: theme.text, marginBottom: 10 }}>Related Articles</div>
-                    {relatedArticles.map(ra => { if (!ra) return null; const rc = categories.find(c => c.id === ra.categoryId);
+                    {relatedArticles.map(ra => { if (!ra) return null; const rc = categoriesData.find(c => c.id === ra.categoryId);
                         return <div key={ra.id} onClick={() => { setSelArticle(ra.id); window.scrollTo(0, 0); }} style={{ padding: '8px 10px', borderRadius: 6, border: `1px solid ${theme.border}`, marginBottom: 6, cursor: 'pointer', transition: 'border-color 0.15s' }}>
                             <div style={{ fontSize: 11, fontWeight: 600, color: theme.text, marginBottom: 2 }}>{ra.title}</div>
                             <div style={{ fontSize: 9, color: rc?.color || theme.textDim }}>{rc?.icon} {rc?.name} · {ra.readTime}</div>
@@ -110,7 +146,7 @@ export default function AdminKnowledgeBase() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>📚</div>
-                <div><h1 style={{ fontSize: 22, fontWeight: 700, color: theme.text, margin: '0 0 4px' }}>Knowledge Base</h1><p style={{ fontSize: 13, color: theme.textSecondary, margin: 0 }}>{articles.length} articles across {categories.length} categories</p></div>
+                <div><h1 style={{ fontSize: 22, fontWeight: 700, color: theme.text, margin: '0 0 4px' }}>Knowledge Base</h1><p style={{ fontSize: 13, color: theme.textSecondary, margin: 0 }}>{articlesData.length} articlesData across {categoriesData.length} categoriesData</p></div>
             </div>
         </div>
 
@@ -118,7 +154,7 @@ export default function AdminKnowledgeBase() {
         <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 240, display: 'flex', alignItems: 'center', gap: 8, background: theme.bgInput, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '0 14px' }}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={theme.textDim} strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="14" y2="14"/></svg>
-                <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search articles, topics, tags..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '11px 0', color: theme.text, fontSize: 14, fontFamily: 'inherit', minWidth: 0 }} />
+                <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search articlesData, topics, tags..." style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '11px 0', color: theme.text, fontSize: 14, fontFamily: 'inherit', minWidth: 0 }} />
                 {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', fontSize: 12, padding: 4 }}>✕</button>}
                 <span className="kb-kbd">F</span>
             </div>
@@ -130,7 +166,7 @@ export default function AdminKnowledgeBase() {
             <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, marginBottom: 10 }}>Browse by Category</div>
             {loading ? <div className="kb-cats-grid">{Array.from({ length: 7 }).map((_, i) => <Skel key={i} w="100%" h={80} />)}</div> :
             <div className="kb-cats-grid" style={{ marginBottom: 24 }}>
-                {categories.map(cat => { const count = articles.filter(a => a.categoryId === cat.id).length;
+                {categoriesData.map(cat => { const count = (cat as any).articleCount ?? articlesData.filter(a => a.categoryId === cat.id).length;
                     return <div key={cat.id} className="kb-cat-card" onClick={() => { setCatF(cat.id); trigger(); }} style={{ padding: '16px', borderRadius: 10, border: `1px solid ${cat.color}20`, background: `${cat.color}04`, cursor: 'pointer', transition: 'all 0.15s' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                             <div style={{ width: 36, height: 36, borderRadius: 8, background: `${cat.color}12`, border: `1px solid ${cat.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{cat.icon}</div>
@@ -144,7 +180,7 @@ export default function AdminKnowledgeBase() {
         }
 
         {/* Active category header */}
-        {catF && (() => { const cat = categories.find(c => c.id === catF); if (!cat) return null;
+        {catF && (() => { const cat = categoriesData.find(c => c.id === catF); if (!cat) return null;
             return <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '12px 16px', borderRadius: 10, border: `1px solid ${cat.color}20`, background: `${cat.color}04` }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: `${cat.color}12`, border: `1px solid ${cat.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{cat.icon}</div>
                 <div><div style={{ fontSize: 16, fontWeight: 700, color: theme.text }}>{cat.name}</div><div style={{ fontSize: 12, color: theme.textSecondary }}>{cat.description}</div></div>
@@ -157,10 +193,10 @@ export default function AdminKnowledgeBase() {
             {search ? `Search results (${filtered.length})` : catF ? 'Articles' : 'All Articles'}
         </div>
 
-        {loading ? <div className="kb-articles-grid">{Array.from({ length: 6 }).map((_, i) => <Skel key={i} w="100%" h={120} />)}</div> :
-        filtered.length === 0 ? <div style={{ padding: 50, textAlign: 'center' as const }}><div style={{ fontSize: 36, opacity: 0.15 }}>📚</div><div style={{ fontSize: 15, fontWeight: 600, color: theme.textSecondary, marginTop: 8 }}>No articles found</div><div style={{ fontSize: 12, color: theme.textDim, marginTop: 4 }}>Try different search terms or browse categories</div></div> :
-        <div className="kb-articles-grid">
-            {filtered.map(a => { const cat = categories.find(c => c.id === a.categoryId);
+        {loading ? <div className="kb-articlesData-grid">{Array.from({ length: 6 }).map((_, i) => <Skel key={i} w="100%" h={120} />)}</div> :
+        filtered.length === 0 ? <div style={{ padding: 50, textAlign: 'center' as const }}><div style={{ fontSize: 36, opacity: 0.15 }}>📚</div><div style={{ fontSize: 15, fontWeight: 600, color: theme.textSecondary, marginTop: 8 }}>No articlesData found</div><div style={{ fontSize: 12, color: theme.textDim, marginTop: 4 }}>Try different search terms or browse categoriesData</div></div> :
+        <div className="kb-articlesData-grid">
+            {filtered.map(a => { const cat = categoriesData.find(c => c.id === a.categoryId);
                 return <div key={a.id} className="kb-article-card" onClick={() => { setSelArticle(a.id); trigger(); }} style={{ padding: '16px', borderRadius: 10, border: `1px solid ${theme.border}`, background: theme.bgCard, cursor: 'pointer', transition: 'border-color 0.15s', display: 'flex', flexDirection: 'column' as const }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                         <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 3, background: `${cat?.color || theme.accent}10`, color: cat?.color || theme.accent }}>{cat?.icon} {cat?.name}</span>

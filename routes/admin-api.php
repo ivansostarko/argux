@@ -80,3 +80,12 @@ Route::patch('/mock-api/admin/support/tickets/{id}/priority', [AdminSupportApiCo
 Route::patch('/mock-api/admin/support/tickets/{id}/assignee', [AdminSupportApiController::class, 'updateAssignee'])->name('mock-api.admin.support.assignee');
 Route::post('/mock-api/admin/support/tickets/{id}/reply', [AdminSupportApiController::class, 'reply'])->name('mock-api.admin.support.reply');
 Route::delete('/mock-api/admin/support/tickets/{id}', [AdminSupportApiController::class, 'destroy'])->name('mock-api.admin.support.destroy');
+
+// Knowledge Base
+Route::get('/mock-api/admin/kb/categories', [AdminKbApiController::class, 'categories'])->name('mock-api.admin.kb.categories');
+Route::get('/mock-api/admin/kb/articles', [AdminKbApiController::class, 'index'])->name('mock-api.admin.kb.articles.index');
+Route::get('/mock-api/admin/kb/articles/{id}', [AdminKbApiController::class, 'show'])->name('mock-api.admin.kb.articles.show');
+Route::post('/mock-api/admin/kb/articles', [AdminKbApiController::class, 'store'])->name('mock-api.admin.kb.articles.store');
+Route::put('/mock-api/admin/kb/articles/{id}', [AdminKbApiController::class, 'update'])->name('mock-api.admin.kb.articles.update');
+Route::delete('/mock-api/admin/kb/articles/{id}', [AdminKbApiController::class, 'destroy'])->name('mock-api.admin.kb.articles.destroy');
+Route::post('/mock-api/admin/kb/articles/{id}/helpful', [AdminKbApiController::class, 'helpful'])->name('mock-api.admin.kb.articles.helpful');
