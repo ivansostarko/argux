@@ -148,3 +148,7 @@ Route::get('/mock-api/risks/factor-categories', [RisksApiController::class, 'fac
 Route::get('/mock-api/notifications', [NotificationsApiController::class, 'index'])->name('mock-api.notifications.index');
 Route::patch('/mock-api/notifications/{id}/read', [NotificationsApiController::class, 'toggleRead'])->name('mock-api.notifications.read');
 Route::post('/mock-api/notifications/read-all', [NotificationsApiController::class, 'readAll'])->name('mock-api.notifications.read-all');
+
+// Activity Log
+Route::get('/mock-api/activity', [ActivityApiController::class, 'index'])->name('mock-api.activity.index');
+Route::get('/mock-api/activity/{id}', [ActivityApiController::class, 'show'])->name('mock-api.activity.show');

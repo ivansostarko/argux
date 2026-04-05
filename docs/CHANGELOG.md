@@ -1,5 +1,16 @@
 # Changelog
 
+
+## 0.27.9 - 2026-04-05
+
+### Activity Log (/activity) — Mock REST API (design preserved)
+
+- 2 endpoints: GET /mock-api/activity (20 events, filter type/severity/person + search), GET /mock-api/activity/{id}
+- Original 214-line page design fully preserved (type toggles, severity filter, person/org/op dropdowns, pagination)
+- Only 17 lines added: API helpers + useEffect fetch + mockEvents state
+- 20 events across 12 types (phone, gps, camera, lpr, face, audio, video, zone, alert, system, workflow, record)
+- Unit tests: 9 tests
+
 ## 0.27.8 - 2026-04-05
 
 ### Notifications (/notifications) — Mock REST API (design preserved)

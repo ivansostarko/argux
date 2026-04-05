@@ -3,8 +3,14 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
-import { mockEvents, typeConfig, sevConfig, allPersons, allOrgs, allOps, keyboardShortcuts } from '../../mock/activity';
-import type { EventType, Severity } from '../../mock/activity';
+import { mockEvents as FALLBACK_EVENTS, typeConfig, sevConfig, allPersons, allOrgs, allOps, keyboardShortcuts } from '../../mock/activity';
+import type { EventType, Severity, ActivityEvent } from '../../mock/activity';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string): Promise<any> {
+    try { const res = await fetch(url, { headers: { Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } }); return { ok: res.ok, data: await res.json() }; }
+    catch { return { ok: false, data: {} }; }
+}
 
 /* ═══════════════════════════════════════════════════════════════
    ARGUX — Activity Log  ·  Unified Event Stream
@@ -42,7 +48,18 @@ function ActivityIndex() {
     const { trigger } = useTopLoader();
     const perPage = 15;
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    // Data state — API-driven with fallback
+    const [mockEvents, setMockEvents] = useState(FALLBACK_EVENTS);
+
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            const { ok, data } = await apiCall('/mock-api/activity');
+            if (ok && data.data) setMockEvents(data.data);
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     const toggleType = (t: EventType) => { setTypeF(prev => { const n = new Set(prev); if (n.has(t)) n.delete(t); else n.add(t); return n; }); trigger(); };
     const resetFilters = useCallback(() => { setSearch(''); setTypeF(new Set(Object.keys(typeConfig) as EventType[])); setSevF('all'); setPersonF('all'); setOrgF('all'); setOpF('all'); setPage(1); trigger(); }, [trigger]);
