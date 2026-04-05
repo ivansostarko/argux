@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.27.2 - 2026-04-05
+
+### Operator Profile Page (/profile) — AppLayout variant
+
+- Created `resources/js/pages/Profile/Index.tsx` — operator-side profile using `AppLayout`
+- Same 5 tabs as Admin/Profile.tsx: Personal Data, Password, Security (2FA + sessions), Settings (theme/font/language), Audit Logs
+- Same 12 API endpoints (`/mock-api/profile/*`) — shared between admin and operator layouts
+- Differences from Admin/Profile.tsx: uses `AppLayout` instead of `AdminLayout`, `OperatorProfile` export name
+
+#### Route to add in `routes/web.php`:
+```php
+Route::get('/profile', fn () => Inertia::render('Profile/Index'))->name('profile');
+```
+
 ## 0.27.1 - 2026-04-05
 
 ### Profile — Complete Mock REST API + Unit Tests
