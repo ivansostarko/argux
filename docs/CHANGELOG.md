@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.29.4 - 2026-04-06
+
+### TypeScript Error Fixes — 5 remaining errors in Devices/Show.tsx
+
+#### `resources/js/mock/devices.ts`
+- Made all extended fields **required** (non-optional) in Device interface: `firmwareVersion`, `installDate`, `protocol`, `ipAddress`, `macAddress`, `resolution`, `nightVision`, `motionDetection`, `encryptionEnabled`, `storageCapacity`
+- Added `Audio Recorder` to DeviceType union + arrays + color/icon maps
+- All 20 mock devices now have every field populated (empty strings/false for non-applicable)
+- Eliminates all `undefined` type errors in Show.tsx without changing that file
+
+#### Errors fixed
+- Show.tsx:51 — `d.installDate` no longer `string | undefined`
+- Show.tsx:72 — `d.encryptionEnabled` no longer `boolean | undefined`
+- Show.tsx:76 — `Audio Recorder` now valid DeviceType
+- Show.tsx:79 — `d.nightVision` no longer `boolean | undefined`
+- Show.tsx:80 — `d.motionDetection` no longer `boolean | undefined`
+
 ## 0.29.3 - 2026-04-06
 
 ### TypeScript Error Fixes — 33 errors across 6 files
