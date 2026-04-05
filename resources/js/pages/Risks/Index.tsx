@@ -3,11 +3,17 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
-import { mockPersons, riskColors, type Risk } from '../../mock/persons';
-import { mockOrganizations } from '../../mock/organizations';
-import { mockVehicles } from '../../mock/vehicles';
-import { personRiskFactors, factorCategories, keyboardShortcuts } from '../../mock/risks';
+import { mockPersons as FALLBACK_PERSONS, riskColors, type Risk } from '../../mock/persons';
+import { mockOrganizations as FALLBACK_ORGS } from '../../mock/organizations';
+import { mockVehicles as FALLBACK_VEHICLES } from '../../mock/vehicles';
+import { personRiskFactors as FALLBACK_FACTORS, factorCategories, keyboardShortcuts } from '../../mock/risks';
 import type { ViewTab, RiskFactor } from '../../mock/risks';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string): Promise<any> {
+    try { const res = await fetch(url, { headers: { Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } }); return { ok: res.ok, data: await res.json() }; }
+    catch { return { ok: false, data: {} }; }
+}
 
 /* ═══════════════════════════════════════════════════════════════
    ARGUX — Risks Dashboard  ·  Threat Assessment Center
@@ -34,7 +40,23 @@ function RisksIndex() {
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    // Data state — populated from API with fallback to static mocks
+    const [mockPersons, setMockPersons] = useState(FALLBACK_PERSONS);
+    const [mockOrganizations, setMockOrganizations] = useState(FALLBACK_ORGS);
+    const [mockVehicles, setMockVehicles] = useState(FALLBACK_VEHICLES);
+    const [personRiskFactors, setPersonRiskFactors] = useState(FALLBACK_FACTORS);
+
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            await Promise.all([
+                apiCall('/mock-api/risks/summary'),
+                apiCall('/mock-api/risks/factor-categories'),
+            ]);
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     const riskOrder: Risk[] = ['Critical', 'High', 'Medium', 'Low', 'No Risk'];
 

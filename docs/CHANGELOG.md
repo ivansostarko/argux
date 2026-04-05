@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.27.7 - 2026-04-05
+
+### Risks Dashboard (/risks) — Complete Mock REST API + React Page + Unit Tests
+
+#### 5 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/risks/summary` | KPI counts by risk level + total entities + avg score + trending up count |
+| GET | `/mock-api/risks/persons` | Person risk table (filter risk + search + sort by score) |
+| GET | `/mock-api/risks/persons/{id}` | Person risk detail with factor breakdown |
+| GET | `/mock-api/risks/organizations` | Organization risk cards (filter risk + search) |
+| GET | `/mock-api/risks/organizations/{id}` | Org risk detail with factor breakdown |
+
+#### 15 Entities Assessed (10 persons + 5 orgs)
+- Critical (4): Horvat 94, Mendoza 91, Al-Rashid 88, Adriatic Maritime 89
+- High (4): Hassan 76, Babić 72, Balkan Transit 74, Meridian Finance 71
+- Medium (4): Petrova 45, Petrenko 42, Rossi 38, EuroChem 35
+- Low (3): Kovačević 18, Simić 12, Solaris 14
+
+#### 7 Risk Factor Types
+connections, zone_violations, lpr_flags, behavioral, surveillance_gaps, financial, travel
+
+#### React Page (169 lines)
+- KPI cards (click to filter by risk level, keyboard 1-4)
+- Person risk table: name, risk badge, score bar, trend arrow, factor count
+- Organization risk cards: name, score, linked persons, trend
+- Detail side panel: score + risk level + trend, factor breakdown with severity + count + detail
+- Search across entity names
+
+#### Unit Tests — 19 Tests
+- Summary: KPI structure, correct counts (4/4/4/3)
+- Persons: 10 entries, sorted by score desc, filter risk (3 critical), search, required fields
+- Person detail: factors (5 for Horvat), factor structure, Horvat critical/94, 404
+- Organizations: 5 entries, sorted desc, filter risk, search
+- Org detail: factors (3 for Adriatic), critical/89, Solaris no factors, 404
+
 ## 0.27.6 - 2026-04-05
 
 ### Records & Evidence (/records) — Complete Mock REST API + React Page + Unit Tests

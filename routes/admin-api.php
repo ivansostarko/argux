@@ -140,3 +140,9 @@ Route::post('/mock-api/records', [RecordsApiController::class, 'store'])->name('
 Route::put('/mock-api/records/{id}', [RecordsApiController::class, 'update'])->name('mock-api.records.update');
 Route::delete('/mock-api/records/{id}', [RecordsApiController::class, 'destroy'])->name('mock-api.records.destroy');
 Route::get('/mock-api/records/{id}/custody', [RecordsApiController::class, 'custody'])->name('mock-api.records.custody');
+
+// Risks Dashboard
+Route::get('/mock-api/risks/summary', [RisksApiController::class, 'summary'])->name('mock-api.risks.summary');
+Route::get('/mock-api/risks/persons/{id}/factors', [RisksApiController::class, 'personFactors'])->name('mock-api.risks.persons.factors');
+Route::get('/mock-api/risks/organizations/{id}/factors', [RisksApiController::class, 'orgFactors'])->name('mock-api.risks.orgs.factors');
+Route::get('/mock-api/risks/factor-categories', [RisksApiController::class, 'factorCategories'])->name('mock-api.risks.factor-categories');
