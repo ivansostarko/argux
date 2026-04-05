@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.29.2 - 2026-04-05
+
+### Devices (/devices) — Mock REST API (design preserved)
+
+#### 4 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/devices` | 20 devices (filter type/status/person + search) |
+| GET | `/mock-api/devices/stats` | Stats by type (7) and status (4) |
+| GET | `/mock-api/devices/{id}` | Device detail |
+| DELETE | `/mock-api/devices/{id}` | Delete device |
+
+- Original 174-line page design fully preserved (table with advanced multi-select filters, context menu, delete modal)
+- Only 21 lines added: API helpers + state + useEffect fetch
+- Also created missing `resources/js/mock/devices.ts` (47 lines) with 20 devices
+- 20 devices: 5 Phones, 3 GPS Trackers, 6 Cameras, 1 Microphone, 3 LPR Readers, 1 Face Camera, 1 Desktop Agent
+- 4 statuses: 15 Online, 3 Offline, 1 Degraded, 1 Maintenance
+- Unit tests: 13 tests
+
 ## 0.29.1 - 2026-04-05
 
 ### UAV / Drone Fleet (/uav) — Mock REST API (design preserved)

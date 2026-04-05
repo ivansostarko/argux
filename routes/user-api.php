@@ -34,6 +34,7 @@ use App\Http\Controllers\MockApi\WebScraperApiController;
 use App\Http\Controllers\MockApi\SocialScraperApiController;
 use App\Http\Controllers\MockApi\PlateRecognitionApiController;
 use App\Http\Controllers\MockApi\UAVApiController;
+use App\Http\Controllers\MockApi\DevicesApiController;
 
 // ═══════════════════════════════════════════════════════════════
 // Background Jobs (7 routes)
@@ -211,3 +212,11 @@ Route::post('/mock-api/uav', [UAVApiController::class, 'store'])->name('mock-api
 Route::put('/mock-api/uav/{id}', [UAVApiController::class, 'update'])->name('mock-api.uav.update');
 Route::patch('/mock-api/uav/{id}/status', [UAVApiController::class, 'updateStatus'])->name('mock-api.uav.status');
 Route::delete('/mock-api/uav/{id}', [UAVApiController::class, 'destroy'])->name('mock-api.uav.destroy');
+
+// ═══════════════════════════════════════════════════════════════
+// Devices (4 routes)
+// ═══════════════════════════════════════════════════════════════
+Route::get('/mock-api/devices', [DevicesApiController::class, 'index'])->name('mock-api.devices.index');
+Route::get('/mock-api/devices/stats', [DevicesApiController::class, 'stats'])->name('mock-api.devices.stats');
+Route::get('/mock-api/devices/{id}', [DevicesApiController::class, 'show'])->name('mock-api.devices.show');
+Route::delete('/mock-api/devices/{id}', [DevicesApiController::class, 'destroy'])->name('mock-api.devices.destroy');

@@ -1,11 +1,20 @@
-import PageMeta from '../../components/layout/PageMeta';
 import { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '../../layouts/AppLayout';
 import { Button } from '../../components/ui';
 import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
-import { mockDevices, deviceTypes, deviceStatuses, deviceStatusColors, deviceTypeColors, type DeviceStatus, type DeviceType } from '../../mock/devices';
+import { mockDevices as FALLBACK_DEVICES, deviceTypes, deviceStatuses, deviceStatusColors, deviceTypeColors, type DeviceStatus, type DeviceType } from '../../mock/devices';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
 
 /* ═══ MULTISELECT FILTER ═══ */
 function MSF({ selected, onChange, options, placeholder }: { selected: string[]; onChange: (v: string[]) => void; options: string[]; placeholder: string }) {
@@ -47,6 +56,17 @@ function getSignalLabel(v: number): string { if (v >= 80) return 'Excellent'; if
 export default function DevicesIndex() {
     const toast = useToast();
     const [search, setSearch] = useState('');
+
+    // Data state — API-driven with fallback
+    const [mockDevices, setMockDevices] = useState(FALLBACK_DEVICES);
+
+    useEffect(() => {
+        const load = async () => {
+            const { ok, data } = await apiCall('/mock-api/devices');
+            if (ok && data.data) setMockDevices(data.data);
+        };
+        load();
+    }, []);
     const [fType, setFType] = useState<string[]>([]);
     const [fStatus, setFStatus] = useState<string[]>([]);
     const [fSignal, setFSignal] = useState<string[]>([]);
@@ -92,9 +112,7 @@ export default function DevicesIndex() {
     const handleContextMenu = (e: React.MouseEvent, deviceId: number) => { e.preventDefault(); setCtx({ x: e.clientX, y: e.clientY, deviceId }); };
 
     return (
-                <>
-        <PageMeta title="Devices" section="devices" />
-<div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
             {/* Delete modal */}
             {deleteId !== null && (() => { const dev = mockDevices.find(d => d.id === deleteId); return <div onClick={() => setDeleteId(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}><div onClick={e => e.stopPropagation()} style={{ background: '#0d1220', border: `1px solid ${theme.border}`, borderRadius: 14, width: '100%', maxWidth: 400, padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.6)', animation: 'argux-fadeIn 0.2s ease-out' }}><div style={{ textAlign: 'center', marginBottom: 16 }}><div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke={theme.danger} strokeWidth="1.5" strokeLinecap="round"><polyline points="3,5 13,5"/><path d="M5 5V3a1 1 0 011-1h4a1 1 0 011 1v2M12 5v8a1 1 0 01-1 1H5a1 1 0 01-1-1V5"/></svg></div><h3 style={{ fontSize: 16, fontWeight: 700, color: theme.text, margin: '0 0 6px' }}>Delete Device</h3><p style={{ fontSize: 13, color: theme.textSecondary, margin: 0 }}>Are you sure you want to delete <strong style={{ color: theme.text }}>{dev?.name}</strong>?</p><p style={{ fontSize: 11, color: theme.textDim, margin: '6px 0 0' }}>This action cannot be undone.</p></div><div style={{ display: 'flex', gap: 10 }}><Button variant="secondary" onClick={() => setDeleteId(null)} style={{ flex: 1 }}>Cancel</Button><Button variant="danger" onClick={handleDelete} style={{ flex: 1 }}>Delete Device</Button></div></div></div>; })()}
 
@@ -172,7 +190,6 @@ export default function DevicesIndex() {
                 </div>
             </div>
         </div>
-    </>
     );
 }
 DevicesIndex.layout = (page: React.ReactNode) => <AppLayout>{page}</AppLayout>;

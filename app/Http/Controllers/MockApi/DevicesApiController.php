@@ -1,0 +1,88 @@
+<?php
+
+namespace App\Http\Controllers\MockApi;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * ARGUX Devices Mock REST API.
+ * Surveillance device fleet: phones, GPS, cameras, microphones, LPR, face cameras, desktop agents.
+ */
+class DevicesApiController extends Controller
+{
+    private static function devices(): array
+    {
+        return [
+            ['id'=>1,'name'=>'Phone #0291 — Horvat Primary','uuid'=>'DEV-PH-0291-ZG','type'=>'Phone','status'=>'Online','manufacturer'=>'Samsung','model'=>'Galaxy S24 Ultra','serialNumber'=>'R5CR31ZXYZ','firmware'=>'v4.2.1','signalStrength'=>92,'batteryLevel'=>78,'lat'=>45.8064,'lng'=>15.9706,'locationName'=>'Savska 41, Zagreb','personId'=>1,'personName'=>'Marko Horvat','orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:28:00Z','installedDate'=>'2026-01-15','operationCode'=>'HAWK','notes'=>'Primary intercept device'],
+            ['id'=>2,'name'=>'Phone #0183 — Mendoza','uuid'=>'DEV-PH-0183-ZG','type'=>'Phone','status'=>'Online','manufacturer'=>'Google','model'=>'Pixel 8 Pro','serialNumber'=>'GGL8P-0183','firmware'=>'v4.2.1','signalStrength'=>78,'batteryLevel'=>45,'lat'=>45.7842,'lng'=>15.9501,'locationName'=>'A3 Motorway','personId'=>9,'personName'=>'Carlos Mendoza','orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:25:00Z','installedDate'=>'2026-02-01','operationCode'=>'HAWK','notes'=>'Stealth mode'],
+            ['id'=>3,'name'=>'GPS Tracker #0183','uuid'=>'DEV-GP-0183-ZG','type'=>'GPS Tracker','status'=>'Online','manufacturer'=>'Queclink','model'=>'GL320MG','serialNumber'=>'QL-320-0183','firmware'=>'v3.8.0','signalStrength'=>88,'batteryLevel'=>11,'lat'=>45.7842,'lng'=>15.9501,'locationName'=>'A3 Motorway','personId'=>9,'personName'=>'Carlos Mendoza','orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:30:00Z','installedDate'=>'2026-02-01','operationCode'=>'HAWK','notes'=>'Low battery'],
+            ['id'=>4,'name'=>'GPS Tracker #0291','uuid'=>'DEV-GP-0291-ZG','type'=>'GPS Tracker','status'=>'Online','manufacturer'=>'Queclink','model'=>'GL320MG','serialNumber'=>'QL-320-0291','firmware'=>'v3.8.0','signalStrength'=>95,'batteryLevel'=>84,'lat'=>45.8064,'lng'=>15.9706,'locationName'=>'Savska 41, Zagreb','personId'=>1,'personName'=>'Marko Horvat','orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:30:00Z','installedDate'=>'2026-01-15','operationCode'=>'HAWK','notes'=>''],
+            ['id'=>5,'name'=>'Phone #0388 — Hassan','uuid'=>'DEV-PH-0388-ZG','type'=>'Phone','status'=>'Online','manufacturer'=>'OnePlus','model'=>'12','serialNumber'=>'OP12-0388','firmware'=>'v4.1.8','signalStrength'=>65,'batteryLevel'=>62,'lat'=>45.8090,'lng'=>15.9920,'locationName'=>'Warehouse District','personId'=>7,'personName'=>'Youssef Hassan','orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T08:10:00Z','installedDate'=>'2026-02-10','operationCode'=>'GLACIER','notes'=>'Comms intercept'],
+            ['id'=>6,'name'=>'Phone #0412 — Babić','uuid'=>'DEV-PH-0412-ZG','type'=>'Phone','status'=>'Online','manufacturer'=>'Xiaomi','model'=>'14','serialNumber'=>'XI14-0412','firmware'=>'v4.2.0','signalStrength'=>88,'batteryLevel'=>91,'lat'=>45.8090,'lng'=>15.9920,'locationName'=>'Warehouse District','personId'=>12,'personName'=>'Ivan Babić','orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:30:00Z','installedDate'=>'2026-03-01','operationCode'=>'HAWK','notes'=>''],
+            ['id'=>7,'name'=>'CAM-07 Port Terminal','uuid'=>'DEV-CM-007-PT','type'=>'Camera','status'=>'Online','manufacturer'=>'Axis','model'=>'P1375-E','serialNumber'=>'ACCC8ED12345','firmware'=>'v11.6.58','signalStrength'=>100,'batteryLevel'=>null,'lat'=>45.3271,'lng'=>14.4422,'locationName'=>'Port Terminal East, Gate 7','personId'=>null,'personName'=>null,'orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:30:00Z','installedDate'=>'2025-06-01','operationCode'=>'HAWK','notes'=>'Fixed 4K'],
+            ['id'=>8,'name'=>'CAM-08 Vukovarska','uuid'=>'DEV-CM-008-VK','type'=>'Camera','status'=>'Online','manufacturer'=>'Hikvision','model'=>'DS-2CD2T87G2','serialNumber'=>'HK-87G2-008','firmware'=>'v5.7.15','signalStrength'=>100,'batteryLevel'=>null,'lat'=>45.8055,'lng'=>15.9852,'locationName'=>'Vukovarska cesta','personId'=>null,'personName'=>null,'orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:30:00Z','installedDate'=>'2025-06-01','operationCode'=>'','notes'=>'LPR capable'],
+            ['id'=>9,'name'=>'CAM-03 Street','uuid'=>'DEV-CM-003-ST','type'=>'Camera','status'=>'Offline','manufacturer'=>'Axis','model'=>'Q6135-LE','serialNumber'=>'ACCC8ED67890','firmware'=>'v11.4.44','signalStrength'=>0,'batteryLevel'=>null,'lat'=>45.8090,'lng'=>15.9800,'locationName'=>'Near Warehouse','personId'=>null,'personName'=>null,'orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T08:54:00Z','installedDate'=>'2025-08-01','operationCode'=>'','notes'=>'Connection lost'],
+            ['id'=>10,'name'=>'CAM-12 Warehouse','uuid'=>'DEV-CM-012-WH','type'=>'Camera','status'=>'Online','manufacturer'=>'Axis','model'=>'Q1786-LE','serialNumber'=>'ACCC8ED11111','firmware'=>'v11.6.58','signalStrength'=>97,'batteryLevel'=>null,'lat'=>45.8090,'lng'=>15.9920,'locationName'=>'Warehouse District','personId'=>null,'personName'=>null,'orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:30:00Z','installedDate'=>'2025-09-01','operationCode'=>'HAWK','notes'=>'Night vision, AI detection'],
+            ['id'=>11,'name'=>'CAM-14 Building C','uuid'=>'DEV-CM-014-BC','type'=>'Camera','status'=>'Degraded','manufacturer'=>'Hikvision','model'=>'DS-2CD2347G2','serialNumber'=>'HK-47G2-014','firmware'=>'v5.7.12','signalStrength'=>42,'batteryLevel'=>null,'lat'=>45.8131,'lng'=>15.9772,'locationName'=>'Building C Entrance','personId'=>null,'personName'=>null,'orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:30:00Z','installedDate'=>'2025-06-01','operationCode'=>'','notes'=>'Packet loss, 480p'],
+            ['id'=>12,'name'=>'CAM-22 Hotel Lobby','uuid'=>'DEV-CM-022-HL','type'=>'Camera','status'=>'Online','manufacturer'=>'Axis','model'=>'M3058-PLVE','serialNumber'=>'ACCC8ED22222','firmware'=>'v11.6.58','signalStrength'=>100,'batteryLevel'=>null,'lat'=>45.8070,'lng'=>15.9740,'locationName'=>'Hotel Esplanade','personId'=>null,'personName'=>null,'orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:30:00Z','installedDate'=>'2025-10-01','operationCode'=>'GLACIER','notes'=>'Panoramic'],
+            ['id'=>13,'name'=>'LPR-VUKO-01','uuid'=>'DEV-LR-001-VK','type'=>'LPR Reader','status'=>'Online','manufacturer'=>'Genetec','model'=>'AutoVu SharpV','serialNumber'=>'GN-AV-001','firmware'=>'v6.2.0','signalStrength'=>100,'batteryLevel'=>null,'lat'=>45.802,'lng'=>15.995,'locationName'=>'Vukovarska East','personId'=>null,'personName'=>null,'orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:30:00Z','installedDate'=>'2025-06-01','operationCode'=>'HAWK','notes'=>'12,840 captures'],
+            ['id'=>14,'name'=>'LPR-PORT-01','uuid'=>'DEV-LR-002-PT','type'=>'LPR Reader','status'=>'Online','manufacturer'=>'Genetec','model'=>'AutoVu SharpV','serialNumber'=>'GN-AV-002','firmware'=>'v6.2.0','signalStrength'=>98,'batteryLevel'=>null,'lat'=>45.818,'lng'=>15.992,'locationName'=>'Port Terminal Entry','personId'=>null,'personName'=>null,'orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:30:00Z','installedDate'=>'2025-07-01','operationCode'=>'HAWK','notes'=>'9,450 captures'],
+            ['id'=>15,'name'=>'Face-CAM Port','uuid'=>'DEV-FC-001-PT','type'=>'Face Camera','status'=>'Online','manufacturer'=>'Dahua','model'=>'IPC-HFW71842H-Z','serialNumber'=>'DH-71842-001','firmware'=>'v2.820.0','signalStrength'=>100,'batteryLevel'=>null,'lat'=>45.3271,'lng'=>14.4422,'locationName'=>'Port Terminal East','personId'=>null,'personName'=>null,'orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:30:00Z','installedDate'=>'2025-08-01','operationCode'=>'HAWK','notes'=>'ArcFace embedded'],
+            ['id'=>16,'name'=>'MIC-044 Warehouse','uuid'=>'DEV-MC-044-WH','type'=>'Microphone','status'=>'Online','manufacturer'=>'Audio-Technica','model'=>'AT4050','serialNumber'=>'AT-4050-044','firmware'=>'v1.4.0','signalStrength'=>72,'batteryLevel'=>34,'lat'=>45.8090,'lng'=>15.9920,'locationName'=>'Warehouse District','personId'=>null,'personName'=>null,'orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-27T09:28:00Z','installedDate'=>'2026-03-01','operationCode'=>'GLACIER','notes'=>'Ambient audio'],
+            ['id'=>17,'name'=>'Phone #0501 — Al-Rashid','uuid'=>'DEV-PH-0501-ZG','type'=>'Phone','status'=>'Offline','manufacturer'=>'Apple','model'=>'iPhone 15 Pro Max','serialNumber'=>'DNPXYZ12345','firmware'=>'v4.1.5','signalStrength'=>0,'batteryLevel'=>0,'lat'=>45.8131,'lng'=>15.9772,'locationName'=>'Last: Hotel Esplanade','personId'=>3,'personName'=>'Ahmed Al-Rashid','orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-25T18:00:00Z','installedDate'=>'2026-01-20','operationCode'=>'GLACIER','notes'=>'Agent paused'],
+            ['id'=>18,'name'=>'Desktop Agent — Meridian','uuid'=>'DEV-DA-001-MF','type'=>'Desktop Agent','status'=>'Online','manufacturer'=>'ARGUX','model'=>'Agent v4.2','serialNumber'=>'AG-DA-001','firmware'=>'v4.2.0','signalStrength'=>100,'batteryLevel'=>null,'lat'=>45.815,'lng'=>15.980,'locationName'=>'Meridian Finance HQ','personId'=>null,'personName'=>null,'orgId'=>8,'orgName'=>'Meridian Finance','lastSeen'=>'2026-03-27T09:15:00Z','installedDate'=>'2026-02-15','operationCode'=>'GLACIER','notes'=>'File + network monitoring'],
+            ['id'=>19,'name'=>'GPS Tracker #0501','uuid'=>'DEV-GP-0501-ZG','type'=>'GPS Tracker','status'=>'Offline','manufacturer'=>'Queclink','model'=>'GL320MG','serialNumber'=>'QL-320-0501','firmware'=>'v3.8.0','signalStrength'=>0,'batteryLevel'=>0,'lat'=>45.3271,'lng'=>14.4422,'locationName'=>'Last: Rijeka Port','personId'=>11,'personName'=>'Fatima Al-Zahra','orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-22T14:30:00Z','installedDate'=>'2026-02-15','operationCode'=>'HAWK','notes'=>'Offline 5 days'],
+            ['id'=>20,'name'=>'LPR-SPLIT-01','uuid'=>'DEV-LR-003-SP','type'=>'LPR Reader','status'=>'Maintenance','manufacturer'=>'Genetec','model'=>'AutoVu SharpV','serialNumber'=>'GN-AV-003','firmware'=>'v6.1.8','signalStrength'=>0,'batteryLevel'=>null,'lat'=>43.508,'lng'=>16.440,'locationName'=>'Split Coastal Road','personId'=>null,'personName'=>null,'orgId'=>null,'orgName'=>null,'lastSeen'=>'2026-03-26T10:00:00Z','installedDate'=>'2025-09-01','operationCode'=>'','notes'=>'Firmware update'],
+        ];
+    }
+
+    /** GET /mock-api/devices */
+    public function index(Request $request): JsonResponse
+    {
+        $data = self::devices();
+        $type = $request->query('type', '');
+        $status = $request->query('status', '');
+        $personId = $request->query('person_id', '');
+        $search = strtolower($request->query('search', ''));
+
+        if ($type) $data = array_values(array_filter($data, fn($d) => $d['type'] === $type));
+        if ($status) $data = array_values(array_filter($data, fn($d) => $d['status'] === $status));
+        if ($personId) $data = array_values(array_filter($data, fn($d) => $d['personId'] == $personId));
+        if ($search) $data = array_values(array_filter($data, fn($d) => str_contains(strtolower($d['name'].' '.$d['uuid'].' '.$d['manufacturer'].' '.$d['model'].' '.$d['serialNumber'].' '.($d['personName'] ?? '')), $search)));
+
+        return response()->json(['data' => $data, 'meta' => ['total' => count($data)]]);
+    }
+
+    /** GET /mock-api/devices/{id} */
+    public function show(int $id): JsonResponse
+    {
+        $dev = collect(self::devices())->firstWhere('id', $id);
+        if (!$dev) return response()->json(['message' => 'Device not found.', 'code' => 'NOT_FOUND'], 404);
+        return response()->json(['data' => $dev]);
+    }
+
+    /** DELETE /mock-api/devices/{id} */
+    public function destroy(int $id): JsonResponse
+    {
+        $dev = collect(self::devices())->firstWhere('id', $id);
+        if (!$dev) return response()->json(['message' => 'Device not found.', 'code' => 'NOT_FOUND'], 404);
+        Log::info('Devices API: deleted', ['id' => $id, 'name' => $dev['name']]);
+        return response()->json(['message' => "Device \"{$dev['name']}\" deleted.", 'id' => $id]);
+    }
+
+    /** GET /mock-api/devices/stats */
+    public function stats(): JsonResponse
+    {
+        $all = self::devices();
+        $byType = []; $byStatus = [];
+        foreach ($all as $d) { $byType[$d['type']] = ($byType[$d['type']] ?? 0) + 1; $byStatus[$d['status']] = ($byStatus[$d['status']] ?? 0) + 1; }
+        return response()->json([
+            'total' => count($all), 'byType' => $byType, 'byStatus' => $byStatus,
+            'online' => $byStatus['Online'] ?? 0, 'offline' => $byStatus['Offline'] ?? 0,
+            'degraded' => $byStatus['Degraded'] ?? 0, 'maintenance' => $byStatus['Maintenance'] ?? 0,
+        ]);
+    }
+}
