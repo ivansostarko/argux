@@ -9,26 +9,29 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * ARGUX Records / Evidence Management Mock REST API.
- * CRUD, chain of custody, transcript, entity assignment.
+ * ARGUX Records / AI Processing Center Mock REST API.
+ * Matches original records page data shape (AIRecord interface).
  */
 class RecordsApiController extends Controller
 {
     private static function records(): array
     {
         return [
-            ['id'=>'rec-01','title'=>'Horvat Port Meeting — Surveillance Video','type'=>'video','description'=>'Surveillance footage of Horvat at Port Terminal East.','fileUrl'=>'/storage/records/horvat_port_meeting.mp4','fileSize'=>'1.2 GB','mimeType'=>'video/mp4','assignedPersons'=>[['id'=>1,'name'=>'Marko Horvat','type'=>'person']],'assignedOrgs'=>[['id'=>101,'name'=>'Adriatic Maritime Holdings','type'=>'organization']],'transcript'=>'No speech — envelope exchange at 08:47.','createdBy'=>'Sgt. Matić','createdAt'=>'2026-03-27 09:30','updatedAt'=>'2026-03-27 09:30','custody'=>[['id'=>'c01','action'=>'created','user'=>'Sgt. Matić','timestamp'=>'2026-03-27 09:30','details'=>'Imported from CAM-07'],['id'=>'c02','action'=>'accessed','user'=>'Maj. Novak','timestamp'=>'2026-03-27 09:45','details'=>'Viewed for report']],'tags'=>['surveillance','port','meeting']],
-            ['id'=>'rec-02','title'=>'Horvat Phone Intercept — Voice Recording','type'=>'audio','description'=>'Phone intercept discussing Thursday port arrangements.','fileUrl'=>'/storage/records/horvat_intercept_01.wav','fileSize'=>'48 MB','mimeType'=>'audio/wav','assignedPersons'=>[['id'=>1,'name'=>'Marko Horvat','type'=>'person']],'assignedOrgs'=>[],'transcript'=>'"...meeting at the port, Thursday... bring the documents..."','createdBy'=>'Sgt. Matić','createdAt'=>'2026-03-26 14:20','updatedAt'=>'2026-03-27 08:00','custody'=>[['id'=>'c03','action'=>'created','user'=>'Sgt. Matić','timestamp'=>'2026-03-26 14:20','details'=>'Phone intercept'],['id'=>'c04','action'=>'modified','user'=>'AI System','timestamp'=>'2026-03-26 14:35','details'=>'Faster-Whisper transcription'],['id'=>'c05','action'=>'accessed','user'=>'Lt. Perić','timestamp'=>'2026-03-27 08:00','details'=>'Keyword analysis']],'tags'=>['intercept','phone','voice']],
-            ['id'=>'rec-03','title'=>'Mendoza Passport — Identity Document','type'=>'document','description'=>'Colombian passport CC-87234591.','fileUrl'=>'/storage/records/mendoza_passport.pdf','fileSize'=>'1.4 MB','mimeType'=>'application/pdf','assignedPersons'=>[['id'=>9,'name'=>'Carlos Mendoza','type'=>'person']],'assignedOrgs'=>[],'transcript'=>null,'createdBy'=>'Lt. Perić','createdAt'=>'2026-03-20 09:30','updatedAt'=>'2026-03-20 09:30','custody'=>[['id'=>'c06','action'=>'created','user'=>'Lt. Perić','timestamp'=>'2026-03-20 09:30','details'=>'Scanned from border control']],'tags'=>['passport','identity']],
-            ['id'=>'rec-04','title'=>'Horvat Café Meeting — Photo Series','type'=>'photo','description'=>'12 surveillance photographs at Café Europa with Babić.','fileUrl'=>'/storage/records/horvat_cafe_photos.zip','fileSize'=>'48 MB','mimeType'=>'application/zip','assignedPersons'=>[['id'=>1,'name'=>'Marko Horvat','type'=>'person'],['id'=>12,'name'=>'Ivan Babić','type'=>'person']],'assignedOrgs'=>[],'transcript'=>null,'createdBy'=>'Sgt. Matić','createdAt'=>'2026-03-25 16:30','updatedAt'=>'2026-03-25 17:00','custody'=>[['id'=>'c07','action'=>'created','user'=>'Sgt. Matić','timestamp'=>'2026-03-25 16:30','details'=>'Nikon D850 from position Alpha'],['id'=>'c08','action'=>'modified','user'=>'Sgt. Matić','timestamp'=>'2026-03-25 17:00','details'=>'Added GPS metadata']],'tags'=>['surveillance','cafe','meeting']],
-            ['id'=>'rec-05','title'=>'Al-Rashid Phone Extract — Digital Evidence','type'=>'digital','description'=>'Complete phone extraction: SMS, calls, contacts, calendar, location.','fileUrl'=>'/storage/records/alrashid_phone.xlsx','fileSize'=>'3.6 MB','mimeType'=>'application/vnd.openxmlformats','assignedPersons'=>[['id'=>3,'name'=>'Ahmed Al-Rashid','type'=>'person']],'assignedOrgs'=>[],'transcript'=>null,'createdBy'=>'Lt. Perić','createdAt'=>'2026-03-24 14:00','updatedAt'=>'2026-03-25 09:00','custody'=>[['id'=>'c09','action'=>'created','user'=>'Lt. Perić','timestamp'=>'2026-03-24 14:00','details'=>'Cellebrite UFED extraction'],['id'=>'c10','action'=>'accessed','user'=>'Maj. Novak','timestamp'=>'2026-03-25 09:00','details'=>'Cross-referenced contacts']],'tags'=>['phone','extraction','cellebrite']],
-            ['id'=>'rec-06','title'=>'Adriatic Maritime — Corporate Registration','type'=>'document','description'=>'Corporate records including shareholders and beneficial ownership.','fileUrl'=>'/storage/records/adriatic_corp.pdf','fileSize'=>'12 MB','mimeType'=>'application/pdf','assignedPersons'=>[['id'=>1,'name'=>'Marko Horvat','type'=>'person']],'assignedOrgs'=>[['id'=>101,'name'=>'Adriatic Maritime Holdings','type'=>'organization']],'transcript'=>null,'createdBy'=>'Maj. Novak','createdAt'=>'2026-03-23 09:00','updatedAt'=>'2026-03-23 09:00','custody'=>[['id'=>'c11','action'=>'created','user'=>'Maj. Novak','timestamp'=>'2026-03-23 09:00','details'=>'National Business Registry']],'tags'=>['corporate','registry']],
-            ['id'=>'rec-07','title'=>'Hassan Arabic Intercept — Text Document','type'=>'document','description'=>'Arabic text communications. Pending translation.','fileUrl'=>'/storage/records/hassan_intercept.txt','fileSize'=>'24 KB','mimeType'=>'text/plain','assignedPersons'=>[['id'=>7,'name'=>'Youssef Hassan','type'=>'person']],'assignedOrgs'=>[],'transcript'=>'Arabic text — flagged keywords: shipping, Thursday, port, payment.','createdBy'=>'Lt. Perić','createdAt'=>'2026-03-27 08:10','updatedAt'=>'2026-03-27 08:10','custody'=>[['id'=>'c12','action'=>'created','user'=>'Lt. Perić','timestamp'=>'2026-03-27 08:10','details'=>'Encrypted messaging intercept']],'tags'=>['arabic','intercept','translation-pending']],
-            ['id'=>'rec-08','title'=>'Babić Warehouse — Night Surveillance','type'=>'video','description'=>'Night vision surveillance near warehouse. Loitering alert at 03:15.','fileUrl'=>'/storage/records/babic_warehouse.mp4','fileSize'=>'540 MB','mimeType'=>'video/mp4','assignedPersons'=>[['id'=>12,'name'=>'Ivan Babić','type'=>'person']],'assignedOrgs'=>[],'transcript'=>null,'createdBy'=>'CAM-12','createdAt'=>'2026-03-26 03:30','updatedAt'=>'2026-03-26 03:30','custody'=>[['id'=>'c13','action'=>'created','user'=>'System','timestamp'=>'2026-03-26 03:30','details'=>'Loitering detection auto-capture']],'tags'=>['night-vision','warehouse','loitering']],
-            ['id'=>'rec-09','title'=>'Seized USB Drive — Physical Evidence','type'=>'physical','description'=>'Kingston 32GB USB from Mendoza vehicle. Awaiting forensic imaging.','fileUrl'=>null,'fileSize'=>null,'mimeType'=>null,'assignedPersons'=>[['id'=>9,'name'=>'Carlos Mendoza','type'=>'person']],'assignedOrgs'=>[['id'=>102,'name'=>'Balkan Transit Group','type'=>'organization']],'transcript'=>null,'createdBy'=>'Cpt. Horvat','createdAt'=>'2026-03-22 18:45','updatedAt'=>'2026-03-24 10:00','custody'=>[['id'=>'c14','action'=>'created','user'=>'Cpt. Horvat','timestamp'=>'2026-03-22 18:45','details'=>'Seized from vehicle ZG-4421-MN'],['id'=>'c15','action'=>'transferred','user'=>'Cpt. Horvat','timestamp'=>'2026-03-23 08:00','details'=>'To Digital Forensics Lab, bag #DF-2026-0342'],['id'=>'c16','action'=>'accessed','user'=>'Digital Forensics','timestamp'=>'2026-03-24 10:00','details'=>'FTK Imager forensic imaging']],'tags'=>['usb','seized','physical','forensics']],
-            ['id'=>'rec-10','title'=>'Meridian Financial Transactions','type'=>'digital','description'=>'23 suspicious transactions totaling €847,000 over 90 days.','fileUrl'=>'/storage/records/meridian_transactions.xlsx','fileSize'=>'5.4 MB','mimeType'=>'application/vnd.openxmlformats','assignedPersons'=>[],'assignedOrgs'=>[['id'=>103,'name'=>'Meridian Finance Ltd','type'=>'organization']],'transcript'=>null,'createdBy'=>'Maj. Novak','createdAt'=>'2026-03-21 16:00','updatedAt'=>'2026-03-21 16:30','custody'=>[['id'=>'c17','action'=>'created','user'=>'Maj. Novak','timestamp'=>'2026-03-21 16:00','details'=>'Bank Transaction Monitor (AML)'],['id'=>'c18','action'=>'exported','user'=>'Maj. Novak','timestamp'=>'2026-03-21 16:30','details'=>'Exported to report']],'tags'=>['financial','AML','transactions']],
-            ['id'=>'rec-11','title'=>'Mendoza Vehicle Follow — Dashcam','type'=>'video','description'=>'Dashcam from undercover vehicle following Mendoza, 22 min.','fileUrl'=>'/storage/records/mendoza_follow.mp4','fileSize'=>'680 MB','mimeType'=>'video/mp4','assignedPersons'=>[['id'=>9,'name'=>'Carlos Mendoza','type'=>'person']],'assignedOrgs'=>[],'transcript'=>null,'createdBy'=>'Cpt. Horvat','createdAt'=>'2026-03-26 22:15','updatedAt'=>'2026-03-26 22:15','custody'=>[['id'=>'c19','action'=>'created','user'=>'Cpt. Horvat','timestamp'=>'2026-03-26 22:15','details'=>'Dashcam from unit Bravo-3']],'tags'=>['dashcam','follow','undercover']],
-            ['id'=>'rec-12','title'=>'Petrova Social Media Export','type'=>'digital','description'=>'Instagram and Telegram posts, 90-day collection.','fileUrl'=>'/storage/records/petrova_social.pdf','fileSize'=>'8.2 MB','mimeType'=>'application/pdf','assignedPersons'=>[['id'=>2,'name'=>'Elena Petrova','type'=>'person']],'assignedOrgs'=>[],'transcript'=>null,'createdBy'=>'System','createdAt'=>'2026-03-20 12:00','updatedAt'=>'2026-03-20 12:00','custody'=>[['id'=>'c20','action'=>'created','user'=>'Social Scraper','timestamp'=>'2026-03-20 12:00','details'=>'Auto-generated from scraper']],'tags'=>['social','scraper']],
+            ['id'=>'r01','type'=>'video_transcription','status'=>'completed','priority'=>'critical','title'=>'Port Terminal Surveillance — CAM-07','sourceFile'=>'horvat_port_cam07.mp4','sourceSize'=>'128 MB','sourceDuration'=>'45:00','sourceLang'=>'hr','aiModel'=>'Faster-Whisper Large-v3','confidence'=>94,'result'=>'Transcription complete. 3,847 words. 12 keyword matches.','wordCount'=>3847,'createdBy'=>'System','createdAt'=>'2026-03-24 09:48','completedAt'=>'2026-03-24 10:12','processingTime'=>'24 min','entityType'=>'person','entityId'=>1,'entityName'=>'Marko Horvat','operationCode'=>'HAWK','tags'=>['keyword-flagged','port','HAWK']],
+            ['id'=>'r02','type'=>'audio_transcription','status'=>'completed','priority'=>'critical','title'=>'Phone Intercept — Horvat Outgoing Call','sourceFile'=>'horvat_phone_20260324.wav','sourceSize'=>'4.2 MB','sourceDuration'=>'4:12','sourceLang'=>'hr','aiModel'=>'Faster-Whisper Large-v3','confidence'=>91,'result'=>'Full transcript: 4-minute call. References to port, Thursday, dock 7.','wordCount'=>612,'createdBy'=>'Sgt. Matić','createdAt'=>'2026-03-24 08:22','completedAt'=>'2026-03-24 08:26','processingTime'=>'4 min','entityType'=>'person','entityId'=>1,'entityName'=>'Marko Horvat','operationCode'=>'HAWK','tags'=>['intercept','keyword-flagged']],
+            ['id'=>'r03','type'=>'translation','status'=>'completed','priority'=>'high','title'=>'Hassan Encrypted Comms — Arabic → English','sourceFile'=>'hassan_encrypted_msgs.json','sourceSize'=>'18 KB','sourceLang'=>'ar','targetLang'=>'en','aiModel'=>'Meta NLLB-200','confidence'=>88,'result'=>'14 messages translated. Coordination of logistics. Code words detected.','wordCount'=>890,'createdBy'=>'System','createdAt'=>'2026-03-24 08:30','completedAt'=>'2026-03-24 08:35','processingTime'=>'5 min','entityType'=>'person','entityId'=>7,'entityName'=>'Omar Hassan','operationCode'=>'HAWK','tags'=>['encrypted','arabic','translated']],
+            ['id'=>'r04','type'=>'file_summary','status'=>'completed','priority'=>'high','title'=>'Rashid Holdings Financial Analysis Summary','sourceFile'=>'asg_financial_audit_2025.pdf','sourceSize'=>'5.8 MB','aiModel'=>'LLaMA 3.1 70B','confidence'=>86,'result'=>'12 over-invoiced cargo shipments (€2.4M discrepancy). 3 shell companies. Fund flow consistent with trade-based ML.','wordCount'=>2840,'createdBy'=>'Financial Intel','createdAt'=>'2026-03-22 09:00','completedAt'=>'2026-03-22 09:18','processingTime'=>'18 min','entityType'=>'org','entityId'=>2,'entityName'=>'Rashid Holdings','operationCode'=>'GLACIER','tags'=>['financial','shell-companies','AML']],
+            ['id'=>'r05','type'=>'photo_ocr','status'=>'completed','priority'=>'medium','title'=>'LPR Capture — Vukovarska Checkpoint','sourceFile'=>'horvat_vukovarska_lpr.jpg','sourceSize'=>'1.8 MB','aiModel'=>'LLaVA Vision','confidence'=>97,'result'=>'License plate: ZG-1847-AB (97%). BMW 5 Series dark blue. Parking permit ZONA-3.','wordCount'=>45,'createdBy'=>'LPR System','createdAt'=>'2026-03-24 09:31','completedAt'=>'2026-03-24 09:31','processingTime'=>'< 1 sec','entityType'=>'person','entityId'=>1,'entityName'=>'Marko Horvat','tags'=>['lpr','ZG-1847-AB']],
+            ['id'=>'r06','type'=>'audio_transcription','status'=>'processing','priority'=>'high','title'=>'Mendoza Night Activity — Vehicle Audio','sourceFile'=>'mendoza_vehicle_audio.wav','sourceSize'=>'8.6 MB','sourceDuration'=>'22:00','sourceLang'=>'es','aiModel'=>'Faster-Whisper Large-v3','progress'=>67,'createdBy'=>'System','createdAt'=>'2026-03-24 10:00','entityType'=>'person','entityId'=>9,'entityName'=>'Carlos Mendoza','operationCode'=>'HAWK','tags'=>['spanish','night-activity']],
+            ['id'=>'r07','type'=>'translation','status'=>'processing','priority'=>'critical','title'=>'Mendoza Vehicle Audio — Spanish → English','sourceFile'=>'mendoza_vehicle_transcript.txt','sourceSize'=>'—','sourceLang'=>'es','targetLang'=>'en','aiModel'=>'Meta NLLB-200','progress'=>0,'createdBy'=>'System','createdAt'=>'2026-03-24 10:05','entityType'=>'person','entityId'=>9,'entityName'=>'Carlos Mendoza','operationCode'=>'HAWK','tags'=>['spanish','pending-transcription']],
+            ['id'=>'r08','type'=>'video_transcription','status'=>'queued','priority'=>'medium','title'=>'Babić Loitering — Camera 12 Footage','sourceFile'=>'babic_loitering_cam12.mp4','sourceSize'=>'67 MB','sourceDuration'=>'22:00','sourceLang'=>'auto','aiModel'=>'Faster-Whisper Large-v3','createdBy'=>'AI Detection','createdAt'=>'2026-03-24 07:55','entityType'=>'person','entityId'=>12,'entityName'=>'Ivan Babić','tags'=>['loitering','ai-flagged']],
+            ['id'=>'r09','type'=>'file_summary','status'=>'queued','priority'=>'low','title'=>'CERBERUS Final Report — Executive Summary','sourceFile'=>'cerberus_final_report.pdf','sourceSize'=>'12.4 MB','aiModel'=>'LLaMA 3.1 70B','createdBy'=>'Col. Tomić','createdAt'=>'2026-03-23 14:00','operationCode'=>'CERBERUS','tags'=>['CERBERUS','final-report']],
+            ['id'=>'r10','type'=>'photo_ocr','status'=>'completed','priority'=>'medium','title'=>'Diplomatic Quarter — Embassy Signage OCR','sourceFile'=>'babic_diplomatic_photos.zip','sourceSize'=>'22 MB','aiModel'=>'LLaVA Vision','confidence'=>82,'result'=>'Detected: Embassy of Turkey (92%), Consulate of Egypt (88%). Subject at 3 locations.','wordCount'=>78,'createdBy'=>'Field Team Alpha','createdAt'=>'2026-03-23 15:20','completedAt'=>'2026-03-23 15:22','processingTime'=>'2 min','entityType'=>'person','entityId'=>12,'entityName'=>'Ivan Babić','tags'=>['diplomatic','embassy','OCR']],
+            ['id'=>'r11','type'=>'audio_transcription','status'=>'failed','priority'=>'medium','title'=>'Hassan Storage Facility — Ambient Audio','sourceFile'=>'hassan_storage_ambient.wav','sourceSize'=>'2.1 MB','sourceDuration'=>'15:00','sourceLang'=>'ar','aiModel'=>'Faster-Whisper Large-v3','confidence'=>12,'result'=>'FAILED: Audio quality below threshold (SNR < 5dB). Recommend DeepFilterNet preprocessing.','createdBy'=>'System','createdAt'=>'2026-03-23 16:45','completedAt'=>'2026-03-23 16:48','processingTime'=>'3 min','entityType'=>'person','entityId'=>7,'entityName'=>'Omar Hassan','tags'=>['failed','low-quality']],
+            ['id'=>'r12','type'=>'video_transcription','status'=>'completed','priority'=>'high','title'=>'Co-location Event — Horvat & Mendoza at Savska','sourceFile'=>'colocation_savska_41.mp4','sourceSize'=>'45 MB','sourceDuration'=>'8:00','sourceLang'=>'auto','aiModel'=>'Faster-Whisper Large-v3','confidence'=>89,'result'=>'Two speakers: Horvat (Croatian), Mendoza (Spanish-accented). Key: "the boat arrives Thursday".','wordCount'=>1240,'createdBy'=>'Correlation Engine','createdAt'=>'2026-03-24 09:20','completedAt'=>'2026-03-24 09:32','processingTime'=>'12 min','entityType'=>'person','entityId'=>1,'entityName'=>'Marko Horvat','operationCode'=>'HAWK','tags'=>['co-location','diarization','HAWK']],
+            ['id'=>'r13','type'=>'document','status'=>'completed','priority'=>'high','title'=>'Checkpoint Avoidance Route Map — Babić','sourceFile'=>'babic_route_map.pdf','sourceSize'=>'340 KB','aiModel'=>'Manual','createdBy'=>'AI Analysis','createdAt'=>'2026-03-22 10:00','completedAt'=>'2026-03-22 10:00','entityType'=>'person','entityId'=>12,'entityName'=>'Ivan Babić','tags'=>['checkpoint','LPR-avoidance']],
+            ['id'=>'r14','type'=>'evidence','status'=>'completed','priority'=>'critical','title'=>'Evidence Package — Horvat Co-location Series','sourceFile'=>'horvat_colocation_evidence_042.zip','sourceSize'=>'18.5 MB','aiModel'=>'Manual','createdBy'=>'Workflow Engine','createdAt'=>'2026-03-24 09:15','completedAt'=>'2026-03-24 09:15','entityType'=>'person','entityId'=>1,'entityName'=>'Marko Horvat','operationCode'=>'HAWK','tags'=>['evidence','chain-of-custody','HAWK']],
+            ['id'=>'r15','type'=>'translation','status'=>'completed','priority'=>'medium','title'=>'Cargo Manifest Translation — Chinese → English','sourceFile'=>'dragon_tech_manifests.pdf','sourceSize'=>'1.4 MB','sourceLang'=>'zh','targetLang'=>'en','aiModel'=>'Meta NLLB-200','confidence'=>85,'result'=>'8 manifests. Declared 2,400kg electronics, actual ~4,100kg. Dual-use concealment pattern.','wordCount'=>560,'createdBy'=>'Cpt. Perić','createdAt'=>'2026-03-18 11:00','completedAt'=>'2026-03-18 11:08','processingTime'=>'8 min','entityType'=>'org','entityId'=>4,'entityName'=>'Dragon Tech Solutions','operationCode'=>'PHOENIX','tags'=>['chinese','cargo','PHOENIX']],
         ];
     }
 
@@ -37,99 +40,43 @@ class RecordsApiController extends Controller
     {
         $data = self::records();
         $type = $request->query('type', '');
+        $status = $request->query('status', '');
+        $priority = $request->query('priority', '');
         $search = strtolower($request->query('search', ''));
-        $personId = $request->query('person_id', '');
-        $orgId = $request->query('org_id', '');
 
-        if ($type) $data = array_values(array_filter($data, fn($r) => $r['type'] === $type));
-        if ($personId) $data = array_values(array_filter($data, fn($r) => collect($r['assignedPersons'])->contains('id', (int)$personId)));
-        if ($orgId) $data = array_values(array_filter($data, fn($r) => collect($r['assignedOrgs'])->contains('id', (int)$orgId)));
-        if ($search) $data = array_values(array_filter($data, fn($r) => str_contains(strtolower($r['title'].' '.$r['description'].' '.implode(' ',$r['tags']).' '.($r['transcript'] ?? '')), $search)));
+        if ($type && $type !== 'all') $data = array_values(array_filter($data, fn($r) => $r['type'] === $type));
+        if ($status && $status !== 'all') $data = array_values(array_filter($data, fn($r) => $r['status'] === $status));
+        if ($priority && $priority !== 'all') $data = array_values(array_filter($data, fn($r) => $r['priority'] === $priority));
+        if ($search) $data = array_values(array_filter($data, fn($r) => str_contains(strtolower($r['title'].' '.($r['entityName'] ?? '').' '.implode(' ',$r['tags']).' '.($r['sourceFile'] ?? '')), $search)));
 
-        usort($data, fn($a, $b) => strcmp($b['createdAt'], $a['createdAt']));
-
-        $typeCounts = [];
-        foreach (self::records() as $r) $typeCounts[$r['type']] = ($typeCounts[$r['type']] ?? 0) + 1;
-
-        return response()->json(['data' => $data, 'meta' => ['total' => count($data)], 'type_counts' => $typeCounts]);
+        return response()->json(['data' => $data, 'meta' => ['total' => count($data)]]);
     }
 
     /** GET /mock-api/records/{id} */
     public function show(string $id): JsonResponse
     {
         $record = collect(self::records())->firstWhere('id', $id);
-        if (!$record) return response()->json(['message' => 'Record not found.', 'code' => 'NOT_FOUND'], 404);
+        if (!$record) return response()->json(['message'=>'Record not found.','code'=>'NOT_FOUND'], 404);
         return response()->json(['data' => $record]);
     }
 
-    /** POST /mock-api/records */
-    public function store(Request $request): JsonResponse
-    {
-        $request->validate([
-            'title' => ['required', 'string', 'min:5', 'max:200'],
-            'type' => ['required', 'in:document,photo,video,audio,digital,physical'],
-            'description' => ['required', 'string', 'min:10', 'max:2000'],
-            'person_ids' => ['nullable', 'array'],
-            'person_ids.*' => ['integer'],
-            'org_ids' => ['nullable', 'array'],
-            'org_ids.*' => ['integer'],
-        ]);
-        Log::info('Records API: created', ['title' => $request->input('title')]);
-        usleep(500_000);
-        $id = 'rec-' . Str::random(8);
-        $now = now()->toDateTimeString();
-        return response()->json(['message' => 'Record created.', 'data' => [
-            'id' => $id, 'title' => $request->input('title'), 'type' => $request->input('type'),
-            'description' => $request->input('description'), 'fileUrl' => null, 'fileSize' => null, 'mimeType' => null,
-            'assignedPersons' => [], 'assignedOrgs' => [], 'transcript' => null,
-            'createdBy' => 'Current User', 'createdAt' => $now, 'updatedAt' => $now,
-            'custody' => [['id' => 'c-' . Str::random(6), 'action' => 'created', 'user' => 'Current User', 'timestamp' => $now, 'details' => 'Record created']],
-            'tags' => [],
-        ]], 201);
-    }
-
-    /** PUT /mock-api/records/{id} */
-    public function update(Request $request, string $id): JsonResponse
+    /** POST /mock-api/records/{id}/retry */
+    public function retry(string $id): JsonResponse
     {
         $record = collect(self::records())->firstWhere('id', $id);
-        if (!$record) return response()->json(['message' => 'Record not found.', 'code' => 'NOT_FOUND'], 404);
-        $request->validate([
-            'title' => ['sometimes', 'string', 'min:5', 'max:200'],
-            'type' => ['sometimes', 'in:document,photo,video,audio,digital,physical'],
-            'description' => ['sometimes', 'string', 'min:10', 'max:2000'],
-        ]);
-        Log::info('Records API: updated', ['id' => $id]);
-        usleep(400_000);
-        $now = now()->toDateTimeString();
-        $updated = array_merge($record, array_filter($request->only(['title', 'type', 'description']), fn($v) => $v !== null));
-        $updated['updatedAt'] = $now;
-        $updated['custody'][] = ['id' => 'c-' . Str::random(6), 'action' => 'modified', 'user' => 'Current User', 'timestamp' => $now, 'details' => 'Record updated'];
-        return response()->json(['message' => 'Record updated.', 'data' => $updated]);
+        if (!$record) return response()->json(['message'=>'Record not found.','code'=>'NOT_FOUND'], 404);
+        if ($record['status'] !== 'failed') return response()->json(['message'=>'Only failed records can be retried.','code'=>'NOT_FAILED'], 409);
+        Log::info('Records API: retry', ['id' => $id]);
+        return response()->json(['message'=>"Record re-queued: {$record['title']}",'id'=>$id,'new_status'=>'queued']);
     }
 
     /** DELETE /mock-api/records/{id} */
     public function destroy(string $id): JsonResponse
     {
         $record = collect(self::records())->firstWhere('id', $id);
-        if (!$record) return response()->json(['message' => 'Record not found.', 'code' => 'NOT_FOUND'], 404);
-        Log::info('Records API: deleted', ['id' => $id, 'title' => $record['title']]);
-        return response()->json(['message' => "Record \"{$record['title']}\" deleted.", 'id' => $id]);
-    }
-
-    /** GET /mock-api/records/{id}/custody */
-    public function custody(string $id): JsonResponse
-    {
-        $record = collect(self::records())->firstWhere('id', $id);
-        if (!$record) return response()->json(['message' => 'Record not found.', 'code' => 'NOT_FOUND'], 404);
-        return response()->json(['data' => $record['custody'], 'record_id' => $id, 'record_title' => $record['title']]);
-    }
-
-    /** GET /mock-api/records/entities */
-    public function entities(): JsonResponse
-    {
-        return response()->json([
-            'persons' => [['id'=>1,'name'=>'Marko Horvat'],['id'=>9,'name'=>'Carlos Mendoza'],['id'=>12,'name'=>'Ivan Babić'],['id'=>7,'name'=>'Youssef Hassan'],['id'=>3,'name'=>'Ahmed Al-Rashid'],['id'=>2,'name'=>'Elena Petrova']],
-            'organizations' => [['id'=>101,'name'=>'Adriatic Maritime Holdings'],['id'=>102,'name'=>'Balkan Transit Group'],['id'=>103,'name'=>'Meridian Finance Ltd']],
-        ]);
+        if (!$record) return response()->json(['message'=>'Record not found.','code'=>'NOT_FOUND'], 404);
+        if (in_array($record['status'], ['processing'])) return response()->json(['message'=>'Cannot delete while processing.','code'=>'RECORD_PROCESSING'], 409);
+        Log::info('Records API: deleted', ['id' => $id]);
+        return response()->json(['message'=>"Record deleted: {$record['title']}",'id'=>$id]);
     }
 }
