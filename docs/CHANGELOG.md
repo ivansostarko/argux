@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.29.3 - 2026-04-06
+
+### TypeScript Error Fixes — 33 errors across 6 files
+
+#### `resources/js/mock/devices.ts` (updated)
+- Added `DeviceType` values: `Public Camera`, `Hidden Camera`, `Private Camera`
+- Added `DeviceStatus` value: `Standby`
+- Added interface fields: `firmwareVersion`, `protocol`, `ipAddress`, `macAddress`, `resolution`, `nightVision`, `motionDetection`, `encryptionEnabled`, `storageCapacity`, `installDate`
+- Added exports: `deviceManufacturers`, `deviceProtocols`, `getDeviceById()`
+- Updated `deviceStatusColors` and `deviceTypeColors` to cover all values
+- All 20 mock devices updated with extended fields
+
+#### `resources/js/pages/UAV/Index.tsx` (3 toast fixes)
+- Changed `toast?.({title, description, variant})` → `toast.success(title, description)` in handleCreate, handleEdit, handleDelete
+
+#### Errors fixed per file
+- `mock/vision.ts:8` — 3 errors (DeviceType comparisons)
+- `pages/Devices/DeviceForm.tsx` — 12 errors (missing exports + fields)
+- `pages/Devices/Edit.tsx` — 1 error (getDeviceById)
+- `pages/Devices/Show.tsx` — 3 errors (getDeviceById + type indexing)
+- `pages/UAV/Index.tsx` — 3 errors (toast API)
+- `pages/Vision/Index.tsx` — 11 errors (Device fields + Standby status)
+
 ## 0.29.2 - 2026-04-05
 
 ### Devices (/devices) — Mock REST API (design preserved)

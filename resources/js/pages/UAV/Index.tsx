@@ -86,19 +86,19 @@ export default function UAVIndex() {
     const handleCreate = () => {
         const newUAV: UAV = { ...emptyUAV, ...formData, id: Date.now(), sensors: formData.sensors || [] } as UAV;
         setUavs(prev => [...prev, newUAV]); setShowCreate(false); setFormData(emptyUAV);
-        toast?.({ title: 'UAV Created', description: `${newUAV.callsign} added to fleet.`, variant: 'success' });
+        toast.success('UAV Created', `${newUAV.callsign} added to fleet.`);
     };
     const handleEdit = () => {
         if (!showEdit) return;
         setUavs(prev => prev.map(u => u.id === showEdit.id ? { ...u, ...formData } as UAV : u));
         setShowEdit(null); setFormData(emptyUAV);
-        toast?.({ title: 'UAV Updated', description: `${formData.callsign} updated.`, variant: 'success' });
+        toast.success('UAV Updated', `${formData.callsign} updated.`);
     };
     const handleDelete = () => {
         if (!deleteId) return;
         const uav = uavs.find(u => u.id === deleteId);
         setUavs(prev => prev.filter(u => u.id !== deleteId)); setDeleteId(null);
-        toast?.({ title: 'UAV Removed', description: `${uav?.callsign} removed from fleet.`, variant: 'success' });
+        toast.success('UAV Removed', `${uav?.callsign} removed from fleet.`);
     };
     const openEdit = (u: UAV) => { setFormData({ ...u }); setShowEdit(u); };
     const openCreate = () => { setFormData({ ...emptyUAV }); setShowCreate(true); };
