@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.27.4 - 2026-04-05
+
+### Report Generator (/reports) — Complete Mock REST API + React Page + Unit Tests
+
+#### 7 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/reports/entities` | Available persons (10) + organizations (5) for entity selector |
+| GET | `/mock-api/reports` | Report history (search + entity_type/status/format filters + counts) |
+| GET | `/mock-api/reports/{id}` | Report detail with section list (14 person / 6 org sections) |
+| POST | `/mock-api/reports` | Generate new report (validates entity, format, date range) |
+| POST | `/mock-api/reports/{id}/retry` | Retry failed report (409 NOT_FAILED) |
+| GET | `/mock-api/reports/{id}/download` | Download completed report (409 NOT_READY) |
+| DELETE | `/mock-api/reports/{id}` | Delete report (409 REPORT_GENERATING) |
+
+#### 9 Mock Reports
+- 7 completed, 1 generating, 1 failed
+- Person reports (7): Horvat, Mendoza, Babić, Hassan, Al-Rashid, Petrova + weekly summary
+- Organization reports (2): Adriatic Maritime, Balkan Transit
+- Classification: CLASSIFIED // NOFORN on all reports
+
+#### React Page (232 lines)
+- Header with report count + classification badge
+- Search + entity type + status filters with status counts
+- Report list with status/format badges, pages, size
+- Detail side panel: metadata, section list, download/retry/delete actions
+- Generate Report modal: entity type toggle, entity selector, date range, PDF/DOCX format
+- Classification footer on detail panel
+
+#### Person Report Sections (14)
+AI Summary, Profile, Statistics, Vehicles, Known Locations, Connections Graph, Events Timeline, LPR Activity, Records, Face Recognition, Surveillance Apps, Social Media, Risk Assessment, Notes
+
+#### Unit Tests — 30 Tests
+- Entities: all (10+5), persons only, orgs only
+- List: 9 reports, filter entity_type, filter status, filter format, search, sorted by date desc
+- Show: person (14 sections), org (6 sections), 404
+- Generate: person, org, required fields, invalid type, invalid format, date order, unknown entity (404)
+- Retry: failed OK, completed blocked (409), 404
+- Download: completed OK, generating blocked (409), 404
+- Delete: completed OK, failed OK, generating blocked (409), 404
+
 ## 0.27.3 - 2026-04-05
 
 ### Background Jobs (/jobs) — Complete Mock REST API + React Page + Unit Tests

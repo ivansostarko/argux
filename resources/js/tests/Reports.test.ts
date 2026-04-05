@@ -1,132 +1,69 @@
-/**
- * ARGUX — Reports Page Tests
- * Run: npx vitest run resources/js/tests/Reports.test.ts
- */
 import { describe, it, expect } from 'vitest';
 import {
-    mockReports, statusColors, statusIcons, personSections, orgSections,
-    allOps, keyboardShortcuts,
+    mockReports, statusConfig, personSections, orgSections,
+    persons, organizations, riskColors, keyboardShortcuts,
 } from '../mock/reports';
-import type { ReportStatus, EntityType, ViewMode, Report } from '../mock/reports';
+import type { ReportStatus, EntityType, Report } from '../mock/reports';
 
-describe('Reports statusColors/Icons', () => {
-    it('should cover all statuses', () => {
-        (['Completed', 'Generating', 'Failed', 'Queued'] as const).forEach(s => {
-            expect(statusColors[s]).toMatch(/^#[0-9a-f]{6}$/i);
-            expect(statusIcons[s]).toBeTruthy();
+describe('Reports Mock Data', () => {
+    describe('mockReports', () => {
+        it('should have 9 reports', () => { expect(mockReports.length).toBe(9); });
+        it('IDs should be unique', () => { const ids = mockReports.map(r => r.id); expect(new Set(ids).size).toBe(ids.length); });
+        it('all reports should have required fields', () => {
+            mockReports.forEach(r => {
+                expect(r.id).toBeTruthy(); expect(r.entityType).toBeTruthy(); expect(r.entityName).toBeTruthy();
+                expect(r.title).toBeTruthy(); expect(r.status).toBeTruthy(); expect(r.format).toBeTruthy();
+                expect(typeof r.sections).toBe('number'); expect(r.generatedBy).toBeTruthy();
+                expect(r.classification).toBe('CLASSIFIED // NOFORN');
+            });
         });
-    });
-});
-
-describe('Reports sections', () => {
-    it('personSections should have 18 sections', () => {
-        expect(personSections.length).toBe(18);
-    });
-    it('orgSections should have 11 sections', () => {
-        expect(orgSections.length).toBe(11);
-    });
-    it('both should include AI Summary and Risk Assessment', () => {
-        expect(personSections).toContain('AI Summary');
-        expect(personSections).toContain('Risk Assessment');
-        expect(orgSections).toContain('AI Summary');
-        expect(orgSections).toContain('Risk Assessment');
-    });
-});
-
-describe('Reports mockReports', () => {
-    it('should have at least 10 reports', () => {
-        expect(mockReports.length).toBeGreaterThanOrEqual(10);
-    });
-
-    it('all should have required fields', () => {
-        mockReports.forEach((r: Report) => {
-            expect(r.id).toBeTruthy();
-            expect(r.title).toBeTruthy();
-            expect(['person', 'organization']).toContain(r.entityType);
-            expect(r.entityId).toBeGreaterThan(0);
-            expect(r.entityName).toBeTruthy();
-            expect(['Completed', 'Generating', 'Failed', 'Queued']).toContain(r.status);
-            expect(r.classification).toBeTruthy();
-            expect(r.dateFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-            expect(r.dateTo).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-            expect(r.generatedBy).toBeTruthy();
-            expect(r.operationCode).toBeTruthy();
-            expect(r.sections.length).toBeGreaterThan(0);
+        it('should have completed reports', () => {
+            const completed = mockReports.filter(r => r.status === 'completed');
+            expect(completed.length).toBe(7);
+            completed.forEach(r => { expect(r.pages).toBeGreaterThan(0); expect(r.size).toBeTruthy(); });
+        });
+        it('should have a generating report', () => { expect(mockReports.filter(r => r.status === 'generating').length).toBe(1); });
+        it('should have a failed report', () => { expect(mockReports.filter(r => r.status === 'failed').length).toBe(1); });
+        it('person reports should have 14 sections', () => {
+            mockReports.filter(r => r.entityType === 'person' && r.status === 'completed').forEach(r => expect(r.sections).toBe(14));
+        });
+        it('org reports should have 6 sections', () => {
+            mockReports.filter(r => r.entityType === 'organization' && r.status === 'completed').forEach(r => expect(r.sections).toBe(6));
         });
     });
 
-    it('IDs should be unique', () => {
-        const ids = mockReports.map(r => r.id);
-        expect(new Set(ids).size).toBe(ids.length);
-    });
-
-    it('should have completed reports with pages > 0', () => {
-        const completed = mockReports.filter(r => r.status === 'Completed');
-        expect(completed.length).toBeGreaterThanOrEqual(5);
-        completed.forEach(r => {
-            expect(r.pages).toBeGreaterThan(0);
-            expect(r.size).not.toBe('—');
+    describe('entities', () => {
+        it('should have 10 persons', () => { expect(persons.length).toBe(10); });
+        it('should have 5 organizations', () => { expect(organizations.length).toBe(5); });
+        it('persons should have id, name, risk', () => {
+            persons.forEach(p => { expect(p.id).toBeTruthy(); expect(p.name).toBeTruthy(); expect(p.risk).toBeTruthy(); });
         });
     });
 
-    it('should have both person and org reports', () => {
-        expect(mockReports.filter(r => r.entityType === 'person').length).toBeGreaterThanOrEqual(3);
-        expect(mockReports.filter(r => r.entityType === 'organization').length).toBeGreaterThanOrEqual(2);
-    });
-
-    it('stats should have all required fields', () => {
-        mockReports.forEach(r => {
-            expect(typeof r.stats.events).toBe('number');
-            expect(typeof r.stats.alerts).toBe('number');
-            expect(typeof r.stats.connections).toBe('number');
-            expect(typeof r.stats.lprHits).toBe('number');
-            expect(typeof r.stats.faceMatches).toBe('number');
-            expect(typeof r.stats.files).toBe('number');
+    describe('sections', () => {
+        it('person reports have 14 sections', () => { expect(personSections.length).toBe(14); });
+        it('org reports have 6 sections', () => { expect(orgSections.length).toBe(6); });
+        it('sections should not have empty strings', () => {
+            personSections.forEach(s => expect(s.length).toBeGreaterThan(0));
+            orgSections.forEach(s => expect(s.length).toBeGreaterThan(0));
         });
     });
 
-    it('should have at least one failed and one generating report', () => {
-        expect(mockReports.filter(r => r.status === 'Failed').length).toBeGreaterThanOrEqual(1);
-        expect(mockReports.filter(r => r.status === 'Generating').length).toBeGreaterThanOrEqual(1);
-    });
-});
-
-describe('Reports allOps', () => {
-    it('should have at least 2 operation codes', () => {
-        expect(allOps.length).toBeGreaterThanOrEqual(2);
-    });
-    it('should not have empty strings', () => {
-        allOps.forEach(op => expect(op.length).toBeGreaterThan(0));
-    });
-});
-
-describe('Reports keyboardShortcuts', () => {
-    it('should have at least 5 shortcuts', () => {
-        expect(keyboardShortcuts.length).toBeGreaterThanOrEqual(5);
-    });
-    it('should include Ctrl+Q, F, R, Esc', () => {
-        const keys = keyboardShortcuts.map(s => s.key);
-        expect(keys).toContain('Ctrl+Q');
-        expect(keys).toContain('F');
-        expect(keys).toContain('R');
-        expect(keys).toContain('Esc');
-    });
-    it('should include view shortcuts 1-2', () => {
-        const keys = keyboardShortcuts.map(s => s.key);
-        expect(keys).toContain('1');
-        expect(keys).toContain('2');
-    });
-    it('all should have key and description', () => {
-        keyboardShortcuts.forEach(s => {
-            expect(s.key).toBeTruthy();
-            expect(s.description).toBeTruthy();
+    describe('statusConfig', () => {
+        it('should have 4 statuses', () => { expect(Object.keys(statusConfig).length).toBe(4); });
+        it('each status should have label, color, icon', () => {
+            Object.values(statusConfig).forEach(s => { expect(s.label).toBeTruthy(); expect(s.color).toMatch(/^#/); expect(s.icon).toBeTruthy(); });
         });
     });
-});
 
-describe('Reports ViewMode type', () => {
-    it('should allow all 3 view modes', () => {
-        const views: ViewMode[] = ['history', 'generate', 'preview'];
-        expect(views.length).toBe(3);
+    describe('riskColors', () => {
+        it('should have 4 risk levels', () => { expect(Object.keys(riskColors).length).toBe(4); });
+    });
+
+    describe('keyboardShortcuts', () => {
+        it('should have shortcuts', () => { expect(keyboardShortcuts.length).toBeGreaterThan(0); });
+        it('each shortcut should have key and description', () => {
+            keyboardShortcuts.forEach(s => { expect(s.key).toBeTruthy(); expect(s.description).toBeTruthy(); });
+        });
     });
 });

@@ -113,3 +113,12 @@ Route::post('/mock-api/jobs/{id}/retry', [JobsApiController::class, 'retry'])->n
 Route::post('/mock-api/jobs/{id}/cancel', [JobsApiController::class, 'cancel'])->name('mock-api.jobs.cancel');
 Route::delete('/mock-api/jobs/{id}', [JobsApiController::class, 'destroy'])->name('mock-api.jobs.destroy');
 Route::post('/mock-api/jobs/clear-completed', [JobsApiController::class, 'clearCompleted'])->name('mock-api.jobs.clear');
+
+// Reports
+Route::get('/mock-api/reports/entities', [ReportsApiController::class, 'entities'])->name('mock-api.reports.entities');
+Route::get('/mock-api/reports', [ReportsApiController::class, 'index'])->name('mock-api.reports.index');
+Route::get('/mock-api/reports/{id}', [ReportsApiController::class, 'show'])->name('mock-api.reports.show');
+Route::post('/mock-api/reports', [ReportsApiController::class, 'store'])->name('mock-api.reports.store');
+Route::post('/mock-api/reports/{id}/retry', [ReportsApiController::class, 'retry'])->name('mock-api.reports.retry');
+Route::get('/mock-api/reports/{id}/download', [ReportsApiController::class, 'download'])->name('mock-api.reports.download');
+Route::delete('/mock-api/reports/{id}', [ReportsApiController::class, 'destroy'])->name('mock-api.reports.destroy');
