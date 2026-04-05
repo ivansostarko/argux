@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.29.1 - 2026-04-05
+
+### UAV / Drone Fleet (/uav) — Mock REST API (design preserved)
+
+#### 7 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/uav` | 9 UAVs (filter status/type/class + search) |
+| GET | `/mock-api/uav/stats` | Fleet stats (deployed, operational, flight hours, avg battery) |
+| GET | `/mock-api/uav/{id}` | Full UAV detail (specs, sensors, comms, assignment, tracking) |
+| POST | `/mock-api/uav` | Add UAV (validated: callsign, model, type, class) |
+| PUT | `/mock-api/uav/{id}` | Update UAV fields |
+| PATCH | `/mock-api/uav/{id}/status` | Change status (409 lost, 409 low battery for deploy) |
+| DELETE | `/mock-api/uav/{id}` | Remove from fleet (409 if deployed) |
+
+- Original 386-line page design fully preserved (fleet table, detail modal with 5 tabs, create/edit/delete)
+- Only 18 lines added: API helpers + useEffect fetch
+- 9 UAVs: 2 deployed, 3 operational, 2 standby, 1 maintenance
+- 6 types × 5 classes with full specs (weight, speed, altitude, endurance, sensors)
+- Business rules: cannot delete deployed, cannot deploy low battery, lost status locked
+- Unit tests: 20 tests
+
 ## 0.29.0 - 2026-04-05
 
 ### Plate Recognition / LPR (/plate-recognition) — Mock REST API (design preserved)

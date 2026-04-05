@@ -33,6 +33,7 @@ use App\Http\Controllers\MockApi\FaceRecognitionApiController;
 use App\Http\Controllers\MockApi\WebScraperApiController;
 use App\Http\Controllers\MockApi\SocialScraperApiController;
 use App\Http\Controllers\MockApi\PlateRecognitionApiController;
+use App\Http\Controllers\MockApi\UAVApiController;
 
 // ═══════════════════════════════════════════════════════════════
 // Background Jobs (7 routes)
@@ -199,3 +200,14 @@ Route::get('/mock-api/plate-recognition/readers', [PlateRecognitionApiController
 Route::get('/mock-api/plate-recognition/watchlist', [PlateRecognitionApiController::class, 'watchlist'])->name('mock-api.lpr.watchlist');
 Route::get('/mock-api/plate-recognition/stats', [PlateRecognitionApiController::class, 'stats'])->name('mock-api.lpr.stats');
 Route::post('/mock-api/plate-recognition/search', [PlateRecognitionApiController::class, 'search'])->name('mock-api.lpr.search');
+
+// ═══════════════════════════════════════════════════════════════
+// UAV / Drone Fleet (7 routes)
+// ═══════════════════════════════════════════════════════════════
+Route::get('/mock-api/uav', [UAVApiController::class, 'index'])->name('mock-api.uav.index');
+Route::get('/mock-api/uav/stats', [UAVApiController::class, 'stats'])->name('mock-api.uav.stats');
+Route::get('/mock-api/uav/{id}', [UAVApiController::class, 'show'])->name('mock-api.uav.show');
+Route::post('/mock-api/uav', [UAVApiController::class, 'store'])->name('mock-api.uav.store');
+Route::put('/mock-api/uav/{id}', [UAVApiController::class, 'update'])->name('mock-api.uav.update');
+Route::patch('/mock-api/uav/{id}/status', [UAVApiController::class, 'updateStatus'])->name('mock-api.uav.status');
+Route::delete('/mock-api/uav/{id}', [UAVApiController::class, 'destroy'])->name('mock-api.uav.destroy');

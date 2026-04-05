@@ -1,9 +1,19 @@
 import PageMeta from '../../components/layout/PageMeta';
-import { useState, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { useToast } from '../../components/ui/Toast';
 import { theme } from '../../lib/theme';
-import { mockUAVs, uavStatusConfig, uavTypeConfig, uavClassConfig, type UAV, type UAVStatus, type UAVType, type UAVClass } from '../../mock/uav';
+import { mockUAVs as FALLBACK_UAVS, uavStatusConfig, uavTypeConfig, uavClassConfig, type UAV, type UAVStatus, type UAVType, type UAVClass } from '../../mock/uav';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
 
 /* ═══ HELPERS ═══ */
 function StatusBadge({ s }: { s: UAVStatus }) { const c = uavStatusConfig[s]; return <span className="uav-stat-chip" style={{ background: `${c.color}12`, color: c.color, border: `1px solid ${c.color}25` }}>{c.icon} {c.label}</span>; }
@@ -24,8 +34,16 @@ const emptyUAV: Partial<UAV> = { callsign: '', model: '', manufacturer: '', type
 /* ═══ MAIN COMPONENT ═══ */
 export default function UAVIndex() {
     const toast = useToast();
-    const [uavs, setUavs] = useState<UAV[]>(mockUAVs);
+    const [uavs, setUavs] = useState<UAV[]>(FALLBACK_UAVS);
     const [search, setSearch] = useState('');
+
+    useEffect(() => {
+        const load = async () => {
+            const { ok, data } = await apiCall('/mock-api/uav');
+            if (ok && data.data) setUavs(data.data);
+        };
+        load();
+    }, []);
     const [statusFilter, setStatusFilter] = useState<UAVStatus | null>(null);
     const [typeFilter, setTypeFilter] = useState<string[]>([]);
     const [classFilter, setClassFilter] = useState<string[]>([]);
@@ -68,19 +86,19 @@ export default function UAVIndex() {
     const handleCreate = () => {
         const newUAV: UAV = { ...emptyUAV, ...formData, id: Date.now(), sensors: formData.sensors || [] } as UAV;
         setUavs(prev => [...prev, newUAV]); setShowCreate(false); setFormData(emptyUAV);
-        toast.success('UAV Created', `${newUAV.callsign} added to fleet.`);
+        toast?.({ title: 'UAV Created', description: `${newUAV.callsign} added to fleet.`, variant: 'success' });
     };
     const handleEdit = () => {
         if (!showEdit) return;
         setUavs(prev => prev.map(u => u.id === showEdit.id ? { ...u, ...formData } as UAV : u));
         setShowEdit(null); setFormData(emptyUAV);
-        toast.success('UAV Updated', `${formData.callsign} updated.`);
+        toast?.({ title: 'UAV Updated', description: `${formData.callsign} updated.`, variant: 'success' });
     };
     const handleDelete = () => {
         if (!deleteId) return;
         const uav = uavs.find(u => u.id === deleteId);
         setUavs(prev => prev.filter(u => u.id !== deleteId)); setDeleteId(null);
-        toast.warning('UAV Removed', `${uav?.callsign} removed from fleet.`);
+        toast?.({ title: 'UAV Removed', description: `${uav?.callsign} removed from fleet.`, variant: 'success' });
     };
     const openEdit = (u: UAV) => { setFormData({ ...u }); setShowEdit(u); };
     const openCreate = () => { setFormData({ ...emptyUAV }); setShowCreate(true); };
