@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.28.2 - 2026-04-05
+
+### Workflows (/workflows) — Mock REST API (design preserved)
+
+#### 6 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/workflows` | 9 workflows (filter status/operation + search) |
+| GET | `/mock-api/workflows/templates` | 6 pre-built workflow templates |
+| GET | `/mock-api/workflows/{id}` | Detail with triggers, actions, execLog |
+| POST | `/mock-api/workflows` | Create (validated: name, description, priority, status) |
+| PATCH | `/mock-api/workflows/{id}/status` | Move between columns (409 archived→non-draft) |
+| DELETE | `/mock-api/workflows/{id}` | Delete (409 if active) |
+
+- Original 277-line page design fully preserved (kanban/list/templates views)
+- Only 22 lines added: API helpers + state + useEffect fetch
+- 9 workflows across 5 statuses (6 Active, 1 Paused, 1 Completed, 1 Archived)
+- Business rules: cannot delete active, archived only to Draft
+- Unit tests: 20 tests
+
 ## 0.28.1 - 2026-04-05
 
 ### Data Sources (/data-sources) — Mock REST API (design preserved)

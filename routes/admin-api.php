@@ -170,3 +170,11 @@ Route::post('/mock-api/data-sources/{id}/sync', [DataSourcesApiController::class
 Route::patch('/mock-api/data-sources/{id}/pause', [DataSourcesApiController::class, 'togglePause'])->name('mock-api.datasources.pause');
 Route::delete('/mock-api/data-sources/{id}', [DataSourcesApiController::class, 'destroy'])->name('mock-api.datasources.destroy');
 Route::post('/mock-api/data-sources/sync-all', [DataSourcesApiController::class, 'syncAll'])->name('mock-api.datasources.sync-all');
+
+// Workflows
+Route::get('/mock-api/workflows', [WorkflowsApiController::class, 'index'])->name('mock-api.workflows.index');
+Route::get('/mock-api/workflows/templates', [WorkflowsApiController::class, 'templates'])->name('mock-api.workflows.templates');
+Route::get('/mock-api/workflows/{id}', [WorkflowsApiController::class, 'show'])->name('mock-api.workflows.show');
+Route::post('/mock-api/workflows', [WorkflowsApiController::class, 'store'])->name('mock-api.workflows.store');
+Route::patch('/mock-api/workflows/{id}/status', [WorkflowsApiController::class, 'updateStatus'])->name('mock-api.workflows.status');
+Route::delete('/mock-api/workflows/{id}', [WorkflowsApiController::class, 'destroy'])->name('mock-api.workflows.destroy');

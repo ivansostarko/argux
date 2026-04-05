@@ -4,8 +4,18 @@ import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import { mockPersons } from '../../mock/persons';
-import { mockWorkflows, templates, statusColors, statusIcons, prioColors, triggerIcons, actionIcons, kanbanCols, allTriggerTypes, allActionTypes, keyboardShortcuts } from '../../mock/workflows';
+import { mockWorkflows as FALLBACK_WFS, templates as FALLBACK_TPLS, statusColors, statusIcons, prioColors, triggerIcons, actionIcons, kanbanCols, allTriggerTypes, allActionTypes, keyboardShortcuts } from '../../mock/workflows';
 import type { WfStatus, ViewTab, Workflow, TriggerType, ActionType } from '../../mock/workflows';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
 
 /* ═══ ARGUX — Workflows ═══ */
 
@@ -24,7 +34,19 @@ function WorkflowsIndex() {
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    // Data state — API-driven with fallback
+    const [mockWorkflows, setMockWorkflows] = useState(FALLBACK_WFS);
+    const [templates] = useState(FALLBACK_TPLS);
+
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            const { ok, data } = await apiCall('/mock-api/workflows');
+            if (ok && data.data) setMockWorkflows(data.data);
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     const wf = selWf ? mockWorkflows.find(w => w.id === selWf) : null;
     const ops = [...new Set(mockWorkflows.map(w => w.operationName))];
