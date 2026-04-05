@@ -1,23 +1,47 @@
 import PageMeta from '../../components/layout/PageMeta';
 import AdminLayout from '../../layouts/AdminLayout';
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import { useToast } from '../../components/ui/Toast';
-import { mockTickets, statusConfig, priorityConfig, categoryConfig, assignees, keyboardShortcuts } from '../../mock/admin-support';
+import { mockTickets as FALLBACK, statusConfig, priorityConfig, categoryConfig, assignees, keyboardShortcuts } from '../../mock/admin-support';
 import type { TicketStatus, TicketPriority, TicketCategory, Ticket } from '../../mock/admin-support';
+
+/**
+ * ARGUX Support Tickets — split-panel CRUD via mock REST API.
+ *
+ * GET    /mock-api/admin/support/tickets              — List + filter + search
+ * GET    /mock-api/admin/support/tickets/{id}         — Detail with messages
+ * POST   /mock-api/admin/support/tickets              — Create ticket
+ * PATCH  /mock-api/admin/support/tickets/{id}/status   — Change status
+ * PATCH  /mock-api/admin/support/tickets/{id}/priority — Change priority
+ * PATCH  /mock-api/admin/support/tickets/{id}/assignee — Reassign
+ * POST   /mock-api/admin/support/tickets/{id}/reply    — Add reply
+ * DELETE /mock-api/admin/support/tickets/{id}          — Delete (resolved/closed only)
+ */
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: { message: 'Network error.' } }; }
+}
 
 function Skel({ w, h }: { w: string | number; h: number }) { return <div className="sup-skeleton" style={{ width: typeof w === 'number' ? w : w, height: h }} />; }
 
 export default function AdminSupport() {
     const [loading, setLoading] = useState(true);
-    const [tickets, setTickets] = useState(mockTickets);
+    const [tickets, setTickets] = useState<Ticket[]>([]);
     const [search, setSearch] = useState('');
     const [statusF, setStatusF] = useState<TicketStatus | 'all'>('all');
     const [selId, setSelId] = useState<string | null>(null);
     const [reply, setReply] = useState('');
     const [showNew, setShowNew] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
+    const [counts, setCounts] = useState<Record<string,number>>({});
     const searchRef = useRef<HTMLInputElement>(null);
     const replyRef = useRef<HTMLTextAreaElement>(null);
     const { trigger } = useTopLoader();
@@ -29,50 +53,55 @@ export default function AdminSupport() {
     const [nCat, setNCat] = useState<TicketCategory>('bug');
     const [nPrio, setNPrio] = useState<TicketPriority>('medium');
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 600); return () => clearTimeout(t); }, []);
+    const fetchTickets = useCallback(async () => {
+        setLoading(true); trigger();
+        const params = new URLSearchParams();
+        if (statusF !== 'all') params.set('status', statusF);
+        if (search) params.set('search', search);
+        const { ok, data } = await apiCall(`/mock-api/admin/support/tickets?${params}`);
+        if (ok && data.data) { setTickets(data.data); if (data.counts) setCounts(data.counts); }
+        else { setTickets(FALLBACK as Ticket[]); }
+        setLoading(false);
+    }, [statusF, search, trigger]);
+
+    useEffect(() => { fetchTickets(); }, [fetchTickets]);
 
     const sel = selId ? tickets.find(t => t.id === selId) : null;
 
-    const counts = useMemo(() => {
-        const c: Record<string, number> = { all: tickets.length };
-        (Object.keys(statusConfig) as TicketStatus[]).forEach(s => { c[s] = tickets.filter(t => t.status === s).length; });
-        return c;
-    }, [tickets]);
-
-    const filtered = useMemo(() => {
-        let tks = tickets;
-        if (statusF !== 'all') tks = tks.filter(t => t.status === statusF);
-        if (search) { const q = search.toLowerCase(); tks = tks.filter(t => t.subject.toLowerCase().includes(q) || t.number.toLowerCase().includes(q) || t.reporter.toLowerCase().includes(q) || t.tags.some(tg => tg.toLowerCase().includes(q))); }
-        return tks.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    }, [tickets, statusF, search]);
+    // Data already filtered by API
+    const filtered = tickets;
 
     const resetAll = useCallback(() => { setSearch(''); setStatusF('all'); trigger(); }, [trigger]);
 
-    const handleReply = () => {
+    const handleReply = async () => {
         if (!reply.trim() || !sel) return;
-        const updated = tickets.map(t => t.id === sel.id ? { ...t, messages: [...t.messages, { id: `m-${Date.now()}`, type: 'admin' as const, author: 'Col. Tomić', authorRole: 'System Admin', content: reply.trim(), timestamp: new Date().toLocaleString('sv-SE', { hour12: false }).replace(',', '') }], updatedAt: new Date().toLocaleString('sv-SE', { hour12: false }).replace(',', '') } : t);
-        setTickets(updated);
-        setReply('');
-        toast.success('Reply sent', `Response added to ${sel.number}`);
+        const { ok, data } = await apiCall(`/mock-api/admin/support/tickets/${sel.id}/reply`, 'POST', { content: reply.trim() });
+        if (ok && data.data) {
+            setTickets(prev => prev.map(t => t.id === sel.id ? { ...t, messages: [...t.messages, data.data], updatedAt: data.data.timestamp } : t));
+            setReply('');
+            toast.success('Reply sent', data.message || `Response added to ${sel.number}`);
+        } else { toast.error('Error', data.message || 'Failed to send reply.'); }
     };
 
-    const handleNewTicket = () => {
+    const handleNewTicket = async () => {
         if (!nSubject.trim() || !nDesc.trim()) return;
-        const num = `TKT-${String(tickets.length + 1).padStart(3, '0')}`;
-        const now = new Date().toLocaleString('sv-SE', { hour12: false }).replace(',', '');
-        const newT: Ticket = { id: `t-${Date.now()}`, number: num, subject: nSubject.trim(), description: nDesc.trim(), status: 'open', priority: nPrio, category: nCat, reporter: 'Col. Tomić', reporterEmail: 'tomic@argux.mil', assignee: 'Unassigned', createdAt: now, updatedAt: now, tags: [categoryConfig[nCat].label.toLowerCase()],
-            messages: [{ id: `m-${Date.now()}`, type: 'user', author: 'Col. Tomić', authorRole: 'System Admin', content: nDesc.trim(), timestamp: now }, { id: `m-${Date.now() + 1}`, type: 'system', author: 'System', content: `Ticket ${num} created. Priority: ${priorityConfig[nPrio].label}. Awaiting assignment.`, timestamp: now }] };
-        setTickets([newT, ...tickets]);
-        setShowNew(false); setNSubject(''); setNDesc(''); setNCat('bug'); setNPrio('medium');
-        setSelId(newT.id);
-        toast.success('Ticket created', `${num} — ${nSubject.trim()}`);
-        trigger();
+        const { ok, data } = await apiCall('/mock-api/admin/support/tickets', 'POST', { subject: nSubject.trim(), description: nDesc.trim(), category: nCat, priority: nPrio });
+        if (ok && data.data) {
+            setTickets(prev => [data.data as Ticket, ...prev]);
+            setShowNew(false); setNSubject(''); setNDesc(''); setNCat('bug'); setNPrio('medium');
+            setSelId(data.data.id);
+            toast.success('Ticket created', data.message);
+            trigger();
+        } else { toast.error('Error', data.errors?.subject?.[0] || data.message || 'Failed.'); }
     };
 
-    const handleStatusChange = (ticketId: string, newStatus: TicketStatus) => {
-        const now = new Date().toLocaleString('sv-SE', { hour12: false }).replace(',', '');
-        setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: newStatus, updatedAt: now, ...(newStatus === 'resolved' || newStatus === 'closed' ? { resolvedAt: now } : {}), messages: [...t.messages, { id: `m-${Date.now()}`, type: 'system' as const, author: 'System', content: `Status changed to ${statusConfig[newStatus].label}.`, timestamp: now }] } : t));
-        toast.info('Status updated', `Ticket moved to ${statusConfig[newStatus].label}`);
+    const handleStatusChange = async (ticketId: string, newStatus: TicketStatus) => {
+        const { ok, data } = await apiCall(`/mock-api/admin/support/tickets/${ticketId}/status`, 'PATCH', { status: newStatus });
+        if (ok) {
+            const now = data.system_message?.timestamp || new Date().toISOString();
+            setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: newStatus, updatedAt: now, ...(newStatus === 'resolved' || newStatus === 'closed' ? { resolvedAt: now } : {}), ...(data.system_message ? { messages: [...t.messages, data.system_message] } : {}) } : t));
+            toast.info('Status updated', data.message || `Moved to ${statusConfig[newStatus].label}`);
+        } else { toast.error('Error', data.message || 'Failed.'); }
     };
 
     useEffect(() => {

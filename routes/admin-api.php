@@ -70,3 +70,13 @@ Route::put('/mock-api/admin/config/tab/{tab}', [AdminConfigApiController::class,
 Route::post('/mock-api/admin/config/tab/{tab}/reset', [AdminConfigApiController::class, 'reset'])->name('mock-api.admin.config.reset');
 Route::post('/mock-api/admin/config/test-notification', [AdminConfigApiController::class, 'testNotification'])->name('mock-api.admin.config.test-notification');
 Route::post('/mock-api/admin/config/backup/trigger', [AdminConfigApiController::class, 'triggerBackup'])->name('mock-api.admin.config.trigger-backup');
+
+// Support Tickets
+Route::get('/mock-api/admin/support/tickets', [AdminSupportApiController::class, 'index'])->name('mock-api.admin.support.index');
+Route::get('/mock-api/admin/support/tickets/{id}', [AdminSupportApiController::class, 'show'])->name('mock-api.admin.support.show');
+Route::post('/mock-api/admin/support/tickets', [AdminSupportApiController::class, 'store'])->name('mock-api.admin.support.store');
+Route::patch('/mock-api/admin/support/tickets/{id}/status', [AdminSupportApiController::class, 'updateStatus'])->name('mock-api.admin.support.status');
+Route::patch('/mock-api/admin/support/tickets/{id}/priority', [AdminSupportApiController::class, 'updatePriority'])->name('mock-api.admin.support.priority');
+Route::patch('/mock-api/admin/support/tickets/{id}/assignee', [AdminSupportApiController::class, 'updateAssignee'])->name('mock-api.admin.support.assignee');
+Route::post('/mock-api/admin/support/tickets/{id}/reply', [AdminSupportApiController::class, 'reply'])->name('mock-api.admin.support.reply');
+Route::delete('/mock-api/admin/support/tickets/{id}', [AdminSupportApiController::class, 'destroy'])->name('mock-api.admin.support.destroy');

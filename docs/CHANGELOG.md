@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.26.9 - 2026-04-05
+
+### Admin Support — Complete Mock REST API + Unit Tests
+
+#### 8 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/admin/support/tickets` | List with search + 4 filters (status/priority/category/assignee) |
+| GET | `/mock-api/admin/support/tickets/{id}` | Detail with full conversation thread |
+| POST | `/mock-api/admin/support/tickets` | Create ticket (subject, description, category, priority) |
+| PATCH | `/mock-api/admin/support/tickets/{id}/status` | Change status (returns system_message for thread) |
+| PATCH | `/mock-api/admin/support/tickets/{id}/priority` | Change priority (returns old/new) |
+| PATCH | `/mock-api/admin/support/tickets/{id}/assignee` | Reassign ticket (returns old/new) |
+| POST | `/mock-api/admin/support/tickets/{id}/reply` | Add admin reply to conversation thread |
+| DELETE | `/mock-api/admin/support/tickets/{id}` | Delete (409 TICKET_ACTIVE if not resolved/closed) |
+
+#### 12 Mock Tickets
+- 5 statuses: open (4), in_progress (2), waiting (2), resolved (2), closed (2)
+- 4 priorities: critical (1), high (3), medium (4), low (4)
+- 8 categories: bug, feature, access, hardware, network, training, data, security
+- 8 assignees including teams (AI Team, IT Support, Security Team)
+- Conversation threads with user/admin/system message types
+
+#### Delete Protection
+- `409 TICKET_ACTIVE` — only resolved or closed tickets can be deleted
+
+#### Status Change System Messages
+- PATCH status returns a `system_message` object ready to append to the thread
+
+#### Unit Tests — 33 Tests
+- List: 12 tickets, filter by status/priority/category/assignee, search subject + ticket number, sorted by updatedAt desc, status=all
+- Show: detail with messages, 404
+- Create: valid, system message included, required fields, invalid category, subject min length
+- Status: change with system message, invalid value, 404
+- Priority: change with old/new, invalid value
+- Assignee: change with old/new, required
+- Reply: adds admin message, required content, 404
+- Delete: resolved OK, closed OK, open blocked (409), in_progress blocked (409), 404
+- Combined: status + category filter
+
 ## 0.26.8 - 2026-04-04
 
 ### Admin Config — Complete Mock REST API + Unit Tests
