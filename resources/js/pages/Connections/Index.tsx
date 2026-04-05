@@ -6,8 +6,18 @@ import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
-import { nodes as allNodes, edges as allEdges, connectionCategories, connectionTypes, getConnectionColor, getConnectionCategory, relationshipColors, relationships, keyboardShortcuts, type ConnectionNode, type Relationship } from '../../mock/connections';
+import { nodes as FALLBACK_NODES, edges as FALLBACK_EDGES, connectionCategories, connectionTypes, getConnectionColor, getConnectionCategory, relationshipColors, relationships, keyboardShortcuts, type ConnectionNode, type Relationship } from '../../mock/connections';
 import { riskColors } from '../../mock/persons';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
 
 interface SimNode extends ConnectionNode { x: number; y: number; vx: number; vy: number; r: number; }
 const NODE_R_P = 24, NODE_R_O = 30;
@@ -42,6 +52,10 @@ export default function ConnectionsIndex() {
     const [showTypesPanel, setShowTypesPanel] = useState(false);
     const [newConn, setNewConn] = useState({ entityA: '', entityB: '', type: 'Associate', relationship: 'Unknown' as Relationship, strength: 3, notes: '' });
     const [, forceUpdate] = useState(0);
+
+    // Data state — API-driven with fallback
+    const [allNodes] = useState(FALLBACK_NODES);
+    const [allEdges] = useState(FALLBACK_EDGES);
 
     const focusedRef = useRef<string | null>(null);
     const filterPersonsRef = useRef<string[]>([]);
@@ -82,7 +96,14 @@ export default function ConnectionsIndex() {
 
     const resetAll = useCallback(() => { setFilterPersons([]); setFilterOrgs([]); setFocusedId(null); setSelectedNode(null); _setActiveCategories(new Set(Object.keys(connectionCategories))); activeCatsRef.current = new Set(Object.keys(connectionCategories)); setTimeout(rebuildNodes, 10); trigger(); }, [trigger]);
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            await apiCall('/mock-api/connections');
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {

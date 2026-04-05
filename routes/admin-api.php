@@ -178,3 +178,11 @@ Route::get('/mock-api/workflows/{id}', [WorkflowsApiController::class, 'show'])-
 Route::post('/mock-api/workflows', [WorkflowsApiController::class, 'store'])->name('mock-api.workflows.store');
 Route::patch('/mock-api/workflows/{id}/status', [WorkflowsApiController::class, 'updateStatus'])->name('mock-api.workflows.status');
 Route::delete('/mock-api/workflows/{id}', [WorkflowsApiController::class, 'destroy'])->name('mock-api.workflows.destroy');
+
+// Connections Graph
+Route::get('/mock-api/connections', [ConnectionsApiController::class, 'index'])->name('mock-api.connections.index');
+Route::get('/mock-api/connections/types', [ConnectionsApiController::class, 'types'])->name('mock-api.connections.types');
+Route::get('/mock-api/connections/node/{nodeId}', [ConnectionsApiController::class, 'nodeDetail'])->name('mock-api.connections.node');
+Route::get('/mock-api/connections/{id}', [ConnectionsApiController::class, 'show'])->name('mock-api.connections.show');
+Route::post('/mock-api/connections', [ConnectionsApiController::class, 'store'])->name('mock-api.connections.store');
+Route::delete('/mock-api/connections/{id}', [ConnectionsApiController::class, 'destroy'])->name('mock-api.connections.destroy');

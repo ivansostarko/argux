@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.28.3 - 2026-04-05
+
+### Connections Graph (/connections) — Mock REST API (design preserved)
+
+#### 6 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/connections` | 20 nodes + 28 edges (filter entity_id + search) |
+| GET | `/mock-api/connections/types` | Connection type usage counts |
+| GET | `/mock-api/connections/node/{nodeId}` | Node detail + connected edges + neighbor nodes |
+| GET | `/mock-api/connections/{id}` | Edge detail with source/target node info |
+| POST | `/mock-api/connections` | Create (validated, 409 duplicate + 422 self-link) |
+| DELETE | `/mock-api/connections/{id}` | Delete connection |
+
+- Original 276-line page design fully preserved (force-directed graph, category filters, node focus, detail panel)
+- Only 21 lines added: API helpers + state + useEffect fetch
+- 20 nodes (12 persons + 8 orgs), 28 edges across 10+ connection types
+- Business rules: duplicate check, self-link prevention
+- Unit tests: 17 tests
+
 ## 0.28.2 - 2026-04-05
 
 ### Workflows (/workflows) — Mock REST API (design preserved)
