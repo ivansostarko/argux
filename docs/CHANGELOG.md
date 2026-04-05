@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.28.1 - 2026-04-05
+
+### Data Sources (/data-sources) — Mock REST API (design preserved)
+
+#### 7 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/data-sources` | 19 sources (filter category/status/country + search) |
+| GET | `/mock-api/data-sources/{id}` | Detail with syncLog, dataFields, linkedModules |
+| POST | `/mock-api/data-sources` | Create (validated: name, provider, category, protocol, endpoint) |
+| POST | `/mock-api/data-sources/{id}/sync` | Trigger sync (409 if paused/error) |
+| PATCH | `/mock-api/data-sources/{id}/pause` | Toggle pause/resume |
+| DELETE | `/mock-api/data-sources/{id}` | Delete (403 if classified) |
+| POST | `/mock-api/data-sources/sync-all` | Sync all healthy sources |
+
+- Original 262-line page design fully preserved
+- Only 21 lines added: API helpers + state + useEffect fetch
+- 19 sources across 6 categories, 5 statuses, 9 protocols
+- Business rules: cannot sync paused/error sources, cannot delete classified
+- Unit tests: 22 tests
+
 ## 0.28.0 - 2026-04-05
 
 ### Alert Rules (/alerts) — Mock REST API (design preserved)

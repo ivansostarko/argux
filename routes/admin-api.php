@@ -161,3 +161,12 @@ Route::patch('/mock-api/alerts/rules/{id}/toggle', [AlertsApiController::class, 
 Route::delete('/mock-api/alerts/rules/{id}', [AlertsApiController::class, 'destroyRule'])->name('mock-api.alerts.rules.destroy');
 Route::get('/mock-api/alerts/events', [AlertsApiController::class, 'events'])->name('mock-api.alerts.events');
 Route::patch('/mock-api/alerts/events/{id}/acknowledge', [AlertsApiController::class, 'acknowledgeEvent'])->name('mock-api.alerts.events.ack');
+
+// Data Sources
+Route::get('/mock-api/data-sources', [DataSourcesApiController::class, 'index'])->name('mock-api.datasources.index');
+Route::get('/mock-api/data-sources/{id}', [DataSourcesApiController::class, 'show'])->name('mock-api.datasources.show');
+Route::post('/mock-api/data-sources', [DataSourcesApiController::class, 'store'])->name('mock-api.datasources.store');
+Route::post('/mock-api/data-sources/{id}/sync', [DataSourcesApiController::class, 'sync'])->name('mock-api.datasources.sync');
+Route::patch('/mock-api/data-sources/{id}/pause', [DataSourcesApiController::class, 'togglePause'])->name('mock-api.datasources.pause');
+Route::delete('/mock-api/data-sources/{id}', [DataSourcesApiController::class, 'destroy'])->name('mock-api.datasources.destroy');
+Route::post('/mock-api/data-sources/sync-all', [DataSourcesApiController::class, 'syncAll'])->name('mock-api.datasources.sync-all');

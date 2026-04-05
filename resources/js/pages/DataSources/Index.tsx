@@ -3,8 +3,18 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
-import { mockDS, statusColors, statusIcons, catColors, catIcons, allCategories, allProtocols, allCountries, keyboardShortcuts } from '../../mock/dataSources';
+import { mockDS as FALLBACK_DS, statusColors, statusIcons, catColors, catIcons, allCategories, allProtocols, allCountries, keyboardShortcuts } from '../../mock/dataSources';
 import type { DSStatus, DSCategory, Protocol, DataSource } from '../../mock/dataSources';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
 
 /* ═══ ARGUX — Data Sources ═══ */
 
@@ -25,7 +35,18 @@ function DataSourcesIndex() {
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    // Data state — API-driven with fallback
+    const [mockDS, setMockDS] = useState(FALLBACK_DS);
+
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            const { ok, data } = await apiCall('/mock-api/data-sources');
+            if (ok && data.data) setMockDS(data.data);
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     const ds = selDS ? mockDS.find(d => d.id === selDS) : null;
 
