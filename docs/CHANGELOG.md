@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.28.4 - 2026-04-05
+
+### Route File Reorganization
+
+- Split `admin-api.php` (was 130 mixed routes) into two clean files:
+  - **admin-api.php** (70 routes) — Admin panel: dashboard, admins, users, roles, statistics, audit, config, support, kb, profile
+  - **user-api.php** (60 routes) — Operator app: jobs, reports, storage, records, risks, notifications, activity, alerts, data-sources, workflows, connections
+- Fixed 16 missing `use` controller import statements
+- All 21 controllers properly imported across both files
+- Total: 151 routes (admin: 70, user: 60, auth: 21)
+- Add to routes/web.php:
+  - `require __DIR__./admin-api.php;`
+  - `require __DIR__./user-api.php;`
+  - `require __DIR__./auth-api.php;`
+
 ## 0.28.3 - 2026-04-05
 
 ### Connections Graph (/connections) — Mock REST API (design preserved)

@@ -3,7 +3,15 @@
 /**
  * ARGUX — Admin Panel Mock REST API Routes
  *
- * Add to routes/web.php: require __DIR__.'/admin-api.php';
+ * All /mock-api/admin/* endpoints for the admin panel.
+ * Also includes /mock-api/profile (shared between admin and operator).
+ *
+ * Add to routes/web.php:  require __DIR__.'/admin-api.php';
+ *
+ * 70 routes total:
+ *   Dashboard (7), Admins (9), Users (9), Roles (6),
+ *   Statistics (2), Audit (4), Config (6), Support (8),
+ *   Knowledge Base (7), Profile (12)
  */
 
 use App\Http\Controllers\MockApi\AdminDashboardApiController;
@@ -11,8 +19,15 @@ use App\Http\Controllers\MockApi\AdminAdminsApiController;
 use App\Http\Controllers\MockApi\AdminUsersApiController;
 use App\Http\Controllers\MockApi\AdminRolesApiController;
 use App\Http\Controllers\MockApi\AdminStatisticsApiController;
+use App\Http\Controllers\MockApi\AdminAuditApiController;
+use App\Http\Controllers\MockApi\AdminConfigApiController;
+use App\Http\Controllers\MockApi\AdminSupportApiController;
+use App\Http\Controllers\MockApi\AdminKbApiController;
+use App\Http\Controllers\MockApi\ProfileApiController;
 
-// Admin Dashboard
+// ═══════════════════════════════════════════════════════════════
+// Admin Dashboard (7 routes)
+// ═══════════════════════════════════════════════════════════════
 Route::get('/mock-api/admin/dashboard/stats', [AdminDashboardApiController::class, 'stats'])->name('mock-api.admin.dashboard.stats');
 Route::get('/mock-api/admin/dashboard/kpis', [AdminDashboardApiController::class, 'kpis'])->name('mock-api.admin.dashboard.kpis');
 Route::get('/mock-api/admin/dashboard/services', [AdminDashboardApiController::class, 'services'])->name('mock-api.admin.dashboard.services');
@@ -21,7 +36,9 @@ Route::get('/mock-api/admin/dashboard/storage', [AdminDashboardApiController::cl
 Route::post('/mock-api/admin/dashboard/action', [AdminDashboardApiController::class, 'executeAction'])->name('mock-api.admin.dashboard.action');
 Route::post('/mock-api/admin/dashboard/service/{id}/restart', [AdminDashboardApiController::class, 'restartService'])->name('mock-api.admin.dashboard.service.restart');
 
-// Admin Management (CRUD + actions)
+// ═══════════════════════════════════════════════════════════════
+// Admin Management — CRUD + actions (9 routes)
+// ═══════════════════════════════════════════════════════════════
 Route::get('/mock-api/admin/admins', [AdminAdminsApiController::class, 'index'])->name('mock-api.admin.admins.index');
 Route::get('/mock-api/admin/admins/{id}', [AdminAdminsApiController::class, 'show'])->name('mock-api.admin.admins.show');
 Route::post('/mock-api/admin/admins', [AdminAdminsApiController::class, 'store'])->name('mock-api.admin.admins.store');
@@ -32,7 +49,9 @@ Route::post('/mock-api/admin/admins/{id}/reset-password', [AdminAdminsApiControl
 Route::post('/mock-api/admin/admins/{id}/reset-mfa', [AdminAdminsApiController::class, 'resetMfa'])->name('mock-api.admin.admins.reset-mfa');
 Route::delete('/mock-api/admin/admins/{id}/sessions', [AdminAdminsApiController::class, 'killSessions'])->name('mock-api.admin.admins.kill-sessions');
 
-// User Management (CRUD + actions)
+// ═══════════════════════════════════════════════════════════════
+// User Management — CRUD + actions (9 routes)
+// ═══════════════════════════════════════════════════════════════
 Route::get('/mock-api/admin/users', [AdminUsersApiController::class, 'index'])->name('mock-api.admin.users.index');
 Route::get('/mock-api/admin/users/{id}', [AdminUsersApiController::class, 'show'])->name('mock-api.admin.users.show');
 Route::post('/mock-api/admin/users', [AdminUsersApiController::class, 'store'])->name('mock-api.admin.users.store');
@@ -43,7 +62,9 @@ Route::post('/mock-api/admin/users/{id}/reset-password', [AdminUsersApiControlle
 Route::post('/mock-api/admin/users/{id}/reset-mfa', [AdminUsersApiController::class, 'resetMfa'])->name('mock-api.admin.users.reset-mfa');
 Route::delete('/mock-api/admin/users/{id}/sessions', [AdminUsersApiController::class, 'killSessions'])->name('mock-api.admin.users.kill-sessions');
 
-// Role Management (CRUD + duplicate)
+// ═══════════════════════════════════════════════════════════════
+// Role Management — CRUD + duplicate (6 routes)
+// ═══════════════════════════════════════════════════════════════
 Route::get('/mock-api/admin/roles', [AdminRolesApiController::class, 'index'])->name('mock-api.admin.roles.index');
 Route::get('/mock-api/admin/roles/{id}', [AdminRolesApiController::class, 'show'])->name('mock-api.admin.roles.show');
 Route::post('/mock-api/admin/roles', [AdminRolesApiController::class, 'store'])->name('mock-api.admin.roles.store');
@@ -51,19 +72,23 @@ Route::put('/mock-api/admin/roles/{id}', [AdminRolesApiController::class, 'updat
 Route::delete('/mock-api/admin/roles/{id}', [AdminRolesApiController::class, 'destroy'])->name('mock-api.admin.roles.destroy');
 Route::post('/mock-api/admin/roles/{id}/duplicate', [AdminRolesApiController::class, 'duplicate'])->name('mock-api.admin.roles.duplicate');
 
-// Role Management (CRUD + duplicate)
-
-// Statistics
+// ═══════════════════════════════════════════════════════════════
+// Statistics (2 routes)
+// ═══════════════════════════════════════════════════════════════
 Route::get('/mock-api/admin/statistics', [AdminStatisticsApiController::class, 'index'])->name('mock-api.admin.statistics.index');
 Route::get('/mock-api/admin/statistics/{tab}', [AdminStatisticsApiController::class, 'tab'])->name('mock-api.admin.statistics.tab');
 
-// Audit Log
+// ═══════════════════════════════════════════════════════════════
+// Audit Log (4 routes)
+// ═══════════════════════════════════════════════════════════════
 Route::get('/mock-api/admin/audit', [AdminAuditApiController::class, 'index'])->name('mock-api.admin.audit.index');
 Route::get('/mock-api/admin/audit/{id}', [AdminAuditApiController::class, 'show'])->name('mock-api.admin.audit.show');
 Route::post('/mock-api/admin/audit/export', [AdminAuditApiController::class, 'export'])->name('mock-api.admin.audit.export');
 Route::post('/mock-api/admin/audit/{id}/verify', [AdminAuditApiController::class, 'verify'])->name('mock-api.admin.audit.verify');
 
-// Configuration
+// ═══════════════════════════════════════════════════════════════
+// Configuration (6 routes)
+// ═══════════════════════════════════════════════════════════════
 Route::get('/mock-api/admin/config', [AdminConfigApiController::class, 'index'])->name('mock-api.admin.config.index');
 Route::get('/mock-api/admin/config/tab/{tab}', [AdminConfigApiController::class, 'show'])->name('mock-api.admin.config.show');
 Route::put('/mock-api/admin/config/tab/{tab}', [AdminConfigApiController::class, 'update'])->name('mock-api.admin.config.update');
@@ -71,7 +96,9 @@ Route::post('/mock-api/admin/config/tab/{tab}/reset', [AdminConfigApiController:
 Route::post('/mock-api/admin/config/test-notification', [AdminConfigApiController::class, 'testNotification'])->name('mock-api.admin.config.test-notification');
 Route::post('/mock-api/admin/config/backup/trigger', [AdminConfigApiController::class, 'triggerBackup'])->name('mock-api.admin.config.trigger-backup');
 
-// Support Tickets
+// ═══════════════════════════════════════════════════════════════
+// Support Tickets (8 routes)
+// ═══════════════════════════════════════════════════════════════
 Route::get('/mock-api/admin/support/tickets', [AdminSupportApiController::class, 'index'])->name('mock-api.admin.support.index');
 Route::get('/mock-api/admin/support/tickets/{id}', [AdminSupportApiController::class, 'show'])->name('mock-api.admin.support.show');
 Route::post('/mock-api/admin/support/tickets', [AdminSupportApiController::class, 'store'])->name('mock-api.admin.support.store');
@@ -81,7 +108,9 @@ Route::patch('/mock-api/admin/support/tickets/{id}/assignee', [AdminSupportApiCo
 Route::post('/mock-api/admin/support/tickets/{id}/reply', [AdminSupportApiController::class, 'reply'])->name('mock-api.admin.support.reply');
 Route::delete('/mock-api/admin/support/tickets/{id}', [AdminSupportApiController::class, 'destroy'])->name('mock-api.admin.support.destroy');
 
-// Knowledge Base
+// ═══════════════════════════════════════════════════════════════
+// Knowledge Base (7 routes)
+// ═══════════════════════════════════════════════════════════════
 Route::get('/mock-api/admin/kb/categories', [AdminKbApiController::class, 'categories'])->name('mock-api.admin.kb.categories');
 Route::get('/mock-api/admin/kb/articles', [AdminKbApiController::class, 'index'])->name('mock-api.admin.kb.articles.index');
 Route::get('/mock-api/admin/kb/articles/{id}', [AdminKbApiController::class, 'show'])->name('mock-api.admin.kb.articles.show');
@@ -90,8 +119,9 @@ Route::put('/mock-api/admin/kb/articles/{id}', [AdminKbApiController::class, 'up
 Route::delete('/mock-api/admin/kb/articles/{id}', [AdminKbApiController::class, 'destroy'])->name('mock-api.admin.kb.articles.destroy');
 Route::post('/mock-api/admin/kb/articles/{id}/helpful', [AdminKbApiController::class, 'helpful'])->name('mock-api.admin.kb.articles.helpful');
 
-
-// Profile
+// ═══════════════════════════════════════════════════════════════
+// Profile — shared between admin and operator (12 routes)
+// ═══════════════════════════════════════════════════════════════
 Route::get('/mock-api/profile', [ProfileApiController::class, 'show'])->name('mock-api.profile.show');
 Route::put('/mock-api/profile/personal', [ProfileApiController::class, 'updatePersonal'])->name('mock-api.profile.personal');
 Route::post('/mock-api/profile/avatar', [ProfileApiController::class, 'uploadAvatar'])->name('mock-api.profile.avatar');
@@ -104,85 +134,3 @@ Route::delete('/mock-api/profile/sessions/{id}', [ProfileApiController::class, '
 Route::delete('/mock-api/profile/sessions', [ProfileApiController::class, 'revokeAllSessions'])->name('mock-api.profile.sessions.revoke-all');
 Route::get('/mock-api/profile/audit', [ProfileApiController::class, 'audit'])->name('mock-api.profile.audit');
 Route::put('/mock-api/profile/settings', [ProfileApiController::class, 'updateSettings'])->name('mock-api.profile.settings');
-
-// Background Jobs
-Route::get('/mock-api/jobs', [JobsApiController::class, 'index'])->name('mock-api.jobs.index');
-Route::get('/mock-api/jobs/stats', [JobsApiController::class, 'stats'])->name('mock-api.jobs.stats');
-Route::get('/mock-api/jobs/{id}', [JobsApiController::class, 'show'])->name('mock-api.jobs.show');
-Route::post('/mock-api/jobs/{id}/retry', [JobsApiController::class, 'retry'])->name('mock-api.jobs.retry');
-Route::post('/mock-api/jobs/{id}/cancel', [JobsApiController::class, 'cancel'])->name('mock-api.jobs.cancel');
-Route::delete('/mock-api/jobs/{id}', [JobsApiController::class, 'destroy'])->name('mock-api.jobs.destroy');
-Route::post('/mock-api/jobs/clear-completed', [JobsApiController::class, 'clearCompleted'])->name('mock-api.jobs.clear');
-
-// Reports
-Route::get('/mock-api/reports/entities', [ReportsApiController::class, 'entities'])->name('mock-api.reports.entities');
-Route::get('/mock-api/reports', [ReportsApiController::class, 'index'])->name('mock-api.reports.index');
-Route::get('/mock-api/reports/{id}', [ReportsApiController::class, 'show'])->name('mock-api.reports.show');
-Route::post('/mock-api/reports', [ReportsApiController::class, 'store'])->name('mock-api.reports.store');
-Route::post('/mock-api/reports/{id}/retry', [ReportsApiController::class, 'retry'])->name('mock-api.reports.retry');
-Route::get('/mock-api/reports/{id}/download', [ReportsApiController::class, 'download'])->name('mock-api.reports.download');
-Route::delete('/mock-api/reports/{id}', [ReportsApiController::class, 'destroy'])->name('mock-api.reports.destroy');
-
-// Storage Browser
-Route::get('/mock-api/storage/tree', [StorageApiController::class, 'tree'])->name('mock-api.storage.tree');
-Route::get('/mock-api/storage/files', [StorageApiController::class, 'index'])->name('mock-api.storage.files.index');
-Route::get('/mock-api/storage/files/{id}', [StorageApiController::class, 'show'])->name('mock-api.storage.files.show');
-Route::post('/mock-api/storage/files', [StorageApiController::class, 'store'])->name('mock-api.storage.files.store');
-Route::get('/mock-api/storage/files/{id}/download', [StorageApiController::class, 'download'])->name('mock-api.storage.files.download');
-Route::delete('/mock-api/storage/files/{id}', [StorageApiController::class, 'destroy'])->name('mock-api.storage.files.destroy');
-Route::get('/mock-api/storage/stats', [StorageApiController::class, 'stats'])->name('mock-api.storage.stats');
-
-// Records / AI Processing
-Route::get('/mock-api/records', [RecordsApiController::class, 'index'])->name('mock-api.records.index');
-Route::get('/mock-api/records/{id}', [RecordsApiController::class, 'show'])->name('mock-api.records.show');
-Route::post('/mock-api/records/{id}/retry', [RecordsApiController::class, 'retry'])->name('mock-api.records.retry');
-Route::delete('/mock-api/records/{id}', [RecordsApiController::class, 'destroy'])->name('mock-api.records.destroy');
-
-// Risks Dashboard
-Route::get('/mock-api/risks/summary', [RisksApiController::class, 'summary'])->name('mock-api.risks.summary');
-Route::get('/mock-api/risks/persons/{id}/factors', [RisksApiController::class, 'personFactors'])->name('mock-api.risks.persons.factors');
-Route::get('/mock-api/risks/organizations/{id}/factors', [RisksApiController::class, 'orgFactors'])->name('mock-api.risks.orgs.factors');
-Route::get('/mock-api/risks/factor-categories', [RisksApiController::class, 'factorCategories'])->name('mock-api.risks.factor-categories');
-
-// Notifications
-Route::get('/mock-api/notifications', [NotificationsApiController::class, 'index'])->name('mock-api.notifications.index');
-Route::patch('/mock-api/notifications/{id}/read', [NotificationsApiController::class, 'toggleRead'])->name('mock-api.notifications.read');
-Route::post('/mock-api/notifications/read-all', [NotificationsApiController::class, 'readAll'])->name('mock-api.notifications.read-all');
-
-// Activity Log
-Route::get('/mock-api/activity', [ActivityApiController::class, 'index'])->name('mock-api.activity.index');
-Route::get('/mock-api/activity/{id}', [ActivityApiController::class, 'show'])->name('mock-api.activity.show');
-
-// Alert Rules & Events
-Route::get('/mock-api/alerts/rules', [AlertsApiController::class, 'rules'])->name('mock-api.alerts.rules');
-Route::get('/mock-api/alerts/rules/{id}', [AlertsApiController::class, 'showRule'])->name('mock-api.alerts.rules.show');
-Route::post('/mock-api/alerts/rules', [AlertsApiController::class, 'storeRule'])->name('mock-api.alerts.rules.store');
-Route::patch('/mock-api/alerts/rules/{id}/toggle', [AlertsApiController::class, 'toggleRule'])->name('mock-api.alerts.rules.toggle');
-Route::delete('/mock-api/alerts/rules/{id}', [AlertsApiController::class, 'destroyRule'])->name('mock-api.alerts.rules.destroy');
-Route::get('/mock-api/alerts/events', [AlertsApiController::class, 'events'])->name('mock-api.alerts.events');
-Route::patch('/mock-api/alerts/events/{id}/acknowledge', [AlertsApiController::class, 'acknowledgeEvent'])->name('mock-api.alerts.events.ack');
-
-// Data Sources
-Route::get('/mock-api/data-sources', [DataSourcesApiController::class, 'index'])->name('mock-api.datasources.index');
-Route::get('/mock-api/data-sources/{id}', [DataSourcesApiController::class, 'show'])->name('mock-api.datasources.show');
-Route::post('/mock-api/data-sources', [DataSourcesApiController::class, 'store'])->name('mock-api.datasources.store');
-Route::post('/mock-api/data-sources/{id}/sync', [DataSourcesApiController::class, 'sync'])->name('mock-api.datasources.sync');
-Route::patch('/mock-api/data-sources/{id}/pause', [DataSourcesApiController::class, 'togglePause'])->name('mock-api.datasources.pause');
-Route::delete('/mock-api/data-sources/{id}', [DataSourcesApiController::class, 'destroy'])->name('mock-api.datasources.destroy');
-Route::post('/mock-api/data-sources/sync-all', [DataSourcesApiController::class, 'syncAll'])->name('mock-api.datasources.sync-all');
-
-// Workflows
-Route::get('/mock-api/workflows', [WorkflowsApiController::class, 'index'])->name('mock-api.workflows.index');
-Route::get('/mock-api/workflows/templates', [WorkflowsApiController::class, 'templates'])->name('mock-api.workflows.templates');
-Route::get('/mock-api/workflows/{id}', [WorkflowsApiController::class, 'show'])->name('mock-api.workflows.show');
-Route::post('/mock-api/workflows', [WorkflowsApiController::class, 'store'])->name('mock-api.workflows.store');
-Route::patch('/mock-api/workflows/{id}/status', [WorkflowsApiController::class, 'updateStatus'])->name('mock-api.workflows.status');
-Route::delete('/mock-api/workflows/{id}', [WorkflowsApiController::class, 'destroy'])->name('mock-api.workflows.destroy');
-
-// Connections Graph
-Route::get('/mock-api/connections', [ConnectionsApiController::class, 'index'])->name('mock-api.connections.index');
-Route::get('/mock-api/connections/types', [ConnectionsApiController::class, 'types'])->name('mock-api.connections.types');
-Route::get('/mock-api/connections/node/{nodeId}', [ConnectionsApiController::class, 'nodeDetail'])->name('mock-api.connections.node');
-Route::get('/mock-api/connections/{id}', [ConnectionsApiController::class, 'show'])->name('mock-api.connections.show');
-Route::post('/mock-api/connections', [ConnectionsApiController::class, 'store'])->name('mock-api.connections.store');
-Route::delete('/mock-api/connections/{id}', [ConnectionsApiController::class, 'destroy'])->name('mock-api.connections.destroy');

@@ -10,8 +10,9 @@ return Application::configure(basePath: dirname(__DIR__))
   ->withRouting(
     web: [
         __DIR__.'/../routes/web.php',
-        __DIR__.'/../routes/auth-api.php',
         __DIR__.'/../routes/admin-api.php',
+        __DIR__.'/../routes/user-api.php',
+        __DIR__.'/../routes/auth-api.php',
     ],
 )
     
@@ -19,14 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \App\Http\Middleware\SetLocale::class,
-                 \App\Http\Middleware\PermissiveCSP::class,
+            \App\Http\Middleware\PermissiveCSP::class,
             
             
         ]);
 
-           $middleware->append([
-        \Illuminate\Http\Middleware\HandleCors::class,
-         \Illuminate\Http\Middleware\TrustProxies::class,
+        $middleware->append([
+            \Illuminate\Http\Middleware\HandleCors::class,
+            \Illuminate\Http\Middleware\TrustProxies::class,
      
     ]);
 
