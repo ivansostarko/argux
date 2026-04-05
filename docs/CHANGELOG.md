@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.27.1 - 2026-04-05
+
+### Profile — Complete Mock REST API + Unit Tests
+
+#### 12 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/profile` | Load profile (name, email, phone, role, department) |
+| PUT | `/mock-api/profile/personal` | Update name/email/phone |
+| POST | `/mock-api/profile/avatar` | Upload avatar (mock) |
+| PUT | `/mock-api/profile/password` | Change password (validates current, complexity, confirmation) |
+| GET | `/mock-api/profile/security` | 2FA method + sessions + login stats |
+| PUT | `/mock-api/profile/2fa` | Update 2FA method (app/sms/email) + phones |
+| POST | `/mock-api/profile/backup-codes` | Generate 8 one-time backup codes |
+| GET | `/mock-api/profile/sessions` | List 4 active sessions |
+| DELETE | `/mock-api/profile/sessions/{id}` | Revoke session (403 for current) |
+| DELETE | `/mock-api/profile/sessions` | Revoke all other sessions |
+| GET | `/mock-api/profile/audit` | User audit log (paginated, searchable) |
+| PUT | `/mock-api/profile/settings` | Save language/timezone/theme/font |
+
+#### Key Features
+- Password change: validates current (mock: "wrong" = fail), min 12 chars + complexity, revokes other sessions
+- Session management: 4 mock sessions, cannot revoke current (403 CURRENT_SESSION)
+- Backup codes: 8 unique codes per generation (format: XXXX-XXXX)
+- Audit log: 12 entries, paginated at 8/page, searchable
+
+#### Unit Tests — 23 Tests
+- Profile: show
+- Personal: update, required fields
+- Avatar: upload
+- Password: change, wrong current (422), weak password (422), mismatch (422)
+- Security: 2FA + sessions + stats
+- 2FA: update method, invalid method
+- Backup: 8 codes, uniqueness
+- Sessions: list (4), revoke one, block current (403), 404, revoke all (3 revoked)
+- Audit: entries, pagination (8+4), search
+- Settings: update
+
 ## 0.27.0 - 2026-04-05
 
 ### Admin Knowledge Base — Complete Mock REST API + Unit Tests

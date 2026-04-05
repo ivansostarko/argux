@@ -89,3 +89,18 @@ Route::post('/mock-api/admin/kb/articles', [AdminKbApiController::class, 'store'
 Route::put('/mock-api/admin/kb/articles/{id}', [AdminKbApiController::class, 'update'])->name('mock-api.admin.kb.articles.update');
 Route::delete('/mock-api/admin/kb/articles/{id}', [AdminKbApiController::class, 'destroy'])->name('mock-api.admin.kb.articles.destroy');
 Route::post('/mock-api/admin/kb/articles/{id}/helpful', [AdminKbApiController::class, 'helpful'])->name('mock-api.admin.kb.articles.helpful');
+
+
+// Profile
+Route::get('/mock-api/profile', [ProfileApiController::class, 'show'])->name('mock-api.profile.show');
+Route::put('/mock-api/profile/personal', [ProfileApiController::class, 'updatePersonal'])->name('mock-api.profile.personal');
+Route::post('/mock-api/profile/avatar', [ProfileApiController::class, 'uploadAvatar'])->name('mock-api.profile.avatar');
+Route::put('/mock-api/profile/password', [ProfileApiController::class, 'updatePassword'])->name('mock-api.profile.password');
+Route::get('/mock-api/profile/security', [ProfileApiController::class, 'security'])->name('mock-api.profile.security');
+Route::put('/mock-api/profile/2fa', [ProfileApiController::class, 'update2fa'])->name('mock-api.profile.2fa');
+Route::post('/mock-api/profile/backup-codes', [ProfileApiController::class, 'generateBackupCodes'])->name('mock-api.profile.backup-codes');
+Route::get('/mock-api/profile/sessions', [ProfileApiController::class, 'sessions'])->name('mock-api.profile.sessions');
+Route::delete('/mock-api/profile/sessions/{id}', [ProfileApiController::class, 'revokeSession'])->name('mock-api.profile.sessions.revoke');
+Route::delete('/mock-api/profile/sessions', [ProfileApiController::class, 'revokeAllSessions'])->name('mock-api.profile.sessions.revoke-all');
+Route::get('/mock-api/profile/audit', [ProfileApiController::class, 'audit'])->name('mock-api.profile.audit');
+Route::put('/mock-api/profile/settings', [ProfileApiController::class, 'updateSettings'])->name('mock-api.profile.settings');
