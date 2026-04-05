@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.29.0 - 2026-04-05
+
+### Plate Recognition / LPR (/plate-recognition) — Mock REST API (design preserved)
+
+#### 6 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/plate-recognition/scans` | 10 scans (filter status/reader/person/plate/watchlist + search) |
+| GET | `/mock-api/plate-recognition/scans/{id}` | Scan detail (plate, confidence, vehicle, direction, speed) |
+| GET | `/mock-api/plate-recognition/readers` | 9 LPR readers with status + capture count |
+| GET | `/mock-api/plate-recognition/watchlist` | Aggregated watchlist plates (scan count, last seen) |
+| GET | `/mock-api/plate-recognition/stats` | Stats (total, watchlist hits, avg confidence, model) |
+| POST | `/mock-api/plate-recognition/search` | Search scans by plate pattern |
+
+- Original 235-line page design fully preserved (3 tabs: scans/readers/watchlist)
+- Only 22 lines added: API helpers + state + useEffect fetch
+- 10 scans: 5 Watchlist Hit, 3 Matched, 1 Unknown, 1 Partial Read
+- 9 LPR readers (8 Online, 1 Maintenance)
+- Unit tests: 17 tests
+
 ## 0.28.9 - 2026-04-05
 
 ### Social Media Scraper (/scraper) — Mock REST API (design preserved)

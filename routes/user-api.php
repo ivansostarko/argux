@@ -32,6 +32,7 @@ use App\Http\Controllers\MockApi\OperationsApiController;
 use App\Http\Controllers\MockApi\FaceRecognitionApiController;
 use App\Http\Controllers\MockApi\WebScraperApiController;
 use App\Http\Controllers\MockApi\SocialScraperApiController;
+use App\Http\Controllers\MockApi\PlateRecognitionApiController;
 
 // ═══════════════════════════════════════════════════════════════
 // Background Jobs (7 routes)
@@ -188,3 +189,13 @@ Route::post('/mock-api/scraper/scrapers', [SocialScraperApiController::class, 's
 Route::post('/mock-api/scraper/scrapers/{id}/run', [SocialScraperApiController::class, 'runScraper'])->name('mock-api.scraper.scrapers.run');
 Route::patch('/mock-api/scraper/scrapers/{id}/status', [SocialScraperApiController::class, 'updateStatus'])->name('mock-api.scraper.scrapers.status');
 Route::delete('/mock-api/scraper/scrapers/{id}', [SocialScraperApiController::class, 'destroyScraper'])->name('mock-api.scraper.scrapers.destroy');
+
+// ═══════════════════════════════════════════════════════════════
+// Plate Recognition / LPR (6 routes)
+// ═══════════════════════════════════════════════════════════════
+Route::get('/mock-api/plate-recognition/scans', [PlateRecognitionApiController::class, 'scans'])->name('mock-api.lpr.scans');
+Route::get('/mock-api/plate-recognition/scans/{id}', [PlateRecognitionApiController::class, 'showScan'])->name('mock-api.lpr.scans.show');
+Route::get('/mock-api/plate-recognition/readers', [PlateRecognitionApiController::class, 'readers'])->name('mock-api.lpr.readers');
+Route::get('/mock-api/plate-recognition/watchlist', [PlateRecognitionApiController::class, 'watchlist'])->name('mock-api.lpr.watchlist');
+Route::get('/mock-api/plate-recognition/stats', [PlateRecognitionApiController::class, 'stats'])->name('mock-api.lpr.stats');
+Route::post('/mock-api/plate-recognition/search', [PlateRecognitionApiController::class, 'search'])->name('mock-api.lpr.search');

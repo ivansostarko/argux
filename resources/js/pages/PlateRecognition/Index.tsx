@@ -4,8 +4,18 @@ import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import { mockVehicles, riskColors } from '../../mock/vehicles';
-import { mockScans, readers, statusColors, statusIcons, allReaders, allPersons, allOrgs, allPlates, keyboardShortcuts } from '../../mock/plateRecognition';
+import { mockScans as FALLBACK_SCANS, readers as FALLBACK_READERS, statusColors, statusIcons, allReaders, allPersons, allOrgs, allPlates, keyboardShortcuts } from '../../mock/plateRecognition';
 import type { ScanStatus, ViewTab } from '../../mock/plateRecognition';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
 
 /* ═══ ARGUX — Plate Recognition ═══ */
 
@@ -25,7 +35,19 @@ function PlateRecognitionIndex() {
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    // Data state — API-driven with fallback
+    const [mockScans, setMockScans] = useState(FALLBACK_SCANS);
+    const [readers] = useState(FALLBACK_READERS);
+
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            const { ok, data } = await apiCall('/mock-api/plate-recognition/scans');
+            if (ok && data.data) setMockScans(data.data);
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     const scan = selScan ? mockScans.find(s => s.id === selScan) : null;
 
