@@ -31,6 +31,7 @@ use App\Http\Controllers\MockApi\SurveillanceAppsApiController;
 use App\Http\Controllers\MockApi\OperationsApiController;
 use App\Http\Controllers\MockApi\FaceRecognitionApiController;
 use App\Http\Controllers\MockApi\WebScraperApiController;
+use App\Http\Controllers\MockApi\SocialScraperApiController;
 
 // ═══════════════════════════════════════════════════════════════
 // Background Jobs (7 routes)
@@ -176,3 +177,14 @@ Route::post('/mock-api/web-scraper/sources', [WebScraperApiController::class, 's
 Route::post('/mock-api/web-scraper/sources/{id}/sync', [WebScraperApiController::class, 'syncSource'])->name('mock-api.webscraper.sources.sync');
 Route::patch('/mock-api/web-scraper/sources/{id}/status', [WebScraperApiController::class, 'updateSourceStatus'])->name('mock-api.webscraper.sources.status');
 Route::delete('/mock-api/web-scraper/sources/{id}', [WebScraperApiController::class, 'destroySource'])->name('mock-api.webscraper.sources.destroy');
+
+// ═══════════════════════════════════════════════════════════════
+// Social Media Scraper (8 routes)
+// ═══════════════════════════════════════════════════════════════
+Route::get('/mock-api/scraper/scrapers', [SocialScraperApiController::class, 'scrapers'])->name('mock-api.scraper.scrapers');
+Route::get('/mock-api/scraper/posts', [SocialScraperApiController::class, 'posts'])->name('mock-api.scraper.posts');
+Route::get('/mock-api/scraper/posts/{id}', [SocialScraperApiController::class, 'showPost'])->name('mock-api.scraper.posts.show');
+Route::post('/mock-api/scraper/scrapers', [SocialScraperApiController::class, 'storeScraper'])->name('mock-api.scraper.scrapers.store');
+Route::post('/mock-api/scraper/scrapers/{id}/run', [SocialScraperApiController::class, 'runScraper'])->name('mock-api.scraper.scrapers.run');
+Route::patch('/mock-api/scraper/scrapers/{id}/status', [SocialScraperApiController::class, 'updateStatus'])->name('mock-api.scraper.scrapers.status');
+Route::delete('/mock-api/scraper/scrapers/{id}', [SocialScraperApiController::class, 'destroyScraper'])->name('mock-api.scraper.scrapers.destroy');

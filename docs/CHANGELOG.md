@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.28.9 - 2026-04-05
+
+### Social Media Scraper (/scraper) — Mock REST API (design preserved)
+
+#### 7 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/scraper/scrapers` | 12 scrapers (filter platform/status/person + search) |
+| GET | `/mock-api/scraper/posts` | 12 scraped posts (filter platform/person/sentiment/flagged + search) |
+| GET | `/mock-api/scraper/posts/{id}` | Post detail (AI flag reason, engagement, media) |
+| POST | `/mock-api/scraper/scrapers` | Create scraper (validated: platform, profileUrl, handle, interval) |
+| POST | `/mock-api/scraper/scrapers/{id}/run` | Trigger scrape (409 if error) |
+| PATCH | `/mock-api/scraper/scrapers/{id}/status` | Pause/resume scraper |
+| DELETE | `/mock-api/scraper/scrapers/{id}` | Delete (409 if active) |
+
+- Original 280-line page design fully preserved (3 tabs: feed/scrapers/flagged)
+- Only 26 lines added: API helpers + state + Promise.all fetch
+- 12 scrapers across 8 platforms, 12 posts with AI flagging + sentiment
+- Business rules: cannot run error scrapers, cannot delete active scrapers
+- Unit tests: 24 tests
+
 ## 0.28.8 - 2026-04-05
 
 ### Web Scraper (/web-scraper) — Mock REST API (design preserved)

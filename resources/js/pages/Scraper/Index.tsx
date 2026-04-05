@@ -5,8 +5,18 @@ import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
-import { mockScrapers, mockPosts, platformConfig, statusColors, sentimentColors, contentIcons, allPlatforms, allPersonsInScrapers, allOrgsInScrapers, keyboardShortcuts } from '../../mock/scraper';
+import { mockScrapers as FALLBACK_SCRAPERS, mockPosts as FALLBACK_POSTS, platformConfig, statusColors, sentimentColors, contentIcons, allPlatforms, allPersonsInScrapers, allOrgsInScrapers, keyboardShortcuts } from '../../mock/scraper';
 import type { Platform, Sentiment, ContentType, ViewTab } from '../../mock/scraper';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
 
 /* ═══ ARGUX — Social Media Scraper ═══ */
 
@@ -28,7 +38,23 @@ function ScraperIndex() {
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    // Data state — API-driven with fallback
+    const [mockScrapers, setMockScrapers] = useState(FALLBACK_SCRAPERS);
+    const [mockPosts, setMockPosts] = useState(FALLBACK_POSTS);
+
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            const [scRes, poRes] = await Promise.all([
+                apiCall('/mock-api/scraper/scrapers'),
+                apiCall('/mock-api/scraper/posts'),
+            ]);
+            if (scRes.ok && scRes.data.data) setMockScrapers(scRes.data.data);
+            if (poRes.ok && poRes.data.data) setMockPosts(poRes.data.data);
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     const post = selPost ? mockPosts.find(p => p.id === selPost) : null;
     const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
