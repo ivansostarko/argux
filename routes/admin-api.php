@@ -152,3 +152,12 @@ Route::post('/mock-api/notifications/read-all', [NotificationsApiController::cla
 // Activity Log
 Route::get('/mock-api/activity', [ActivityApiController::class, 'index'])->name('mock-api.activity.index');
 Route::get('/mock-api/activity/{id}', [ActivityApiController::class, 'show'])->name('mock-api.activity.show');
+
+// Alert Rules & Events
+Route::get('/mock-api/alerts/rules', [AlertsApiController::class, 'rules'])->name('mock-api.alerts.rules');
+Route::get('/mock-api/alerts/rules/{id}', [AlertsApiController::class, 'showRule'])->name('mock-api.alerts.rules.show');
+Route::post('/mock-api/alerts/rules', [AlertsApiController::class, 'storeRule'])->name('mock-api.alerts.rules.store');
+Route::patch('/mock-api/alerts/rules/{id}/toggle', [AlertsApiController::class, 'toggleRule'])->name('mock-api.alerts.rules.toggle');
+Route::delete('/mock-api/alerts/rules/{id}', [AlertsApiController::class, 'destroyRule'])->name('mock-api.alerts.rules.destroy');
+Route::get('/mock-api/alerts/events', [AlertsApiController::class, 'events'])->name('mock-api.alerts.events');
+Route::patch('/mock-api/alerts/events/{id}/acknowledge', [AlertsApiController::class, 'acknowledgeEvent'])->name('mock-api.alerts.events.ack');

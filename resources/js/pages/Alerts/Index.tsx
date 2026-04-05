@@ -3,8 +3,18 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
-import { mockRules, mockAlertEvents, triggerConfig, sevColors, allOps, allPersons, keyboardShortcuts } from '../../mock/alerts';
+import { mockRules as FALLBACK_RULES, mockAlertEvents as FALLBACK_EVENTS, triggerConfig, sevColors, allOps as FALLBACK_OPS, allPersons as FALLBACK_PERSONS, keyboardShortcuts } from '../../mock/alerts';
 import type { TriggerType, Severity, Channel, ViewTab, AlertRule } from '../../mock/alerts';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
 
 /* ═══ ARGUX — Alert Rules ═══ */
 
@@ -27,7 +37,25 @@ function AlertsIndex() {
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    // Data state — API-driven with fallback
+    const [mockRules, setMockRules] = useState(FALLBACK_RULES);
+    const [mockAlertEvents, setMockAlertEvents] = useState(FALLBACK_EVENTS);
+    const [allPersons] = useState(FALLBACK_PERSONS);
+    const [allOps] = useState(FALLBACK_OPS);
+
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            const [rulesRes, eventsRes] = await Promise.all([
+                apiCall('/mock-api/alerts/rules'),
+                apiCall('/mock-api/alerts/events'),
+            ]);
+            if (rulesRes.ok && rulesRes.data.data) setMockRules(rulesRes.data.data);
+            if (eventsRes.ok && eventsRes.data.data) setMockAlertEvents(eventsRes.data.data);
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     const rule = selRule ? mockRules.find(r => r.id === selRule) : null;
     const triggerCounts = Object.fromEntries((Object.keys(triggerConfig) as TriggerType[]).map(t => [t, mockRules.filter(r => r.triggerType === t).length]));

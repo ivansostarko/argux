@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.28.0 - 2026-04-05
+
+### Alert Rules (/alerts) — Mock REST API (design preserved)
+
+#### 7 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/alerts/rules` | 13 rules (filter type/severity/enabled + search) |
+| GET | `/mock-api/alerts/rules/{id}` | Rule detail with config |
+| POST | `/mock-api/alerts/rules` | Create rule (validated: name, triggerType, severity, channels) |
+| PATCH | `/mock-api/alerts/rules/{id}/toggle` | Toggle enabled/disabled |
+| DELETE | `/mock-api/alerts/rules/{id}` | Delete rule |
+| GET | `/mock-api/alerts/events` | 8 alert events (filter severity/unacknowledged) |
+| PATCH | `/mock-api/alerts/events/{id}/acknowledge` | Acknowledge event |
+
+- Original 326-line page design fully preserved (3 tabs: rules/feed/stats, trigger type sidebar, severity filter, detail panel)
+- Only 28 lines added: API helpers + state vars + useEffect fetch
+- 13 rules across 9 trigger types, 8 alert events (3 unacknowledged)
+- Unit tests: 23 Laravel + 61-line frontend test
 
 ## 0.27.9 - 2026-04-05
 
