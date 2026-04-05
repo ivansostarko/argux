@@ -10,6 +10,16 @@ import { mockVehicles } from '../../mock/vehicles';
 import { mockOps as INITIAL_OPS, phaseColors, phaseIcons, prioColors, allPhases, tabList, keyboardShortcuts, globalZonePool, globalAlertPool, mockOpEvents } from '../../mock/operations';
 import type { Phase, Priority, DetailTab, Operation, Team, OpZone, AlertRule, Checklist, OpEvent } from '../../mock/operations';
 
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
+
 /* ═══ ARGUX — Operations v2 (Full CRUD + Events + MultiSelect + Delete Confirm) ═══ */
 function Skel({ w, h }: { w: string | number; h: number }) { return <div className="op-skeleton" style={{ width: typeof w === 'number' ? w : w, height: h }} />; }
 function Modal({ title, icon, onClose, children, width = 520 }: { title: string; icon: string; onClose: () => void; children: React.ReactNode; width?: number }) {
@@ -75,7 +85,15 @@ function OperationsIndex() {
     const uid = useRef(100);
     const nid = () => `gen-${++uid.current}`;
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            const { ok, data } = await apiCall('/mock-api/operations');
+            if (ok && data.data) { setOps(data.data); setSelOp(data.data[0]?.id || ''); }
+            setLoading(false);
+        };
+        load();
+    }, []);
     const op = ops.find(o => o.id === selOp) || ops[0];
     const filtered = useMemo(() => ops.filter(o => { if (phaseF !== 'all' && o.phase !== phaseF) return false; if (search && !o.name.toLowerCase().includes(search.toLowerCase()) && !o.codename.toLowerCase().includes(search.toLowerCase())) return false; return true; }), [phaseF, search, ops]);
     const targets = op.targetPersonIds.map(id => mockPersons.find(p => p.id === id)).filter(Boolean);

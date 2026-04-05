@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.28.6 - 2026-04-05
+
+### Operations (/operations) — Mock REST API (design preserved)
+
+#### 7 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/operations` | 5 operations (filter phase + search) |
+| GET | `/mock-api/operations/{id}` | Full detail (teams, zones, alerts, timeline, checklist) |
+| POST | `/mock-api/operations` | Create operation (validated: codename, name, priority) |
+| PUT | `/mock-api/operations/{id}` | Update operation fields |
+| PATCH | `/mock-api/operations/{id}/phase` | Phase transition (409 closed→non-planning) |
+| DELETE | `/mock-api/operations/{id}` | Delete (409 if active) |
+| GET | `/mock-api/operations/{id}/events` | Operation events (filter type) |
+
+- Original 234-line page design fully preserved (9 detail tabs, phase transitions, CRUD, AI briefing)
+- Only 18 lines added: API helpers + useEffect fetch
+- 5 operations: HAWK (Active/Critical), GLACIER (Active/High), CERBERUS (Closed), PHOENIX (Preparation), TEMPEST (Planning)
+- Business rules: cannot delete active ops, closed→only Planning
+- Unit tests: 20 tests
+
 ## 0.28.5 - 2026-04-05
 
 ### Surveillance Apps (/surveillance-apps) — Mock REST API (design preserved)
