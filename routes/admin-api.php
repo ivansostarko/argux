@@ -131,3 +131,12 @@ Route::post('/mock-api/storage/files', [StorageApiController::class, 'store'])->
 Route::get('/mock-api/storage/files/{id}/download', [StorageApiController::class, 'download'])->name('mock-api.storage.files.download');
 Route::delete('/mock-api/storage/files/{id}', [StorageApiController::class, 'destroy'])->name('mock-api.storage.files.destroy');
 Route::get('/mock-api/storage/stats', [StorageApiController::class, 'stats'])->name('mock-api.storage.stats');
+
+// Records / Evidence
+Route::get('/mock-api/records', [RecordsApiController::class, 'index'])->name('mock-api.records.index');
+Route::get('/mock-api/records/entities', [RecordsApiController::class, 'entities'])->name('mock-api.records.entities');
+Route::get('/mock-api/records/{id}', [RecordsApiController::class, 'show'])->name('mock-api.records.show');
+Route::post('/mock-api/records', [RecordsApiController::class, 'store'])->name('mock-api.records.store');
+Route::put('/mock-api/records/{id}', [RecordsApiController::class, 'update'])->name('mock-api.records.update');
+Route::delete('/mock-api/records/{id}', [RecordsApiController::class, 'destroy'])->name('mock-api.records.destroy');
+Route::get('/mock-api/records/{id}/custody', [RecordsApiController::class, 'custody'])->name('mock-api.records.custody');

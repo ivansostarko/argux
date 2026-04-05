@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.27.6 - 2026-04-05
+
+### Records & Evidence (/records) — Complete Mock REST API + React Page + Unit Tests
+
+#### 7 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/records` | List (type/person_id/org_id + search + type_counts) |
+| GET | `/mock-api/records/entities` | Available persons (6) + organizations (3) for assignment |
+| GET | `/mock-api/records/{id}` | Detail with custody chain + transcript |
+| POST | `/mock-api/records` | Create record (auto-creates custody "created" entry) |
+| PUT | `/mock-api/records/{id}` | Update (appends custody "modified" entry) |
+| DELETE | `/mock-api/records/{id}` | Delete record |
+| GET | `/mock-api/records/{id}/custody` | Chain of custody entries |
+
+#### 12 Mock Records
+- 6 types: document (3), photo (1), video (3), audio (1), digital (3), physical (1)
+- Physical evidence (USB drive) has no fileUrl — awaiting forensic imaging
+- Records with transcripts: voice intercept, Arabic text, surveillance video
+- Multi-entity assignment: records linked to persons AND organizations
+- 20 custody entries across 5 action types: created, accessed, modified, transferred, exported
+
+#### Chain of Custody
+- Every record has an immutable custody chain
+- Create auto-adds "created" entry; update auto-adds "modified" entry
+- Dedicated `/custody` endpoint for audit view
+- Action types: created (green), accessed (blue), modified (amber), transferred (purple), exported (cyan)
+
+#### React Page (180 lines)
+- Record cards with type icon, title, description, assigned entities, custody count
+- Type filter chips with counts
+- Search across titles, descriptions, tags, transcripts
+- Detail side panel: description, transcript, assigned entities, full custody chain
+- New Record modal: title, 6-type selector grid, description
+- Keyboard shortcuts
+
+#### Unit Tests — 24 Tests
+- List: 12 records, filter type, filter person_id, filter org_id, search title, search transcript, sorted desc, all 6 types present
+- Show: detail with custody, transcript, physical (no file), 404
+- Create: valid (with custody entry), required fields, invalid type, title min
+- Update: valid (appends custody), 404
+- Delete: success, 404
+- Custody: chain (3 entries for USB), 404
+- Entities: 6 persons + 3 orgs
+
 ## 0.27.5 - 2026-04-05
 
 ### Storage Browser (/storage) — Complete Mock REST API + React Page + Unit Tests
