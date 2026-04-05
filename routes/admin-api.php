@@ -143,3 +143,8 @@ Route::get('/mock-api/risks/summary', [RisksApiController::class, 'summary'])->n
 Route::get('/mock-api/risks/persons/{id}/factors', [RisksApiController::class, 'personFactors'])->name('mock-api.risks.persons.factors');
 Route::get('/mock-api/risks/organizations/{id}/factors', [RisksApiController::class, 'orgFactors'])->name('mock-api.risks.orgs.factors');
 Route::get('/mock-api/risks/factor-categories', [RisksApiController::class, 'factorCategories'])->name('mock-api.risks.factor-categories');
+
+// Notifications
+Route::get('/mock-api/notifications', [NotificationsApiController::class, 'index'])->name('mock-api.notifications.index');
+Route::patch('/mock-api/notifications/{id}/read', [NotificationsApiController::class, 'toggleRead'])->name('mock-api.notifications.read');
+Route::post('/mock-api/notifications/read-all', [NotificationsApiController::class, 'readAll'])->name('mock-api.notifications.read-all');

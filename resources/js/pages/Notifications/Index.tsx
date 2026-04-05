@@ -1,7 +1,18 @@
 import PageMeta from '../../components/layout/PageMeta';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
+import { useTopLoader } from '../../components/ui/TopLoader';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, data: await res.json() };
+    } catch { return { ok: false, data: {} }; }
+}
 
 /* ─── Types ─── */
 type Severity = 'critical' | 'warning' | 'info';
@@ -74,6 +85,16 @@ const tabs: { id: FilterTab; label: string }[] = [
 export default function NotificationsPage() {
     const [notifications, setNotifications] = useState(initialNotifications);
     const [activeTab, setActiveTab] = useState<FilterTab>('all');
+    const { trigger } = useTopLoader();
+
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            const { ok, data } = await apiCall('/mock-api/notifications');
+            if (ok && data.data) setNotifications(data.data);
+        };
+        load();
+    }, []);
 
     const filtered = notifications.filter(n => {
         if (activeTab === 'unread') return !n.read;
@@ -91,11 +112,15 @@ export default function NotificationsPage() {
         info: notifications.filter(n => n.severity === 'info').length,
     };
 
-    const toggleRead = (id: number) => {
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: !n.read } : n));
+    const toggleRead = async (id: number) => {
+        const n = notifications.find(x => x.id === id);
+        if (!n) return;
+        await apiCall(`/mock-api/notifications/${id}/read`, 'PATCH', { read: !n.read });
+        setNotifications(prev => prev.map(x => x.id === id ? { ...x, read: !x.read } : x));
     };
 
-    const markAllRead = () => {
+    const markAllRead = async () => {
+        await apiCall('/mock-api/notifications/read-all', 'POST');
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     };
 
