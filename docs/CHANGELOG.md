@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.28.8 - 2026-04-05
+
+### Web Scraper (/web-scraper) — Mock REST API (design preserved)
+
+#### 7 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/web-scraper/sources` | 15 scraper sources (filter category/status + search) |
+| GET | `/mock-api/web-scraper/articles` | 12 scraped articles (filter category/relevance/flagged/person + search) |
+| GET | `/mock-api/web-scraper/articles/{id}` | Article detail (AI flag reason, entities, tags) |
+| POST | `/mock-api/web-scraper/sources` | Create source (validated: name, url, category, schedule) |
+| POST | `/mock-api/web-scraper/sources/{id}/sync` | Trigger sync (409 if error/paused) |
+| PATCH | `/mock-api/web-scraper/sources/{id}/status` | Change source status |
+| DELETE | `/mock-api/web-scraper/sources/{id}` | Delete source |
+
+- Original 287-line page design fully preserved (3 tabs: articles/sources/critical)
+- Only 26 lines added: API helpers + state + Promise.all fetch
+- 15 sources across 8 categories, 12 articles with AI flagging + entity tagging
+- Unit tests: 22 tests
+
 ## 0.28.7 - 2026-04-05
 
 ### Face Recognition (/face-recognition) — Mock REST API (design preserved)

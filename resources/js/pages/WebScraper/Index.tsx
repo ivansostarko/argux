@@ -5,8 +5,18 @@ import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import { mockPersons } from '../../mock/persons';
 import { mockOrganizations } from '../../mock/organizations';
-import { mockSources, mockArticles, catConfig, statusCol, relColors, contentIcons, allCategories, allCountries, allOps, keyboardShortcuts } from '../../mock/webScraper';
+import { mockSources as FALLBACK_SOURCES, mockArticles as FALLBACK_ARTICLES, catConfig, statusCol, relColors, contentIcons, allCategories, allCountries, allOps, keyboardShortcuts } from '../../mock/webScraper';
 import type { SourceCategory, Relevance, ViewTab, ScrapedArticle } from '../../mock/webScraper';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
 
 /* ═══ ARGUX — Web Scraper ═══ */
 
@@ -28,7 +38,23 @@ function WebScraperIndex() {
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    // Data state — API-driven with fallback
+    const [mockSources, setMockSources] = useState(FALLBACK_SOURCES);
+    const [mockArticles, setMockArticles] = useState(FALLBACK_ARTICLES);
+
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            const [srcRes, artRes] = await Promise.all([
+                apiCall('/mock-api/web-scraper/sources'),
+                apiCall('/mock-api/web-scraper/articles'),
+            ]);
+            if (srcRes.ok && srcRes.data.data) setMockSources(srcRes.data.data);
+            if (artRes.ok && artRes.data.data) setMockArticles(artRes.data.data);
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     const article = selArticle ? mockArticles.find(a => a.id === selArticle) : null;
     const allPersons = [...new Set(mockArticles.filter(a => a.personIds.length).flatMap(a => a.personIds.map((id, i) => ({ id, name: a.personNames[i] }))))].reduce((acc, cur) => { if (!acc.find(a => a.id === cur.id)) acc.push(cur); return acc; }, [] as { id: number; name: string }[]);

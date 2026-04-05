@@ -30,6 +30,7 @@ use App\Http\Controllers\MockApi\ConnectionsApiController;
 use App\Http\Controllers\MockApi\SurveillanceAppsApiController;
 use App\Http\Controllers\MockApi\OperationsApiController;
 use App\Http\Controllers\MockApi\FaceRecognitionApiController;
+use App\Http\Controllers\MockApi\WebScraperApiController;
 
 // ═══════════════════════════════════════════════════════════════
 // Background Jobs (7 routes)
@@ -164,3 +165,14 @@ Route::get('/mock-api/face-recognition/stats', [FaceRecognitionApiController::cl
 Route::get('/mock-api/face-recognition/{id}', [FaceRecognitionApiController::class, 'show'])->name('mock-api.face.show');
 Route::post('/mock-api/face-recognition/search', [FaceRecognitionApiController::class, 'search'])->name('mock-api.face.search');
 Route::patch('/mock-api/face-recognition/{id}/status', [FaceRecognitionApiController::class, 'updateStatus'])->name('mock-api.face.status');
+
+// ═══════════════════════════════════════════════════════════════
+// Web Scraper (8 routes)
+// ═══════════════════════════════════════════════════════════════
+Route::get('/mock-api/web-scraper/sources', [WebScraperApiController::class, 'sources'])->name('mock-api.webscraper.sources');
+Route::get('/mock-api/web-scraper/articles', [WebScraperApiController::class, 'articles'])->name('mock-api.webscraper.articles');
+Route::get('/mock-api/web-scraper/articles/{id}', [WebScraperApiController::class, 'showArticle'])->name('mock-api.webscraper.articles.show');
+Route::post('/mock-api/web-scraper/sources', [WebScraperApiController::class, 'storeSource'])->name('mock-api.webscraper.sources.store');
+Route::post('/mock-api/web-scraper/sources/{id}/sync', [WebScraperApiController::class, 'syncSource'])->name('mock-api.webscraper.sources.sync');
+Route::patch('/mock-api/web-scraper/sources/{id}/status', [WebScraperApiController::class, 'updateSourceStatus'])->name('mock-api.webscraper.sources.status');
+Route::delete('/mock-api/web-scraper/sources/{id}', [WebScraperApiController::class, 'destroySource'])->name('mock-api.webscraper.sources.destroy');
