@@ -104,3 +104,12 @@ Route::delete('/mock-api/profile/sessions/{id}', [ProfileApiController::class, '
 Route::delete('/mock-api/profile/sessions', [ProfileApiController::class, 'revokeAllSessions'])->name('mock-api.profile.sessions.revoke-all');
 Route::get('/mock-api/profile/audit', [ProfileApiController::class, 'audit'])->name('mock-api.profile.audit');
 Route::put('/mock-api/profile/settings', [ProfileApiController::class, 'updateSettings'])->name('mock-api.profile.settings');
+
+// Background Jobs
+Route::get('/mock-api/jobs', [JobsApiController::class, 'index'])->name('mock-api.jobs.index');
+Route::get('/mock-api/jobs/stats', [JobsApiController::class, 'stats'])->name('mock-api.jobs.stats');
+Route::get('/mock-api/jobs/{id}', [JobsApiController::class, 'show'])->name('mock-api.jobs.show');
+Route::post('/mock-api/jobs/{id}/retry', [JobsApiController::class, 'retry'])->name('mock-api.jobs.retry');
+Route::post('/mock-api/jobs/{id}/cancel', [JobsApiController::class, 'cancel'])->name('mock-api.jobs.cancel');
+Route::delete('/mock-api/jobs/{id}', [JobsApiController::class, 'destroy'])->name('mock-api.jobs.destroy');
+Route::post('/mock-api/jobs/clear-completed', [JobsApiController::class, 'clearCompleted'])->name('mock-api.jobs.clear');

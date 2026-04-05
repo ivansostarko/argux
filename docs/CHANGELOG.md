@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.27.3 - 2026-04-05
+
+### Background Jobs (/jobs) — Complete Mock REST API + React Page + Unit Tests
+
+#### 7 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/jobs` | List with search + status/type/queue filters + status counts |
+| GET | `/mock-api/jobs/stats` | Worker status, queue depths, type breakdown |
+| GET | `/mock-api/jobs/{id}` | Job detail (input params, output, error log) |
+| POST | `/mock-api/jobs/{id}/retry` | Retry failed job (409 NOT_FAILED or MAX_RETRIES) |
+| POST | `/mock-api/jobs/{id}/cancel` | Cancel running/queued (409 NOT_ACTIVE) |
+| DELETE | `/mock-api/jobs/{id}` | Delete finished job (409 JOB_ACTIVE if running/queued) |
+| POST | `/mock-api/jobs/clear-completed` | Clear all completed jobs |
+
+#### 16 Mock Jobs
+- 5 statuses: running (3), queued (3), completed (6), failed (3), cancelled (1)
+- 8 types: sync, ai_inference, report, export, media, backup, import, index_rebuild
+- Each with: input params, output, error log, worker, queue, priority, retry count
+- Realistic errors: CUDA OOM, Tor timeout, SNR too low, model corruption
+
+#### React Page (218 lines)
+- KPI cards per status (click to filter)
+- Search + type filter dropdown
+- Job list with progress bars, priority badges, duration
+- Detail side panel: meta, input params, output/error, retry/cancel/delete actions
+- Keyboard shortcuts: F=search, R=refresh, Esc=close
+
+#### Guard Logic
+- Retry: only failed + retryCount < maxRetries (j14 has 3/3 → MAX_RETRIES)
+- Cancel: only running or queued
+- Delete: only completed, failed, or cancelled (not active)
+
+#### Unit Tests — 31 Tests
+- List: 16 jobs, filter status (3 running), filter type, filter queue, search name, search initiator, status=all, correct counts
+- Show: detail, 404
+- Retry: failed OK, running blocked (409), completed blocked (409), max retries (409), 404
+- Cancel: running OK, queued OK, completed blocked (409), failed blocked (409), 404
+- Delete: completed/failed/cancelled OK, running blocked (409), queued blocked (409), 404
+- Clear completed: returns count (6)
+- Stats: workers + queues, worker status values
+- Combined: status + type filter
+
 ## 0.27.2 - 2026-04-05
 
 ### Operator Profile Page (/profile) — AppLayout variant
