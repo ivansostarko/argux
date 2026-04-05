@@ -29,6 +29,7 @@ use App\Http\Controllers\MockApi\WorkflowsApiController;
 use App\Http\Controllers\MockApi\ConnectionsApiController;
 use App\Http\Controllers\MockApi\SurveillanceAppsApiController;
 use App\Http\Controllers\MockApi\OperationsApiController;
+use App\Http\Controllers\MockApi\FaceRecognitionApiController;
 
 // ═══════════════════════════════════════════════════════════════
 // Background Jobs (7 routes)
@@ -153,3 +154,13 @@ Route::put('/mock-api/operations/{id}', [OperationsApiController::class, 'update
 Route::patch('/mock-api/operations/{id}/phase', [OperationsApiController::class, 'updatePhase'])->name('mock-api.operations.phase');
 Route::delete('/mock-api/operations/{id}', [OperationsApiController::class, 'destroy'])->name('mock-api.operations.destroy');
 Route::get('/mock-api/operations/{id}/events', [OperationsApiController::class, 'events'])->name('mock-api.operations.events');
+
+// ═══════════════════════════════════════════════════════════════
+// Face Recognition (6 routes)
+// ═══════════════════════════════════════════════════════════════
+Route::get('/mock-api/face-recognition', [FaceRecognitionApiController::class, 'index'])->name('mock-api.face.index');
+Route::get('/mock-api/face-recognition/cameras', [FaceRecognitionApiController::class, 'cameras'])->name('mock-api.face.cameras');
+Route::get('/mock-api/face-recognition/stats', [FaceRecognitionApiController::class, 'stats'])->name('mock-api.face.stats');
+Route::get('/mock-api/face-recognition/{id}', [FaceRecognitionApiController::class, 'show'])->name('mock-api.face.show');
+Route::post('/mock-api/face-recognition/search', [FaceRecognitionApiController::class, 'search'])->name('mock-api.face.search');
+Route::patch('/mock-api/face-recognition/{id}/status', [FaceRecognitionApiController::class, 'updateStatus'])->name('mock-api.face.status');

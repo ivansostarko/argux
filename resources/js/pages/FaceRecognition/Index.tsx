@@ -4,8 +4,18 @@ import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
 import { mockPersons, riskColors } from '../../mock/persons';
-import { mockCaptures, cameras, statusColors, statusIcons, allCameras, allMatchedPersons, allOps, keyboardShortcuts } from '../../mock/faceRecognition';
+import { mockCaptures as FALLBACK_CAPTURES, cameras, statusColors, statusIcons, allCameras, allMatchedPersons, allOps, keyboardShortcuts } from '../../mock/faceRecognition';
 import type { MatchStatus, ViewTab } from '../../mock/faceRecognition';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
 
 /* ═══ ARGUX — Face Recognition ═══ */
 
@@ -26,13 +36,24 @@ function FaceRecognitionIndex() {
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
 
+    // Data state — API-driven with fallback
+    const [mockCaptures, setMockCaptures] = useState(FALLBACK_CAPTURES);
+
     // Search mode
     const [searchPerson, setSearchPerson] = useState<number | null>(null);
     const [searchDragOver, setSearchDragOver] = useState(false);
     const [searchRunning, setSearchRunning] = useState(false);
     const [searchDone, setSearchDone] = useState(false);
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            const { ok, data } = await apiCall('/mock-api/face-recognition');
+            if (ok && data.data) setMockCaptures(data.data);
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     const capture = selCapture ? mockCaptures.find(c => c.id === selCapture) : null;
 

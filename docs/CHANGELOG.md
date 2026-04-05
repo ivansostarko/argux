@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.28.7 - 2026-04-05
+
+### Face Recognition (/face-recognition) — Mock REST API (design preserved)
+
+#### 6 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/face-recognition` | 15 captures (filter status/camera/person/operation/min_confidence + search) |
+| GET | `/mock-api/face-recognition/{id}` | Capture detail (confidence, disguise, companions, quality) |
+| POST | `/mock-api/face-recognition/search` | ArcFace search by person_id or image (simulated inference) |
+| PATCH | `/mock-api/face-recognition/{id}/status` | Update match status |
+| GET | `/mock-api/face-recognition/cameras` | 6 camera sources with status |
+| GET | `/mock-api/face-recognition/stats` | Aggregate stats (confirmed/possible/pending/avgConfidence) |
+
+- Original 290-line page design fully preserved (3 tabs: captures/search/stats)
+- Only 21 lines added: API helpers + state + useEffect fetch
+- 15 captures: 7 Confirmed, 3 Possible, 2 No Match, 2 Pending Review, 1 unknown
+- Unit tests: 15 tests
+
 ## 0.28.6 - 2026-04-05
 
 ### Operations (/operations) — Mock REST API (design preserved)
