@@ -9,10 +9,10 @@
  *
  * Add to routes/web.php:  require __DIR__.'/user-api.php';
  *
- * 60 routes total:
+ * 65 routes total:
  *   Jobs (7), Reports (7), Storage (7), Records (4), Risks (4),
  *   Notifications (3), Activity (2), Alerts (7), Data Sources (7),
- *   Workflows (6), Connections (6)
+ *   Workflows (6), Connections (6), Surveillance Apps (5)
  */
 
 use App\Http\Controllers\MockApi\JobsApiController;
@@ -26,6 +26,7 @@ use App\Http\Controllers\MockApi\AlertsApiController;
 use App\Http\Controllers\MockApi\DataSourcesApiController;
 use App\Http\Controllers\MockApi\WorkflowsApiController;
 use App\Http\Controllers\MockApi\ConnectionsApiController;
+use App\Http\Controllers\MockApi\SurveillanceAppsApiController;
 
 // ═══════════════════════════════════════════════════════════════
 // Background Jobs (7 routes)
@@ -130,3 +131,12 @@ Route::get('/mock-api/connections/node/{nodeId}', [ConnectionsApiController::cla
 Route::get('/mock-api/connections/{id}', [ConnectionsApiController::class, 'show'])->name('mock-api.connections.show');
 Route::post('/mock-api/connections', [ConnectionsApiController::class, 'store'])->name('mock-api.connections.store');
 Route::delete('/mock-api/connections/{id}', [ConnectionsApiController::class, 'destroy'])->name('mock-api.connections.destroy');
+
+// ═══════════════════════════════════════════════════════════════
+// Surveillance Apps (5 routes)
+// ═══════════════════════════════════════════════════════════════
+Route::get('/mock-api/surveillance-apps', [SurveillanceAppsApiController::class, 'index'])->name('mock-api.apps.index');
+Route::get('/mock-api/surveillance-apps/{id}', [SurveillanceAppsApiController::class, 'show'])->name('mock-api.apps.show');
+Route::get('/mock-api/surveillance-apps/{id}/data/{tab}', [SurveillanceAppsApiController::class, 'tabData'])->name('mock-api.apps.data');
+Route::post('/mock-api/surveillance-apps/{id}/command', [SurveillanceAppsApiController::class, 'executeCommand'])->name('mock-api.apps.command');
+Route::patch('/mock-api/surveillance-apps/{id}/status', [SurveillanceAppsApiController::class, 'updateStatus'])->name('mock-api.apps.status');

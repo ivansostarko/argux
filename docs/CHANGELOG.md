@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.28.5 - 2026-04-05
+
+### Surveillance Apps (/surveillance-apps) — Mock REST API (design preserved)
+
+#### 5 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/surveillance-apps` | 6 deployed agents (filter status/platform + search) |
+| GET | `/mock-api/surveillance-apps/{id}` | Full agent detail with all nested data |
+| GET | `/mock-api/surveillance-apps/{id}/data/{tab}` | Tab-specific data (sms/calls/contacts/calendar/notifications/network/location/screenshots/photos/remote) |
+| POST | `/mock-api/surveillance-apps/{id}/command` | Execute remote command (409 if paused/offline) |
+| PATCH | `/mock-api/surveillance-apps/{id}/status` | Change agent status (409 if offline/compromised) |
+
+- Original 274-line page design fully preserved
+- Only 21 lines added: API helpers + state + useEffect fetch
+- 6 agents: 2 Active, 1 Stealth, 1 Paused, 1 Offline
+- Nested data: SMS (flagged keywords), calls (recorded), contacts, calendar, screenshots, photos, network info
+- Unit tests: 20 tests
+
 ## 0.28.4 - 2026-04-05
 
 ### Route File Reorganization

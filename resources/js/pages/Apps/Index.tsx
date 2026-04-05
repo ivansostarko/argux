@@ -3,8 +3,18 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import { theme } from '../../lib/theme';
 import { useTopLoader } from '../../components/ui/TopLoader';
-import { mockApps, statusColors, statusIcons, tabConfig, remoteCommands, keyboardShortcuts } from '../../mock/surveillanceApps';
+import { mockApps as FALLBACK_APPS, statusColors, statusIcons, tabConfig, remoteCommands, keyboardShortcuts } from '../../mock/surveillanceApps';
 import type { AppStatus, DataTab } from '../../mock/surveillanceApps';
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: {} }; }
+}
 
 /* ═══ ARGUX — Surveillance Apps ═══ */
 
@@ -21,7 +31,18 @@ function AppsIndex() {
     const searchRef = useRef<HTMLInputElement>(null);
     const { trigger } = useTopLoader();
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 700); return () => clearTimeout(t); }, []);
+    // Data state — API-driven with fallback
+    const [mockApps, setMockApps] = useState(FALLBACK_APPS);
+
+    useEffect(() => {
+        const load = async () => {
+            trigger();
+            const { ok, data } = await apiCall('/mock-api/surveillance-apps');
+            if (ok && data.data) setMockApps(data.data);
+            setLoading(false);
+        };
+        load();
+    }, []);
 
     const app = selApp ? mockApps.find(a => a.id === selApp) : null;
 
