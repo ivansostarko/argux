@@ -122,3 +122,12 @@ Route::post('/mock-api/reports', [ReportsApiController::class, 'store'])->name('
 Route::post('/mock-api/reports/{id}/retry', [ReportsApiController::class, 'retry'])->name('mock-api.reports.retry');
 Route::get('/mock-api/reports/{id}/download', [ReportsApiController::class, 'download'])->name('mock-api.reports.download');
 Route::delete('/mock-api/reports/{id}', [ReportsApiController::class, 'destroy'])->name('mock-api.reports.destroy');
+
+// Storage Browser
+Route::get('/mock-api/storage/tree', [StorageApiController::class, 'tree'])->name('mock-api.storage.tree');
+Route::get('/mock-api/storage/files', [StorageApiController::class, 'index'])->name('mock-api.storage.files.index');
+Route::get('/mock-api/storage/files/{id}', [StorageApiController::class, 'show'])->name('mock-api.storage.files.show');
+Route::post('/mock-api/storage/files', [StorageApiController::class, 'store'])->name('mock-api.storage.files.store');
+Route::get('/mock-api/storage/files/{id}/download', [StorageApiController::class, 'download'])->name('mock-api.storage.files.download');
+Route::delete('/mock-api/storage/files/{id}', [StorageApiController::class, 'destroy'])->name('mock-api.storage.files.destroy');
+Route::get('/mock-api/storage/stats', [StorageApiController::class, 'stats'])->name('mock-api.storage.stats');

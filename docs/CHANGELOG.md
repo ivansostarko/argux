@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.27.5 - 2026-04-05
+
+### Storage Browser (/storage) — Complete Mock REST API + React Page + Unit Tests
+
+#### 7 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/storage/tree` | Entity folder tree (6 persons + 2 orgs + subfolders) |
+| GET | `/mock-api/storage/files` | File list (entity_id/entity_type/file_type + search + sort) |
+| GET | `/mock-api/storage/files/{id}` | File detail with metadata + transcript |
+| POST | `/mock-api/storage/files` | Upload file (validates entity + file_type) |
+| GET | `/mock-api/storage/files/{id}/download` | Download file info |
+| DELETE | `/mock-api/storage/files/{id}` | Delete file |
+| GET | `/mock-api/storage/stats` | Storage overview (total files/size, by_type breakdown, MinIO backend) |
+
+#### 16 Mock Files across 8 Entities
+- 4 file types: audio (2), video (6), photo (1), document (7)
+- 6 person entities + 2 organization entities
+- Files with metadata (camera, duration, resolution, pages, etc.)
+- 3 files with transcripts (audio intercept, text document)
+- Realistic file sizes (24 KB to 2.1 GB)
+
+#### React Page (177 lines) — Split-Panel Layout
+- Left: entity folder tree with expand/collapse for persons/organizations
+- Right: file table (name, type, size, date) with inline download/delete
+- Search across filenames, entity names, transcripts, metadata
+- File type filter buttons with counts
+- File detail panel: metadata, transcript, download/delete actions
+
+#### Unit Tests — 23 Tests
+- Tree: persons (6) + orgs (2), subfolders array
+- List: 16 files, filter entity_id (4 for Horvat), filter entity_type, filter file_type, search filename, search transcript, type counts (2/6/1/7), combined filters
+- Show: detail, transcript when available, 404
+- Upload: valid, required fields, invalid file_type, unknown entity (404)
+- Download: file info, 404
+- Delete: success, 404
+- Stats: overview (16 files, MinIO, 8 entities), by_type breakdown
+
 ## 0.27.4 - 2026-04-05
 
 ### Report Generator (/reports) — Complete Mock REST API + React Page + Unit Tests
