@@ -62,3 +62,11 @@ Route::get('/mock-api/admin/audit', [AdminAuditApiController::class, 'index'])->
 Route::get('/mock-api/admin/audit/{id}', [AdminAuditApiController::class, 'show'])->name('mock-api.admin.audit.show');
 Route::post('/mock-api/admin/audit/export', [AdminAuditApiController::class, 'export'])->name('mock-api.admin.audit.export');
 Route::post('/mock-api/admin/audit/{id}/verify', [AdminAuditApiController::class, 'verify'])->name('mock-api.admin.audit.verify');
+
+// Configuration
+Route::get('/mock-api/admin/config', [AdminConfigApiController::class, 'index'])->name('mock-api.admin.config.index');
+Route::get('/mock-api/admin/config/tab/{tab}', [AdminConfigApiController::class, 'show'])->name('mock-api.admin.config.show');
+Route::put('/mock-api/admin/config/tab/{tab}', [AdminConfigApiController::class, 'update'])->name('mock-api.admin.config.update');
+Route::post('/mock-api/admin/config/tab/{tab}/reset', [AdminConfigApiController::class, 'reset'])->name('mock-api.admin.config.reset');
+Route::post('/mock-api/admin/config/test-notification', [AdminConfigApiController::class, 'testNotification'])->name('mock-api.admin.config.test-notification');
+Route::post('/mock-api/admin/config/backup/trigger', [AdminConfigApiController::class, 'triggerBackup'])->name('mock-api.admin.config.trigger-backup');

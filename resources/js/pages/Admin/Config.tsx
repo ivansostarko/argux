@@ -7,6 +7,27 @@ import { useToast } from '../../components/ui/Toast';
 import * as C from '../../mock/admin-config';
 import type { ConfigTab, ClockCity } from '../../mock/admin-config';
 
+/**
+ * ARGUX Configuration — 11 form tabs via mock REST API.
+ *
+ * GET  /mock-api/admin/config               — Tab metadata
+ * GET  /mock-api/admin/config/tab/{tab}     — Load tab settings
+ * PUT  /mock-api/admin/config/tab/{tab}     — Save tab settings
+ * POST /mock-api/admin/config/tab/{tab}/reset — Reset to defaults
+ * POST /mock-api/admin/config/test-notification
+ * POST /mock-api/admin/config/backup/trigger
+ */
+
+function getCsrf(): string { return decodeURIComponent(document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''); }
+async function apiCall(url: string, method = 'GET', body?: any): Promise<any> {
+    try {
+        const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': getCsrf() } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(url, opts);
+        return { ok: res.ok, status: res.status, data: await res.json() };
+    } catch { return { ok: false, status: 0, data: { message: 'Network error.' } }; }
+}
+
 function Skel({ w, h }: { w: string | number; h: number }) { return <div className="cfg-skeleton" style={{ width: typeof w === 'number' ? w : w, height: h }} />; }
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) { return <button className="cfg-toggle" onClick={() => onChange(!on)} style={{ background: on ? '#22c55e' : '#6b7280' }}><div className="cfg-toggle-dot" style={{ left: on ? 18 : 3 }} /></button>; }
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) { return <div className="cfg-field"><label>{label}</label>{children}{hint && <div style={{ fontSize: 10, color: theme.textDim, marginTop: 3 }}>{hint}</div>}</div>; }
@@ -60,9 +81,17 @@ export default function AdminConfig() {
     // Licence
     const [licModules, setLicModules] = useState(C.licenceModules.map(m => ({ ...m })));
 
-    useEffect(() => { const t = setTimeout(() => setLoading(false), 500); return () => clearTimeout(t); }, []);
-    const switchTab = (t: ConfigTab) => { setTab(t); setLoading(true); trigger(); setTimeout(() => setLoading(false), 300); };
-    const handleSave = useCallback(() => { trigger(); toast.success('Settings saved', `${C.configTabs.find(t => t.id === tab)?.label} updated.`); }, [tab, trigger, toast]);
+    useEffect(() => {
+        const load = async () => { setLoading(true); trigger(); await apiCall(`/mock-api/admin/config/tab/${tab}`); setLoading(false); };
+        load();
+    }, []);
+    const switchTab = async (t: ConfigTab) => { setTab(t); setLoading(true); trigger(); await apiCall(`/mock-api/admin/config/tab/${t}`); setLoading(false); };
+    const handleSave = useCallback(async () => {
+        trigger();
+        const { ok, data } = await apiCall(`/mock-api/admin/config/tab/${tab}`, 'PUT', { tab });
+        if (ok) toast.success('Settings saved', data.message || `${C.configTabs.find(t => t.id === tab)?.label} updated.`);
+        else toast.error('Save failed', data.message || 'Error');
+    }, [tab, trigger, toast]);
     const addClock = () => { if (!clockLabel.trim()) return; setClocks([...clocks, { id: `c-${Date.now()}`, label: clockLabel.trim(), timezone: clockTz }]); setClockLabel(''); setShowClockModal(false); };
     const addIp = () => { if (!newIp.trim()) return; setIpWhitelist([...ipWhitelist, newIp.trim()]); setNewIp(''); };
     const sel = (v: string, opts: string[], onChange: (v: string) => void) => <select value={v} onChange={e => onChange(e.target.value)} className="cfg-input">{opts.map(o => <option key={o} value={o}>{o}</option>)}</select>;

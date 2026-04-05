@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.26.8 - 2026-04-04
+
+### Admin Config — Complete Mock REST API + Unit Tests
+
+#### 6 Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/mock-api/admin/config` | Tab metadata (11 tabs) |
+| GET | `/mock-api/admin/config/tab/{tab}` | Load settings for tab |
+| PUT | `/mock-api/admin/config/tab/{tab}` | Save settings for tab |
+| POST | `/mock-api/admin/config/tab/{tab}/reset` | Reset tab to defaults |
+| POST | `/mock-api/admin/config/test-notification` | Test notification channel delivery |
+| POST | `/mock-api/admin/config/backup/trigger` | Trigger manual backup (full/incremental/differential) |
+
+#### 11 Configuration Tabs
+- **general** — language, timezone, date format, theme, font, clock cities
+- **security** — MFA default, session timeout, encryption, IP whitelist, password policies
+- **notifications** — enabled, quiet hours, 6 notification types, 4 channels (in_app/email/sms/webhook)
+- **dev** — environment, debug, log level/channel, app URL, filesystem
+- **map** — center coords, zoom, tile provider, 6 layer toggles
+- **retention** — events/logs/media/chat/backups/audit periods, auto-purge
+- **backup** — frequency, type, encrypt, verify, 5 databases, 3 backup history records
+- **ai** — 5 AI functions (LLM, face, whisper, LPR, translate) with model/runtime/GPU/status/queue
+- **storage** — MinIO backend, 4 buckets with sizes
+- **update** — current/latest version, channel, auto-update, version history
+- **licence** — key, type, seats, expiry, hardware ID, 6 module toggles
+
+#### Unit Tests — 24 Tests
+- Index: 11 tab definitions
+- Load: general, security, notifications, map, retention, backup (history), AI (5 functions), licence (modules), all 11 tabs, invalid tab
+- Save: general, security, invalid tab
+- Reset: defaults returned, invalid tab
+- Test notification: email, webhook, invalid channel, required
+- Trigger backup: full, incremental, invalid type, required
+
 ## 0.26.7 - 2026-04-04
 
 ### Admin Audit — Complete Mock REST API + Unit Tests
